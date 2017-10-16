@@ -1,0 +1,14 @@
+<launch>
+    <!-- <include file="$(find realsense_camera)/launch/realsense_r200_rgbd.launch" /> -->
+		<!-- args are distance_to_slow_down distance_to_stop angle max_speed -->
+    <node pkg="virtual_bumper" type="virtual_bumper.py" name="" args="1.2 0.8 45 0.1" output="screen">
+			 <remap from='/laser_scan' to='/scan'/>
+		</node>
+		<node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage">
+			<remap from="image" to="/camera/depth/image_raw"/>
+		</node>
+
+    <node pkg="tf" type="static_transform_publisher" name="link3_broadcaster"
+		args="0 0 0 0 0 0 1 /base_link /camera_depth_frame 100" />
+</launch>
+

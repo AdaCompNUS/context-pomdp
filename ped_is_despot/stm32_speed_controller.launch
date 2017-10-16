@@ -1,0 +1,5 @@
+<launch>
+	 <node name="stm32f3node" pkg="speed_controller_stm32f3_node" type="stm32f3node"  respawn="false" output="screen" ns="/scooter" required="true">
+	 </node>
+
+</launch>

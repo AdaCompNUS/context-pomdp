@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="cluster_extraction" type="ped_clustering" name="ped_clustering" output="screen"/> 
+</launch>

@@ -1,0 +1,1601 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+ACTION_A	src/problems/chain/chain.h	/^  enum { ACTION_A, ACTION_B };$/;"	e	enum:Model::__anon5
+ACTION_B	src/problems/chain/chain.h	/^  enum { ACTION_A, ACTION_B };$/;"	e	enum:Model::__anon5
+ACT_ACC	old-pedestrian/pedestrian.h	/^        ACT_ACC,$/;"	e	enum:Pedestrian::__anon3
+ACT_ACC	old-pedestrian/pedestrian_dynamic.h	/^        ACT_ACC,$/;"	e	enum:PEDESTRIAN_DYNAMIC::__anon1
+ACT_ACC	old-pedestrian/pedestrian_dynamic.h	/^        ACT_ACC,$/;"	e	enum:PEDESTRIAN_DYNAMIC_REAL::__anon2
+ACT_ACC	pedestrian/pedestrian.h	/^        ACT_ACC,$/;"	e	enum:Pedestrian::__anon13
+ACT_ACC	pedestrian/pedestrian_dynamic.h	/^        ACT_ACC,$/;"	e	enum:PEDESTRIAN_DYNAMIC::__anon11
+ACT_ACC	pedestrian/pedestrian_dynamic.h	/^        ACT_ACC,$/;"	e	enum:PEDESTRIAN_DYNAMIC_REAL::__anon12
+ACT_ACC	pedestrian/pedestrian_dynamic_latest2.h	/^        ACT_ACC,$/;"	e	enum:Pedestrian::__anon14
+ACT_ACC	src/problems/pedestrian/pedestrian.h	/^			ACT_ACC,$/;"	e	enum:Model::__anon9
+ACT_ACC	src/problems/pedestrian/pedestrian/pedestrian.h	/^			ACT_ACC,$/;"	e	enum:Model::__anon10
+ACT_CUR	old-pedestrian/pedestrian.h	/^        ACT_CUR,$/;"	e	enum:Pedestrian::__anon3
+ACT_CUR	old-pedestrian/pedestrian_dynamic.h	/^        ACT_CUR,$/;"	e	enum:PEDESTRIAN_DYNAMIC::__anon1
+ACT_CUR	old-pedestrian/pedestrian_dynamic.h	/^        ACT_CUR,$/;"	e	enum:PEDESTRIAN_DYNAMIC_REAL::__anon2
+ACT_CUR	pedestrian/pedestrian.h	/^        ACT_CUR,$/;"	e	enum:Pedestrian::__anon13
+ACT_CUR	pedestrian/pedestrian_dynamic.h	/^        ACT_CUR,$/;"	e	enum:PEDESTRIAN_DYNAMIC::__anon11
+ACT_CUR	pedestrian/pedestrian_dynamic.h	/^        ACT_CUR,$/;"	e	enum:PEDESTRIAN_DYNAMIC_REAL::__anon12
+ACT_CUR	pedestrian/pedestrian_dynamic_latest2.h	/^        ACT_CUR,$/;"	e	enum:Pedestrian::__anon14
+ACT_CUR	src/problems/pedestrian/pedestrian.h	/^			ACT_CUR,$/;"	e	enum:Model::__anon9
+ACT_CUR	src/problems/pedestrian/pedestrian/pedestrian.h	/^			ACT_CUR,$/;"	e	enum:Model::__anon10
+ACT_DEC	old-pedestrian/pedestrian.h	/^        ACT_DEC$/;"	e	enum:Pedestrian::__anon3
+ACT_DEC	old-pedestrian/pedestrian_dynamic.h	/^        ACT_DEC$/;"	e	enum:PEDESTRIAN_DYNAMIC::__anon1
+ACT_DEC	old-pedestrian/pedestrian_dynamic.h	/^        ACT_DEC$/;"	e	enum:PEDESTRIAN_DYNAMIC_REAL::__anon2
+ACT_DEC	pedestrian/pedestrian.h	/^        ACT_DEC$/;"	e	enum:Pedestrian::__anon13
+ACT_DEC	pedestrian/pedestrian_dynamic.h	/^        ACT_DEC$/;"	e	enum:PEDESTRIAN_DYNAMIC::__anon11
+ACT_DEC	pedestrian/pedestrian_dynamic.h	/^        ACT_DEC$/;"	e	enum:PEDESTRIAN_DYNAMIC_REAL::__anon12
+ACT_DEC	pedestrian/pedestrian_dynamic_latest2.h	/^        ACT_DEC$/;"	e	enum:Pedestrian::__anon14
+ACT_DEC	src/problems/pedestrian/pedestrian.h	/^			ACT_DEC$/;"	e	enum:Model::__anon9
+ACT_DEC	src/problems/pedestrian/pedestrian/pedestrian.h	/^			ACT_DEC$/;"	e	enum:Model::__anon10
+APPROX_BOUNDS	src/main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+ARG_IGNORE	src/optionparser.h	/^  ARG_IGNORE,$/;"	e	enum:option::ArgStatus
+ARG_ILLEGAL	src/optionparser.h	/^  ARG_ILLEGAL$/;"	e	enum:option::ArgStatus
+ARG_NONE	src/optionparser.h	/^  ARG_NONE,$/;"	e	enum:option::ArgStatus
+ARG_OK	src/optionparser.h	/^  ARG_OK,$/;"	e	enum:option::ArgStatus
+Action	src/history.h	/^	int Action(int t) const { return actions_[t]; }$/;"	f	class:History
+Action	src/lower_bound/lower_bound_policy_mode.h	/^int ModePolicyLowerBound<T>::Action($/;"	f	class:ModePolicyLowerBound
+Action	src/lower_bound/lower_bound_policy_random.h	/^int RandomPolicyLowerBound<T>::Action($/;"	f	class:RandomPolicyLowerBound
+Action	src/lower_bound/lower_bound_policy_suffix.h	/^  int Action(const vector<Particle<T>*>& particles,$/;"	f	class:SuffixPolicyLowerBound
+Action	src/optionparser.h	/^struct Parser::Action$/;"	s	class:option::Parser
+Add	src/history.h	/^	void Add(int action, uint64_t obs) {$/;"	f	class:History
+AddVector	src/main.cpp	/^void AddVector(double in_angle,double in_length,double &out_angle,double &out_length)$/;"	f
+AdjustLength	src/main.cpp	/^	void AdjustLength(double length)$/;"	f	class:MyVector
+Allocate	src/memorypool.h	/^  T* Allocate() { $/;"	f	class:MemoryPool
+Allocate	src/model.h	/^  Particle<T>* Allocate() const {$/;"	f	class:Model
+Allocate	src/problems/bridge/bridge.h	/^  Particle<BridgeState>* Allocate() const {$/;"	f	class:Model
+Allocate	src/problems/chain/chain.h	/^  Particle<ChainState>* Allocate() const {$/;"	f	class:Model
+Allocate	src/problems/lasertag/lasertag.h	/^  Particle<LaserTagState>* Allocate() const {$/;"	f	class:Model
+Allocate	src/problems/pedestrian/pedestrian.h	/^		Particle<PedestrianState>* Allocate() const {$/;"	f	class:Model
+Allocate	src/problems/pedestrian/pedestrian/pedestrian.h	/^		Particle<PedestrianState>* Allocate() const {$/;"	f	class:Model
+Allocate	src/problems/pocman/pocman.h	/^  Particle<PocmanState>* Allocate() const {$/;"	f	class:Model
+Allocate	src/problems/rocksample/rocksample.h	/^  Particle<RockSampleState>* Allocate() const {$/;"	f	class:Model
+Allocate	src/problems/tag/tag.h	/^  Particle<TagState>* Allocate() const {$/;"	f	class:Model
+Allocate	src/problems/tiger/tiger.h	/^  Particle<TigerState>* Allocate() const {$/;"	f	class:Model
+Anticlockwise	src/problems/pocman/coord.h	/^  static int Anticlockwise(int dir) { return (dir + 3) % 4; }$/;"	f	struct:Coord
+Arg	src/optionparser.h	/^struct Arg$/;"	s	namespace:option
+ArgStatus	src/optionparser.h	/^enum ArgStatus$/;"	g	namespace:option
+BELIEF	src/main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+BELIEF_UPDATE_CHAIN_H	src/problems/chain/belief_update_chain.h	2;"	d
+BELIEF_UPDATE_H	src/belief_update/belief_update.h	2;"	d
+BERNOULLI_H	old-pedestrian/Bernoulli.h	2;"	d
+BERNOULLI_H	pedestrian/Bernoulli.h	2;"	d
+BINDIR	Makefile	/^BINDIR = bin$/;"	m
+BINS	Makefile	/^BINS = $(PROG)$/;"	m
+BITS_PER_READING	src/problems/lasertag/lasertag.h	/^  static constexpr int BITS_PER_READING = 7;$/;"	m	class:Model
+BITS_PER_READING	src/problems/lasertag/lasertag.h	/^constexpr int Model<LaserTagState>::BITS_PER_READING;$/;"	m	class:Model
+BRIDGELENGTH	src/problems/bridge/bridge.h	/^  static const int BRIDGELENGTH;$/;"	m	class:Model
+BRIDGELENGTH	src/problems/bridge/bridge.h	/^const int Model<BridgeState>::BRIDGELENGTH = 10;$/;"	m	class:Model
+BRIDGE_H	src/problems/bridge/bridge.h	2;"	d
+Belief	src/qnode.h	/^  unique_ptr<VNode<T>>& Belief(uint64_t obs) {$/;"	f	class:QNode
+BeliefUpdate	src/belief_update/belief_update.h	/^  BeliefUpdate(unsigned belief_update_seed, const Model<T>& model) :$/;"	f	class:BeliefUpdate
+BeliefUpdate	src/belief_update/belief_update.h	/^class BeliefUpdate {$/;"	c
+BeliefUpdateSeed	src/main.cpp	/^int BeliefUpdateSeed() {$/;"	f
+BestWEUO	src/qnode.h	/^pair<uint64_t, double> QNode<T>::BestWEUO($/;"	f	class:QNode
+BranchLabels	src/qnode.h	/^	vector<uint64_t> BranchLabels() const {$/;"	f	class:QNode
+BridgeState	src/problems/bridge/bridge.h	/^  BridgeState() : id_(0) {}$/;"	f	class:BridgeState
+BridgeState	src/problems/bridge/bridge.h	/^  BridgeState(int id) : id_(id) {}$/;"	f	class:BridgeState
+BridgeState	src/problems/bridge/bridge.h	/^class BridgeState {$/;"	c
+BuildPriorTable	src/main.cpp	/^void BuildPriorTable()$/;"	f
+CHAIN_H	src/problems/chain/chain.h	8;"	d
+COORD_H	src/problems/pocman/coord.h	2;"	d
+CRASH_PENALTY	src/problems/pedestrian/pedestrian.h	/^const int CRASH_PENALTY =-50000;$/;"	v
+CRASH_PENALTY	src/problems/pedestrian/pedestrian/pedestrian.h	/^const int CRASH_PENALTY =-50000;$/;"	v
+CRUSH	old-pedestrian/pedestrian.cpp	/^const int CRUSH=-3000;$/;"	v
+CRUSH	old-pedestrian/pedestrian_dynamic.cpp	/^const int CRUSH=-50000;$/;"	v
+CRUSH	pedestrian/pedestrain_dynamic_latest.cpp	/^const int CRUSH=-50000;$/;"	v
+CRUSH	pedestrian/pedestrian.cpp	/^const int CRUSH=-3000;$/;"	v
+CRUSH	pedestrian/pedestrian_dynamic.cpp	/^const int CRUSH=-50000;$/;"	v
+CRUSH	pedestrian/pedestrian_dynamic_latest2.cpp	/^const int CRUSH=-50000;$/;"	v
+CXX	Makefile	/^CXX = \/home\/petercai\/gcc48\/bin\/g++$/;"	m
+CXX	Makefile	/^CXX = clang++$/;"	m
+CXXFLAGS	Makefile	/^CXXFLAGS = -O3 -std=c++0x -c -Wall -Wno-sign-compare$/;"	m
+CXXFLAGS	Makefile	/^CXXFLAGS = -O3 -std=c++0x -stdlib=libc++ -c -Wall$/;"	m
+Cdf	src/problems/lasertag/lasertag.h	/^double Model<LaserTagState>::Cdf(double x, double mean, double sigma) {$/;"	f	class:Model
+CellOf	src/problems/rocksample/rocksample.h	/^  int CellOf(const RockSampleState& s) const {$/;"	f	class:Model
+CellPairToState	src/problems/lasertag/lasertag.h	/^  LaserTagState CellPairToState(int c1, int c2) const { $/;"	f	class:Model
+CellPairToState	src/problems/tag/tag.h	/^  TagState CellPairToState(int c1, int c2) const { $/;"	f	class:Model
+ChainBelief	src/problems/chain/chain.h	/^	ChainBelief(int num_mdp_states, int num_mdp_actions) : $/;"	f	class:ChainBelief
+ChainBelief	src/problems/chain/chain.h	/^class ChainBelief {$/;"	c
+ChainState	src/problems/chain/chain.h	/^	 ChainState() {$/;"	f	class:ChainState
+ChainState	src/problems/chain/chain.h	/^  ChainState(int num_mdp_states, int num_mdp_actions) :$/;"	f	class:ChainState
+ChainState	src/problems/chain/chain.h	/^ ChainState(int mdp_state) : mdp_state_(mdp_state){}$/;"	f	class:ChainState
+ChainState	src/problems/chain/chain.h	/^class ChainState {$/;"	c
+CheckArg	src/optionparser.h	/^typedef ArgStatus (*CheckArg)(const Option& option, bool msg);$/;"	t	namespace:option
+CheckFlag	src/problems/pocman/pocman.h	/^  bool CheckFlag(int flags, int bit) const { return (flags & (1 << bit)) != 0; }$/;"	f	class:Model
+Children	src/vnode.h	/^  vector<QNode<T>>& Children() { return qnodes_; }$/;"	f	class:VNode
+Chunk	src/memorypool.h	/^  struct Chunk {$/;"	s	class:MemoryPool
+CleanProblem	src/main.cpp	/^void CleanProblem(int active_id)$/;"	f
+Clear	src/lower_bound/lower_bound_policy_suffix.h	/^	void Clear()  {$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+ClearAllocated	src/memorypool.h	/^  void ClearAllocated() { allocated_ = false; }$/;"	f	class:MemoryObject
+Clockwise	src/problems/pocman/coord.h	/^  static int Clockwise(int dir) { return (dir + 1) % 4; }$/;"	f	struct:Coord
+CollectSearchInformation	src/lower_bound/lower_bound.h	/^	virtual void CollectSearchInformation(Solver<T>* solver) {$/;"	f	class:ILowerBound
+CollectSearchInformation	src/lower_bound/lower_bound_policy_suffix.h	/^	void CollectSearchInformation(Solver<T>* solver) {$/;"	f	class:SuffixPolicyLowerBound
+Compass	src/problems/pocman/coord.cpp	/^const Coord Coord::Compass[8] = $/;"	m	class:Coord	file:
+Compass	src/problems/pocman/coord.h	/^  static const Coord Compass[8];$/;"	m	struct:Coord
+CompassString	src/problems/pocman/coord.cpp	/^const char* Coord::CompassString[8] = $/;"	m	class:Coord	file:
+CompassString	src/problems/pocman/coord.h	/^  static const char* CompassString[8];$/;"	m	struct:Coord
+Config	src/globals.h	/^  Config() : $/;"	f	struct:Globals::Config
+Config	src/globals.h	/^struct Config {$/;"	s	namespace:Globals
+Construct	src/memorypool.h	/^  T* Construct() {$/;"	f	class:MemoryPool
+ConstructMapping	src/lower_bound/lower_bound_policy_suffix.h	/^	void ConstructMapping() {$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+Coord	src/problems/pocman/coord.h	/^  Coord() {}$/;"	f	struct:Coord
+Coord	src/problems/pocman/coord.h	/^  Coord(int x, int y) : X(x), Y(y) {}$/;"	f	struct:Coord
+Coord	src/problems/pocman/coord.h	/^struct Coord$/;"	s
+Copy	old-pedestrian/pedestrian_dynamic.cpp	/^STATE*PEDESTRIAN_DYNAMIC::Copy(const STATE &state) const$/;"	f	class:PEDESTRIAN_DYNAMIC
+Copy	old-pedestrian/pedestrian_dynamic.cpp	/^STATE*PEDESTRIAN_DYNAMIC_REAL::Copy(const STATE &state) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Copy	pedestrian/pedestrain_dynamic_latest.cpp	/^STATE*PEDESTRIAN_DYNAMIC_REAL::Copy(const STATE &state) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Copy	pedestrian/pedestrian_dynamic.cpp	/^STATE*PEDESTRIAN_DYNAMIC::Copy(const STATE &state) const$/;"	f	class:PEDESTRIAN_DYNAMIC
+Copy	pedestrian/pedestrian_dynamic.cpp	/^STATE*PEDESTRIAN_DYNAMIC_REAL::Copy(const STATE &state) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Copy	src/model.h	/^  Particle<T>* Copy(const Particle<T>* particle) const {$/;"	f	class:Model
+Copy	src/problems/bridge/bridge.h	/^  Particle<BridgeState>* Copy(const Particle<BridgeState>* particle) const {$/;"	f	class:Model
+Copy	src/problems/chain/chain.h	/^	Particle<ChainState>* Copy(const Particle<ChainState>* particle) const {$/;"	f	class:Model
+Copy	src/problems/lasertag/lasertag.h	/^  Particle<LaserTagState>* Copy(const Particle<LaserTagState>* particle) const {$/;"	f	class:Model
+Copy	src/problems/pedestrian/pedestrian.h	/^		Particle<PedestrianState>* Copy(const Particle<PedestrianState>* particle) const {$/;"	f	class:Model
+Copy	src/problems/pedestrian/pedestrian/pedestrian.h	/^		Particle<PedestrianState>* Copy(const Particle<PedestrianState>* particle) const {$/;"	f	class:Model
+Copy	src/problems/pocman/pocman.h	/^  Particle<PocmanState>* Copy(const Particle<PocmanState>* particle) const {$/;"	f	class:Model
+Copy	src/problems/rocksample/rocksample.h	/^  Particle<RockSampleState>* Copy(const Particle<RockSampleState>* particle)$/;"	f	class:Model
+Copy	src/problems/tag/tag.h	/^  Particle<TagState>* Copy(const Particle<TagState>* particle) const {$/;"	f	class:Model
+Copy	src/problems/tiger/tiger.h	/^  Particle<TigerState>* Copy(const Particle<TigerState>* particle) const {$/;"	f	class:Model
+CopyModel	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::CopyModel(int **model)$/;"	f	class:PEDESTRIAN_DYNAMIC
+CopyModel	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::CopyModel(int **model)$/;"	f	class:PEDESTRIAN_DYNAMIC
+Count	src/lower_bound/lower_bound_policy_suffix.h	/^	int Count() { return count; }$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+CountOptionsAction	src/optionparser.h	/^  CountOptionsAction(unsigned* buffer_max_) :$/;"	f	class:option::Stats::CountOptionsAction
+CountOptionsAction	src/optionparser.h	/^class Stats::CountOptionsAction: public Parser::Action$/;"	c	class:option::Stats
+CreateStartState	old-pedestrian/pedestrian_dynamic.cpp	/^STATE*PEDESTRIAN_DYNAMIC::CreateStartState() const$/;"	f	class:PEDESTRIAN_DYNAMIC
+CreateStartState	old-pedestrian/pedestrian_dynamic.cpp	/^STATE*PEDESTRIAN_DYNAMIC_REAL::CreateStartState() const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+CreateStartState	pedestrian/pedestrain_dynamic_latest.cpp	/^STATE*PEDESTRIAN_DYNAMIC_REAL::CreateStartState() const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+CreateStartState	pedestrian/pedestrian_dynamic.cpp	/^STATE*PEDESTRIAN_DYNAMIC::CreateStartState() const$/;"	f	class:PEDESTRIAN_DYNAMIC
+CreateStartState	pedestrian/pedestrian_dynamic.cpp	/^STATE*PEDESTRIAN_DYNAMIC_REAL::CreateStartState() const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+DEPDIR	Makefile	/^DEPDIR = .deps$/;"	m
+DEPS	Makefile	/^DEPS = $(addprefix $(DEPDIR)\/, $(patsubst %.cpp, %.d, $(notdir $(SOURCES))))$/;"	m
+DEPTH	src/main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+DIRICHLET_H	src/dirichlet.h	5;"	d
+DISCOUNT	src/main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+DeleteAll	src/memorypool.h	/^  void DeleteAll() {$/;"	f	class:MemoryPool
+Descriptor	src/optionparser.h	/^struct Descriptor$/;"	s	namespace:option
+Destroy	src/memorypool.h	/^  void Destroy(T* obj) {$/;"	f	class:MemoryPool
+DirectionalDistance	src/problems/pocman/coord.h	/^inline int Coord::DirectionalDistance(Coord lhs, Coord rhs, int direction) {$/;"	f	class:Coord
+Dirichlet	src/dirichlet.h	/^  Dirichlet (vector<double> alpha) {$/;"	f	class:Dirichlet
+Dirichlet	src/dirichlet.h	/^class Dirichlet {$/;"	c
+DirichletBeliefUpdate	src/problems/chain/belief_update_chain.h	/^  DirichletBeliefUpdate(unsigned belief_update_seed, const Model<ChainState>& model)$/;"	f	class:DirichletBeliefUpdate
+DirichletBeliefUpdate	src/problems/chain/belief_update_chain.h	/^class DirichletBeliefUpdate : public BeliefUpdate<ChainState> {$/;"	c
+Discount	old-pedestrian/pedestrian.h	/^		double Discount;$/;"	m	class:Pedestrian
+Discount	pedestrian/pedestrian.h	/^		double Discount;$/;"	m	class:Pedestrian
+Discount	pedestrian/pedestrian_dynamic_latest2.h	/^		double Discount;$/;"	m	class:Pedestrian
+DisplayBeliefs	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::DisplayBeliefs(const BELIEF_STATE& beliefs, $/;"	f	class:PEDESTRIAN_DYNAMIC
+DisplayBeliefs	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::DisplayBeliefs(const BELIEF_STATE& beliefs, $/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+DisplayBeliefs	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::DisplayBeliefs(const BELIEF_STATE& beliefs, $/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+DisplayBeliefs	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::DisplayBeliefs(const BELIEF_STATE& beliefs, $/;"	f	class:PEDESTRIAN_DYNAMIC
+DisplayBeliefs	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::DisplayBeliefs(const BELIEF_STATE& beliefs, $/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+DisplayModel	old-pedestrian/pedestrian_dynamic.h	/^	virtual void DisplayModel() const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+DisplayModel	pedestrian/pedestrian_dynamic.h	/^	virtual void DisplayModel() const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+DisplayState	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::DisplayState(const STATE& state, std::ostream& ostr) const$/;"	f	class:PEDESTRIAN_DYNAMIC
+DisplayState	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::DisplayState(const STATE& state, std::ostream& ostr) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+DisplayState	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::DisplayState(const STATE& state, std::ostream& ostr) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+DisplayState	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::DisplayState(const STATE& state, std::ostream& ostr) const$/;"	f	class:PEDESTRIAN_DYNAMIC
+DisplayState	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::DisplayState(const STATE& state, std::ostream& ostr) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+DistToEdge	src/problems/pocman/grid.h	/^  int DistToEdge(const Coord& coord, int direction) {$/;"	f	class:Grid
+DotProduct	src/main.cpp	/^double DotProduct(double x1,double y1,double x2,double y2)$/;"	f
+EXACT_BELIEF_UPDATE_H	src/belief_update/belief_update_exact.h	2;"	d
+E_EAST	src/problems/pocman/coord.h	/^    E_EAST,$/;"	e	enum:Coord::__anon7
+E_NORTH	src/problems/pocman/coord.h	/^    E_NORTH,$/;"	e	enum:Coord::__anon7
+E_NORTHEAST	src/problems/pocman/coord.h	/^    E_NORTHEAST,$/;"	e	enum:Coord::__anon7
+E_NORTHWEST	src/problems/pocman/coord.h	/^    E_NORTHWEST$/;"	e	enum:Coord::__anon7
+E_PASSABLE	src/problems/pocman/pocman.h	/^    E_PASSABLE,$/;"	e	enum:Model::__anon6
+E_POWER	src/problems/pocman/pocman.h	/^    E_POWER$/;"	e	enum:Model::__anon6
+E_SEED	src/problems/pocman/pocman.h	/^    E_SEED,$/;"	e	enum:Model::__anon6
+E_SOUTH	src/problems/pocman/coord.h	/^    E_SOUTH,$/;"	e	enum:Coord::__anon7
+E_SOUTHEAST	src/problems/pocman/coord.h	/^    E_SOUTHEAST,$/;"	e	enum:Coord::__anon7
+E_SOUTHWEST	src/problems/pocman/coord.h	/^    E_SOUTHWEST,$/;"	e	enum:Coord::__anon7
+E_WEST	src/problems/pocman/coord.h	/^    E_WEST,$/;"	e	enum:Coord::__anon7
+East	src/problems/pocman/coord.h	/^  static const Coord North, East, South, West;$/;"	m	struct:Coord
+Entry	src/random_streams.h	/^	double Entry(int stream, int pos) const {$/;"	f	class:RandomStreams
+Erf	src/problems/lasertag/lasertag.h	/^double Model<LaserTagState>::Erf(double x) {$/;"	f	class:Model
+EuclideanDistance	src/problems/pocman/coord.h	/^inline double Coord::EuclideanDistance(Coord lhs, Coord rhs) {$/;"	f	class:Coord
+ExactBeliefUpdate	src/belief_update/belief_update_exact.h	/^  ExactBeliefUpdate(unsigned belief_update_seed, const Model<T>& model)$/;"	f	class:ExactBeliefUpdate
+ExactBeliefUpdate	src/belief_update/belief_update_exact.h	/^class ExactBeliefUpdate : public BeliefUpdate<T> {$/;"	c
+ExcessUncertainty	src/globals.h	/^inline double ExcessUncertainty(double l, double u, double root_l, $/;"	f	namespace:Globals
+ExpandOneStep	src/solver.h	/^void Solver<T>::ExpandOneStep(unique_ptr<VNode<T>>& node, bool debug) {$/;"	f	class:Solver
+Fequals	src/globals.h	/^inline bool Fequals(double a, double b) { $/;"	f	namespace:Globals
+Find	old-pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC::Find(VNODE*v1,const HISTORY &h)$/;"	f	class:PEDESTRIAN_DYNAMIC
+Find	old-pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC_REAL::Find(VNODE*v1,const HISTORY &h)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Find	pedestrian/pedestrain_dynamic_latest.cpp	/^VNODE* PEDESTRIAN_DYNAMIC_REAL::Find(VNODE*v1,const HISTORY &h)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Find	pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC::Find(VNODE*v1,const HISTORY &h)$/;"	f	class:PEDESTRIAN_DYNAMIC
+Find	pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC_REAL::Find(VNODE*v1,const HISTORY &h)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+FindIndex	old-pedestrian/pedestrian_dynamic.h	/^	int FindIndex(VNODE*v)$/;"	f	class:PEDESTRIAN_DYNAMIC
+FindIndex	old-pedestrian/pedestrian_dynamic.h	/^	int FindIndex(VNODE*v)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+FindIndex	pedestrian/pedestrian_dynamic.h	/^	int FindIndex(VNODE*v)$/;"	f	class:PEDESTRIAN_DYNAMIC
+FindIndex	pedestrian/pedestrian_dynamic.h	/^	int FindIndex(VNODE*v)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Find_old	old-pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC::Find_old(VNODE*v1,const HISTORY &h)$/;"	f	class:PEDESTRIAN_DYNAMIC
+Find_old	old-pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC_REAL::Find_old(VNODE*v1,const HISTORY &h)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Find_old	pedestrian/pedestrain_dynamic_latest.cpp	/^VNODE* PEDESTRIAN_DYNAMIC_REAL::Find_old(VNODE*v1,const HISTORY &h)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Find_old	pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC::Find_old(VNODE*v1,const HISTORY &h)$/;"	f	class:PEDESTRIAN_DYNAMIC
+Find_old	pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC_REAL::Find_old(VNODE*v1,const HISTORY &h)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Finished	src/solver.h	/^bool Solver<T>::Finished() const {$/;"	f	class:Solver
+Free	src/memorypool.h	/^  void Free(T* obj) { $/;"	f	class:MemoryPool
+Free	src/model.h	/^  void Free(Particle<T>* particle) const {$/;"	f	class:Model
+Free	src/problems/bridge/bridge.h	/^  void Free(Particle<BridgeState>* particle) const {$/;"	f	class:Model
+Free	src/problems/chain/chain.h	/^  void Free(Particle<ChainState>* particle) const {$/;"	f	class:Model
+Free	src/problems/lasertag/lasertag.h	/^  void Free(Particle<LaserTagState>* particle) const {$/;"	f	class:Model
+Free	src/problems/pedestrian/pedestrian.h	/^		void Free(Particle<PedestrianState>* particle) const {$/;"	f	class:Model
+Free	src/problems/pedestrian/pedestrian/pedestrian.h	/^		void Free(Particle<PedestrianState>* particle) const {$/;"	f	class:Model
+Free	src/problems/pocman/pocman.h	/^  void Free(Particle<PocmanState>* particle) const {$/;"	f	class:Model
+Free	src/problems/rocksample/rocksample.h	/^  void Free(Particle<RockSampleState>* particle) const {$/;"	f	class:Model
+Free	src/problems/tag/tag.h	/^  void Free(Particle<TagState>* particle) const {$/;"	f	class:Model
+Free	src/problems/tiger/tiger.h	/^  void Free(Particle<TigerState>* particle) const {$/;"	f	class:Model
+FreeState	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::FreeState(STATE* state) const$/;"	f	class:PEDESTRIAN_DYNAMIC
+FreeState	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::FreeState(STATE* state) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+FreeState	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::FreeState(STATE* state) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+FreeState	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::FreeState(STATE* state) const$/;"	f	class:PEDESTRIAN_DYNAMIC
+FreeState	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::FreeState(STATE* state) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+FringeLowerBound	src/problems/bridge/bridge.h	/^  double FringeLowerBound(const vector<Particle<BridgeState>*>& particles) $/;"	f	class:Model
+FringeLowerBound	src/problems/chain/chain.h	/^  double FringeLowerBound (const vector <Particle<ChainState>*> &particles) const { return 0; }$/;"	f	class:Model
+FringeLowerBound	src/problems/lasertag/lasertag.h	/^  double FringeLowerBound(const vector<Particle<LaserTagState>*>& particles)$/;"	f	class:Model
+FringeLowerBound	src/problems/pedestrian/pedestrian.h	/^double Model<PedestrianState>::FringeLowerBound(const vector<Particle<PedestrianState>*>& particles) const {$/;"	f	class:Model
+FringeLowerBound	src/problems/pedestrian/pedestrian/pedestrian.h	/^double Model<PedestrianState>::FringeLowerBound(const vector<Particle<PedestrianState>*>& particles) const {$/;"	f	class:Model
+FringeLowerBound	src/problems/pocman/pocman.h	/^  double FringeLowerBound(const vector<Particle<PocmanState>*>& particles)$/;"	f	class:Model
+FringeLowerBound	src/problems/tag/tag.h	/^  double FringeLowerBound(const vector<Particle<TagState>*>& particles) const {$/;"	f	class:Model
+FringeLowerBound	src/problems/tiger/tiger.h	/^double Model<TigerState>::FringeLowerBound($/;"	f	class:Model
+FringeUpperBound	src/problems/bridge/bridge.h	/^  double FringeUpperBound(const BridgeState& s) const {$/;"	f	class:Model
+FringeUpperBound	src/problems/chain/chain.h	/^  double FringeUpperBound (const ChainState &s) const {$/;"	f	class:Model
+FringeUpperBound	src/problems/lasertag/lasertag.h	/^double Model<LaserTagState>::FringeUpperBound(const LaserTagState& s) const {$/;"	f	class:Model
+FringeUpperBound	src/problems/pedestrian/pedestrian.h	/^double Model<PedestrianState>::FringeUpperBound(const PedestrianState& s) const {$/;"	f	class:Model
+FringeUpperBound	src/problems/pedestrian/pedestrian/pedestrian.h	/^double Model<PedestrianState>::FringeUpperBound(const PedestrianState& s) const {$/;"	f	class:Model
+FringeUpperBound	src/problems/rocksample/rocksample.h	/^double Model<RockSampleState>::FringeUpperBound(const RockSampleState& s) const {$/;"	f	class:Model
+FringeUpperBound	src/problems/tag/tag.cpp	/^double Model<TagState>::FringeUpperBound(const TagState& s) const {$/;"	f	class:Model
+FringeUpperBound	src/problems/tiger/tiger.h	/^double Model<TigerState>::FringeUpperBound(const TigerState& s) const {$/;"	f	class:Model
+FunctionWriter	src/optionparser.h	/^    FunctionWriter(Function* w) :$/;"	f	struct:option::PrintUsageImplementation::FunctionWriter
+FunctionWriter	src/optionparser.h	/^  struct FunctionWriter: public IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+GAMMA_H	src/gamma.h	2;"	d
+GOAL_REWARD	src/problems/pedestrian/pedestrian.h	/^const int GOAL_REWARD = 1000;$/;"	v
+GOAL_REWARD	src/problems/pedestrian/pedestrian/pedestrian.h	/^const int GOAL_REWARD = 1000;$/;"	v
+GRID_H	src/problems/pocman/grid.h	2;"	d
+Gamma	src/gamma.h	/^	Gamma(double k, double theta) {$/;"	f	class:Gamma
+Gamma	src/gamma.h	/^class Gamma {$/;"	c
+GenerateLegal	src/model.h	/^  shared_ptr<vector<int>> GenerateLegal(const T& state, const History& history)$/;"	f	class:Model
+GenerateLegal	src/problems/bridge/bridge.h	/^  shared_ptr<vector<int>> GenerateLegal(const BridgeState& state, $/;"	f	class:Model
+GenerateLegal	src/problems/chain/chain.h	/^  shared_ptr<vector<int>> GenerateLegal(const ChainState& state,$/;"	f	class:Model
+GenerateLegal	src/problems/lasertag/lasertag.h	/^  shared_ptr<vector<int>> GenerateLegal(const LaserTagState& state, $/;"	f	class:Model
+GenerateLegal	src/problems/pedestrian/pedestrian.h	/^		shared_ptr<vector<int>> GenerateLegal(const PedestrianState& state,$/;"	f	class:Model
+GenerateLegal	src/problems/pedestrian/pedestrian/pedestrian.h	/^		shared_ptr<vector<int>> GenerateLegal(const PedestrianState& state,$/;"	f	class:Model
+GenerateLegal	src/problems/pocman/pocman.h	/^shared_ptr<vector<int>> POCMAN::GenerateLegal(const PocmanState& state,$/;"	f	class:POCMAN
+GenerateLegal	src/problems/tag/tag.h	/^  shared_ptr<vector<int>> GenerateLegal(const TagState& state,$/;"	f	class:Model
+GenerateLegal	src/problems/tiger/tiger.h	/^  shared_ptr<vector<int>> GenerateLegal(const TigerState& state, $/;"	f	class:Model
+GeneratePreferred	src/problems/bridge/bridge.h	/^shared_ptr<vector<int>> Model<BridgeState>::GeneratePreferred($/;"	f	class:Model
+GeneratePreferred	src/problems/chain/chain.h	/^	shared_ptr<vector<int>> GeneratePreferred(const ChainState& state,$/;"	f	class:Model
+GeneratePreferred	src/problems/lasertag/lasertag.h	/^shared_ptr<vector<int>> Model<LaserTagState>::GeneratePreferred($/;"	f	class:Model
+GeneratePreferred	src/problems/pedestrian/pedestrian.h	/^		shared_ptr<vector<int>> GeneratePreferred(const PedestrianState& state,$/;"	f	class:Model
+GeneratePreferred	src/problems/pedestrian/pedestrian/pedestrian.h	/^		shared_ptr<vector<int>> GeneratePreferred(const PedestrianState& state,$/;"	f	class:Model
+GeneratePreferred	src/problems/pocman/pocman.h	/^shared_ptr<vector<int>> POCMAN::GeneratePreferred(const PocmanState& state,$/;"	f	class:POCMAN
+GeneratePreferred	src/problems/tag/tag.cpp	/^shared_ptr<vector<int>> Model<TagState>::GeneratePreferred($/;"	f	class:Model
+GeneratePreferred	src/problems/tiger/tiger.h	/^shared_ptr<vector<int>> Model<TigerState>::GeneratePreferred($/;"	f	class:Model
+GetAngle	src/main.cpp	/^	double GetAngle()   \/\/[-pi,pi]$/;"	f	class:MyVector
+GetBucket	src/problems/lasertag/lasertag.h	/^  int GetBucket(double noisy) const {$/;"	f	class:Model
+GetCategory	src/util.h	/^	inline int GetCategory(vector<double> probs, double r) {$/;"	f	namespace:Util
+GetCurrObs	src/main.cpp	/^int GetCurrObs()$/;"	f
+GetCurrentState	src/main.cpp	/^void  GetCurrentState(Pedestrian &ped)$/;"	f
+GetIndex	src/main.cpp	/^int GetIndex(int i,int j)$/;"	f
+GetLength	src/main.cpp	/^	double GetLength()$/;"	f	class:MyVector
+GetMDPState	src/problems/chain/chain.h	/^ int GetMDPState() const {$/;"	f	class:ChainState
+GetNumOfStates	old-pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC::GetNumOfStates()$/;"	f	class:PEDESTRIAN_DYNAMIC
+GetNumOfStates	old-pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::GetNumOfStates()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+GetNumOfStates	pedestrian/pedestrain_dynamic_latest.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::GetNumOfStates()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+GetNumOfStates	pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC::GetNumOfStates()$/;"	f	class:PEDESTRIAN_DYNAMIC
+GetNumOfStates	pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::GetNumOfStates()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+GetONextCells	src/problems/lasertag/lasertag.h	/^UMAP<int, double> Model<LaserTagState>::GetONextCells(int rob_, int opp_) const {$/;"	f	class:Model
+GetONextCells	src/problems/tag/tag.cpp	/^UMAP<int, double> Model<TagState>::GetONextCells(int rob_, int opp_) const {$/;"	f	class:Model
+GetPolar	src/main.cpp	/^	void GetPolar(double &angle,double &length)$/;"	f	class:MyVector
+GetRNextCell	src/problems/lasertag/lasertag.h	/^int Model<LaserTagState>::GetRNextCell(int r, int a) const {$/;"	f	class:Model
+GetRNextCell	src/problems/tag/tag.cpp	/^int Model<TagState>::GetRNextCell(int r, int a) const {$/;"	f	class:Model
+GetReading	src/problems/lasertag/lasertag.h	/^  static int GetReading(uint64_t obs, uint64_t dir) {$/;"	f	class:Model
+GetReward	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::GetReward(int s)$/;"	f	class:PEDESTRIAN_DYNAMIC
+GetReward	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::GetReward(int s)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+GetReward	pedestrian/pedestrain_dynamic_latest.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::GetReward(int s)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+GetReward	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::GetReward(int s)$/;"	f	class:PEDESTRIAN_DYNAMIC
+GetReward	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::GetReward(int s)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+GetStartState	src/problems/bridge/bridge.h	/^  BridgeState GetStartState() const {$/;"	f	class:Model
+GetStartState	src/problems/chain/chain.h	/^ChainState Model<ChainState>::GetStartState() const{$/;"	f	class:Model
+GetStartState	src/problems/lasertag/lasertag.h	/^  LaserTagState GetStartState() const {$/;"	f	class:Model
+GetStartState	src/problems/pedestrian/pedestrian.h	/^PedestrianState Model<PedestrianState>::GetStartState() const {$/;"	f	class:Model
+GetStartState	src/problems/pedestrian/pedestrian/pedestrian.h	/^PedestrianState Model<PedestrianState>::GetStartState() const {$/;"	f	class:Model
+GetStartState	src/problems/pocman/pocman.h	/^  PocmanState GetStartState() const { return GetStartState(Globals::config.root_seed); }$/;"	f	class:Model
+GetStartState	src/problems/pocman/pocman.h	/^PocmanState POCMAN::GetStartState(unsigned seed) const {$/;"	f	class:POCMAN
+GetStartState	src/problems/rocksample/rocksample.h	/^  RockSampleState GetStartState() const {$/;"	f	class:Model
+GetStartState	src/problems/tag/tag.h	/^  TagState GetStartState() const {$/;"	f	class:Model
+GetStartState	src/problems/tiger/tiger.h	/^  TigerState GetStartState() const { return tiger_position_; }$/;"	f	class:Model
+GetStartStates	src/problems/pedestrian/pedestrian.h	/^vector<PedestrianState> Model<PedestrianState>::GetStartStates(int num_ped) const {$/;"	f	class:Model
+GetXSize	src/problems/pocman/grid.h	/^  int GetXSize() const { return xsize_; }$/;"	f	class:Grid
+GetYSize	src/problems/pocman/grid.h	/^  int GetYSize() const { return ysize_; }$/;"	f	class:Grid
+GlobalToLocal	src/main.cpp	/^void GlobalToLocal(int globalW,int globalH,int &localW,int&localH)$/;"	f
+Globals	src/globals.cpp	/^namespace Globals {$/;"	n	file:
+Globals	src/globals.h	/^namespace Globals {$/;"	n
+Goal	old-pedestrian/pedestrian.h	/^    int   Goal;$/;"	m	class:Pedestrian_State
+Goal	old-pedestrian/pedestrian_dynamic.h	/^    int   Goal;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL_STATE
+Goal	old-pedestrian/pedestrian_dynamic.h	/^    int   Goal;$/;"	m	class:PEDESTRIAN_DYNAMIC_STATE
+Goal	pedestrian/pedestrian.h	/^    int   Goal;$/;"	m	class:Pedestrian_State
+Goal	pedestrian/pedestrian_dynamic.h	/^    int   Goal;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL_STATE
+Goal	pedestrian/pedestrian_dynamic.h	/^    int   Goal;$/;"	m	class:PEDESTRIAN_DYNAMIC_STATE
+Goal	pedestrian/pedestrian_dynamic_latest2.h	/^    int   Goal;$/;"	m	class:Pedestrian_State
+Goal	src/problems/pedestrian/pedestrian.h	/^		int Goal;$/;"	m	class:PedestrianState
+Goal	src/problems/pedestrian/pedestrian/pedestrian.h	/^		int Goal;$/;"	m	class:PedestrianState
+GoalReached	src/main.cpp	/^bool GoalReached()$/;"	f
+Grid	src/problems/pocman/grid.h	/^  Grid() { }$/;"	f	class:Grid
+Grid	src/problems/pocman/grid.h	/^  Grid(int xsize, int ysize) $/;"	f	class:Grid
+Grid	src/problems/pocman/grid.h	/^class Grid {$/;"	c
+HELP	src/main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+HELP	src/problems/bridge/bridge.h	/^  static const int HELP;$/;"	m	class:Model
+HELP	src/problems/bridge/bridge.h	/^const int Model<BridgeState>::HELP = 2;$/;"	m	class:Model
+HISTORY_H	src/history.h	2;"	d
+HearGhost	src/problems/pocman/pocman.h	/^bool POCMAN::HearGhost(const PocmanState& state) const {$/;"	f	class:POCMAN
+Heuristic	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::Heuristic(STATE& state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+Heuristic	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::Heuristic(STATE& state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Heuristic	pedestrian/pedestrain_dynamic_latest.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::Heuristic(STATE& state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Heuristic	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::Heuristic(STATE& state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+Heuristic	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::Heuristic(STATE& state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+History	src/history.h	/^class History {$/;"	c
+ILowerBound	src/lower_bound/lower_bound.h	/^  ILowerBound(const RandomStreams& streams) : streams_(streams) {}$/;"	f	class:ILowerBound
+ILowerBound	src/lower_bound/lower_bound.h	/^class ILowerBound {$/;"	c
+INCL	Makefile	/^INCL = -I $(SRCDIR)$/;"	m
+INF	src/globals.cpp	/^const double INF = 1e8;$/;"	m	namespace:Globals	file:
+INITIAL_MDP_STATE	src/problems/chain/chain.h	/^	const static int INITIAL_MDP_STATE = 0;$/;"	m	class:Model
+IStringWriter	src/optionparser.h	/^  struct IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+IUpperBound	src/upper_bound/upper_bound.h	/^  IUpperBound(const RandomStreams& streams) : streams_(streams) {}$/;"	f	class:IUpperBound
+IUpperBound	src/upper_bound/upper_bound.h	/^class IUpperBound {$/;"	c
+InCollision	src/main.cpp	/^bool InCollision(int action)$/;"	f
+InWindow	src/main.cpp	/^bool InWindow(int w,int h)$/;"	f
+Index	src/problems/pocman/grid.h	/^  int Index(const Coord& coord) const {$/;"	f	class:Grid
+Index	src/problems/pocman/grid.h	/^  int Index(int x, int y) const {$/;"	f	class:Grid
+IndexToCoord	src/problems/pocman/grid.h	/^  Coord IndexToCoord(int index) const {$/;"	f	class:Grid
+Init	src/solver.h	/^void Solver<T>::Init() {$/;"	f	class:Solver
+InitLookupTables	src/problems/pocman/pocman.h	/^void POCMAN::InitLookupTables() {$/;"	f	class:POCMAN
+InitMazeFull	src/problems/pocman/pocman.h	/^void POCMAN::InitMazeFull() {$/;"	f	class:POCMAN
+InitMazeMicro	src/problems/pocman/pocman.h	/^void POCMAN::InitMazeMicro() {$/;"	f	class:POCMAN
+InitMazeMini	src/problems/pocman/pocman.h	/^void POCMAN::InitMazeMini() {$/;"	f	class:POCMAN
+InitModel	old-pedestrian/pedestrian.cpp	/^void Pedestrian::InitModel()$/;"	f	class:Pedestrian
+InitModel	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::InitModel()$/;"	f	class:PEDESTRIAN_DYNAMIC
+InitModel	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::InitModel () const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+InitModel	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::InitModel () const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+InitModel	pedestrian/pedestrian.cpp	/^void Pedestrian::InitModel()$/;"	f	class:Pedestrian
+InitModel	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::InitModel()$/;"	f	class:PEDESTRIAN_DYNAMIC
+InitModel	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::InitModel () const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+InitModel	pedestrian/pedestrian_dynamic_latest2.cpp	/^void Pedestrian::InitModel()$/;"	f	class:Pedestrian
+InitModel	src/problems/pedestrian/pedestrian.h	/^void Model<PedestrianState>::InitModel()$/;"	f	class:Model
+InitModel	src/problems/pedestrian/pedestrian/pedestrian.h	/^void Model<PedestrianState>::InitModel()$/;"	f	class:Model
+InitPedestrians	src/main.cpp	/^void InitPedestrians()$/;"	f
+InitReadingDistribution	src/problems/lasertag/lasertag.h	/^void Model<LaserTagState>::InitReadingDistribution(int s) {$/;"	f	class:Model
+Init_QMDP	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::Init_QMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC
+Init_QMDP	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::Init_QMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Init_QMDP	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::Init_QMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Init_QMDP	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::Init_QMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC
+Init_QMDP	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::Init_QMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+InitialBelief	src/problems/bridge/bridge.h	/^vector<pair<BridgeState, double>> Model<BridgeState>::InitialBelief() const {$/;"	f	class:Model
+InitialBelief	src/problems/chain/chain.h	/^	vector<pair<ChainState, double>> InitialBelief() const { \/\/ have to sample the initial belief from the non-informative dirichlet priors$/;"	f	class:Model
+InitialBelief	src/problems/lasertag/lasertag.h	/^vector<pair<LaserTagState, double>> Model<LaserTagState>::InitialBelief() $/;"	f	class:Model
+InitialBelief	src/problems/pedestrian/pedestrian.h	/^vector<pair<PedestrianState, double>> Model<PedestrianState>::InitialBelief() const {$/;"	f	class:Model
+InitialBelief	src/problems/pedestrian/pedestrian/pedestrian.h	/^vector<pair<PedestrianState, double>> Model<PedestrianState>::InitialBelief() const {$/;"	f	class:Model
+InitialBelief	src/problems/pocman/pocman.h	/^vector<pair<PocmanState, double>> POCMAN::InitialBelief() const {$/;"	f	class:POCMAN
+InitialBelief	src/problems/rocksample/rocksample.h	/^vector<pair<RockSampleState, double>> Model<RockSampleState>::InitialBelief() $/;"	f	class:Model
+InitialBelief	src/problems/tag/tag.cpp	/^vector<pair<TagState, double>> Model<TagState>::InitialBelief() const {$/;"	f	class:Model
+InitialBelief	src/problems/tiger/tiger.h	/^vector<pair<TigerState, double>> Model<TigerState>::InitialBelief() const {$/;"	f	class:Model
+Inside	src/problems/pocman/grid.h	/^  bool Inside(const Coord& coord) const {$/;"	f	class:Grid
+Instance	src/lower_bound/lower_bound_policy_suffix.h	/^SuffixPolicyLowerBound<T>* SuffixPolicyLowerBound<T>::Instance(string name, const RandomStreams& streams, int num_states, unsigned action_root_seed) {$/;"	f	class:SuffixPolicyLowerBound
+IsAllocated	src/memorypool.h	/^  bool IsAllocated() const { return allocated_; }$/;"	f	class:MemoryObject
+IsTerminal	src/problems/bridge/bridge.h	/^  bool IsTerminal(const BridgeState& s) const { return s == 0; }$/;"	f	class:Model
+IsTerminal	src/problems/chain/chain.h	/^  bool IsTerminal (const ChainState &s) const { return false; }$/;"	f	class:Model
+IsTerminal	src/problems/lasertag/lasertag.h	/^  bool IsTerminal(const LaserTagState& s) const { $/;"	f	class:Model
+IsTerminal	src/problems/pedestrian/pedestrian.h	/^		bool IsTerminal(PedestrianState s) const {$/;"	f	class:Model
+IsTerminal	src/problems/pedestrian/pedestrian/pedestrian.h	/^		bool IsTerminal(PedestrianState s) const {$/;"	f	class:Model
+IsTerminal	src/problems/pocman/pocman.h	/^  bool IsTerminal(const PocmanState& s) const { return s.terminal_; }$/;"	f	class:Model
+IsTerminal	src/problems/rocksample/rocksample.h	/^  bool IsTerminal(const RockSampleState& s) const { $/;"	f	class:Model
+IsTerminal	src/problems/tag/tag.h	/^  bool IsTerminal(const TagState& s) const { $/;"	f	class:Model
+IsTerminal	src/problems/tiger/tiger.h	/^  bool IsTerminal(const TigerState& s) const { return false; }$/;"	f	class:Model
+KNOWLEDGE	src/main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+K_	src/problems/rocksample/rocksample.h	/^  int K_; \/\/ # of rocks$/;"	m	class:Model
+LASERTAG_H	src/problems/lasertag/lasertag.h	2;"	d
+LBTYPE	src/main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+LDFLAGS	Makefile	/^LDFLAGS = -O3 -std=c++0x -Wno-sign-compare$/;"	m
+LDFLAGS	Makefile	/^LDFLAGS = -O3 -std=c++0x -stdlib=libc++$/;"	m
+LEFT	src/problems/bridge/bridge.h	/^  static const int LEFT;$/;"	m	class:Model
+LEFT	src/problems/bridge/bridge.h	/^const int Model<BridgeState>::LEFT = 0;$/;"	m	class:Model
+LEFT	src/problems/tiger/tiger.h	/^    LEFT,$/;"	e	enum:Model::__anon4
+LISTEN	src/problems/tiger/tiger.h	/^    LISTEN$/;"	e	enum:Model::__anon4
+LOWERBOUND_H	src/lower_bound/lower_bound.h	2;"	d
+LOWER_BOUND_POLICY_MODE	src/lower_bound/lower_bound_policy_mode.h	2;"	d
+LOWER_BOUND_POLICY_RANDOM_H	src/lower_bound/lower_bound_policy_random.h	2;"	d
+LOWER_BOUND_POLICY_SUFFIX_H	src/lower_bound/lower_bound_policy_suffix.h	2;"	d
+LaserTagState	src/problems/lasertag/lasertag.h	/^  LaserTagState() : id_(0) {}$/;"	f	class:LaserTagState
+LaserTagState	src/problems/lasertag/lasertag.h	/^  LaserTagState(int id) : id_(id) {}$/;"	f	class:LaserTagState
+LaserTagState	src/problems/lasertag/lasertag.h	/^class LaserTagState {$/;"	c
+LastAction	src/history.h	/^	int LastAction() const { return actions_.back(); }$/;"	f	class:History
+LastObservation	src/history.h	/^	uint64_t LastObservation() const { return observations_.back(); }$/;"	f	class:History
+LeftHanded	src/main.cpp	/^bool LeftHanded(int x,int y,int vx,int vy)  \/\/x,y on the left hand side of vx,vy$/;"	f
+Length	src/random_streams.h	/^	int Length() const { return streams_.size() > 0 ? streams_[0].size() : 0; }$/;"	f	class:RandomStreams
+LinePartIterator	src/optionparser.h	/^    LinePartIterator(const Descriptor usage[]) :$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+LinePartIterator	src/optionparser.h	/^  class LinePartIterator$/;"	c	struct:option::PrintUsageImplementation
+LineWrapper	src/optionparser.h	/^    LineWrapper(int x1, int x2) :$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+LineWrapper	src/optionparser.h	/^  class LineWrapper$/;"	c	struct:option::PrintUsageImplementation
+LoadMap	src/main.cpp	/^void LoadMap()$/;"	f
+LoadPath	src/main.cpp	/^void LoadPath(int i)$/;"	f
+LowerBound	src/lower_bound/lower_bound_policy.h	/^pair<double, int> PolicyLowerBound<T>::LowerBound($/;"	f	class:PolicyLowerBound
+LowerBound	src/problems/rocksample/rocksample.h	/^pair<double, int> Model<RockSampleState>::LowerBound($/;"	f	class:Model
+LowerBound	src/qnode.h	/^double QNode<T>::LowerBound() const {$/;"	f	class:QNode
+LowerBoundAction	src/problems/chain/chain.h	/^  int LowerBoundAction (const ChainState &s) const { return ACTION_A; }$/;"	f	class:Model
+LowerBoundAction	src/problems/lasertag/lasertag.h	/^  int LowerBoundAction(const LaserTagState& s) const {$/;"	f	class:Model
+LowerBoundAction	src/problems/pedestrian/pedestrian.h	/^		int LowerBoundAction(const PedestrianState& s) {$/;"	f	class:Model
+LowerBoundAction	src/problems/pedestrian/pedestrian/pedestrian.h	/^		int LowerBoundAction(const PedestrianState& s) {$/;"	f	class:Model
+LowerBoundAction	src/problems/tag/tag.h	/^  int LowerBoundAction(const TagState& s) const {$/;"	f	class:Model
+LowerBoundAction	src/problems/tiger/tiger.h	/^	int LowerBoundAction(const TigerState& s) const {$/;"	f	class:Model
+LowerBoundImpl	src/lower_bound/lower_bound_policy.h	/^pair<double, int> PolicyLowerBound<T>::LowerBoundImpl($/;"	f	class:PolicyLowerBound
+MAP	src/globals.h	26;"	d
+MEMORYPOOL_H	src/memorypool.h	2;"	d
+MODEL_H	src/model.h	2;"	d
+MSC_Builtin_CLZ	src/optionparser.h	/^struct MSC_Builtin_CLZ$/;"	s	namespace:option
+MakeObservation	src/problems/pocman/pocman.h	/^uint64_t POCMAN::MakeObservation(const PocmanState& state) const {$/;"	f	class:POCMAN
+MakeState	src/problems/rocksample/rocksample.h	/^  RockSampleState MakeState(int cell, int rock_set) const {$/;"	f	class:Model
+ManhattanDistance	src/problems/pocman/coord.h	/^inline int Coord::ManhattanDistance(Coord lhs, Coord rhs) {$/;"	f	class:Coord
+MapBelief	old-pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC::MapBelief(VNODE*vn,VNODE*r,const HISTORY &h,int historyDepth)$/;"	f	class:PEDESTRIAN_DYNAMIC
+MapBelief	old-pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC_REAL::MapBelief(VNODE*vn,VNODE*r,const HISTORY &h,int historyDepth)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+MapBelief	pedestrian/pedestrain_dynamic_latest.cpp	/^VNODE* PEDESTRIAN_DYNAMIC_REAL::MapBelief(VNODE*vn,VNODE*r,const HISTORY &h,int historyDepth)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+MapBelief	pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC::MapBelief(VNODE*vn,VNODE*r,const HISTORY &h,int historyDepth)$/;"	f	class:PEDESTRIAN_DYNAMIC
+MapBelief	pedestrian/pedestrian_dynamic.cpp	/^VNODE* PEDESTRIAN_DYNAMIC_REAL::MapBelief(VNODE*vn,VNODE*r,const HISTORY &h,int historyDepth)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+MapWindowSplit	src/main.cpp	/^void MapWindowSplit(double w,double h,double yaw)$/;"	f
+MaxQ	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::MaxQ(int s) $/;"	f	class:PEDESTRIAN_DYNAMIC
+MaxQ	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::MaxQ(int s) $/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+MaxQ	pedestrian/pedestrain_dynamic_latest.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::MaxQ(int s) $/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+MaxQ	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::MaxQ(int s) $/;"	f	class:PEDESTRIAN_DYNAMIC
+MaxQ	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::MaxQ(int s) $/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+MemoryObject	src/memorypool.h	/^class MemoryObject {$/;"	c
+MemoryPool	old-pedestrian/pedestrian.h	/^    mutable MEMORY_POOL<Pedestrian_State> MemoryPool;$/;"	m	class:Pedestrian
+MemoryPool	old-pedestrian/pedestrian_dynamic.h	/^    mutable MEMORY_POOL<PEDESTRIAN_DYNAMIC_REAL_STATE> MemoryPool;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+MemoryPool	old-pedestrian/pedestrian_dynamic.h	/^    mutable MEMORY_POOL<PEDESTRIAN_DYNAMIC_STATE> MemoryPool;$/;"	m	class:PEDESTRIAN_DYNAMIC
+MemoryPool	pedestrian/pedestrian.h	/^    mutable MEMORY_POOL<Pedestrian_State> MemoryPool;$/;"	m	class:Pedestrian
+MemoryPool	pedestrian/pedestrian_dynamic.h	/^    mutable MEMORY_POOL<PEDESTRIAN_DYNAMIC_REAL_STATE> MemoryPool;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+MemoryPool	pedestrian/pedestrian_dynamic.h	/^    mutable MEMORY_POOL<PEDESTRIAN_DYNAMIC_STATE> MemoryPool;$/;"	m	class:PEDESTRIAN_DYNAMIC
+MemoryPool	pedestrian/pedestrian_dynamic_latest2.h	/^    mutable MEMORY_POOL<Pedestrian_State> MemoryPool;$/;"	m	class:Pedestrian
+MemoryPool	src/memorypool.h	/^  MemoryPool() : num_allocated_(0) {}$/;"	f	class:MemoryPool
+MemoryPool	src/memorypool.h	/^class MemoryPool {$/;"	c
+ModePolicyLowerBound	src/lower_bound/lower_bound_policy_mode.h	/^  ModePolicyLowerBound(const RandomStreams& streams, int num_states)$/;"	f	class:ModePolicyLowerBound
+ModePolicyLowerBound	src/lower_bound/lower_bound_policy_mode.h	/^class ModePolicyLowerBound : public PolicyLowerBound<T> {$/;"	c
+Model	src/model.h	/^class Model : public ILowerBound<T>, public IUpperBound<T> {$/;"	c
+Model	src/problems/bridge/bridge.h	/^Model<BridgeState>::Model(string params_file) {$/;"	f	class:Model
+Model	src/problems/bridge/bridge.h	/^class Model<BridgeState> {$/;"	c
+Model	src/problems/chain/chain.h	/^Model<ChainState>::Model(const RandomStreams& streams) : IUpperBound<ChainState>(streams) {$/;"	f	class:Model
+Model	src/problems/chain/chain.h	/^class Model<ChainState> : public IUpperBound<ChainState> {$/;"	c
+Model	src/problems/lasertag/lasertag.h	/^Model<LaserTagState>::Model(string params_file)$/;"	f	class:Model
+Model	src/problems/lasertag/lasertag.h	/^class Model<LaserTagState> {$/;"	c
+Model	src/problems/pedestrian/pedestrian.h	/^Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)$/;"	f	class:Model
+Model	src/problems/pedestrian/pedestrian.h	/^class Model<PedestrianState> : public IUpperBound<PedestrianState>$/;"	c
+Model	src/problems/pedestrian/pedestrian/pedestrian.h	/^Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)$/;"	f	class:Model
+Model	src/problems/pedestrian/pedestrian/pedestrian.h	/^class Model<PedestrianState> : public IUpperBound<PedestrianState>$/;"	c
+Model	src/problems/pocman/pocman.h	/^POCMAN::Model(const RandomStreams& streams)$/;"	f	class:POCMAN
+Model	src/problems/pocman/pocman.h	/^class Model<PocmanState> : public IUpperBound<PocmanState> {$/;"	c
+Model	src/problems/rocksample/rocksample.h	/^Model<RockSampleState>::Model(string params_file, const RandomStreams& streams)$/;"	f	class:Model
+Model	src/problems/rocksample/rocksample.h	/^class Model<RockSampleState> : public ILowerBound<RockSampleState> {$/;"	c
+Model	src/problems/tag/tag.cpp	/^Model<TagState>::Model(string params_file) {$/;"	f	class:Model
+Model	src/problems/tag/tag.h	/^class Model<TagState> {$/;"	c
+Model	src/problems/tiger/tiger.h	/^Model<TigerState>::Model(string params_file) {$/;"	f	class:Model
+Model	src/problems/tiger/tiger.h	/^class Model<TigerState> { $/;"	c
+MoveGhost	src/problems/pocman/pocman.h	/^void POCMAN::MoveGhost(PocmanState& state, int g, double rand_num) const {$/;"	f	class:POCMAN
+MoveGhostAggressive	src/problems/pocman/pocman.h	/^void POCMAN::MoveGhostAggressive(PocmanState& state, int g, double rand_num)$/;"	f	class:POCMAN
+MoveGhostDefensive	src/problems/pocman/pocman.h	/^void POCMAN::MoveGhostDefensive(PocmanState& state, int g, double rand_num)$/;"	f	class:POCMAN
+MoveGhostRandom	src/problems/pocman/pocman.h	/^void POCMAN::MoveGhostRandom(PocmanState& state, int g, double rand_num) const {$/;"	f	class:POCMAN
+MovePed	src/main.cpp	/^void MovePed(Pedestrian &ped)$/;"	f
+MyVector	src/main.cpp	/^	MyVector() {dw=0;dh=0;}$/;"	f	class:MyVector
+MyVector	src/main.cpp	/^	MyVector(double _dw,double _dh) {dw=_dw;dh=_dh;}$/;"	f	class:MyVector
+MyVector	src/main.cpp	/^	MyVector(double angle,double length,int dummy)$/;"	f	class:MyVector
+MyVector	src/main.cpp	/^class MyVector$/;"	c	file:
+NBEAMS	src/problems/lasertag/lasertag.h	/^  static constexpr int NBEAMS = 8;$/;"	m	class:Model
+NBEAMS	src/problems/lasertag/lasertag.h	/^constexpr int Model<LaserTagState>::NBEAMS;$/;"	m	class:Model
+NPARTICLES	src/main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+NToState	old-pedestrian/pedestrian.cpp	/^void Pedestrian::NToState(int n,Pedestrian_State*teststate) const$/;"	f	class:Pedestrian
+NToState	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::NToState(int n,PEDESTRIAN_DYNAMIC_STATE*PEDESTRIAN_DYNAMIC_state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+NToState	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::NToState(int n,PEDESTRIAN_DYNAMIC_REAL_STATE*PEDESTRIAN_DYNAMIC_REAL_state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+NToState	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::NToState(int n,PEDESTRIAN_DYNAMIC_REAL_STATE*PEDESTRIAN_DYNAMIC_REAL_state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+NToState	pedestrian/pedestrian.cpp	/^void Pedestrian::NToState(int n,Pedestrian_State*teststate) const$/;"	f	class:Pedestrian
+NToState	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::NToState(int n,PEDESTRIAN_DYNAMIC_STATE*PEDESTRIAN_DYNAMIC_state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+NToState	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::NToState(int n,PEDESTRIAN_DYNAMIC_REAL_STATE*PEDESTRIAN_DYNAMIC_REAL_state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+NToState	pedestrian/pedestrian_dynamic_latest2.cpp	/^void Pedestrian::NToState(int n,Pedestrian_State*teststate) const$/;"	f	class:Pedestrian
+NUMBER	src/main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+NUM_EFF_PARTICLE_FRACTION	src/belief_update/belief_update_particle.h	/^  static constexpr double NUM_EFF_PARTICLE_FRACTION = 0.05;$/;"	m	class:ParticleFilterUpdate
+NUM_EFF_PARTICLE_FRACTION	src/belief_update/belief_update_particle.h	/^constexpr double ParticleFilterUpdate<T>::NUM_EFF_PARTICLE_FRACTION;$/;"	m	class:ParticleFilterUpdate
+NUM_MDP_STATES	src/problems/chain/chain.h	/^	const static int NUM_MDP_STATES = 5;$/;"	m	class:Model
+N_GOAL	src/main.cpp	/^const int N_GOAL=2;$/;"	v
+N_PED	src/main.cpp	/^int N_PED=1;$/;"	v
+Name	src/lower_bound/lower_bound_policy_mode.h	/^  static string Name() { return "mode"; }$/;"	f	class:ModePolicyLowerBound
+Name	src/lower_bound/lower_bound_policy_random.h	/^  static string Name() { return "random"; }$/;"	f	class:RandomPolicyLowerBound
+Name	src/lower_bound/lower_bound_policy_suffix.h	/^	static string Name() { return "suffix"; }$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+Name	src/lower_bound/lower_bound_policy_suffix.h	/^  static string Name() { return "suffix"; }$/;"	f	class:SuffixPolicyLowerBound
+NewChunk	src/memorypool.h	/^  void NewChunk() {$/;"	f	class:MemoryPool
+NewLevel	src/problems/pocman/pocman.h	/^void POCMAN::NewLevel(PocmanState& state, unsigned& seed) const {$/;"	f	class:POCMAN
+NextPos	src/problems/pocman/pocman.h	/^  Coord NextPos(const Coord& from, int dir) const {$/;"	f	class:Model
+None	src/optionparser.h	/^  static ArgStatus None(const Option&, bool)$/;"	f	struct:option::Arg
+Norm	src/main.cpp	/^double Norm(double x,double y)$/;"	f
+Normalize	src/belief_update/belief_update.h	/^void BeliefUpdate<T>::Normalize(vector<Particle<T>*>& particles) const {$/;"	f	class:BeliefUpdate
+North	src/problems/pocman/coord.h	/^  static const Coord North, East, South, West;$/;"	m	struct:Coord
+NorthEast	src/problems/pocman/coord.h	/^  static const Coord NorthEast, SouthEast, SouthWest, NorthWest;$/;"	m	struct:Coord
+NorthWest	src/problems/pocman/coord.h	/^  static const Coord NorthEast, SouthEast, SouthWest, NorthWest;$/;"	m	struct:Coord
+Null	src/problems/pocman/coord.h	/^  static const Coord Null;$/;"	m	struct:Coord
+NumActions	src/problems/bridge/bridge.h	/^  int NumActions() const { return 3; }$/;"	f	class:Model
+NumActions	src/problems/chain/chain.h	/^  int NumActions() const { return 2; }$/;"	f	class:Model
+NumActions	src/problems/lasertag/lasertag.h	/^  int NumActions() const { return 5; }$/;"	f	class:Model
+NumActions	src/problems/pedestrian/pedestrian.h	/^		int NumActions() const { return 3; }$/;"	f	class:Model
+NumActions	src/problems/pedestrian/pedestrian/pedestrian.h	/^		int NumActions() const { return 3; }$/;"	f	class:Model
+NumActions	src/problems/pocman/pocman.h	/^  int NumActions() const { return 4; }$/;"	f	class:Model
+NumActions	src/problems/rocksample/rocksample.h	/^  int NumActions() const { return K_ + 5; }$/;"	f	class:Model
+NumActions	src/problems/tag/tag.h	/^  int NumActions() const { return 5; }$/;"	f	class:Model
+NumActions	src/problems/tiger/tiger.h	/^  int NumActions() const { return 3; }$/;"	f	class:Model
+NumRuns	src/main.cpp	/^int NumRuns=1;$/;"	v
+NumStates	src/problems/bridge/bridge.h	/^  int NumStates() const { return BRIDGELENGTH + 1; }$/;"	f	class:Model
+NumStates	src/problems/chain/chain.h	/^  int NumStates() const { return Globals::INF; }$/;"	f	class:Model
+NumStates	src/problems/lasertag/lasertag.h	/^  int NumStates() const { return n_states_; }$/;"	f	class:Model
+NumStates	src/problems/pedestrian/pedestrian.h	/^		int NumStates() const { $/;"	f	class:Model
+NumStates	src/problems/pedestrian/pedestrian/pedestrian.h	/^		int NumStates() const { $/;"	f	class:Model
+NumStates	src/problems/rocksample/rocksample.h	/^  int NumStates() const { return n_states_; }$/;"	f	class:Model
+NumStates	src/problems/tag/tag.h	/^  int NumStates() const { return n_states_; }$/;"	f	class:Model
+NumStates	src/problems/tiger/tiger.h	/^  int NumStates() const { return 2; }$/;"	f	class:Model
+NumStreams	src/random_streams.h	/^	int NumStreams() const { return streams_.size(); }$/;"	f	class:RandomStreams
+OBJDIR	Makefile	/^OBJDIR = build$/;"	m
+OBJS	Makefile	/^OBJS = $(addprefix $(OBJDIR)\/, $(patsubst %.cpp, %.o, $(notdir $(SOURCES))))$/;"	m
+OBSSET_H	src/qnode.h	2;"	d
+OBSTACLE_PROB	src/problems/pedestrian/pedestrian.h	/^		double OBSTACLE_PROB;$/;"	m	class:Model
+OBSTACLE_PROB	src/problems/pedestrian/pedestrian/pedestrian.h	/^		double OBSTACLE_PROB;$/;"	m	class:Model
+ONE	src/problems/lasertag/lasertag.h	/^const uint64_t ONE = 1;$/;"	v
+OPTIONPARSER_H_	src/optionparser.h	215;"	d
+OStreamWriter	src/optionparser.h	/^    OStreamWriter(OStream& o) :$/;"	f	struct:option::PrintUsageImplementation::OStreamWriter
+OStreamWriter	src/optionparser.h	/^  struct OStreamWriter: public IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+Objects	src/memorypool.h	/^    T Objects[Size];$/;"	m	struct:MemoryPool::Chunk
+ObsProb	src/problems/bridge/bridge.h	/^double Model<BridgeState>::ObsProb(uint64_t obs, const BridgeState& s, int a)$/;"	f	class:Model
+ObsProb	src/problems/chain/chain.h	/^double Model<ChainState>::ObsProb(uint64_t z, const ChainState &s, int a) const {$/;"	f	class:Model
+ObsProb	src/problems/lasertag/lasertag.h	/^double Model<LaserTagState>::ObsProb(uint64_t o, const LaserTagState& s, int a)$/;"	f	class:Model
+ObsProb	src/problems/pedestrian/pedestrian.h	/^double Model<PedestrianState>::ObsProb(uint64_t obs, const PedestrianState s, int action) const {$/;"	f	class:Model
+ObsProb	src/problems/pedestrian/pedestrian/pedestrian.h	/^double Model<PedestrianState>::ObsProb(uint64_t obs, const PedestrianState s, int action) const {$/;"	f	class:Model
+ObsProb	src/problems/pocman/pocman.h	/^double POCMAN::ObsProb(uint64_t z, const PocmanState& state, int action)$/;"	f	class:POCMAN
+ObsProb	src/problems/rocksample/rocksample.h	/^double Model<RockSampleState>::ObsProb(uint64_t obs, const RockSampleState& s,$/;"	f	class:Model
+ObsProb	src/problems/tag/tag.cpp	/^double Model<TagState>::ObsProb(uint64_t obs, const TagState& s, int a) const {$/;"	f	class:Model
+ObsProb	src/problems/tiger/tiger.h	/^double Model<TigerState>::ObsProb(uint64_t obs, const TigerState& s, int a)$/;"	f	class:Model
+Observation	src/history.h	/^	uint64_t Observation(int t) const { return observations_[t]; }$/;"	f	class:History
+Observe	src/problems/pedestrian/pedestrian.h	/^uint64_t Model<PedestrianState>::Observe(const PedestrianState& state) const {$/;"	f	class:Model
+Observe	src/problems/pedestrian/pedestrian/pedestrian.h	/^uint64_t Model<PedestrianState>::Observe(const PedestrianState& state) const {$/;"	f	class:Model
+Opposite	src/problems/lasertag/lasertag.h	/^	bool Opposite(int d1, int d2) const {$/;"	f	class:Model
+Opposite	src/problems/pocman/coord.h	/^  static int Opposite(int dir) { return (dir + 2) % 4; }$/;"	f	struct:Coord
+Opposite	src/problems/tag/tag.h	/^	bool Opposite(int d1, int d2) const {$/;"	f	class:Model
+OptimalAction	src/vnode.h	/^int VNode<T>::OptimalAction() const {$/;"	f	class:VNode
+Option	src/optionparser.h	/^  Option() :$/;"	f	class:option::Option
+Option	src/optionparser.h	/^  Option(const Descriptor* desc_, const char* name_, const char* arg_)$/;"	f	class:option::Option
+Option	src/optionparser.h	/^  Option(const Option& orig)$/;"	f	class:option::Option
+Option	src/optionparser.h	/^class Option$/;"	c	namespace:option
+Optional	src/optionparser.h	/^  static ArgStatus Optional(const Option& option, bool)$/;"	f	struct:option::Arg
+PARAMS_FILE	src/main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+PARTICLE_FILTER_UPDATE	src/belief_update/belief_update_particle.h	2;"	d
+PARTICLE_H	src/particle.h	2;"	d
+PARTICLE_WT_THRESHOLD	src/belief_update/belief_update.h	/^  static constexpr double PARTICLE_WT_THRESHOLD = 1e-20;$/;"	m	class:BeliefUpdate
+PARTICLE_WT_THRESHOLD	src/belief_update/belief_update.h	/^constexpr double BeliefUpdate<T>::PARTICLE_WT_THRESHOLD;$/;"	m	class:BeliefUpdate
+PEDESTRIAN_DYNAMIC	old-pedestrian/pedestrian_dynamic.cpp	/^PEDESTRIAN_DYNAMIC::PEDESTRIAN_DYNAMIC(int size=9):Size(size)$/;"	f	class:PEDESTRIAN_DYNAMIC
+PEDESTRIAN_DYNAMIC	old-pedestrian/pedestrian_dynamic.h	/^class PEDESTRIAN_DYNAMIC:public SIMULATOR$/;"	c
+PEDESTRIAN_DYNAMIC	pedestrian/pedestrian_dynamic.cpp	/^PEDESTRIAN_DYNAMIC::PEDESTRIAN_DYNAMIC(int size=9):Size(size)$/;"	f	class:PEDESTRIAN_DYNAMIC
+PEDESTRIAN_DYNAMIC	pedestrian/pedestrian_dynamic.h	/^class PEDESTRIAN_DYNAMIC:public SIMULATOR$/;"	c
+PEDESTRIAN_DYNAMIC_H	old-pedestrian/pedestrian_dynamic.h	2;"	d
+PEDESTRIAN_DYNAMIC_H	pedestrian/pedestrian_dynamic.h	2;"	d
+PEDESTRIAN_DYNAMIC_REAL	old-pedestrian/pedestrian_dynamic.cpp	/^PEDESTRIAN_DYNAMIC_REAL::PEDESTRIAN_DYNAMIC_REAL(int size=9):Size(size)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+PEDESTRIAN_DYNAMIC_REAL	old-pedestrian/pedestrian_dynamic.h	/^class PEDESTRIAN_DYNAMIC_REAL:public SIMULATOR$/;"	c
+PEDESTRIAN_DYNAMIC_REAL	pedestrian/pedestrain_dynamic_latest.cpp	/^PEDESTRIAN_DYNAMIC_REAL::PEDESTRIAN_DYNAMIC_REAL(int size=9):Size(size)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+PEDESTRIAN_DYNAMIC_REAL	pedestrian/pedestrian_dynamic.cpp	/^PEDESTRIAN_DYNAMIC_REAL::PEDESTRIAN_DYNAMIC_REAL(int size=9):Size(size)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+PEDESTRIAN_DYNAMIC_REAL	pedestrian/pedestrian_dynamic.h	/^class PEDESTRIAN_DYNAMIC_REAL:public SIMULATOR$/;"	c
+PEDESTRIAN_DYNAMIC_REAL_STATE	old-pedestrian/pedestrian_dynamic.h	/^class PEDESTRIAN_DYNAMIC_REAL_STATE:public STATE$/;"	c
+PEDESTRIAN_DYNAMIC_REAL_STATE	pedestrian/pedestrian_dynamic.h	/^class PEDESTRIAN_DYNAMIC_REAL_STATE:public STATE$/;"	c
+PEDESTRIAN_DYNAMIC_REAL_state1	old-pedestrian/pedestrian_dynamic.cpp	/^PEDESTRIAN_DYNAMIC_REAL_STATE*PEDESTRIAN_DYNAMIC_REAL_state1;$/;"	v
+PEDESTRIAN_DYNAMIC_REAL_state1	pedestrian/pedestrain_dynamic_latest.cpp	/^PEDESTRIAN_DYNAMIC_REAL_STATE*PEDESTRIAN_DYNAMIC_REAL_state1;$/;"	v
+PEDESTRIAN_DYNAMIC_REAL_state1	pedestrian/pedestrian_dynamic.cpp	/^PEDESTRIAN_DYNAMIC_REAL_STATE*PEDESTRIAN_DYNAMIC_REAL_state1;$/;"	v
+PEDESTRIAN_DYNAMIC_REAL_state2	old-pedestrian/pedestrian_dynamic.cpp	/^PEDESTRIAN_DYNAMIC_REAL_STATE*PEDESTRIAN_DYNAMIC_REAL_state2;$/;"	v
+PEDESTRIAN_DYNAMIC_REAL_state2	pedestrian/pedestrain_dynamic_latest.cpp	/^PEDESTRIAN_DYNAMIC_REAL_STATE*PEDESTRIAN_DYNAMIC_REAL_state2;$/;"	v
+PEDESTRIAN_DYNAMIC_REAL_state2	pedestrian/pedestrian_dynamic.cpp	/^PEDESTRIAN_DYNAMIC_REAL_STATE*PEDESTRIAN_DYNAMIC_REAL_state2;$/;"	v
+PEDESTRIAN_DYNAMIC_STATE	old-pedestrian/pedestrian_dynamic.h	/^class PEDESTRIAN_DYNAMIC_STATE:public STATE$/;"	c
+PEDESTRIAN_DYNAMIC_STATE	pedestrian/pedestrian_dynamic.h	/^class PEDESTRIAN_DYNAMIC_STATE:public STATE$/;"	c
+PEDESTRIAN_DYNAMIC_state2	old-pedestrian/pedestrian_dynamic.cpp	/^PEDESTRIAN_DYNAMIC_STATE*PEDESTRIAN_DYNAMIC_state2;$/;"	v
+PEDESTRIAN_DYNAMIC_state2	pedestrian/pedestrian_dynamic.cpp	/^PEDESTRIAN_DYNAMIC_STATE*PEDESTRIAN_DYNAMIC_state2;$/;"	v
+PEDESTRIAN_H	src/problems/pedestrian/pedestrian.h	2;"	d
+PEDESTRIAN_H	src/problems/pedestrian/pedestrian/pedestrian.h	2;"	d
+POCMAN	src/problems/pocman/pocman.h	/^typedef Model<PocmanState> POCMAN;$/;"	t
+POCMAN_H	src/problems/pocman/pocman.h	2;"	d
+POLICY_LOWER_BOUND_H	src/lower_bound/lower_bound_policy.h	2;"	d
+PROBLEM	src/main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+PROG	Makefile	/^PROG = $(BINDIR)\/despot$/;"	m
+PRUNE	src/main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+Parser	src/optionparser.h	/^  Parser() :$/;"	f	class:option::Parser
+Parser	src/optionparser.h	/^  Parser(bool gnu, const Descriptor usage[], int argc, char** argv, Option options[], Option buffer[],$/;"	f	class:option::Parser
+Parser	src/optionparser.h	/^  Parser(bool gnu, const Descriptor usage[], int argc, const char** argv, Option options[], Option buffer[],$/;"	f	class:option::Parser
+Parser	src/optionparser.h	/^  Parser(const Descriptor usage[], int argc, char** argv, Option options[], Option buffer[], int min_abbr_len = 0,$/;"	f	class:option::Parser
+Parser	src/optionparser.h	/^  Parser(const Descriptor usage[], int argc, const char** argv, Option options[], Option buffer[], int min_abbr_len = 0,$/;"	f	class:option::Parser
+Parser	src/optionparser.h	/^class Parser$/;"	c	namespace:option
+Particle	src/particle.h	/^  Particle() : id(0), wt(0) {}$/;"	f	class:Particle
+Particle	src/particle.h	/^  Particle(T s, int id_, double weight) : state(s), id(id_), wt(weight) {}$/;"	f	class:Particle
+Particle	src/particle.h	/^class Particle : public MemoryObject {$/;"	c
+ParticleFilterUpdate	src/belief_update/belief_update_particle.h	/^  ParticleFilterUpdate(unsigned belief_update_seed, const Model<T>& model) $/;"	f	class:ParticleFilterUpdate
+ParticleFilterUpdate	src/belief_update/belief_update_particle.h	/^class ParticleFilterUpdate : public BeliefUpdate<T> {$/;"	c
+ParticleFilterUpdate	src/problems/pocman/belief_update_pocman.h	/^  ParticleFilterUpdate(unsigned belief_update_seed, $/;"	f	class:ParticleFilterUpdate
+ParticleFilterUpdate	src/problems/pocman/belief_update_pocman.h	/^class ParticleFilterUpdate<PocmanState> : public BeliefUpdate<PocmanState> {$/;"	c
+ParticleFilterUpdate	src/problems/tag/belief_update_tag.h	/^  ParticleFilterUpdate(unsigned belief_update_seed, $/;"	f	class:ParticleFilterUpdate
+ParticleFilterUpdate	src/problems/tag/belief_update_tag.h	/^class ParticleFilterUpdate<TagState> : public BeliefUpdate<TagState> {$/;"	c
+Passable	src/problems/pocman/pocman.h	/^  bool Passable(const Coord& pos) const {$/;"	f	class:Model
+PedPos	old-pedestrian/pedestrian.h	/^    COORD PedPos;$/;"	m	class:Pedestrian_State
+PedPos	old-pedestrian/pedestrian_dynamic.h	/^    COORD PedPos;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL_STATE
+PedPos	old-pedestrian/pedestrian_dynamic.h	/^    COORD PedPos;$/;"	m	class:PEDESTRIAN_DYNAMIC_STATE
+PedPos	pedestrian/pedestrian.h	/^    COORD PedPos;$/;"	m	class:Pedestrian_State
+PedPos	pedestrian/pedestrian_dynamic.h	/^    COORD PedPos;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL_STATE
+PedPos	pedestrian/pedestrian_dynamic.h	/^    COORD PedPos;$/;"	m	class:PEDESTRIAN_DYNAMIC_STATE
+PedPos	pedestrian/pedestrian_dynamic_latest2.h	/^    COORD PedPos;$/;"	m	class:Pedestrian_State
+PedPos	src/problems/pedestrian/pedestrian.h	/^		Coord PedPos;$/;"	m	class:PedestrianState
+PedPos	src/problems/pedestrian/pedestrian/pedestrian.h	/^		Coord PedPos;$/;"	m	class:PedestrianState
+PedStep	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::PedStep(STATE& state) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+PedStep	src/problems/pedestrian/pedestrian.h	/^void Model<PedestrianState>::PedStep(PedestrianState& state, Uniform unif) const$/;"	f	class:Model
+PedStep	src/problems/pedestrian/pedestrian/pedestrian.h	/^void Model<PedestrianState>::PedStep(PedestrianState& state, Uniform unif) const$/;"	f	class:Model
+PedToCar	src/main.cpp	/^MyVector PedToCar(Pedestrian & ped)$/;"	f
+PedToGoal	src/main.cpp	/^MyVector PedToGoal(Pedestrian &ped)$/;"	f
+PedToPed	src/main.cpp	/^MyVector PedToPed(Pedestrian &ped)$/;"	f
+Pedestrian	old-pedestrian/pedestrian.cpp	/^Pedestrian::Pedestrian(string filename) $/;"	f	class:Pedestrian
+Pedestrian	old-pedestrian/pedestrian.h	/^class Pedestrian: public Model$/;"	c
+Pedestrian	pedestrian/pedestrian.cpp	/^Pedestrian::Pedestrian(string filename) $/;"	f	class:Pedestrian
+Pedestrian	pedestrian/pedestrian.h	/^class Pedestrian: public Model$/;"	c
+Pedestrian	pedestrian/pedestrian_dynamic_latest2.cpp	/^Pedestrian::Pedestrian(string filename) $/;"	f	class:Pedestrian
+Pedestrian	pedestrian/pedestrian_dynamic_latest2.h	/^class Pedestrian: public Model$/;"	c
+Pedestrian	src/main.cpp	/^	Pedestrian() {}$/;"	f	class:Pedestrian
+Pedestrian	src/main.cpp	/^	Pedestrian(int _w,int _h,int _goal,int _id) {w=_w;h=_h;goal=_goal;id=_id;}$/;"	f	class:Pedestrian
+Pedestrian	src/main.cpp	/^class Pedestrian$/;"	c	file:
+PedestrianState	src/problems/pedestrian/pedestrian.h	/^		PedestrianState() {}$/;"	f	class:PedestrianState
+PedestrianState	src/problems/pedestrian/pedestrian.h	/^		PedestrianState(int id) {$/;"	f	class:PedestrianState
+PedestrianState	src/problems/pedestrian/pedestrian.h	/^class PedestrianState$/;"	c
+PedestrianState	src/problems/pedestrian/pedestrian/pedestrian.h	/^		PedestrianState() {}$/;"	f	class:PedestrianState
+PedestrianState	src/problems/pedestrian/pedestrian/pedestrian.h	/^		PedestrianState(int id) {$/;"	f	class:PedestrianState
+PedestrianState	src/problems/pedestrian/pedestrian/pedestrian.h	/^class PedestrianState$/;"	c
+Pedestrian_H	old-pedestrian/pedestrian.h	2;"	d
+Pedestrian_H	pedestrian/pedestrian.h	2;"	d
+Pedestrian_H	pedestrian/pedestrian_dynamic_latest2.h	2;"	d
+Pedestrian_State	old-pedestrian/pedestrian.h	/^class Pedestrian_State : public MEMORY_OBJECT$/;"	c
+Pedestrian_State	pedestrian/pedestrian.h	/^class Pedestrian_State : public MEMORY_OBJECT$/;"	c
+Pedestrian_State	pedestrian/pedestrian_dynamic_latest2.h	/^class Pedestrian_State : public MEMORY_OBJECT$/;"	c
+Plan	src/main.cpp	/^void Plan()$/;"	f
+PocmanState	src/problems/pocman/pocman.h	/^  PocmanState() : terminal_(false) {}$/;"	f	class:PocmanState
+PocmanState	src/problems/pocman/pocman.h	/^class PocmanState : MemoryObject {$/;"	c
+PolicyLowerBound	src/lower_bound/lower_bound_policy.h	/^  PolicyLowerBound(const RandomStreams& streams) : ILowerBound<T>(streams) {}$/;"	f	class:PolicyLowerBound
+PolicyLowerBound	src/lower_bound/lower_bound_policy.h	/^class PolicyLowerBound : public ILowerBound<T> {$/;"	c
+PrintBelief	src/problems/chain/chain.h	/^  void PrintBelief(const vector<Particle<ChainState>*>& particles, $/;"	f	class:Model
+PrintObs	src/problems/bridge/bridge.h	/^  void PrintObs(uint64_t obs, ostream& out = cout) const {};$/;"	f	class:Model
+PrintObs	src/problems/chain/chain.h	/^  void PrintObs(uint64_t obs, ostream& out = cout) const { out << obs; }$/;"	f	class:Model
+PrintObs	src/problems/lasertag/lasertag.h	/^  void PrintObs(uint64_t obs, ostream& out = cout) const {$/;"	f	class:Model
+PrintObs	src/problems/pedestrian/pedestrian.h	/^		void PrintObs(uint64_t obs, ostream& out = cout) const { out << obs; }$/;"	f	class:Model
+PrintObs	src/problems/pedestrian/pedestrian/pedestrian.h	/^		void PrintObs(uint64_t obs, ostream& out = cout) const { out << obs; }$/;"	f	class:Model
+PrintObs	src/problems/pocman/pocman.h	/^void POCMAN::PrintObs(uint64_t obs, ostream& out) const {$/;"	f	class:POCMAN
+PrintObs	src/problems/rocksample/rocksample.h	/^  void PrintObs(uint64_t obs, ostream& out = cout) const {$/;"	f	class:Model
+PrintObs	src/problems/tag/tag.h	/^  void PrintObs(uint64_t obs, ostream& out = cout) const { out << obs; }$/;"	f	class:Model
+PrintObs	src/problems/tiger/tiger.h	/^  void PrintObs(uint64_t obs, ostream& out = cout) const {};$/;"	f	class:Model
+PrintState	src/problems/bridge/bridge.h	/^void Model<BridgeState>::PrintState(const BridgeState& state, $/;"	f	class:Model
+PrintState	src/problems/chain/chain.h	/^  void PrintState(const ChainState& s, ostream& out = cout) const { $/;"	f	class:Model
+PrintState	src/problems/lasertag/lasertag.h	/^void Model<LaserTagState>::PrintState(const LaserTagState& state, $/;"	f	class:Model
+PrintState	src/problems/pedestrian/pedestrian.h	/^void Model<PedestrianState>::PrintState(const PedestrianState& state, ostream& ostr) const$/;"	f	class:Model
+PrintState	src/problems/pedestrian/pedestrian/pedestrian.h	/^void Model<PedestrianState>::PrintState(const PedestrianState& state, ostream& ostr) const$/;"	f	class:Model
+PrintState	src/problems/pocman/pocman.h	/^void POCMAN::PrintState(const PocmanState& state, ostream& ostr) const {$/;"	f	class:POCMAN
+PrintState	src/problems/rocksample/rocksample.h	/^void Model<RockSampleState>::PrintState(const RockSampleState& state, $/;"	f	class:Model
+PrintState	src/problems/tag/tag.cpp	/^void Model<TagState>::PrintState(const TagState& state, ostream& out) const {$/;"	f	class:Model
+PrintState	src/problems/tiger/tiger.h	/^void Model<TigerState>::PrintState(const TigerState& state, ostream& out) $/;"	f	class:Model
+PrintTree	src/solver.h	/^void Solver<T>::PrintTree(unique_ptr<VNode<T>>& node) {$/;"	f	class:Solver
+PrintUsageImplementation	src/optionparser.h	/^struct PrintUsageImplementation$/;"	s	namespace:option
+Prune	src/qnode.h	/^double QNode<T>::Prune(int& total_pruned) const {$/;"	f	class:QNode
+Prune	src/vnode.h	/^double VNode<T>::Prune(int& total_pruned) {$/;"	f	class:VNode
+Put	src/lower_bound/lower_bound_policy_suffix.h	/^	void Put(const History& history, int action) {$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+QMDP	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::QMDP(STATE*state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+QMDP	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::QMDP(int state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+QMDP	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::QMDP(STATE*state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+QMDP	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::QMDP(int state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+QMDP	pedestrian/pedestrain_dynamic_latest.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::QMDP(STATE*state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+QMDP	pedestrian/pedestrain_dynamic_latest.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::QMDP(int state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+QMDP	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::QMDP(STATE*state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+QMDP	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::QMDP(int state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+QMDP	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::QMDP(STATE*state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+QMDP	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::QMDP(int state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+QMDP_SelectAction	old-pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC::QMDP_SelectAction(STATE*state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+QMDP_SelectAction	old-pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::QMDP_SelectAction(STATE*state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+QMDP_SelectAction	pedestrian/pedestrain_dynamic_latest.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::QMDP_SelectAction(STATE*state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+QMDP_SelectAction	pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC::QMDP_SelectAction(STATE*state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+QMDP_SelectAction	pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::QMDP_SelectAction(STATE*state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+QNode	src/qnode.h	/^QNode<T>::QNode($/;"	f	class:QNode
+QNode	src/qnode.h	/^class QNode {$/;"	c
+R	src/problems/rocksample/rocksample.h	/^  vector<vector<RockSampleState>> R; \/\/ Reward matrix$/;"	m	class:Model
+RANDOM_STREAMS_H	src/random_streams.h	2;"	d
+RIGHT	src/problems/bridge/bridge.h	/^  static const int RIGHT;$/;"	m	class:Model
+RIGHT	src/problems/bridge/bridge.h	/^const int Model<BridgeState>::RIGHT = 1;$/;"	m	class:Model
+RIGHT	src/problems/tiger/tiger.h	/^    RIGHT,$/;"	e	enum:Model::__anon4
+ROCKSAMPLE_H	src/problems/rocksample/rocksample.h	2;"	d
+RandomActionSeed	src/main.cpp	/^int RandomActionSeed() {$/;"	f
+RandomCategory	src/util.h	/^	inline int RandomCategory(vector<double> probs) {$/;"	f	namespace:Util
+RandomDouble	src/util.h	/^	inline double RandomDouble() {$/;"	f	namespace:Util
+RandomDouble	src/util.h	/^	inline double RandomDouble(double min, double max) {$/;"	f	namespace:Util
+RandomPolicyLowerBound	src/lower_bound/lower_bound_policy_random.h	/^  RandomPolicyLowerBound(const RandomStreams& streams, $/;"	f	class:RandomPolicyLowerBound
+RandomPolicyLowerBound	src/lower_bound/lower_bound_policy_random.h	/^class RandomPolicyLowerBound : public PolicyLowerBound<T> {$/;"	c
+RandomSeed	src/util.h	/^	inline void RandomSeed(int seed) {$/;"	f	namespace:Util
+RandomState	src/problems/bridge/bridge.h	/^  BridgeState RandomState(unsigned& seed, uint64_t obs) const {$/;"	f	class:Model
+RandomState	src/problems/lasertag/lasertag.h	/^  LaserTagState RandomState(unsigned& seed, uint64_t obs) const {$/;"	f	class:Model
+RandomState	src/problems/pedestrian/pedestrian.h	/^		PedestrianState RandomState(unsigned& seed, uint64_t obs) const {$/;"	f	class:Model
+RandomState	src/problems/pedestrian/pedestrian/pedestrian.h	/^		PedestrianState RandomState(unsigned& seed, uint64_t obs) const {$/;"	f	class:Model
+RandomState	src/problems/pocman/pocman.h	/^PocmanState POCMAN::RandomState(unsigned& seed, const PocmanState& prototype,$/;"	f	class:POCMAN
+RandomState	src/problems/rocksample/rocksample.h	/^  RockSampleState RandomState(unsigned& seed, uint64_t obs) const {$/;"	f	class:Model
+RandomState	src/problems/tag/tag.h	/^  TagState RandomState(unsigned& seed, uint64_t obs) const {$/;"	f	class:Model
+RandomState	src/problems/tiger/tiger.h	/^  TigerState RandomState(unsigned& seed, uint64_t obs) const {$/;"	f	class:Model
+RandomStreams	src/random_streams.cpp	/^RandomStreams::RandomStreams(int num_streams, int length, unsigned seed)$/;"	f	class:RandomStreams
+RandomStreams	src/random_streams.h	/^class RandomStreams {$/;"	c
+RemoveLast	src/history.h	/^	void RemoveLast() { $/;"	f	class:History
+Required	src/optionparser.h	/^  static option::ArgStatus Required(const option::Option& option, bool msg)$/;"	f	struct:option::Arg
+Reset	src/belief_update/belief_update.h	/^  void Reset() { $/;"	f	class:BeliefUpdate
+Reset	src/solver.h	/^void Solver<T>::Reset() {$/;"	f	class:Solver
+Reset	src/world.h	/^void World<T>::Reset() {$/;"	f	class:World
+Resize	src/problems/pocman/grid.h	/^  void Resize(int xsize, int ysize) {$/;"	f	class:Grid
+RetrieveHistoryActionMapping	src/solver.h	/^void Solver<T>::RetrieveHistoryActionMapping(SuffixPolicyLowerBound<T>* suffix_policy) {$/;"	f	class:Solver
+RetrieveHistoryActionMapping	src/solver.h	/^void Solver<T>::RetrieveHistoryActionMapping(unique_ptr<VNode<T>>& node,$/;"	f	class:Solver
+RewardFunction	src/problems/chain/chain.h	/^  vector<vector<int>> RewardFunction; \/\/ defines the reward function$/;"	m	class:Model
+RobPos	old-pedestrian/pedestrian.h	/^    COORD RobPos;$/;"	m	class:Pedestrian_State
+RobPos	old-pedestrian/pedestrian_dynamic.h	/^    COORD RobPos;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL_STATE
+RobPos	old-pedestrian/pedestrian_dynamic.h	/^    COORD RobPos;$/;"	m	class:PEDESTRIAN_DYNAMIC_STATE
+RobPos	pedestrian/pedestrian.h	/^    COORD RobPos;$/;"	m	class:Pedestrian_State
+RobPos	pedestrian/pedestrian_dynamic.h	/^    COORD RobPos;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL_STATE
+RobPos	pedestrian/pedestrian_dynamic.h	/^    COORD RobPos;$/;"	m	class:PEDESTRIAN_DYNAMIC_STATE
+RobPos	pedestrian/pedestrian_dynamic_latest2.h	/^    COORD RobPos;$/;"	m	class:Pedestrian_State
+RobPos	src/problems/pedestrian/pedestrian.h	/^		Coord RobPos;$/;"	m	class:PedestrianState
+RobPos	src/problems/pedestrian/pedestrian/pedestrian.h	/^		Coord RobPos;$/;"	m	class:PedestrianState
+RobStep	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::RobStep(STATE& state, int action) const $/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+RobStep	src/problems/pedestrian/pedestrian.h	/^void Model<PedestrianState>::RobStep(PedestrianState& state, int action, Uniform unif) const {$/;"	f	class:Model
+RobStep	src/problems/pedestrian/pedestrian/pedestrian.h	/^void Model<PedestrianState>::RobStep(PedestrianState& state, int action, Uniform unif) const {$/;"	f	class:Model
+RockSampleState	src/problems/rocksample/rocksample.h	/^  RockSampleState() : id_(0) {}$/;"	f	class:RockSampleState
+RockSampleState	src/problems/rocksample/rocksample.h	/^  RockSampleState(int id) : id_(id) {}$/;"	f	class:RockSampleState
+RockSampleState	src/problems/rocksample/rocksample.h	/^class RockSampleState {$/;"	c
+RockSetOf	src/problems/rocksample/rocksample.h	/^  int RockSetOf(const RockSampleState& s) const {$/;"	f	class:Model
+RockStatus	src/problems/rocksample/rocksample.h	/^  int RockStatus(int rock, int x) const {$/;"	f	class:Model
+Run	src/main.cpp	/^int Run(Model<T>* model, ILowerBound<T>* lb, IUpperBound<T>* ub, $/;"	f
+RunBridge	src/main.cpp	/^int RunBridge(option::Option* options, const RandomStreams& streams) {$/;"	f
+RunChain	src/main.cpp	/^int RunChain(option::Option* options, const RandomStreams& streams) {$/;"	f
+RunLaserTag	src/main.cpp	/^int RunLaserTag(option::Option* options, const RandomStreams& streams) {$/;"	f
+RunMultiple	src/main.cpp	/^int RunMultiple(Model<T>* model, ILowerBound<T>* lb, IUpperBound<T>* ub, $/;"	f
+RunPedestrian	src/main.cpp	/^int RunPedestrian(option::Option* options, const RandomStreams& streams) {$/;"	f
+RunPocman	src/main.cpp	/^int RunPocman(option::Option* options, const RandomStreams& streams) {$/;"	f
+RunRockSample	src/main.cpp	/^int RunRockSample(option::Option* options, const RandomStreams& streams) {$/;"	f
+RunTiger	src/main.cpp	/^int RunTiger(option::Option* options, const RandomStreams& streams) {$/;"	f
+SEED	src/main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+SHARED_H	src/globals.h	2;"	d
+SIMLEN	src/main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+SOLVER_H	src/solver.h	2;"	d
+SOURCES	Makefile	/^SOURCES = $(shell find $(SRCDIR) -name '*.cpp')$/;"	m
+SRCDIR	Makefile	/^SRCDIR = src$/;"	m
+Same	old-pedestrian/pedestrian_dynamic.cpp	/^bool PEDESTRIAN_DYNAMIC::Same(const BELIEF_STATE& beliefState1,const BELIEF_STATE& beliefState2,double & distance)$/;"	f	class:PEDESTRIAN_DYNAMIC
+Same	old-pedestrian/pedestrian_dynamic.cpp	/^bool PEDESTRIAN_DYNAMIC_REAL::Same(const BELIEF_STATE& beliefState1,const BELIEF_STATE& beliefState2,double & distance)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Same	pedestrian/pedestrain_dynamic_latest.cpp	/^bool PEDESTRIAN_DYNAMIC_REAL::Same(const BELIEF_STATE& beliefState1,const BELIEF_STATE& beliefState2,double & distance)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Same	pedestrian/pedestrian_dynamic.cpp	/^bool PEDESTRIAN_DYNAMIC::Same(const BELIEF_STATE& beliefState1,const BELIEF_STATE& beliefState2,double & distance)$/;"	f	class:PEDESTRIAN_DYNAMIC
+Same	pedestrian/pedestrian_dynamic.cpp	/^bool PEDESTRIAN_DYNAMIC_REAL::Same(const BELIEF_STATE& beliefState1,const BELIEF_STATE& beliefState2,double & distance)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+SameLocation	src/problems/lasertag/lasertag.h	/^  bool SameLocation(const LaserTagState& s) const {$/;"	f	class:Model
+SameLocation	src/problems/tag/tag.h	/^  bool SameLocation(const TagState& s) const {$/;"	f	class:Model
+Sample	src/belief_update/belief_update.h	/^vector<Particle<T>*> BeliefUpdate<T>::Sample($/;"	f	class:BeliefUpdate
+Sample	src/problems/chain/chain.h	/^	vector<pair<ChainState, double>> Sample(int cur_mdp_state, int num_particles) {$/;"	f	class:ChainBelief
+Sample	src/problems/rocksample/rocksample.h	/^  int Sample(int rock, int rock_set) const {$/;"	f	class:Model
+Search	src/solver.h	/^int Solver<T>::Search(double max_time, int& n_trials) {$/;"	f	class:Solver
+SearchForLongestSuffixMatchActions	src/lower_bound/lower_bound_policy_suffix.h	/^	vector<int> SearchForLongestSuffixMatchActions(const History& history) const {$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+SeeGhost	src/problems/pocman/pocman.h	/^int POCMAN::SeeGhost(const PocmanState& state, int dir) const {$/;"	f	class:POCMAN
+SelectPhase	src/main.cpp	/^int SelectPhase(double angle)$/;"	f
+SetAllValues	src/problems/pocman/grid.h	/^  void SetAllValues(const T& value) {$/;"	f	class:Grid
+SetAllocated	src/memorypool.h	/^  void SetAllocated() { allocated_ = true; }$/;"	f	class:MemoryObject
+SetCol	src/problems/pocman/grid.h	/^  void SetCol(int x, T* values) {$/;"	f	class:Grid
+SetFlag	src/problems/pocman/pocman.h	/^  void SetFlag(int& flags, int bit) const { flags = (flags | (1 << bit)); }$/;"	f	class:Model
+SetMDPState	src/problems/chain/chain.h	/^ void SetMDPState(int mdp_state) { $/;"	f	class:ChainState
+SetReading	src/problems/lasertag/lasertag.h	/^  static void SetReading(uint64_t& obs, uint64_t reading, uint64_t dir) {$/;"	f	class:Model
+SetRow	src/problems/pocman/grid.h	/^  void SetRow(int y, T* values) {$/;"	f	class:Grid
+SetStartState	src/problems/pedestrian/pedestrian.h	/^void Model<PedestrianState>::SetStartState(PedestrianState& state) {$/;"	f	class:Model
+SetStartStates	src/world.h	/^	void SetStartStates(vector<T>& states) {$/;"	f	class:World
+SetTransitionMatrixElement	src/problems/chain/chain.h	/^ void SetTransitionMatrixElement(int s, int a, int sprime, double value) {$/;"	f	class:ChainState
+SetTransitionRow	src/problems/chain/chain.h	/^ void SetTransitionRow (int s, int a, vector<double> row) {$/;"	f	class:ChainState
+SetWallObs	src/problems/pocman/pocman.h	/^  void SetWallObs(int& obs, const PocmanState& state) const {$/;"	f	class:Model
+Size	old-pedestrian/pedestrian.h	/^    int Size;$/;"	m	class:Pedestrian
+Size	old-pedestrian/pedestrian_dynamic.h	/^    int Size;$/;"	m	class:PEDESTRIAN_DYNAMIC
+Size	old-pedestrian/pedestrian_dynamic.h	/^    int Size;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+Size	pedestrian/pedestrian.h	/^    int Size;$/;"	m	class:Pedestrian
+Size	pedestrian/pedestrian_dynamic.h	/^    int Size;$/;"	m	class:PEDESTRIAN_DYNAMIC
+Size	pedestrian/pedestrian_dynamic.h	/^    int Size;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+Size	pedestrian/pedestrian_dynamic_latest2.h	/^    int Size;$/;"	m	class:Pedestrian
+Size	src/history.h	/^	size_t Size() const { return actions_.size(); }$/;"	f	class:History
+Size	src/memorypool.h	/^    static const int Size = 256;$/;"	m	struct:MemoryPool::Chunk
+SmellFood	src/problems/pocman/pocman.h	/^bool POCMAN::SmellFood(const PocmanState& state) const {$/;"	f	class:POCMAN
+SocialForce	src/main.cpp	/^MyVector  SocialForce(Pedestrian & ped)$/;"	f
+Solver	src/solver.h	/^  Solver(const Model<T>& model,$/;"	f	class:Solver
+Solver	src/solver.h	/^class Solver {$/;"	c
+South	src/problems/pocman/coord.h	/^  static const Coord North, East, South, West;$/;"	m	struct:Coord
+SouthEast	src/problems/pocman/coord.h	/^  static const Coord NorthEast, SouthEast, SouthWest, NorthWest;$/;"	m	struct:Coord
+SouthWest	src/problems/pocman/coord.h	/^  static const Coord NorthEast, SouthEast, SouthWest, NorthWest;$/;"	m	struct:Coord
+StateToN	old-pedestrian/pedestrian.cpp	/^int Pedestrian::StateToN(Pedestrian_State* teststate) const$/;"	f	class:Pedestrian
+StateToN	old-pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC::StateToN(STATE* state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+StateToN	old-pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::StateToN(STATE* state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+StateToN	pedestrian/pedestrain_dynamic_latest.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::StateToN(STATE* state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+StateToN	pedestrian/pedestrian.cpp	/^int Pedestrian::StateToN(Pedestrian_State* teststate) const$/;"	f	class:Pedestrian
+StateToN	pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC::StateToN(STATE* state)$/;"	f	class:PEDESTRIAN_DYNAMIC
+StateToN	pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::StateToN(STATE* state)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+StateToN	pedestrian/pedestrian_dynamic_latest2.cpp	/^int Pedestrian::StateToN(Pedestrian_State* teststate) const$/;"	f	class:Pedestrian
+Stats	src/optionparser.h	/^  Stats() :$/;"	f	struct:option::Stats
+Stats	src/optionparser.h	/^  Stats(bool gnu, const Descriptor usage[], int argc, char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+Stats	src/optionparser.h	/^  Stats(bool gnu, const Descriptor usage[], int argc, const char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+Stats	src/optionparser.h	/^  Stats(const Descriptor usage[], int argc, char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+Stats	src/optionparser.h	/^  Stats(const Descriptor usage[], int argc, const char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+Stats	src/optionparser.h	/^struct Stats$/;"	s	namespace:option
+Step	old-pedestrian/pedestrian_dynamic.cpp	/^bool PEDESTRIAN_DYNAMIC::Step(STATE& state,int action, int & observation,double&reward) const$/;"	f	class:PEDESTRIAN_DYNAMIC
+Step	old-pedestrian/pedestrian_dynamic.cpp	/^bool PEDESTRIAN_DYNAMIC_REAL::Step(STATE& state,int action, int & observation,double&reward) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Step	pedestrian/pedestrain_dynamic_latest.cpp	/^bool PEDESTRIAN_DYNAMIC_REAL::Step(STATE& state,int action, int & observation,double&reward) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Step	pedestrian/pedestrian_dynamic.cpp	/^bool PEDESTRIAN_DYNAMIC::Step(STATE& state,int action, int & observation,double&reward) const$/;"	f	class:PEDESTRIAN_DYNAMIC
+Step	pedestrian/pedestrian_dynamic.cpp	/^bool PEDESTRIAN_DYNAMIC_REAL::Step(STATE& state,int action, int & observation,double&reward) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Step	src/main.cpp	/^	void Step()$/;"	f	class:Pedestrian
+Step	src/model.h	/^  void Step(T& state, double random_num, int action, double& reward) const {$/;"	f	class:Model
+Step	src/problems/bridge/bridge.h	/^  void Step(BridgeState& s, double random_num, int action, double& reward)$/;"	f	class:Model
+Step	src/problems/bridge/bridge.h	/^void Model<BridgeState>::Step(BridgeState& s, double random_num, int action, $/;"	f	class:Model
+Step	src/problems/chain/chain.h	/^void Model<ChainState>::Step(ChainState &s, double random_num, int action, double &reward) const {$/;"	f	class:Model
+Step	src/problems/chain/chain.h	/^void Model<ChainState>::Step(ChainState &s, double random_num, int action, double &reward, uint64_t &obs) const {$/;"	f	class:Model
+Step	src/problems/lasertag/lasertag.h	/^void Model<LaserTagState>::Step(LaserTagState& s, double random_num, int action, $/;"	f	class:Model
+Step	src/problems/pedestrian/pedestrian.h	/^		void Step(PedestrianState& state, double rNum, int action, double& reward) const {$/;"	f	class:Model
+Step	src/problems/pedestrian/pedestrian.h	/^void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int action, double& reward, uint64_t& obs) const {$/;"	f	class:Model
+Step	src/problems/pedestrian/pedestrian/pedestrian.h	/^		void Step(PedestrianState& state, double rNum, int action, double& reward) const {$/;"	f	class:Model
+Step	src/problems/pedestrian/pedestrian/pedestrian.h	/^void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int action, double& reward, uint64_t& obs) const {$/;"	f	class:Model
+Step	src/problems/pocman/pocman.h	/^  void Step(PocmanState& state, double randomNum, int action, double& reward)$/;"	f	class:Model
+Step	src/problems/pocman/pocman.h	/^void POCMAN::Step(PocmanState& state, double rand_num, int action,$/;"	f	class:POCMAN
+Step	src/problems/rocksample/rocksample.h	/^  void Step(RockSampleState& s, double random_num, int action, double& reward)$/;"	f	class:Model
+Step	src/problems/rocksample/rocksample.h	/^  void Step(RockSampleState& s, double random_num, int action, double& reward, $/;"	f	class:Model
+Step	src/problems/tag/tag.cpp	/^void Model<TagState>::Step(TagState& s, double random_num, int action, $/;"	f	class:Model
+Step	src/problems/tiger/tiger.h	/^void Model<TigerState>::Step(TigerState& s, double random_num, int action, $/;"	f	class:Model
+Step	src/world.h	/^void World<T>::Step(int action, uint64_t& obs, double& reward) {$/;"	f	class:World
+StepMultiple	src/problems/pedestrian/pedestrian.h	/^void Model<PedestrianState>::StepMultiple(vector<PedestrianState>& states, double rNum, int action, vector<double>& rewards, vector<uint64_t>& obss) const {$/;"	f	class:Model
+StepMultiple	src/world.h	/^void World<T>::StepMultiple(int action, vector<uint64_t>& obss, vector<double>& rewards) {$/;"	f	class:World
+StepN	src/main.cpp	/^void StepN(int w,int h,int & dest_w,int & dest_h,double angle,int step_size)$/;"	f
+StoreOptionAction	src/optionparser.h	/^  StoreOptionAction(Parser& parser_, Option options_[], Option buffer_[], int bufmax_) :$/;"	f	class:option::Parser::StoreOptionAction
+StoreOptionAction	src/optionparser.h	/^class Parser::StoreOptionAction: public Parser::Action$/;"	c	class:option::Parser
+StreamWriter	src/optionparser.h	/^    StreamWriter(Function* w, Stream* s) :$/;"	f	struct:option::PrintUsageImplementation::StreamWriter
+StreamWriter	src/optionparser.h	/^  struct StreamWriter: public IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+Suffix	src/history.h	/^	History Suffix(int s) const {$/;"	f	class:History
+SuffixPolicyLowerBound	src/lower_bound/lower_bound_policy_suffix.h	/^	SuffixPolicyLowerBound(const RandomStreams& streams, int num_states) : PolicyLowerBound<T>(streams) {$/;"	f	class:SuffixPolicyLowerBound
+SuffixPolicyLowerBound	src/lower_bound/lower_bound_policy_suffix.h	/^class SuffixPolicyLowerBound : public PolicyLowerBound<T> {$/;"	c
+SuffixPolicyLowerBoundMapImpl	src/lower_bound/lower_bound_policy_suffix.h	/^	SuffixPolicyLowerBoundMapImpl(const RandomStreams& streams, int num_states, unsigned action_root_seed) $/;"	f	class:SuffixPolicyLowerBoundMapImpl
+SuffixPolicyLowerBoundMapImpl	src/lower_bound/lower_bound_policy_suffix.h	/^class SuffixPolicyLowerBoundMapImpl : public SuffixPolicyLowerBound<T> {$/;"	c
+SyscallWriter	src/optionparser.h	/^    SyscallWriter(Syscall* w, int f) :$/;"	f	struct:option::PrintUsageImplementation::SyscallWriter
+SyscallWriter	src/optionparser.h	/^  struct SyscallWriter: public IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+T	src/problems/lasertag/lasertag.h	/^  vector<vector<UMAP<LaserTagState, double>>> T;$/;"	m	class:Model
+T	src/problems/rocksample/rocksample.h	/^  vector<vector<RockSampleState>> T; \/\/ Transition matrix$/;"	m	class:Model
+TAG_H	src/problems/tag/tag.h	2;"	d
+TAG_PARTICLE_FILTER_UPDATE	src/problems/pocman/belief_update_pocman.h	2;"	d
+TAG_PARTICLE_FILTER_UPDATE	src/problems/tag/belief_update_tag.h	2;"	d
+TAG_REWARD	src/problems/lasertag/lasertag.h	/^  static constexpr double TAG_REWARD = 10;$/;"	m	class:Model
+TAG_REWARD	src/problems/lasertag/lasertag.h	/^constexpr double Model<LaserTagState>::TAG_REWARD;$/;"	m	class:Model
+TAG_REWARD	src/problems/tag/tag.cpp	/^constexpr double Model<TagState>::TAG_REWARD;$/;"	m	class:Model	file:
+TAG_REWARD	src/problems/tag/tag.h	/^  static constexpr double TAG_REWARD = 10;$/;"	m	class:Model
+TERMINAL_OBSERVATION	src/problems/bridge/bridge.h	/^  static const int TERMINAL_OBSERVATION;$/;"	m	class:Model
+TERMINAL_OBSERVATION	src/problems/bridge/bridge.h	/^const int Model<BridgeState>::TERMINAL_OBSERVATION = 0;$/;"	m	class:Model
+TIGER_H	src/problems/tiger/tiger.h	2;"	d
+TIMEOUT	src/main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+TINY	src/globals.cpp	/^const double TINY = 1e-8;$/;"	m	namespace:Globals	file:
+T_	src/belief_update/belief_update_exact.h	/^  vector<vector<UMAP<T, double>>> T_;$/;"	m	class:ExactBeliefUpdate
+T_	src/problems/tag/tag.h	/^  vector<vector<UMAP<TagState, double>>> T_;$/;"	m	class:Model
+TagAct	src/problems/lasertag/lasertag.h	/^  int TagAct() const { return NumActions() - 1; } $/;"	f	class:Model
+TagAct	src/problems/tag/tag.h	/^  int TagAct() const { return NumActions() - 1; }$/;"	f	class:Model
+TagState	src/problems/tag/tag.h	/^  TagState() : id_(0) {}$/;"	f	class:TagState
+TagState	src/problems/tag/tag.h	/^  TagState(int id) : id_(id) {}$/;"	f	class:TagState
+TagState	src/problems/tag/tag.h	/^class TagState {$/;"	c
+TemporaryWriter	src/optionparser.h	/^    TemporaryWriter(const Temporary& u) :$/;"	f	struct:option::PrintUsageImplementation::TemporaryWriter
+TemporaryWriter	src/optionparser.h	/^  struct TemporaryWriter: public IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+TerminalObs	src/problems/bridge/bridge.h	/^  uint64_t TerminalObs() const { return TERMINAL_OBSERVATION; }$/;"	f	class:Model
+TerminalObs	src/problems/chain/chain.h	/^  uint64_t TerminalObs() const { return 1000;}$/;"	f	class:Model
+TerminalObs	src/problems/lasertag/lasertag.h	/^  uint64_t TerminalObs() const { return terminal_obs_; }$/;"	f	class:Model
+TerminalObs	src/problems/pedestrian/pedestrian.h	/^		uint64_t TerminalObs() const {$/;"	f	class:Model
+TerminalObs	src/problems/pedestrian/pedestrian/pedestrian.h	/^		uint64_t TerminalObs() const {$/;"	f	class:Model
+TerminalObs	src/problems/pocman/pocman.h	/^  uint64_t TerminalObs() const { return 1 << 10; }$/;"	f	class:Model
+TerminalObs	src/problems/rocksample/rocksample.h	/^  uint64_t TerminalObs() const { return kTerminal; }$/;"	f	class:Model
+TerminalObs	src/problems/tag/tag.h	/^  uint64_t TerminalObs() const { return n_cells_ + 1; }$/;"	f	class:Model
+TerminalObs	src/problems/tiger/tiger.h	/^  uint64_t TerminalObs() const { return 100; } \/\/ never encountered$/;"	f	class:Model
+TestSimulator	src/main.cpp	/^void TestSimulator()$/;"	f
+TigerState	src/problems/tiger/tiger.h	/^  TigerState() : id_(0) {}$/;"	f	class:TigerState
+TigerState	src/problems/tiger/tiger.h	/^  TigerState(int id) : id_(id) {}$/;"	f	class:TigerState
+TigerState	src/problems/tiger/tiger.h	/^class TigerState {$/;"	c
+Tokenize	src/globals.h	/^inline vector<string> Tokenize(string line, char delim) {$/;"	f	namespace:Globals
+TotalReward	src/world.h	/^double World<T>::TotalReward() {$/;"	f	class:World
+TotalUndiscountedReward	src/world.h	/^double World<T>::TotalUndiscountedReward() {$/;"	f	class:World
+TransFn	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::TransFn(int s1,int a,int s2)$/;"	f	class:PEDESTRIAN_DYNAMIC
+TransFn	old-pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::TransFn(int s1,int a,int s2)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+TransFn	pedestrian/pedestrain_dynamic_latest.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::TransFn(int s1,int a,int s2)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+TransFn	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC::TransFn(int s1,int a,int s2)$/;"	f	class:PEDESTRIAN_DYNAMIC
+TransFn	pedestrian/pedestrian_dynamic.cpp	/^double PEDESTRIAN_DYNAMIC_REAL::TransFn(int s1,int a,int s2)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+TransitionMatrix	src/problems/rocksample/rocksample.h	/^    Model<RockSampleState>::TransitionMatrix() const {$/;"	f	class:Model
+TransitionModel	src/main.cpp	/^void TransitionModel()$/;"	f
+TransitionProb	src/problems/chain/chain.h	/^ double TransitionProb(int s, int a, int sprime) {$/;"	f	class:ChainState
+TransitionProbs	src/problems/chain/chain.h	/^ vector<double> TransitionProbs(int s, int a) {$/;"	f	class:ChainState
+Trial	src/solver.h	/^int Solver<T>::Trial(unique_ptr<VNode<T>>& node, bool debug) {$/;"	f	class:Solver
+Truncate	src/history.h	/^	void Truncate(int d) {$/;"	f	class:History
+UCT_CONST	src/main.cpp	/^const int UCT_CONST=50000;$/;"	v
+UMAP	src/globals.h	27;"	d
+UNIFORM_H	src/problems/pedestrian/pedestrian/uniform.h	2;"	d
+UNIFORM_H	src/problems/pedestrian/uniform.h	2;"	d
+UNKNOWN	src/main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+UPPER_BOUND_H	src/upper_bound/upper_bound.h	2;"	d
+UPPER_BOUND_NONSTOCHASTIC_H	src/upper_bound/upper_bound_nonstochastic.h	2;"	d
+UPPER_BOUND_STOCHASTIC_H	src/upper_bound/upper_bound_stochastic.h	2;"	d
+UTIL_H	src/util.h	2;"	d
+Uniform	old-pedestrian/Bernoulli.h	/^	Uniform(double rNum) {$/;"	f	class:Uniform
+Uniform	old-pedestrian/Bernoulli.h	/^class Uniform {$/;"	c
+Uniform	pedestrian/Bernoulli.h	/^	Uniform(double rNum) {$/;"	f	class:Uniform
+Uniform	pedestrian/Bernoulli.h	/^class Uniform {$/;"	c
+Uniform	src/main.cpp	/^double Uniform(double x,double y,double &ux,double &uy)$/;"	f
+Uniform	src/problems/pedestrian/pedestrian/uniform.h	/^	Uniform() : seed(0) {}$/;"	f	class:Uniform
+Uniform	src/problems/pedestrian/pedestrian/uniform.h	/^	Uniform(double rNum) {$/;"	f	class:Uniform
+Uniform	src/problems/pedestrian/pedestrian/uniform.h	/^class Uniform {$/;"	c
+Uniform	src/problems/pedestrian/uniform.h	/^	Uniform() : seed_(0) {}$/;"	f	class:Uniform
+Uniform	src/problems/pedestrian/uniform.h	/^	Uniform(double rNum) {$/;"	f	class:Uniform
+Uniform	src/problems/pedestrian/uniform.h	/^	Uniform(unsigned seed) : seed_(seed) {}$/;"	f	class:Uniform
+Uniform	src/problems/pedestrian/uniform.h	/^class Uniform {$/;"	c
+UnitTest	src/problems/pocman/coord.cpp	/^void Coord::UnitTest()$/;"	f	class:Coord
+Update	src/belief_update/belief_update.h	/^  vector<Particle<T>*> Update(const vector<Particle<T>*>& particles,$/;"	f	class:BeliefUpdate
+Update	src/main.cpp	/^bool Update(int action)$/;"	f
+Update	src/problems/chain/chain.h	/^	void Update(int prev_state, int action, int cur_state) {$/;"	f	class:ChainBelief
+UpdateBelief	src/solver.h	/^void Solver<T>::UpdateBelief(int act, uint64_t obs) {$/;"	f	class:Solver
+UpdateImpl	src/belief_update/belief_update_exact.h	/^vector<Particle<T>*> ExactBeliefUpdate<T>::UpdateImpl($/;"	f	class:ExactBeliefUpdate
+UpdateImpl	src/belief_update/belief_update_particle.h	/^vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl($/;"	f	class:ParticleFilterUpdate
+UpdateImpl	src/problems/chain/belief_update_chain.h	/^vector<Particle<ChainState>*> DirichletBeliefUpdate::UpdateImpl($/;"	f	class:DirichletBeliefUpdate
+UpdateImpl	src/problems/pocman/belief_update_pocman.h	/^vector<Particle<PocmanState>*> ParticleFilterUpdate<PocmanState>::UpdateImpl($/;"	f	class:ParticleFilterUpdate
+UpdateImpl	src/problems/tag/belief_update_tag.cpp	/^vector<Particle<TagState>*> ParticleFilterUpdate<TagState>::UpdateImpl($/;"	f	class:ParticleFilterUpdate
+UpdateModel	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::UpdateModel(int i)$/;"	f	class:PEDESTRIAN_DYNAMIC
+UpdateModel	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::UpdateModel(int i)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+UpdateModel	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::UpdateModel(int i)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+UpdateModel	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::UpdateModel(int i)$/;"	f	class:PEDESTRIAN_DYNAMIC
+UpdateModel	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::UpdateModel(int i)$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+UpdatePed	src/main.cpp	/^void UpdatePed(int action)$/;"	f
+UpdateRobMap	src/main.cpp	/^void UpdateRobMap()$/;"	f
+UpdateSim	src/main.cpp	/^void UpdateSim()$/;"	f
+UpperBound	src/problems/chain/chain.h	/^  double UpperBound(const vector<Particle<ChainState>*>& particles,$/;"	f	class:Model
+UpperBound	src/problems/pedestrian/pedestrian.h	/^		double UpperBound(const vector<Particle<PedestrianState>*>& particles,$/;"	f	class:Model
+UpperBound	src/problems/pedestrian/pedestrian/pedestrian.h	/^		double UpperBound(const vector<Particle<PedestrianState>*>& particles,$/;"	f	class:Model
+UpperBound	src/problems/pocman/pocman.h	/^double POCMAN::UpperBound(const vector<Particle<PocmanState>*>& particles,$/;"	f	class:POCMAN
+UpperBound	src/qnode.h	/^double QNode<T>::UpperBound() const {$/;"	f	class:QNode
+UpperBound	src/upper_bound/upper_bound_nonstochastic.h	/^double UpperBoundNonStochastic<T>::UpperBound($/;"	f	class:UpperBoundNonStochastic
+UpperBound	src/upper_bound/upper_bound_stochastic.h	/^double UpperBoundStochastic<T>::UpperBound($/;"	f	class:UpperBoundStochastic
+UpperBound	src/upper_bound/upper_bound_stochastic.h	/^double UpperBoundStochastic<T>::UpperBound(const Particle<T>& p, $/;"	f	class:UpperBoundStochastic
+UpperBoundAct	src/upper_bound/upper_bound_nonstochastic.h	/^  const vector<int>& UpperBoundAct() const { return upper_bound_act_; }$/;"	f	class:UpperBoundNonStochastic
+UpperBoundNonStochastic	src/upper_bound/upper_bound_nonstochastic.h	/^UpperBoundNonStochastic<T>::UpperBoundNonStochastic($/;"	f	class:UpperBoundNonStochastic
+UpperBoundNonStochastic	src/upper_bound/upper_bound_nonstochastic.h	/^class UpperBoundNonStochastic : public IUpperBound<T> {$/;"	c
+UpperBoundStochastic	src/upper_bound/upper_bound_stochastic.h	/^UpperBoundStochastic<T>::UpperBoundStochastic($/;"	f	class:UpperBoundStochastic
+UpperBoundStochastic	src/upper_bound/upper_bound_stochastic.h	/^class UpperBoundStochastic : public IUpperBound<T> {$/;"	c
+Util	src/util.h	/^namespace Util {$/;"	n
+VNODE_H	src/vnode.h	2;"	d
+VNode	src/vnode.h	/^  VNode(vector<Particle<T>*>&& particles, double l, double u, int depth,$/;"	f	class:VNode
+VNode	src/vnode.h	/^class VNode {$/;"	c
+VPATH	Makefile	/^VPATH = $(shell find $(SRCDIR) -type d \\( ! -name '.*' \\))$/;"	m
+Valid	src/problems/pocman/coord.h	/^  bool Valid() const {$/;"	f	struct:Coord
+Validate	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::Validate(const STATE& state) const$/;"	f	class:PEDESTRIAN_DYNAMIC
+Validate	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::Validate(const STATE& state) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Validate	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::Validate(const STATE& state) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Validate	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::Validate(const STATE& state) const$/;"	f	class:PEDESTRIAN_DYNAMIC
+Validate	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::Validate(const STATE& state) const$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+Validate	src/problems/pocman/pocman.h	/^void POCMAN::Validate(const PocmanState& state) const {$/;"	f	class:POCMAN
+ValidateBounds	src/globals.h	/^inline void ValidateBounds(double& lb, double& ub) {$/;"	f	namespace:Globals
+Value	old-pedestrian/pedestrian.h	/^    double Value[20000];$/;"	m	class:Pedestrian
+Value	old-pedestrian/pedestrian_dynamic.h	/^    double Value[20000];$/;"	m	class:PEDESTRIAN_DYNAMIC
+Value	old-pedestrian/pedestrian_dynamic.h	/^    double Value[20000];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+Value	pedestrian/pedestrian.h	/^    double Value[20000];$/;"	m	class:Pedestrian
+Value	pedestrian/pedestrian_dynamic.h	/^    double Value[20000];$/;"	m	class:PEDESTRIAN_DYNAMIC
+Value	pedestrian/pedestrian_dynamic.h	/^    double Value[20000];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+Value	pedestrian/pedestrian_dynamic_latest2.h	/^    double Value[20000];$/;"	m	class:Pedestrian
+Vel	old-pedestrian/pedestrian.h	/^    int   Vel;$/;"	m	class:Pedestrian_State
+Vel	old-pedestrian/pedestrian_dynamic.h	/^    int   Vel;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL_STATE
+Vel	old-pedestrian/pedestrian_dynamic.h	/^    int   Vel;$/;"	m	class:PEDESTRIAN_DYNAMIC_STATE
+Vel	pedestrian/pedestrian.h	/^    int   Vel;$/;"	m	class:Pedestrian_State
+Vel	pedestrian/pedestrian_dynamic.h	/^    int   Vel;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL_STATE
+Vel	pedestrian/pedestrian_dynamic.h	/^    int   Vel;$/;"	m	class:PEDESTRIAN_DYNAMIC_STATE
+Vel	pedestrian/pedestrian_dynamic_latest2.h	/^    int   Vel;$/;"	m	class:Pedestrian_State
+Vel	src/problems/pedestrian/pedestrian.h	/^		int Vel;$/;"	m	class:PedestrianState
+Vel	src/problems/pedestrian/pedestrian/pedestrian.h	/^		int Vel;$/;"	m	class:PedestrianState
+WORLD_H	src/world.h	2;"	d
+West	src/problems/pocman/coord.h	/^  static const Coord North, East, South, West;$/;"	m	struct:Coord
+WithinMap	src/problems/lasertag/lasertag.h	/^  bool WithinMap(int x, int y) const { $/;"	f	class:Model
+WithinMap	src/problems/tag/tag.h	/^  bool WithinMap(int x, int y) const { $/;"	f	class:Model
+World	src/world.h	/^  World(unsigned seed, const Model<T>& model)$/;"	f	class:World
+World	src/world.h	/^class World {$/;"	c
+WorldSeed	src/main.cpp	/^int WorldSeed() {$/;"	f
+X	src/problems/pocman/coord.h	/^  int X, Y;$/;"	m	struct:Coord
+XSIZE	src/main.cpp	/^const int XSIZE=5;$/;"	v
+X_SIZE	src/problems/pedestrian/pedestrian.h	/^	int X_SIZE;$/;"	m	class:Model
+X_SIZE	src/problems/pedestrian/pedestrian.h	/^int X_SIZE;$/;"	v
+X_SIZE	src/problems/pedestrian/pedestrian/pedestrian.h	/^int X_SIZE;$/;"	v
+Y	src/problems/pocman/coord.h	/^  int X, Y;$/;"	m	struct:Coord
+YSIZE	src/main.cpp	/^const int YSIZE=10;$/;"	v
+Y_SIZE	src/problems/pedestrian/pedestrian.h	/^	int Y_SIZE;$/;"	m	class:Model
+Y_SIZE	src/problems/pedestrian/pedestrian.h	/^int Y_SIZE;$/;"	v
+Y_SIZE	src/problems/pedestrian/pedestrian/pedestrian.h	/^int Y_SIZE;$/;"	v
+__builtin_clz	src/optionparser.h	233;"	d
+action_root_seed_	src/lower_bound/lower_bound_policy_random.h	/^	mutable unsigned action_root_seed_;$/;"	m	class:RandomPolicyLowerBound
+action_root_seed_	src/lower_bound/lower_bound_policy_suffix.h	/^	mutable unsigned action_root_seed_;$/;"	m	class:SuffixPolicyLowerBound
+action_root_seed_	src/lower_bound/lower_bound_policy_suffix.h	/^	mutable unsigned action_root_seed_;$/;"	m	class:SuffixPolicyLowerBoundMapImpl
+actions_	src/history.h	/^  vector<int> actions_;$/;"	m	class:History
+add	src/optionparser.h	/^  void add(bool gnu, const Descriptor usage[], int argc, char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+add	src/optionparser.h	/^  void add(const Descriptor usage[], int argc, char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+add	src/optionparser.h	/^  void add(const Descriptor usage[], int argc, const char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+add	src/optionparser.h	/^inline void Stats::add(bool gnu, const Descriptor usage[], int argc, const char** argv, int min_abbr_len,$/;"	f	class:option::Stats
+allocated_	src/memorypool.h	/^  bool allocated_;$/;"	m	class:MemoryObject
+alpha	src/dirichlet.h	/^  vector<double> alpha() {$/;"	f	class:Dirichlet
+alpha_	src/dirichlet.h	/^  vector<double> alpha_; $/;"	m	class:Dirichlet
+alpha_	src/problems/chain/chain.h	/^  vector<vector<vector<double>>> alpha_;$/;"	m	class:ChainBelief
+append	src/optionparser.h	/^  void append(Option* new_last)$/;"	f	class:option::Option
+approximate_bounds	src/globals.h	/^  bool approximate_bounds;$/;"	m	struct:Globals::Config
+arg	src/optionparser.h	/^  const char* arg;$/;"	m	class:option::Option
+belief_	src/belief_update/belief_update_exact.h	/^  UMAP<T, double> belief_; \/\/ Mapping from state to probability.$/;"	m	class:ExactBeliefUpdate
+belief_	src/problems/chain/belief_update_chain.h	/^	ChainBelief belief_;$/;"	m	class:DirichletBeliefUpdate
+belief_update_seed_	src/belief_update/belief_update.h	/^  unsigned belief_update_seed_;$/;"	m	class:BeliefUpdate
+bestDefaultAction	old-pedestrian/pedestrian.h	/^		int bestDefaultAction(State s, int rnsPos) {$/;"	f	class:Pedestrian
+bestDefaultAction	pedestrian/pedestrian.h	/^		int bestDefaultAction(State s, int rnsPos) {$/;"	f	class:Pedestrian
+bestDefaultAction	pedestrian/pedestrian_dynamic_latest2.h	/^		int bestDefaultAction(State s, int rnsPos) {$/;"	f	class:Pedestrian
+best_default_action_memo_	src/problems/lasertag/lasertag.h	/^  vector<int> best_default_action_memo_;$/;"	m	class:Model
+best_default_action_memo_	src/problems/tag/tag.h	/^  vector<int> best_default_action_memo_;$/;"	m	class:Model
+best_ub_action	src/vnode.h	/^  int best_ub_action() const { return best_ub_action_; }$/;"	f	class:VNode
+best_ub_action_	src/vnode.h	/^  int best_ub_action_;   \/\/ Action that gives the highest upper bound$/;"	m	class:VNode
+bu_	src/solver.h	/^  BeliefUpdate<T>& bu_;$/;"	m	class:Solver
+bu_global	src/main.cpp	/^BeliefUpdate<PedestrianState>* bu_global;$/;"	v
+buf_empty	src/optionparser.h	/^    bool buf_empty()$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+buf_full	src/optionparser.h	/^    bool buf_full()$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+buf_next	src/optionparser.h	/^    void buf_next()$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+buf_store	src/optionparser.h	/^    void buf_store(const char* data, int len)$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+buffer	src/optionparser.h	/^  Option* buffer;$/;"	m	class:option::Parser::StoreOptionAction
+buffer_max	src/optionparser.h	/^  unsigned buffer_max;$/;"	m	struct:option::Stats
+buffer_max	src/optionparser.h	/^  unsigned* buffer_max;$/;"	m	class:option::Stats::CountOptionsAction
+bufmask	src/optionparser.h	/^    static const int bufmask = 15; \/\/!< Must be a power of 2 minus 1.$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+bufmax	src/optionparser.h	/^  int bufmax; \/\/! Number of slots in @c buffer. @c -1 means "large enough".$/;"	m	class:option::Parser::StoreOptionAction
+builtin_clz	src/optionparser.h	/^  static int builtin_clz(unsigned x)$/;"	f	struct:option::MSC_Builtin_CLZ
+cell_to_coords_	src/problems/lasertag/lasertag.h	/^  vector<pii> cell_to_coords_;$/;"	m	class:Model
+cell_to_coords_	src/problems/rocksample/rocksample.h	/^  vector<pii> cell_to_coords_; \/\/ Mapping from cell number to (row, col)$/;"	m	class:Model
+cell_to_coords_	src/problems/tag/tag.h	/^  vector<pii> cell_to_coords_;$/;"	m	class:Model
+chase_prob_	src/problems/pocman/pocman.h	/^  double food_prob_, chase_prob_, defensive_slip_;$/;"	m	class:Model
+check_arg	src/optionparser.h	/^  const CheckArg check_arg;$/;"	m	struct:option::Descriptor
+chunk_iterator_	src/memorypool.h	/^  typedef typename std::vector<Chunk*>::iterator chunk_iterator_;$/;"	t	class:MemoryPool
+chunks_	src/memorypool.h	/^  std::vector<Chunk*> chunks_;$/;"	m	class:MemoryPool
+col	src/optionparser.h	/^    int col; \/\/!< Index of current column.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+column	src/optionparser.h	/^    int column()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+config	src/globals.cpp	/^Config config;$/;"	m	namespace:Globals	file:
+configSeed	src/problems/pedestrian/pedestrian.h	/^		int configSeed;$/;"	m	class:Model
+configSeed	src/problems/pedestrian/pedestrian/pedestrian.h	/^		int configSeed;$/;"	m	class:Model
+count	src/lower_bound/lower_bound_policy_suffix.h	/^	int count;$/;"	m	class:SuffixPolicyLowerBoundMapImpl
+count	src/optionparser.h	/^  int count()$/;"	f	class:option::Option
+curr_state	src/main.cpp	/^PedestrianState* curr_state;$/;"	v
+data	src/optionparser.h	/^    const char* data()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+datbuf	src/optionparser.h	/^    const char* datbuf[bufmask + 1];$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+defaultCount	src/lower_bound/lower_bound_policy_suffix.h	/^	mutable int defaultCount;$/;"	m	class:SuffixPolicyLowerBound
+default_action_	src/solver.h	/^  int default_action_; \/\/ Action for the lower bound at the root$/;"	m	class:Solver
+default_policy	src/lower_bound/lower_bound_policy_suffix.h	/^	PolicyLowerBound<T>* default_policy;$/;"	m	class:SuffixPolicyLowerBound
+default_value_	src/vnode.h	/^  const double default_value_; \/\/ Value under default policy (= lbound value$/;"	m	class:VNode
+defensive_slip_	src/problems/pocman/pocman.h	/^  double food_prob_, chase_prob_, defensive_slip_;$/;"	m	class:Model
+depth	src/vnode.h	/^  int depth() const { return depth_; }$/;"	f	class:VNode
+depth_	src/qnode.h	/^  int depth_; \/\/ Depth of the belief node *above* this node$/;"	m	class:QNode
+depth_	src/vnode.h	/^  const int depth_;$/;"	m	class:VNode
+desc	src/optionparser.h	/^  const Descriptor* desc;$/;"	m	class:option::Option
+dest_h	src/main.cpp	/^double dest_w,dest_h,dest_o;$/;"	v
+dest_o	src/main.cpp	/^double dest_w,dest_h,dest_o;$/;"	v
+dest_w	src/main.cpp	/^double dest_w,dest_h,dest_o;$/;"	v
+dh	src/main.cpp	/^	double dw,dh;$/;"	m	class:MyVector	file:
+disableBufferedIO	src/main.cpp	/^void disableBufferedIO(void)$/;"	f
+discount	src/globals.h	/^  double discount;$/;"	m	struct:Globals::Config
+display_QMDP	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::display_QMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC
+display_QMDP	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::display_QMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+display_QMDP	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::display_QMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+display_QMDP	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::display_QMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC
+display_QMDP	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::display_QMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+dummyState	old-pedestrian/pedestrian.h	/^		Pedestrian_State* dummyState;$/;"	m	class:Pedestrian
+dummyState	pedestrian/pedestrian.h	/^		Pedestrian_State* dummyState;$/;"	m	class:Pedestrian
+dummyState	pedestrian/pedestrian_dynamic_latest2.h	/^		Pedestrian_State* dummyState;$/;"	m	class:Pedestrian
+dw	src/main.cpp	/^	double dw,dh;$/;"	m	class:MyVector	file:
+eff_	src/problems/rocksample/rocksample.h	/^  vector<vector<double>> eff_; \/\/ Precomputed efficiency for each pair of cells$/;"	m	class:Model
+empty_vector_ptr_	src/problems/pocman/pocman.h	/^  shared_ptr<vector<int>> empty_vector_ptr_;$/;"	m	class:Model
+err	src/optionparser.h	/^  bool err; \/\/!< @internal @brief see error()$/;"	m	class:option::Parser
+error	src/optionparser.h	/^  bool error()$/;"	f	class:option::Parser
+eta	src/globals.h	/^  double eta;$/;"	m	struct:Globals::Config
+fd	src/optionparser.h	/^    int fd;$/;"	m	struct:option::PrintUsageImplementation::SyscallWriter
+finished	src/optionparser.h	/^  bool finished(int numargs, const char** args)$/;"	f	class:option::Parser::StoreOptionAction
+finished	src/optionparser.h	/^  virtual bool finished(int numargs, const char** args)$/;"	f	struct:option::Parser::Action
+first	src/optionparser.h	/^  Option* first()$/;"	f	class:option::Option
+first_step_reward	src/qnode.h	/^  double first_step_reward() const { return first_step_reward_; }$/;"	f	class:QNode
+first_step_reward_	src/qnode.h	/^  double first_step_reward_;$/;"	m	class:QNode
+floor_map_	src/problems/lasertag/lasertag.h	/^  vector<vector<int>> floor_map_;$/;"	m	class:Model
+floor_map_	src/problems/rocksample/rocksample.h	/^  vector<vector<int>> floor_map_; \/\/ Mapping from (row, col) to cell number$/;"	m	class:Model
+floor_map_	src/problems/tag/tag.h	/^  vector<vector<int>> floor_map_;$/;"	m	class:Model
+flush	src/optionparser.h	/^    void flush(IStringWriter& write)$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+food_	src/problems/pocman/pocman.h	/^  std::vector<int> food_; \/\/ -1 if eaten, 0 if not present, 1 if present$/;"	m	class:PocmanState
+food_prob_	src/problems/pocman/pocman.h	/^  double food_prob_, chase_prob_, defensive_slip_;$/;"	m	class:Model
+freelist_	src/memorypool.h	/^  std::vector<T*> freelist_;$/;"	m	class:MemoryPool
+fringeLowerBound	old-pedestrian/pedestrian.cpp	/^double Pedestrian::fringeLowerBound(vector<Particle>& particles) {$/;"	f	class:Pedestrian
+fringeLowerBound	pedestrian/pedestrian.cpp	/^double Pedestrian::fringeLowerBound(vector<Particle>& particles) {$/;"	f	class:Pedestrian
+fringeLowerBound	pedestrian/pedestrian_dynamic_latest2.cpp	/^double Pedestrian::fringeLowerBound(vector<Particle>& particles) {$/;"	f	class:Pedestrian
+fringeUpperBound	old-pedestrian/pedestrian.cpp	/^double Pedestrian::fringeUpperBound(State s)  {$/;"	f	class:Pedestrian
+fringeUpperBound	pedestrian/pedestrian.cpp	/^double Pedestrian::fringeUpperBound(State s)  {$/;"	f	class:Pedestrian
+fringeUpperBound	pedestrian/pedestrian_dynamic_latest2.cpp	/^double Pedestrian::fringeUpperBound(State s)  {$/;"	f	class:Pedestrian
+full_map	src/main.cpp	/^int full_map[3000][3000];$/;"	v
+fwrite	src/optionparser.h	/^    Function* fwrite;$/;"	m	struct:option::PrintUsageImplementation::StreamWriter
+getStartState	old-pedestrian/pedestrian.cpp	/^State Pedestrian::getStartState() {$/;"	f	class:Pedestrian
+getStartState	pedestrian/pedestrian.cpp	/^State Pedestrian::getStartState() {$/;"	f	class:Pedestrian
+getStartState	pedestrian/pedestrian_dynamic_latest2.cpp	/^State Pedestrian::getStartState() {$/;"	f	class:Pedestrian
+ghost_dir_	src/problems/pocman/pocman.h	/^  std::vector<int> ghost_dir_;$/;"	m	class:PocmanState
+ghost_home_	src/problems/pocman/pocman.h	/^  Coord pocman_home_, ghost_home_;$/;"	m	class:Model
+ghost_pos_	src/problems/pocman/pocman.h	/^  std::vector<Coord> ghost_pos_;$/;"	m	class:PocmanState
+ghost_range_	src/problems/pocman/pocman.h	/^  int num_ghosts_, passage_y_, ghost_range_, smell_range_, hear_range_;$/;"	m	class:Model
+global_plan	src/main.cpp	/^int global_plan[10000][2];   \/\/maximum 10000 points$/;"	v
+goal	src/main.cpp	/^	int w,h,goal;$/;"	m	class:Pedestrian	file:
+goal_pos	src/main.cpp	/^int goal_pos[N_GOAL][2];$/;"	v
+grid_	src/problems/pocman/grid.h	/^  std::vector<T> grid_;$/;"	m	class:Grid
+h	src/main.cpp	/^	int w,h,goal;$/;"	m	class:Pedestrian	file:
+h0	src/main.cpp	/^int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	v
+h1	src/main.cpp	/^int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	v
+h2	src/main.cpp	/^int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	v
+h3	src/main.cpp	/^int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	v
+half_eff_distance_	src/problems/rocksample/rocksample.h	/^  double half_eff_distance_;$/;"	m	class:Model
+hash	src/history.h	/^	struct hash<History> {$/;"	s	namespace:std
+hash	src/problems/bridge/bridge.h	/^  struct hash<BridgeState> {$/;"	s	namespace:std
+hash	src/problems/chain/chain.h	/^  struct hash<ChainState> {$/;"	s	namespace:std
+hash	src/problems/lasertag/lasertag.h	/^  struct hash<LaserTagState> {$/;"	s	namespace:std
+hash	src/problems/rocksample/rocksample.h	/^  struct hash<RockSampleState> {$/;"	s	namespace:std
+hash	src/problems/tag/tag.h	/^  struct hash<TagState> {$/;"	s	namespace:std
+hash	src/problems/tiger/tiger.h	/^  struct hash<TigerState> {$/;"	s	namespace:std
+hash	src/util.h	/^	struct hash<pair<S, T>> {$/;"	s	namespace:std
+hash	src/util.h	/^	struct hash<vector<T>> {$/;"	s	namespace:std
+hash_combine	src/util.h	/^	inline void hash_combine(size_t& seed, const T& v) {$/;"	f	namespace:std
+head	src/optionparser.h	/^    int head; \/\/!< @brief index for next write$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+hear_range_	src/problems/pocman/pocman.h	/^  int num_ghosts_, passage_y_, ghost_range_, smell_range_, hear_range_;$/;"	m	class:Model
+height	src/main.cpp	/^int height;$/;"	v
+help	src/optionparser.h	/^  const char* help;$/;"	m	struct:option::Descriptor
+history_	src/solver.h	/^	History history_; \/\/ Updated after each belief update and during search$/;"	m	class:Solver
+history_list	old-pedestrian/pedestrian_dynamic.h	/^	std::vector<HISTORY> history_list;$/;"	m	class:PEDESTRIAN_DYNAMIC
+history_list	old-pedestrian/pedestrian_dynamic.h	/^	std::vector<HISTORY> history_list;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+history_list	pedestrian/pedestrian_dynamic.h	/^	std::vector<HISTORY> history_list;$/;"	m	class:PEDESTRIAN_DYNAMIC
+history_list	pedestrian/pedestrian_dynamic.h	/^	std::vector<HISTORY> history_list;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+hit_target_line	src/optionparser.h	/^    bool hit_target_line; \/\/!< Flag whether we encountered a part with line index target_line_in_block in the current cell.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+id	src/main.cpp	/^	int id;   \/\/each pedestrian has a unique identity$/;"	m	class:Pedestrian	file:
+id	src/particle.h	/^  int id;$/;"	m	class:Particle
+id_	src/problems/bridge/bridge.h	/^  int id_;$/;"	m	class:BridgeState
+id_	src/problems/lasertag/lasertag.h	/^  int id_;$/;"	m	class:LaserTagState
+id_	src/problems/rocksample/rocksample.h	/^  int id_;$/;"	m	class:RockSampleState
+id_	src/problems/tag/tag.h	/^  int id_;$/;"	m	class:TagState
+id_	src/problems/tiger/tiger.h	/^  int id_;$/;"	m	class:TigerState
+in_tree	src/vnode.h	/^  bool in_tree() const { return in_tree_; }$/;"	f	class:VNode
+in_tree_	src/vnode.h	/^  bool in_tree_;         \/\/ True if the node is visited by Solver::trial().$/;"	m	class:VNode
+indent	src/optionparser.h	/^  static void indent(IStringWriter& write, int& x, int want_x)$/;"	f	struct:option::PrintUsageImplementation
+index	src/optionparser.h	/^  const unsigned index;$/;"	m	struct:option::Descriptor
+index	src/optionparser.h	/^  int index() const$/;"	f	class:option::Option
+init	src/optionparser.h	/^  void init(const Descriptor* desc_, const char* name_, const char* arg_)$/;"	f	class:option::Option
+initBelief	old-pedestrian/pedestrian.cpp	/^UMAP<State, double> Pedestrian::initBelief() {$/;"	f	class:Pedestrian
+initBelief	pedestrian/pedestrian.cpp	/^UMAP<State, double> Pedestrian::initBelief() {$/;"	f	class:Pedestrian
+initBelief	pedestrian/pedestrian_dynamic_latest2.cpp	/^UMAP<State, double> Pedestrian::initBelief() {$/;"	f	class:Pedestrian
+init_belief_update_seed_	src/belief_update/belief_update.h	/^  const unsigned init_belief_update_seed_;$/;"	m	class:BeliefUpdate
+init_h	src/main.cpp	/^double init_w,init_h,init_o;$/;"	v
+init_o	src/main.cpp	/^double init_w,init_h,init_o;$/;"	v
+init_w	src/main.cpp	/^double init_w,init_h,init_o;$/;"	v
+initial_belief_	src/solver.h	/^  vector<pair<T, double>> initial_belief_;$/;"	m	class:Solver
+initial_seed_	src/world.h	/^  const unsigned initial_seed_;$/;"	m	class:World
+initial_state_	src/world.h	/^  const T initial_state_;$/;"	m	class:World
+instr	src/optionparser.h	/^  static bool instr(char ch, const char* st)$/;"	f	class:option::Parser
+isFirst	src/optionparser.h	/^  bool isFirst() const$/;"	f	class:option::Option
+isLast	src/optionparser.h	/^  bool isLast() const$/;"	f	class:option::Option
+isTagged	src/optionparser.h	/^  static bool isTagged(Option* ptr)$/;"	f	class:option::Option
+isTerminal	old-pedestrian/pedestrian.h	/^		bool isTerminal(State s) const {$/;"	f	class:Pedestrian
+isTerminal	pedestrian/pedestrian.h	/^		bool isTerminal(State s) const {$/;"	f	class:Pedestrian
+isTerminal	pedestrian/pedestrian_dynamic_latest2.h	/^		bool isTerminal(State s) const {$/;"	f	class:Pedestrian
+isWideChar	src/optionparser.h	/^  static bool isWideChar(unsigned ch)$/;"	f	struct:option::PrintUsageImplementation
+kBad	src/problems/rocksample/rocksample.h	/^    kBad, \/\/ Must always be 0 for implicit conversion from RockStatus()$/;"	e	enum:Model::__anon8
+kGood	src/problems/rocksample/rocksample.h	/^    kGood, \/\/ Must always be 1 for implicit conversion from RockStatus()$/;"	e	enum:Model::__anon8
+kNone	src/problems/rocksample/rocksample.h	/^    kNone,$/;"	e	enum:Model::__anon8
+kTerminal	src/problems/rocksample/rocksample.h	/^    kTerminal$/;"	e	enum:Model::__anon8
+k_	src/gamma.h	/^	double k_;$/;"	m	class:Gamma
+knowledge_	src/lower_bound/lower_bound_policy_random.h	/^  int knowledge_;$/;"	m	class:RandomPolicyLowerBound
+laser_dist_	src/problems/lasertag/lasertag.h	/^  vector<vector<double>> laser_dist_;$/;"	m	class:Model
+last	src/optionparser.h	/^  Option* last()$/;"	f	class:option::Option
+lb_	src/solver.h	/^  ILowerBound<T>& lb_;$/;"	m	class:Solver
+lb_global	src/main.cpp	/^ILowerBound<PedestrianState>* lb_global;$/;"	v
+lbound	src/vnode.h	/^  double lbound() const { return lbound_; }$/;"	f	class:VNode
+lbound_	src/vnode.h	/^  double lbound_;$/;"	m	class:VNode
+len	src/optionparser.h	/^    int len; \/\/!< Length of the current part (that ptr points at) in BYTES$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+lenbuf	src/optionparser.h	/^    int lenbuf[bufmask + 1];$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+length	src/optionparser.h	/^    int length()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+less	src/history.h	/^	struct less<History> {$/;"	s	namespace:std
+line	src/optionparser.h	/^    int line()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+line_in_block	src/optionparser.h	/^    int line_in_block; \/\/!< Line index within the current cell of the current part.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+loadQMDP	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::loadQMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC
+loadQMDP	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::loadQMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+loadQMDP	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::loadQMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+loadQMDP	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::loadQMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC
+loadQMDP	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::loadQMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+longopt	src/optionparser.h	/^  const char* const longopt;$/;"	m	struct:option::Descriptor
+lookup	src/problems/pedestrian/pedestrian.h	/^		int lookup(const double probs[], double prob) const {$/;"	f	class:Model
+lookup	src/problems/pedestrian/pedestrian/pedestrian.h	/^		int lookup(const double probs[], double prob) const {$/;"	f	class:Model
+main	src/main.cpp	/^int main(int argc, char* argv[]) {$/;"	f
+main	test.cpp	/^int main() {$/;"	f
+man_position_	src/problems/bridge/bridge.h	/^  int man_position_;$/;"	m	class:Model
+map	old-pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC::map[4][10];$/;"	m	class:PEDESTRIAN_DYNAMIC	file:
+map	old-pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::map[4][10];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL	file:
+map	old-pedestrian/pedestrian_dynamic.h	/^	static int map[4][10];$/;"	m	class:PEDESTRIAN_DYNAMIC
+map	old-pedestrian/pedestrian_dynamic.h	/^	static int map[4][10];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+map	pedestrian/pedestrain_dynamic_latest.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::map[4][10];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL	file:
+map	pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC::map[4][10];$/;"	m	class:PEDESTRIAN_DYNAMIC	file:
+map	pedestrian/pedestrian_dynamic.cpp	/^int PEDESTRIAN_DYNAMIC_REAL::map[4][10];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL	file:
+map	pedestrian/pedestrian_dynamic.h	/^	static int map[4][10];$/;"	m	class:PEDESTRIAN_DYNAMIC
+map	pedestrian/pedestrian_dynamic.h	/^	static int map[4][10];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+map	src/problems/pedestrian/pedestrian.h	/^		int** map;$/;"	m	class:Model
+map	src/problems/pedestrian/pedestrian/pedestrian.h	/^		int** map;$/;"	m	class:Model
+max_line_in_block	src/optionparser.h	/^    int max_line_in_block; \/\/!< Greatest index of a line within the block. This is the number of \\\\v within the cell with the most \\\\vs.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+maze_	src/problems/pocman/pocman.h	/^  Grid<int> maze_;$/;"	m	class:Model
+mdp_parameters_	src/problems/chain/chain.h	/^  vector<vector<vector<double> > > mdp_parameters_; \/\/mdp_parameters_[current_state][action][next_state]$/;"	m	class:ChainState
+mdp_state_	src/problems/chain/chain.h	/^  int mdp_state_;$/;"	m	class:ChainState
+memory_pool_	src/problems/bridge/bridge.h	/^  mutable MemoryPool<Particle<BridgeState>> memory_pool_;$/;"	m	class:Model
+memory_pool_	src/problems/chain/chain.h	/^  mutable MemoryPool<Particle<ChainState>> memory_pool_;$/;"	m	class:Model
+memory_pool_	src/problems/lasertag/lasertag.h	/^  mutable MemoryPool<Particle<LaserTagState>> memory_pool_;$/;"	m	class:Model
+memory_pool_	src/problems/pedestrian/pedestrian.h	/^		mutable MemoryPool<Particle<PedestrianState>> memory_pool_;$/;"	m	class:Model
+memory_pool_	src/problems/pedestrian/pedestrian/pedestrian.h	/^		mutable MemoryPool<Particle<PedestrianState>> memory_pool_;$/;"	m	class:Model
+memory_pool_	src/problems/pocman/pocman.h	/^  mutable MemoryPool<Particle<PocmanState>> memory_pool_;$/;"	m	class:Model
+memory_pool_	src/problems/rocksample/rocksample.h	/^  mutable MemoryPool<Particle<RockSampleState>> memory_pool_;$/;"	m	class:Model
+memory_pool_	src/problems/tag/tag.h	/^  mutable MemoryPool<Particle<TagState>> memory_pool_;$/;"	m	class:Model
+memory_pool_	src/problems/tiger/tiger.h	/^  mutable MemoryPool<Particle<TigerState>> memory_pool_;$/;"	m	class:Model
+model	src/main.cpp	/^double model[XSIZE][YSIZE][N_GOAL][XSIZE][YSIZE];   \/\/x,y,goal,next_x,next_y$/;"	v
+model	src/problems/pedestrian/pedestrian.h	/^	double model[10][20][6][10][20];  $/;"	m	class:Model
+model_	src/belief_update/belief_update.h	/^  const Model<T>& model_;$/;"	m	class:BeliefUpdate
+model_	src/solver.h	/^  const Model<T>& model_;$/;"	m	class:Solver
+model_	src/vnode.h	/^  static const Model<T>* model_;$/;"	m	class:VNode
+model_	src/vnode.h	/^template<typename T> const Model<T>* VNode<T>::model_;$/;"	m	class:VNode
+model_	src/world.h	/^  const Model<T>& model_;$/;"	m	class:World
+moveghost_random_table_	src/problems/pocman/pocman.h	/^  vector<vector<vector<vector<pair<int, Coord>>>>> moveghost_random_table_;$/;"	m	class:Model
+n_cells_	src/problems/lasertag/lasertag.h	/^  int n_cells_;$/;"	m	class:Model
+n_cells_	src/problems/rocksample/rocksample.h	/^  int n_cells_; \/\/ # of cells excluding terminal cell$/;"	m	class:Model
+n_cells_	src/problems/tag/tag.h	/^  int n_cells_;$/;"	m	class:Model
+n_cols_	src/problems/rocksample/rocksample.h	/^  int n_cols_;$/;"	m	class:Model
+n_particles	src/globals.h	/^  int n_particles;$/;"	m	struct:Globals::Config
+n_rows_	src/problems/rocksample/rocksample.h	/^  int n_rows_;$/;"	m	class:Model
+n_states_	src/problems/lasertag/lasertag.h	/^  int n_states_;$/;"	m	class:Model
+n_states_	src/problems/rocksample/rocksample.h	/^  int n_states_; \/\/ # of states excluding terminal state$/;"	m	class:Model
+n_states_	src/problems/tag/tag.h	/^  int n_states_;$/;"	m	class:Model
+n_steps_	src/world.h	/^  int n_steps_;$/;"	m	class:World
+n_tree_nodes	src/vnode.h	/^  int n_tree_nodes() const { return n_tree_nodes_; }$/;"	f	class:VNode
+n_tree_nodes_	src/vnode.h	/^  int n_tree_nodes_;     \/\/ Number of nodes with in_tree_ = true in the subtree$/;"	m	class:VNode
+name	src/optionparser.h	/^  const char* name;$/;"	m	class:option::Option
+namelen	src/optionparser.h	/^  int namelen;$/;"	m	class:option::Option
+next	old-pedestrian/Bernoulli.h	/^	double next() {$/;"	f	class:Uniform
+next	pedestrian/Bernoulli.h	/^	double next() {$/;"	f	class:Uniform
+next	src/dirichlet.h	/^  static vector<double> next(vector<double> alpha) {$/;"	f	class:Dirichlet
+next	src/dirichlet.h	/^  vector<double> next(){$/;"	f	class:Dirichlet
+next	src/gamma.h	/^	double next() {$/;"	f	class:Gamma
+next	src/gamma.h	/^	static double next(double k, double theta) {$/;"	f	class:Gamma
+next	src/optionparser.h	/^    bool next()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+next	src/optionparser.h	/^  Option* next()$/;"	f	class:option::Option
+next	src/problems/pedestrian/pedestrian/uniform.h	/^	double next() {$/;"	f	class:Uniform
+next	src/problems/pedestrian/uniform.h	/^	double next() {$/;"	f	class:Uniform
+nextInt	src/problems/pedestrian/pedestrian/uniform.h	/^	double nextInt(int n) {$/;"	f	class:Uniform
+nextInt	src/problems/pedestrian/uniform.h	/^	int nextInt(int n) {$/;"	f	class:Uniform
+nextRow	src/optionparser.h	/^    bool nextRow()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+nextTable	src/optionparser.h	/^    bool nextTable()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+next_	src/optionparser.h	/^  Option* next_;$/;"	m	class:option::Option
+next_grid	src/main.cpp	/^int next_grid[9][2]={$/;"	v
+nextpos_table_	src/problems/pocman/pocman.h	/^  vector<vector<vector<Coord>>> nextpos_table_;$/;"	m	class:Model
+nextwrap	src/optionparser.h	/^  Option* nextwrap()$/;"	f	class:option::Option
+node_count	src/vnode.h	/^  static int node_count() { return node_count_; }$/;"	f	class:VNode
+node_count_	src/vnode.h	/^  static int node_count_;      \/\/ Total number of nodes created$/;"	m	class:VNode
+node_count_	src/vnode.h	/^template<typename T> int VNode<T>::node_count_;$/;"	m	class:VNode
+noise_sigma_	src/problems/lasertag/lasertag.h	/^  double noise_sigma_;$/;"	m	class:Model
+nonOption	src/optionparser.h	/^  const char* nonOption(int i)$/;"	f	class:option::Parser
+nonOptions	src/optionparser.h	/^  const char** nonOptions()$/;"	f	class:option::Parser
+nonOptionsCount	src/optionparser.h	/^  int nonOptionsCount()$/;"	f	class:option::Parser
+nonop_args	src/optionparser.h	/^  const char** nonop_args; \/\/!< @internal @brief see nonOptions()$/;"	m	class:option::Parser
+nonop_count	src/optionparser.h	/^  int nonop_count; \/\/!< @internal @brief see nonOptionsCount()$/;"	m	class:option::Parser
+numActions	old-pedestrian/pedestrian.h	/^		int numActions() const { return 3; }$/;"	f	class:Pedestrian
+numActions	pedestrian/pedestrian.h	/^		int numActions() const { return 3; }$/;"	f	class:Pedestrian
+numActions	pedestrian/pedestrian_dynamic_latest2.h	/^		int numActions() const { return 3; }$/;"	f	class:Pedestrian
+numStates	old-pedestrian/pedestrian.cpp	/^int Pedestrian::numStates() const$/;"	f	class:Pedestrian
+numStates	pedestrian/pedestrian.cpp	/^int Pedestrian::numStates() const$/;"	f	class:Pedestrian
+numStates	pedestrian/pedestrian_dynamic_latest2.cpp	/^int Pedestrian::numStates() const$/;"	f	class:Pedestrian
+num_allocated_	src/memorypool.h	/^  int num_allocated_;$/;"	m	class:MemoryPool
+num_food_	src/problems/pocman/pocman.h	/^  int num_food_;$/;"	m	class:PocmanState
+num_ghosts_	src/problems/pocman/pocman.h	/^  int num_ghosts_, passage_y_, ghost_range_, smell_range_, hear_range_;$/;"	m	class:Model
+num_mdp_actions_	src/problems/chain/chain.h	/^	int num_mdp_actions_;$/;"	m	class:ChainBelief
+num_mdp_actions_	src/problems/chain/chain.h	/^	int num_mdp_actions_;$/;"	m	class:ChainState
+num_mdp_states_	src/problems/chain/chain.h	/^	int num_mdp_states_;$/;"	m	class:ChainBelief
+num_mdp_states_	src/problems/chain/chain.h	/^	int num_mdp_states_;$/;"	m	class:ChainState
+num_particles	src/problems/chain/chain.h	/^	int num_particles; \/\/ how many points or models we are sampling from the dirichlet distribution$/;"	m	class:Model
+num_updates_	src/belief_update/belief_update.h	/^  int num_updates_;$/;"	m	class:BeliefUpdate
+number	src/globals.h	/^	int number;$/;"	m	struct:Globals::Config
+obsProb	old-pedestrian/pedestrian.cpp	/^double Pedestrian::obsProb(uint64_t obs, State s, int action) {$/;"	f	class:Pedestrian
+obsProb	pedestrian/pedestrian.cpp	/^double Pedestrian::obsProb(uint64_t obs, State s, int action) {$/;"	f	class:Pedestrian
+obsProb	pedestrian/pedestrian_dynamic_latest2.cpp	/^double Pedestrian::obsProb(uint64_t obs, State s, int action) {$/;"	f	class:Pedestrian
+obs_map	src/main.cpp	/^int obs_map[XSIZE][YSIZE];    \/\/height,width$/;"	v
+obs_to_node_	src/qnode.h	/^  MAP<uint64_t, unique_ptr<VNode<T>>> obs_to_node_; \/\/ Mapping from obs to$/;"	m	class:QNode
+observations_	src/history.h	/^  vector<uint64_t> observations_;$/;"	m	class:History
+op_count	src/optionparser.h	/^  int op_count; \/\/!< @internal @brief see optionsCount()$/;"	m	class:option::Parser
+operator !=	src/problems/pocman/coord.h	/^  bool operator!=(Coord rhs) const {$/;"	f	struct:Coord
+operator ()	src/history.h	/^		bool operator()(const History& h1, const History& h2) const {$/;"	f	struct:std::less
+operator ()	src/history.h	/^		size_t operator()(const History& h) const {$/;"	f	struct:std::hash
+operator ()	src/optionparser.h	/^    virtual void operator()(const char* str, int size)$/;"	f	struct:option::PrintUsageImplementation::FunctionWriter
+operator ()	src/optionparser.h	/^    virtual void operator()(const char* str, int size)$/;"	f	struct:option::PrintUsageImplementation::OStreamWriter
+operator ()	src/optionparser.h	/^    virtual void operator()(const char* str, int size)$/;"	f	struct:option::PrintUsageImplementation::StreamWriter
+operator ()	src/optionparser.h	/^    virtual void operator()(const char* str, int size)$/;"	f	struct:option::PrintUsageImplementation::SyscallWriter
+operator ()	src/optionparser.h	/^    virtual void operator()(const char* str, int size)$/;"	f	struct:option::PrintUsageImplementation::TemporaryWriter
+operator ()	src/optionparser.h	/^    virtual void operator()(const char*, int)$/;"	f	struct:option::PrintUsageImplementation::IStringWriter
+operator ()	src/problems/bridge/bridge.h	/^    inline size_t operator()(const BridgeState& s) const {$/;"	f	struct:std::hash
+operator ()	src/problems/chain/chain.h	/^    inline size_t operator()(const ChainState& s) const {$/;"	f	struct:std::hash
+operator ()	src/problems/lasertag/lasertag.h	/^    inline size_t operator()(const LaserTagState& s) const {$/;"	f	struct:std::hash
+operator ()	src/problems/pocman/grid.h	/^  T& operator()(const Coord& coord) {$/;"	f	class:Grid
+operator ()	src/problems/pocman/grid.h	/^  T& operator()(int index) {$/;"	f	class:Grid
+operator ()	src/problems/pocman/grid.h	/^  T& operator()(int x, int y) {$/;"	f	class:Grid
+operator ()	src/problems/pocman/grid.h	/^  const T& operator()(const Coord& coord) const {$/;"	f	class:Grid
+operator ()	src/problems/pocman/grid.h	/^  const T& operator()(int index) const {$/;"	f	class:Grid
+operator ()	src/problems/pocman/grid.h	/^  const T& operator()(int x, int y) const {$/;"	f	class:Grid
+operator ()	src/problems/rocksample/rocksample.h	/^    inline size_t operator()(const RockSampleState& s) const {$/;"	f	struct:std::hash
+operator ()	src/problems/tag/tag.h	/^    inline size_t operator()(const TagState& s) const {$/;"	f	struct:std::hash
+operator ()	src/problems/tiger/tiger.h	/^    inline size_t operator()(const TigerState& s) const {$/;"	f	struct:std::hash
+operator ()	src/util.h	/^		inline size_t operator()(const pair<S, T>& v) const {$/;"	f	struct:std::hash
+operator ()	src/util.h	/^		inline size_t operator()(const vector<T>& v) const {$/;"	f	struct:std::hash
+operator *	src/problems/pocman/coord.h	/^  Coord operator*(int mul) const$/;"	f	struct:Coord
+operator +	src/main.cpp	/^	MyVector  operator + (MyVector  vec)$/;"	f	class:MyVector
+operator +	src/problems/pocman/coord.h	/^  Coord operator+(Coord rhs) const {$/;"	f	struct:Coord
+operator +=	src/problems/pocman/coord.h	/^  void operator+=(Coord offset) {$/;"	f	struct:Coord
+operator <	src/problems/pocman/coord.h	/^  bool operator<(const Coord& other) const {$/;"	f	struct:Coord
+operator <<	src/problems/pocman/coord.h	/^inline std::ostream& operator<<(std::ostream& ostr, Coord& coord) {$/;"	f
+operator =	src/optionparser.h	/^  void operator=(const Option& orig)$/;"	f	class:option::Option
+operator =	src/particle.h	/^  Particle& operator=(const Particle& particle) {$/;"	f	class:Particle
+operator ==	src/problems/pocman/coord.h	/^  bool operator==(Coord rhs) const {$/;"	f	struct:Coord
+operator Option*	src/optionparser.h	/^  operator Option*()$/;"	f	class:option::Option
+operator const Option*	src/optionparser.h	/^  operator const Option*() const$/;"	f	class:option::Option
+operator int	src/problems/bridge/bridge.h	/^  operator int() const { return id_; }$/;"	f	class:BridgeState
+operator int	src/problems/chain/chain.h	/^ operator int() const { return mdp_state_; }$/;"	f	class:ChainState
+operator int	src/problems/lasertag/lasertag.h	/^  operator int() const { return id_; }$/;"	f	class:LaserTagState
+operator int	src/problems/pedestrian/pedestrian.h	/^		operator int() const {$/;"	f	class:PedestrianState
+operator int	src/problems/pedestrian/pedestrian/pedestrian.h	/^		operator int() const {$/;"	f	class:PedestrianState
+operator int	src/problems/rocksample/rocksample.h	/^  operator int() const { return id_; }$/;"	f	class:RockSampleState
+operator int	src/problems/tag/tag.h	/^  operator int() const { return id_; }$/;"	f	class:TagState
+operator int	src/problems/tiger/tiger.h	/^  operator int() const { return id_; }$/;"	f	class:TigerState
+opp_start_cell_	src/problems/lasertag/lasertag.h	/^  int opp_start_cell_;$/;"	m	class:Model
+opp_start_cell_	src/problems/tag/tag.h	/^  int opp_start_cell_;$/;"	m	class:Model
+option	src/optionparser.h	/^namespace option$/;"	n
+optionIndex	src/main.cpp	/^enum optionIndex { $/;"	g	file:
+options	src/optionparser.h	/^  Option* options;$/;"	m	class:option::Parser::StoreOptionAction
+optionsCount	src/optionparser.h	/^  int optionsCount()$/;"	f	class:option::Parser
+options_global	src/main.cpp	/^option::Option* options_global;$/;"	v
+options_max	src/optionparser.h	/^  unsigned options_max;$/;"	m	struct:option::Stats
+ostream	src/optionparser.h	/^    OStream& ostream;$/;"	m	struct:option::PrintUsageImplementation::OStreamWriter
+output	src/optionparser.h	/^    void output(IStringWriter& write, const char* data, int len)$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+parse	src/optionparser.h	/^  void parse(bool gnu, const Descriptor usage[], int argc, char** argv, Option options[], Option buffer[],$/;"	f	class:option::Parser
+parse	src/optionparser.h	/^  void parse(const Descriptor usage[], int argc, char** argv, Option options[], Option buffer[], int min_abbr_len = 0,$/;"	f	class:option::Parser
+parse	src/optionparser.h	/^  void parse(const Descriptor usage[], int argc, const char** argv, Option options[], Option buffer[],$/;"	f	class:option::Parser
+parse	src/optionparser.h	/^inline void Parser::parse(bool gnu, const Descriptor usage[], int argc, const char** argv, Option options[],$/;"	f	class:option::Parser
+parser	src/optionparser.h	/^  Parser& parser;$/;"	m	class:option::Parser::StoreOptionAction
+particles	src/vnode.h	/^  const vector<Particle<T>*>& particles() { return particles_; }$/;"	f	class:VNode
+particles_	src/vnode.h	/^  vector<Particle<T>*> particles_;$/;"	m	class:VNode
+passage_y_	src/problems/pocman/pocman.h	/^  int num_ghosts_, passage_y_, ghost_range_, smell_range_, hear_range_;$/;"	m	class:Model
+pathLength	src/main.cpp	/^int pathLength;$/;"	v
+path_rln	src/main.cpp	/^double path_rln=40;$/;"	v
+pedInView_list	src/main.cpp	/^vector<int> pedInView_list;$/;"	v
+ped_list	src/main.cpp	/^vector<Pedestrian> ped_list;$/;"	v
+perform	src/optionparser.h	/^  bool perform(Option& option)$/;"	f	class:option::Parser::StoreOptionAction
+perform	src/optionparser.h	/^  bool perform(Option&)$/;"	f	class:option::Stats::CountOptionsAction
+perform	src/optionparser.h	/^  virtual bool perform(Option&)$/;"	f	struct:option::Parser::Action
+pi	src/main.cpp	/^const double pi=3.1415926;$/;"	v
+pii	src/globals.h	/^typedef std::pair<int, int> pii;$/;"	t
+pocman_home_	src/problems/pocman/pocman.h	/^  Coord pocman_home_, ghost_home_;$/;"	m	class:Model
+pocman_pos_	src/problems/pocman/pocman.h	/^  Coord pocman_pos_;$/;"	m	class:PocmanState
+power_num_steps_	src/problems/pocman/pocman.h	/^  int power_num_steps_;$/;"	m	class:Model
+power_steps_	src/problems/pocman/pocman.h	/^  int power_steps_;$/;"	m	class:PocmanState
+preferred_normal_table_	src/problems/pocman/pocman.h	/^  vector<vector<vector<shared_ptr<vector<int>>>>> preferred_normal_table_;$/;"	m	class:Model
+preferred_powerpill_table_	src/problems/pocman/pocman.h	/^  vector<shared_ptr<vector<int>>> preferred_powerpill_table_;$/;"	m	class:Model
+prev	src/optionparser.h	/^  Option* prev()$/;"	f	class:option::Option
+prev_	src/optionparser.h	/^  Option* prev_;$/;"	m	class:option::Option
+prevwrap	src/optionparser.h	/^  Option* prevwrap()$/;"	f	class:option::Option
+pri_table	src/main.cpp	/^int pri_table[8][9][3];$/;"	v
+printError	src/optionparser.h	/^  static void printError(const char* msg1, const option::Option& opt, const char* msg2)$/;"	f	struct:option::Arg
+printState	old-pedestrian/pedestrian.cpp	/^void Pedestrian::printState(State state)$/;"	f	class:Pedestrian
+printState	pedestrian/pedestrian.cpp	/^void Pedestrian::printState(State state)$/;"	f	class:Pedestrian
+printState	pedestrian/pedestrian_dynamic_latest2.cpp	/^void Pedestrian::printState(State state)$/;"	f	class:Pedestrian
+printUsage	src/optionparser.h	/^  static void printUsage(IStringWriter& write, const Descriptor usage[], int width = 80, \/\/$/;"	f	struct:option::PrintUsageImplementation
+printUsage	src/optionparser.h	/^void printUsage(Function* prn, Stream* stream, const Descriptor usage[], int width = 80, int last_column_min_percent =$/;"	f	namespace:option
+printUsage	src/optionparser.h	/^void printUsage(Function* prn, const Descriptor usage[], int width = 80, int last_column_min_percent = 50,$/;"	f	namespace:option
+printUsage	src/optionparser.h	/^void printUsage(OStream& prn, const Descriptor usage[], int width = 80, int last_column_min_percent = 50,$/;"	f	namespace:option
+printUsage	src/optionparser.h	/^void printUsage(Syscall* prn, int fd, const Descriptor usage[], int width = 80, int last_column_min_percent = 50,$/;"	f	namespace:option
+printUsage	src/optionparser.h	/^void printUsage(const Temporary& prn, const Descriptor usage[], int width = 80, int last_column_min_percent = 50,$/;"	f	namespace:option
+process	src/optionparser.h	/^    void process(IStringWriter& write, const char* data, int len)$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+pruned_action	src/vnode.h	/^  int pruned_action() const { return pruned_action_; }$/;"	f	class:VNode
+pruned_action_	src/vnode.h	/^  int pruned_action_;    \/\/ Best action at the node after pruning$/;"	m	class:VNode
+pruning_constant	src/globals.h	/^  double pruning_constant;$/;"	m	struct:Globals::Config
+ptr	src/optionparser.h	/^    const char* ptr; \/\/!< Ptr to current part within the current row.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+qValue	old-pedestrian/pedestrian.h	/^    double qValue[20000][3];$/;"	m	class:Pedestrian
+qValue	old-pedestrian/pedestrian_dynamic.h	/^    double qValue[20000][3];$/;"	m	class:PEDESTRIAN_DYNAMIC
+qValue	old-pedestrian/pedestrian_dynamic.h	/^    double qValue[20000][3];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+qValue	pedestrian/pedestrian.h	/^    double qValue[20000][3];$/;"	m	class:Pedestrian
+qValue	pedestrian/pedestrian_dynamic.h	/^    double qValue[20000][3];$/;"	m	class:PEDESTRIAN_DYNAMIC
+qValue	pedestrian/pedestrian_dynamic.h	/^    double qValue[20000][3];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+qValue	pedestrian/pedestrian_dynamic_latest2.h	/^    double qValue[20000][3];$/;"	m	class:Pedestrian
+qnodes_	src/vnode.h	/^  vector<QNode<T>> qnodes_; \/\/ Vector of children q-nodes$/;"	m	class:VNode
+random_streams	src/solver.h	/^  const RandomStreams& random_streams() const { return streams_; }$/;"	f	class:Solver
+reading_distributions_	src/problems/lasertag/lasertag.h	/^	vector<vector<vector<double>>> reading_distributions_; $/;"	m	class:Model
+relative_dir_table_	src/problems/pocman/pocman.h	/^  vector<vector<vector<vector<int>>>> relative_dir_table_;$/;"	m	class:Model
+restartRow	src/optionparser.h	/^    void restartRow()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+restartTable	src/optionparser.h	/^    void restartTable()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+reward_clear_level_	src/problems/pocman/pocman.h	/^  double reward_clear_level_, reward_default_, reward_die_;$/;"	m	class:Model
+reward_default_	src/problems/pocman/pocman.h	/^  double reward_clear_level_, reward_default_, reward_die_;$/;"	m	class:Model
+reward_die_	src/problems/pocman/pocman.h	/^  double reward_clear_level_, reward_default_, reward_die_;$/;"	m	class:Model
+reward_eat_food_	src/problems/pocman/pocman.h	/^  double reward_eat_food_, reward_eat_ghost_, reward_hit_wall_;$/;"	m	class:Model
+reward_eat_ghost_	src/problems/pocman/pocman.h	/^  double reward_eat_food_, reward_eat_ghost_, reward_hit_wall_;$/;"	m	class:Model
+reward_hit_wall_	src/problems/pocman/pocman.h	/^  double reward_eat_food_, reward_eat_ghost_, reward_hit_wall_;$/;"	m	class:Model
+rln	src/main.cpp	/^double rln=20;$/;"	v
+robPosGlobal	src/main.cpp	/^int robPosGlobal;$/;"	v
+rob_map	src/main.cpp	/^vector<pair<int,int> > rob_map;$/;"	v
+rob_map	src/problems/pedestrian/pedestrian.h	/^	std::vector<std::pair<int,int> > rob_map;$/;"	m	class:Model
+rob_out	src/main.cpp	/^ofstream rob_out;$/;"	v
+rob_start_cell_	src/problems/lasertag/lasertag.h	/^  int rob_start_cell_;$/;"	m	class:Model
+rob_start_cell_	src/problems/tag/tag.h	/^  int rob_start_cell_;$/;"	m	class:Model
+robotMoveProbs	src/problems/pedestrian/pedestrian.h	/^		double robotMoveProbs[3][3]; $/;"	m	class:Model
+robotMoveProbs	src/problems/pedestrian/pedestrian/pedestrian.h	/^		double robotMoveProbs[3][3]; $/;"	m	class:Model
+robotNoisyMove	src/problems/pedestrian/pedestrian.h	/^		double robotNoisyMove[3][3]; \/*vel,move*\/$/;"	m	class:Model
+robotNoisyMove	src/problems/pedestrian/pedestrian/pedestrian.h	/^		double robotNoisyMove[3][3]; \/*vel,move*\/$/;"	m	class:Model
+robotUpdateProb	src/problems/pedestrian/pedestrian.h	/^		double robotUpdateProb[3][3][3];$/;"	m	class:Model
+robotUpdateProb	src/problems/pedestrian/pedestrian/pedestrian.h	/^		double robotUpdateProb[3][3][3];$/;"	m	class:Model
+robotVelUpdate	src/problems/pedestrian/pedestrian.h	/^		double robotVelUpdate[3][3][3]; \/*action,vel,new vel*\/ $/;"	m	class:Model
+robotVelUpdate	src/problems/pedestrian/pedestrian/pedestrian.h	/^		double robotVelUpdate[3][3][3]; \/*action,vel,new vel*\/ $/;"	m	class:Model
+robot_start_cell_	src/problems/rocksample/rocksample.h	/^  int robot_start_cell_; \/\/ Starting cell of the agent$/;"	m	class:Model
+rock_at_cell_	src/problems/rocksample/rocksample.h	/^  vector<int> rock_at_cell_;$/;"	m	class:Model
+rock_set_start_	src/problems/rocksample/rocksample.h	/^  int rock_set_start_; \/\/ Starting rock configuration$/;"	m	class:Model
+rocks_	src/problems/rocksample/rocksample.h	/^  vector<int> rocks_; \/\/ Mapping from rock # -> cell number$/;"	m	class:Model
+root_	src/solver.h	/^  unique_ptr<VNode<T>> root_; \/\/ Root of the search tree$/;"	m	class:Solver
+root_seed	src/globals.h	/^  unsigned int root_seed;$/;"	m	struct:Globals::Config
+rowdesc	src/optionparser.h	/^    const Descriptor* rowdesc; \/\/!< The Descriptor that contains the current row.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+rowstart	src/optionparser.h	/^    const char* rowstart; \/\/!< Ptr to 1st character of current row within rowdesc->help.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+same_loc_obs_	src/problems/lasertag/lasertag.h	/^  static uint64_t same_loc_obs_;$/;"	m	class:Model
+same_loc_obs_	src/problems/lasertag/lasertag.h	/^uint64_t Model<LaserTagState>::same_loc_obs_;$/;"	m	class:Model
+screenLength	src/optionparser.h	/^    int screenLength()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+screenlen	src/optionparser.h	/^    int screenlen; \/\/!< Length of the current part in screen columns (taking narrow\/wide chars into account).$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+search_depth	src/globals.h	/^  int search_depth;$/;"	m	struct:Globals::Config
+seed	old-pedestrian/Bernoulli.h	/^	unsigned seed;$/;"	m	class:Uniform
+seed	pedestrian/Bernoulli.h	/^	unsigned seed;$/;"	m	class:Uniform
+seed	src/problems/pedestrian/pedestrian/uniform.h	/^	unsigned seed;$/;"	m	class:Uniform
+seed_	src/problems/pedestrian/uniform.h	/^	unsigned seed_;$/;"	m	class:Uniform
+seed_	src/world.h	/^  unsigned seed_;$/;"	m	class:World
+set_best_ub_action	src/vnode.h	/^  void set_best_ub_action(int val) { best_ub_action_ = val; }$/;"	f	class:VNode
+set_in_tree	src/vnode.h	/^  void set_in_tree(bool val) { in_tree_ = val; }$/;"	f	class:VNode
+set_lbound	src/vnode.h	/^  void set_lbound(double val) { lbound_ = val; }$/;"	f	class:VNode
+set_model	src/vnode.h	/^  static void set_model(const Model<T>& model) { model_ = &model; }$/;"	f	class:VNode
+set_n_tree_nodes	src/vnode.h	/^  void set_n_tree_nodes(int val) { n_tree_nodes_ = val; }$/;"	f	class:VNode
+set_ubound	src/vnode.h	/^  void set_ubound(double val) { ubound_ = val; }$/;"	f	class:VNode
+set_upper_bound_act	src/problems/rocksample/rocksample.h	/^  void set_upper_bound_act(const vector<int>& upper_bound_act) {$/;"	f	class:Model
+shift	src/optionparser.h	/^  static void shift(const char** args, int count)$/;"	f	class:option::Parser
+shortopt	src/optionparser.h	/^  const char* const shortopt;$/;"	m	struct:option::Descriptor
+sim_len	src/globals.h	/^  int sim_len;$/;"	m	struct:Globals::Config
+smell_range_	src/problems/pocman/pocman.h	/^  int num_ghosts_, passage_y_, ghost_range_, smell_range_, hear_range_;$/;"	m	class:Model
+smellfood_table_	src/problems/pocman/pocman.h	/^  vector<vector<vector<int>>> smellfood_table_;$/;"	m	class:Model
+solver_list	src/main.cpp	/^vector<Solver<PedestrianState>* > solver_list;$/;"	v
+startState	old-pedestrian/pedestrian.h	/^		State startState;$/;"	m	class:Pedestrian
+startState	pedestrian/pedestrian.h	/^		State startState;$/;"	m	class:Pedestrian
+startState	pedestrian/pedestrian_dynamic_latest2.h	/^		State startState;$/;"	m	class:Pedestrian
+startState	src/problems/pedestrian/pedestrian.h	/^		PedestrianState startState;$/;"	m	class:Model
+startState	src/problems/pedestrian/pedestrian/pedestrian.h	/^		PedestrianState startState;$/;"	m	class:Model
+state	src/particle.h	/^  T state;$/;"	m	class:Particle
+state_	src/world.h	/^  T state_;$/;"	m	class:World
+state_seen_	src/problems/rocksample/rocksample.h	/^  mutable vector<RockSampleState> state_seen_;$/;"	m	class:Model
+state_to_cell_pair_	src/problems/lasertag/lasertag.h	/^  vector<pii> state_to_cell_pair_;$/;"	m	class:Model
+state_to_cell_pair_	src/problems/tag/tag.h	/^  vector<pii> state_to_cell_pair_;$/;"	m	class:Model
+state_to_coord_pair_	src/problems/lasertag/lasertag.h	/^  vector<pair<pii, pii>> state_to_coord_pair_;$/;"	m	class:Model
+state_to_coord_pair_	src/problems/tag/tag.h	/^  vector<pair<pii, pii>> state_to_coord_pair_;$/;"	m	class:Model
+state_weight_	src/lower_bound/lower_bound_policy_mode.h	/^  mutable vector<double> state_weight_;$/;"	m	class:ModePolicyLowerBound
+states_	src/world.h	/^	vector<T> states_;$/;"	m	class:World
+std	src/history.h	/^namespace std {$/;"	n
+std	src/problems/bridge/bridge.h	/^namespace std {$/;"	n
+std	src/problems/chain/chain.h	/^namespace std {$/;"	n
+std	src/problems/lasertag/lasertag.h	/^namespace std {$/;"	n
+std	src/problems/rocksample/rocksample.h	/^namespace std {$/;"	n
+std	src/problems/tag/tag.h	/^namespace std {$/;"	n
+std	src/problems/tiger/tiger.h	/^namespace std {$/;"	n
+std	src/util.h	/^namespace std {$/;"	n
+step	old-pedestrian/pedestrian.cpp	/^State Pedestrian::step(State state, double rNum, int action, double& reward, uint64_t& obs) {$/;"	f	class:Pedestrian
+step	old-pedestrian/pedestrian.h	/^		State step(State s, double rNum, int action, double& reward)  {$/;"	f	class:Pedestrian
+step	pedestrian/pedestrian.cpp	/^State Pedestrian::step(State state, double rNum, int action, double& reward, uint64_t& obs) {$/;"	f	class:Pedestrian
+step	pedestrian/pedestrian.h	/^		State step(State s, double rNum, int action, double& reward)  {$/;"	f	class:Pedestrian
+step	pedestrian/pedestrian_dynamic_latest2.cpp	/^State Pedestrian::step(State state, double rNum, int action, double& reward, uint64_t& obs) {$/;"	f	class:Pedestrian
+step	pedestrian/pedestrian_dynamic_latest2.h	/^		State step(State s, double rNum, int action, double& reward)  {$/;"	f	class:Pedestrian
+step	src/main.cpp	/^int step=1;$/;"	v
+stream	src/optionparser.h	/^    Stream* stream;$/;"	m	struct:option::PrintUsageImplementation::StreamWriter
+streams_	src/lower_bound/lower_bound.h	/^  const RandomStreams& streams_;$/;"	m	class:ILowerBound
+streams_	src/random_streams.h	/^  vector<vector<double>> streams_; \/\/ Each particle is associated with a single$/;"	m	class:RandomStreams
+streams_	src/solver.h	/^	const RandomStreams& streams_;$/;"	m	class:Solver
+streams_	src/upper_bound/upper_bound.h	/^  const RandomStreams& streams_;$/;"	m	class:IUpperBound
+streams_global	src/main.cpp	/^RandomStreams * streams_global;$/;"	v
+streq	src/optionparser.h	/^  static bool streq(const char* st1, const char* st2)$/;"	f	class:option::Parser
+streqabbr	src/optionparser.h	/^  static bool streqabbr(const char* st1, const char* st2, long long min)$/;"	f	class:option::Parser
+suffixCount	src/lower_bound/lower_bound_policy_suffix.h	/^	mutable int suffixCount;$/;"	m	class:SuffixPolicyLowerBound
+suffix_action_map	src/lower_bound/lower_bound_policy_suffix.h	/^	map<History, vector<int>> suffix_action_map;$/;"	m	class:SuffixPolicyLowerBoundMapImpl
+tablestart	src/optionparser.h	/^    const Descriptor* tablestart; \/\/!< The 1st descriptor of the current table.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+tag	src/optionparser.h	/^  static Option* tag(Option* ptr)$/;"	f	class:option::Option
+tail	src/optionparser.h	/^    int tail; \/\/!< @brief index for next read - 1 (i.e. increment tail BEFORE read)$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+target_line_in_block	src/optionparser.h	/^    int target_line_in_block; \/\/!< Line index of the parts we should return to the user on this iteration.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+terminalObs	old-pedestrian/pedestrian.h	/^		uint64_t terminalObs() const {$/;"	f	class:Pedestrian
+terminalObs	pedestrian/pedestrian.h	/^		uint64_t terminalObs() const {$/;"	f	class:Pedestrian
+terminalObs	pedestrian/pedestrian_dynamic_latest2.h	/^		uint64_t terminalObs() const {$/;"	f	class:Pedestrian
+terminal_	src/problems/pocman/pocman.h	/^  bool terminal_;$/;"	m	class:PocmanState
+terminal_obs_	src/problems/lasertag/lasertag.h	/^  static uint64_t terminal_obs_;$/;"	m	class:Model
+terminal_obs_	src/problems/lasertag/lasertag.h	/^uint64_t Model<LaserTagState>::terminal_obs_;$/;"	m	class:Model
+teststate2	old-pedestrian/pedestrian.cpp	/^Pedestrian_State*teststate2;$/;"	v
+teststate2	pedestrian/pedestrian.cpp	/^Pedestrian_State*teststate2;$/;"	v
+teststate2	pedestrian/pedestrian_dynamic_latest2.cpp	/^Pedestrian_State*teststate2;$/;"	v
+theta_	src/gamma.h	/^	double theta_;$/;"	m	class:Gamma
+tiger_position_	src/problems/tiger/tiger.h	/^  int tiger_position_;$/;"	m	class:Model
+time_per_move	src/globals.h	/^  double time_per_move;$/;"	m	struct:Globals::Config
+total_reward_	src/world.h	/^  double total_reward_;$/;"	m	class:World
+total_undiscounted_reward_	src/world.h	/^  double total_undiscounted_reward_;$/;"	m	class:World
+trans	old-pedestrian/pedestrian.h	/^    int trans[5][20][5][20];$/;"	m	class:Pedestrian
+trans	old-pedestrian/pedestrian_dynamic.h	/^    int trans[5][20][5][20];$/;"	m	class:PEDESTRIAN_DYNAMIC
+trans	old-pedestrian/pedestrian_dynamic.h	/^    int trans[5][20][5][20];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+trans	pedestrian/pedestrian.h	/^    int trans[5][20][5][20];$/;"	m	class:Pedestrian
+trans	pedestrian/pedestrian_dynamic.h	/^    int trans[5][20][5][20];$/;"	m	class:PEDESTRIAN_DYNAMIC
+trans	pedestrian/pedestrian_dynamic.h	/^    int trans[5][20][5][20];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+trans	pedestrian/pedestrian_dynamic_latest2.h	/^    int trans[5][20][5][20];$/;"	m	class:Pedestrian
+type	src/optionparser.h	/^  const int type;$/;"	m	struct:option::Descriptor
+type	src/optionparser.h	/^  int type() const$/;"	f	class:option::Option
+ub_	src/solver.h	/^  IUpperBound<T>& ub_;$/;"	m	class:Solver
+ub_global	src/main.cpp	/^IUpperBound<PedestrianState>* ub_global;$/;"	v
+ubound	src/vnode.h	/^  double ubound() const { return ubound_; }$/;"	f	class:VNode
+ubound_	src/vnode.h	/^  double ubound_;$/;"	m	class:VNode
+unif	src/problems/pedestrian/pedestrian/pedestrian.h	/^		mutable Uniform unif;$/;"	m	class:Model
+unif_	src/problems/pedestrian/pedestrian.h	/^		mutable Uniform unif_;$/;"	m	class:Model
+unit_size_	src/problems/lasertag/lasertag.h	/^  double unit_size_;$/;"	m	class:Model
+untag	src/optionparser.h	/^  static Option* untag(Option* ptr)$/;"	f	class:option::Option
+update_length	src/optionparser.h	/^    void update_length()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+upmax	src/optionparser.h	/^  static void upmax(int& i1, int i2)$/;"	f	struct:option::PrintUsageImplementation
+upper_bound_act_	src/problems/rocksample/rocksample.h	/^  const vector<int>* upper_bound_act_;$/;"	m	class:Model
+upper_bound_act_	src/upper_bound/upper_bound_nonstochastic.h	/^  vector<int> upper_bound_act_;$/;"	m	class:UpperBoundNonStochastic
+upper_bound_memo_	src/upper_bound/upper_bound_nonstochastic.h	/^  vector<double> upper_bound_memo_;$/;"	m	class:UpperBoundNonStochastic
+upper_bound_memo_	src/upper_bound/upper_bound_stochastic.h	/^  vector<vector<vector<double>>> upper_bound_memo_;$/;"	m	class:UpperBoundStochastic
+usage	src/main.cpp	/^const option::Descriptor usage[] = {$/;"	v
+userstream	src/optionparser.h	/^    const Temporary& userstream;$/;"	m	struct:option::PrintUsageImplementation::TemporaryWriter
+velGlobal	src/main.cpp	/^int velGlobal;$/;"	v
+vnode_list	old-pedestrian/pedestrian_dynamic.h	/^	std::vector<VNODE*> vnode_list;$/;"	m	class:PEDESTRIAN_DYNAMIC
+vnode_list	old-pedestrian/pedestrian_dynamic.h	/^	std::vector<VNODE*> vnode_list;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+vnode_list	pedestrian/pedestrian_dynamic.h	/^	std::vector<VNODE*> vnode_list;$/;"	m	class:PEDESTRIAN_DYNAMIC
+vnode_list	pedestrian/pedestrian_dynamic.h	/^	std::vector<VNODE*> vnode_list;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+vnode_old	old-pedestrian/pedestrian_dynamic.h	/^	std::vector<VNODE*> vnode_old;$/;"	m	class:PEDESTRIAN_DYNAMIC
+vnode_old	old-pedestrian/pedestrian_dynamic.h	/^	std::vector<VNODE*> vnode_old;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+vnode_old	pedestrian/pedestrian_dynamic.h	/^	std::vector<VNODE*> vnode_old;$/;"	m	class:PEDESTRIAN_DYNAMIC
+vnode_old	pedestrian/pedestrian_dynamic.h	/^	std::vector<VNODE*> vnode_old;$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+w	src/main.cpp	/^	int w,h,goal;$/;"	m	class:Pedestrian	file:
+w0	src/main.cpp	/^int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	v
+w1	src/main.cpp	/^int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	v
+w2	src/main.cpp	/^int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	v
+w3	src/main.cpp	/^int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	v
+walk_dirs	old-pedestrian/pedestrian.h	/^    int walk_dirs[5][20][2];$/;"	m	class:Pedestrian
+walk_dirs	old-pedestrian/pedestrian_dynamic.h	/^    int walk_dirs[5][20][2];$/;"	m	class:PEDESTRIAN_DYNAMIC
+walk_dirs	old-pedestrian/pedestrian_dynamic.h	/^    int walk_dirs[5][20][2];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+walk_dirs	pedestrian/pedestrian.h	/^    int walk_dirs[5][20][2];$/;"	m	class:Pedestrian
+walk_dirs	pedestrian/pedestrian_dynamic.h	/^    int walk_dirs[5][20][2];$/;"	m	class:PEDESTRIAN_DYNAMIC
+walk_dirs	pedestrian/pedestrian_dynamic.h	/^    int walk_dirs[5][20][2];$/;"	m	class:PEDESTRIAN_DYNAMIC_REAL
+walk_dirs	pedestrian/pedestrian_dynamic_latest2.h	/^    int walk_dirs[5][20][2];$/;"	m	class:Pedestrian
+wall_obs_table_	src/problems/pocman/pocman.h	/^  vector<vector<int>> wall_obs_table_;$/;"	m	class:Model
+weight	src/main.cpp	/^int weight[10]={20,10,4,2,1,8};$/;"	v
+weight	src/vnode.h	/^  double weight() const { return weight_; }$/;"	f	class:VNode
+weight_	src/vnode.h	/^  const double weight_;  \/\/ Sum of weights of particles at this belief$/;"	m	class:VNode
+weight_sum_	src/qnode.h	/^  double weight_sum_; \/\/ The combined weight of particles at this node$/;"	m	class:QNode
+weight_sum_of_state_	src/problems/rocksample/rocksample.h	/^  mutable vector<double> weight_sum_of_state_;$/;"	m	class:Model
+width	src/main.cpp	/^int width;$/;"	v
+width	src/optionparser.h	/^    int width;$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+windowOrigin	src/main.cpp	/^int windowOrigin;$/;"	v
+workhorse	src/optionparser.h	/^inline bool Parser::workhorse(bool gnu, const Descriptor usage[], int numargs, const char** args, Action& action,$/;"	f	class:option::Parser
+write	src/optionparser.h	/^    Function* write;$/;"	m	struct:option::PrintUsageImplementation::FunctionWriter
+write	src/optionparser.h	/^    Syscall* write;$/;"	m	struct:option::PrintUsageImplementation::SyscallWriter
+writeQMDP	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::writeQMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC
+writeQMDP	old-pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::writeQMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+writeQMDP	pedestrian/pedestrain_dynamic_latest.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::writeQMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+writeQMDP	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC::writeQMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC
+writeQMDP	pedestrian/pedestrian_dynamic.cpp	/^void PEDESTRIAN_DYNAMIC_REAL::writeQMDP()$/;"	f	class:PEDESTRIAN_DYNAMIC_REAL
+write_one_line	src/optionparser.h	/^    void write_one_line(IStringWriter& write)$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+wrote_something	src/optionparser.h	/^    bool wrote_something;$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+wt	src/particle.h	/^  double wt;$/;"	m	class:Particle
+x	src/optionparser.h	/^    int x;$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+xsize_	src/problems/pocman/grid.h	/^  int xsize_, ysize_;$/;"	m	class:Grid
+ysize_	src/problems/pocman/grid.h	/^  int xsize_, ysize_;$/;"	m	class:Grid
+~BeliefUpdate	src/belief_update/belief_update.h	/^  virtual ~BeliefUpdate() {}$/;"	f	class:BeliefUpdate
+~ILowerBound	src/lower_bound/lower_bound.h	/^  virtual ~ILowerBound() {}$/;"	f	class:ILowerBound
+~IUpperBound	src/upper_bound/upper_bound.h	/^  virtual ~IUpperBound() {};$/;"	f	class:IUpperBound
+~MemoryPool	src/memorypool.h	/^  ~MemoryPool() { DeleteAll(); }$/;"	f	class:MemoryPool
+~PolicyLowerBound	src/lower_bound/lower_bound_policy.h	/^  virtual ~PolicyLowerBound() {}$/;"	f	class:PolicyLowerBound
+~VNode	src/vnode.h	/^  ~VNode() { $/;"	f	class:VNode

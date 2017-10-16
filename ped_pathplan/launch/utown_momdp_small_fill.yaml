@@ -1,0 +1,8 @@
+#image: utown_momdp_small_fill.png
+image: utown_momdp_small_cleaningblock2.png
+resolution: 0.1
+origin: [0.000000, 0.00000, 0.000000]
+negate: 0
+occupied_thresh: 0.30
+free_thresh: 0.10
+frame_id: /scooter/map

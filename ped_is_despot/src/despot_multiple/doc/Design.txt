@@ -1,0 +1,213 @@
+========
+OVERVIEW
+========
+
+The main classes in the package and their functions are listed below:
+
+* Solver        Implements the core of the algorithm.
+* Model         Template for a problem specification.
+* ILowerBound   Interface for a lower bound strategy.
+* IUpperBound   Interface for an upper bound strategy.
+* BeliefUpdate  Abstract class for a belief-update strategy.
+* BeliefNode    A belief node in the search tree.
+* ObsSet        An intermediate (AND) node in the search tree.
+* World         Maintains and updates the true state of the world.
+
+The following lower bound implementations are provided:
+
+* PolicyLowerBound: Computes the lower bound by following a policy from a set
+  |                 of particles (belief node). An action is selected and
+  |                 applied to all particles. The resulting particles are
+  |                 branched at the observation node and the simulation is
+  |                 carried out recursively at the next level. There are 2
+  |                 specializations of this class that differ in how the action
+  |                 is selected:
+  |
+  +---> ModePolicyLowerBound: selects the best action for the mode of the
+  |                           particle set.
+  |
+  +---> RandomPolicyLowerBound: selects a random action for a random state in
+                                in the particle set.
+
+The following upper bound implementations are provided:
+
+* UpperBoundStochastic:    Computes the upper bound for models that have 
+                           non-deterministic state transitions. This is the
+                           general case for a POMDP.
+* UpperBoundNonStochastic: Computes the upper bound for models that have
+                           deterministic state transitions. This is a special 
+                           case of the stochastic version with a minor
+                           difference and better time/space complexity.
+
+The following belief-update implementations are provided:
+
+* ParticleFilterUpdate: Implements sequential importance resampling.
+                        It is specialized for Pocman, and for Tag for reasons
+                        explained in the source code.
+* ExactBeliefUpdate:    Maintains and updates a probability distribution
+                        over states. This is not feasible for problems with
+                        large state spaces, like RockSample(15, 15) and
+                        Pocman.
+
+More details about each of these components is given in the source code.
+
+Solver is the central module that maintains references to the lower(upper)
+bound, belief update, and the user-defined model, tying them together.
+The lower(upper) bound and belief-update modules require the model to 
+implement certain methods, which are marked appropriately in the model
+template. A class diagram depicting the arrangement can be found at 
+`despot/doc/Class_Diagram.png`.
+
+Some components like the key-value parser and tokenizer are written from
+scratch. This is to make the system self-contained and avoid dependencies
+on third party libraries like boost.
+
+
+===================
+DESIGN ALTERNATIVES
+===================
+
+* Making model an abstract base class instead of template class
+
+A straightforward way of abstracting the model is to have a Model interface
+that is implemented by each new problem and use a Model* type in the algorithm
+to achieve polymorphism. Instead, it is implemented as a template with the 
+template parameter being a user-defined type that represents a state in the
+problem. For example, Tag is implemented by defining a TagState type and the
+corresponding Model<TagState> class. 
+
+If Model were an interface, we would need a State ABC for some of Model's
+methods. For example,
+
+class IModel {
+  State step(State* s, int action, double randomNum);
+};
+
+A new problem would have to use the same method signature and override it like
+this:
+
+class Tag : public IModel {
+  State step(State* s, int action, double randomNum) {
+    TagState* state = static_cast<TagState*>(s);
+    // Do something with @state
+    ...
+  }
+};
+ 
+For simple problems like Tag, stepping a state is not a very expensive 
+operation, which means that the relative overhead of the downcast is 
+significant. Moreover, the step() function is called a huge number of times, 
+so the total overhead of the cast is also significant.
+
+Making Model a template with problem-specific state as parameter allows us
+to circumvent this:
+
+template<typename T>
+class Model {
+  T step(T* s, int action, double randomNum);
+};
+
+class TagState { ... };
+
+class Model<TagState> : public Model {
+  TagState step(TagState* state, int action, double randomNum) {
+    // No downcast needed
+    // Do something with @state
+    ...
+  }
+};
+
+In essence, we are using compile-time polymorphism instead of runtime
+polymorphism for efficiency. 
+
+Templating the model causes a cascade effect and requires many other 
+classes to be templated as well. Another side effect is that the compiler
+will complain if we separate the interface and implementation. One way
+of dealing with this is to put the implementation in the .h files, which 
+is the chosen method here.
+
+Overall, using templates seems to not sacrifice design/readability too much
+for the efficiency gains in simple problems. But this decision may
+need to be reconsidered if the code is used for non-trivial problems where
+the overhead of a cast is insignificant.
+
+
+* Not defining a special terminal observation
+
+Currently, the model has to define a terminal observation that is emitted
+in and only in a terminal state. When we take an action on a particle set, 
+the particles get grouped by the observations they produce and are carried 
+forward to the next belief. It is simpler to deal with the scenario where 
+all terminal states get grouped together, forming a "terminal" belief node 
+where the simulation stops, rather than continue the simulation on the subset
+of non-terminal particles in the next belief. Having an "if and only if" 
+relation between terminal states and the terminal observation is a small 
+price to pay for this convenience without changing the nature of the problem.
+
+
+* Instead of having lower(upper) bound and belief update as standalone modules,
+  we can have Model inherit from their interfaces, and provide all
+  problem-specific stuff required by them via pure virtual functions 
+  implemented by the model.
+  
+Different lower(upper) bound implementations require different things from 
+the model. For example, the policy lower bound needs to query the 
+model for the best action for a given state. Making the model inherit from 
+the strategy we intend to use ensures that the problem-writer needs to fill
+in only the methods that are required. But there are a few disadvantages to
+this:
+
+- If we want a model to support multiple lower(upper) bounds, we need a
+  diamond-shaped multiple inheritance structure and override methods in the
+  model to control which base class's methods get called. These overrides 
+  cause the code to be more complicated than it conceptually is.
+  
+- Modules like belief-update need to change their state each time they are 
+  invoked. If Model inherits from these interfaces, the otherwise const
+  reference Solver maintains to Model will need to be non-const, which is
+  generally not a good thing to do.
+
+- Sometimes some of the components require the model to be instantiated
+  before they can perform precomputations / initializations. Having Model
+  inherit from these components means that we'd have to do something like define
+  an Init() method in the model and call its superclass Init() methods
+  explicitly after its own initializations are complete. This is an 
+  additional detail authors of the problem need to deal with. A simpler 
+  alternative is to have independent modules take an instantiated model 
+  as a parameter to their constructors.
+
+In general, we follow the principle of favoring composition over inheritance,
+which will be beneficial as the system grows.
+
+The disadvantage of having separate components is that not all components will
+be compatible with each other. For example, exact belief updates are not 
+compatible with large problems like pocman. This means that we can't
+instantiate the objects in our system in a generic way like this:
+
+if(problem == "pocman") {
+  Model<PocmanState>* model = new Model<PocmanState>();
+  run(model); // Error, see below
+}
+
+template<typename State>
+void run(Model<State>* model) {
+  BeliefUpdate<T>* bu;
+  if(belief_update_type == "exact") {
+    bu = new ExactBeliefUpdate<T>(model); // Error, Pocman not compatible with 
+                                          // ExactBeliefUpdate strategy!
+  }
+  ...
+}
+
+Instead, we need to treat instantiation on a problem-by-problem basis:
+
+if(problem == "pocman") {
+  Model<PocmanState>* model = new Model<PocmanState>();
+  BeliefUpdate<PocmanState>* bu;
+  if(belief_update_type == "exact") {
+    bu = new ExactBeliefUpdate<PocmanState>(model);
+  }
+  run(model);
+}
+
+This is the reason why main.cpp contains a lot of repetitive code.

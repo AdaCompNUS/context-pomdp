@@ -1,0 +1,5 @@
+<launch>
+    <node name="map_to_laser_transform" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 1 map laser 100"/>
+    <node name="cluster_extraction" pkg="cluster_extraction" type="ped_clustering" output="screen"/> 
+    <node name="cluster_assoc" pkg="cluster_assoc" type="clusterAssoc" output="screen"/>
+</launch>

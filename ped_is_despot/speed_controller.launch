@@ -1,0 +1,7 @@
+<launch>
+	<!-- <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller"  respawn="false" output="screen" ns="/scooter" required="true">
+	 </node> -->
+	<node name="Scooter_speedcontroller" pkg="long_control" type="Scooter_speedcontroller"  respawn="false" output="screen" ns="/scooter" required="true">
+	 </node>
+
+</launch>

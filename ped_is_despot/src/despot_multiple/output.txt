@@ -1,0 +1,407 @@
+path length 640
+rob map size 10
+seed 0.62
+num ped in view  0
+rob map size 10
+option seed 100
+root seed100
+Seed 10100
+rob map size 10
+start run loop
+here
+create solver
+rob pos global 79 19
+rob pos global 79 19
+Rob Pos: 2 0
+Vel: 1
+id:  0
+num  0
+belief size 1
+finish initial belief
+solver created
+0
+action 1
+collision checking
+rob pos global 79 19
+rob pos global 79 35
+rob pos global 79 35
+world observation 4
+rob map size 10
+after shift window
+rob pos global 79 35
+Rob Pos: 2 0
+Vel: 1
+id:  0
+num  0
+rob pos global 79 35
+Car Pos 79 35
+Window Pos 32
+ped num 0
+observation 4
+rob pos global 79 35
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 741
+solver finished 0
+1
+action 1
+collision checking
+rob pos global 79 35
+rob pos global 79 67
+rob pos global 79 67
+world observation 8
+rob map size 10
+after shift window
+rob pos global 79 67
+Rob Pos: 2 0
+Vel: 2
+id:  0
+num  0
+rob pos global 79 67
+Car Pos 79 67
+Window Pos 96
+ped num 0
+observation 8
+rob pos global 79 67
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 801
+solver finished 0
+2
+action 1
+collision checking
+rob pos global 79 67
+rob pos global 79 99
+rob pos global 79 99
+world observation 8
+rob map size 10
+after shift window
+rob pos global 79 99
+Rob Pos: 2 0
+Vel: 2
+id:  0
+num  0
+rob pos global 79 99
+Car Pos 79 99
+Window Pos 160
+ped num 0
+observation 8
+rob pos global 79 99
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 6412
+solver finished 0
+3
+action 0
+collision checking
+rob pos global 79 99
+rob pos global 79 131
+rob pos global 79 131
+world observation 8
+rob map size 10
+after shift window
+rob pos global 79 131
+Rob Pos: 2 0
+Vel: 2
+id:  0
+num  0
+rob pos global 79 131
+Car Pos 79 131
+Window Pos 224
+ped num 0
+observation 8
+rob pos global 79 131
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 6347
+solver finished 0
+4
+action 1
+collision checking
+rob pos global 79 131
+rob pos global 79 131
+rob pos global 79 131
+world observation 0
+rob map size 10
+after shift window
+rob pos global 79 131
+Rob Pos: 2 0
+Vel: 0
+id:  0
+num  0
+rob pos global 79 131
+Car Pos 79 131
+Window Pos 224
+ped num 0
+observation 0
+rob pos global 79 131
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 79
+solver finished 0
+5
+action 1
+collision checking
+rob pos global 79 131
+rob pos global 79 131
+rob pos global 79 131
+world observation 1
+rob map size 10
+after shift window
+rob pos global 79 131
+Rob Pos: 2 0
+Vel: 1
+id:  0
+num  0
+rob pos global 79 131
+Car Pos 79 131
+Window Pos 224
+ped num 0
+observation 1
+rob pos global 79 131
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 6290
+solver finished 0
+6
+action 1
+collision checking
+rob pos global 79 131
+rob pos global 79 147
+rob pos global 79 147
+world observation 5
+rob map size 10
+after shift window
+rob pos global 79 147
+Rob Pos: 2 0
+Vel: 2
+id:  0
+num  0
+rob pos global 79 147
+Car Pos 79 147
+Window Pos 256
+ped num 0
+observation 5
+rob pos global 79 147
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 6467
+solver finished 0
+7
+action 1
+collision checking
+rob pos global 79 147
+rob pos global 79 179
+rob pos global 79 179
+world observation 8
+rob map size 9
+after shift window
+rob pos global 79 179
+Rob Pos: 2 0
+Vel: 2
+id:  0
+num  0
+rob pos global 79 179
+Car Pos 79 179
+Window Pos 320
+ped num 0
+observation 8
+rob pos global 79 179
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 6324
+solver finished 0
+8
+action 0
+collision checking
+rob pos global 79 179
+rob pos global 79 195
+rob pos global 79 195
+world observation 5
+rob map size 8
+after shift window
+rob pos global 79 195
+Rob Pos: 2 0
+Vel: 2
+id:  0
+num  0
+rob pos global 79 195
+Car Pos 79 195
+Window Pos 352
+ped num 0
+observation 5
+rob pos global 79 195
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 777
+solver finished 0
+9
+action 1
+collision checking
+rob pos global 79 195
+rob pos global 79 227
+rob pos global 79 227
+world observation 8
+rob map size 7
+after shift window
+rob pos global 79 227
+Rob Pos: 2 0
+Vel: 2
+id:  0
+num  0
+rob pos global 79 227
+Car Pos 79 227
+Window Pos 416
+ped num 0
+observation 8
+rob pos global 79 227
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 6444
+solver finished 0
+10
+action 0
+collision checking
+rob pos global 79 227
+rob pos global 79 259
+rob pos global 79 259
+world observation 8
+rob map size 5
+after shift window
+rob pos global 79 259
+Rob Pos: 2 0
+Vel: 2
+id:  0
+num  0
+rob pos global 79 259
+Car Pos 79 259
+Window Pos 480
+ped num 0
+observation 8
+rob pos global 79 259
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 6306
+solver finished 0
+11
+action 0
+collision checking
+rob pos global 79 259
+rob pos global 79 259
+rob pos global 79 259
+world observation 2
+rob map size 5
+after shift window
+rob pos global 79 259
+Rob Pos: 2 0
+Vel: 2
+id:  0
+num  0
+rob pos global 79 259
+Car Pos 79 259
+Window Pos 480
+ped num 0
+observation 2
+rob pos global 79 259
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 807
+solver finished 0
+12
+action 0
+collision checking
+rob pos global 79 259
+rob pos global 79 291
+rob pos global 79 291
+world observation 8
+rob map size 3
+after shift window
+rob pos global 79 291
+Rob Pos: 2 0
+Vel: 2
+id:  0
+num  0
+rob pos global 79 291
+Car Pos 79 291
+Window Pos 544
+ped num 0
+observation 8
+rob pos global 79 291
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 6390
+solver finished 0
+13
+action 0
+collision checking
+rob pos global 79 291
+rob pos global 79 323
+rob pos global 79 323
+world observation 8
+rob map size 2
+after shift window
+rob pos global 79 323
+Rob Pos: 2 0
+Vel: 2
+id:  0
+num  0
+rob pos global 79 323
+Car Pos 79 323
+Window Pos 608
+ped num 0
+observation 8
+rob pos global 79 323
+Belief before update 
+Current Belief 
+particles num 10000
+After update 
+Current Belief 
+particles num 6359
+solver finished 0
+14
+action 0
+collision checking
+rob pos global 79 323
+collision checking
+rob pos global 79 323
+
+Total success reward after 14 steps = 

@@ -1,0 +1,70 @@
+# GOAL: after outside tree
+#goalx: 15.61
+#goaly: 23.59
+goalx: 16.57
+goaly: 24.19
+
+# GOAL: some place inside SMART office
+#goalx: 6.54
+#goaly: 10.3
+
+# GOAL: cheers
+#goalx: 4.0
+#goaly: 9.0
+
+fixed_path: false
+pruning_constant: 0
+#pruning_constant: 1000000000
+#pathplan_ahead: 3.0
+pathplan_ahead: 1.5
+
+
+crash_penalty: -1000.0
+reward_factor_vel: 0.5
+reward_base_crash_vel: 0.5
+belief_smoothing: 0.05
+noise_robvel: 0.1
+noise_goal_angle_deg: 45
+max_vel: 1.5
+#collision_distance: 1.5
+collision_distance: 0.4
+infront_angle_deg: 70
+#places the car drives at (used for selecting goals of peds). 0: utown_small_fill. 1: inside smart office (my_create)
+driving_place: 7
+
+ped_costmap:
+    map_type: costmap
+    global_frame: /scooter/map
+    robot_base_frame: /scooter/base_link
+    #map_topic: map_cost
+    map_topic: /scooter/map
+    static_map: true
+    publish_frequency: 5
+    #robot_radius: 1.2
+    robot_radius: 0.65
+    #inflation_radius: 7.0
+    inflation_radius: 4.0
+    #cost_scaling_factor: 4.0
+    cost_scaling_factor: 4.0
+    update_frequency: 2
+    observation_sources: peds
+    peds:
+        #topic: confident_objects_momdp
+        topic: ped_prediction
+        clearing: true
+        obstacle_range: 5000
+        raytrace_range: 5000
+    ped_cost_ratio: 0.9
+
+planner:
+    # steering_limit_deg: 18
+    # yaw_res_deg: 1.0
+    steering_limit_deg: 48
+    yaw_res_deg: 2.0
+    #cost_steering_deg: 30
+    cost_steering_deg: 8
+    steplen: 6
+    num_search: 800000
+    discretize_ratio: 0.3
+    discount: 0.98
+

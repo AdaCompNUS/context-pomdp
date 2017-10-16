@@ -1,0 +1,527 @@
+#ifndef PEDESTRIAN_H
+#define PEDESTRIAN_H
+
+#include <cmath>
+#include "globals.h"
+#include "model.h"
+#include "coord.h"
+#include "lower_bound/lower_bound_policy_mode.h"
+#include "lower_bound/lower_bound_policy_random.h"
+#include "upper_bound/upper_bound_stochastic.h"
+#include "uniform.h"
+#include "string.h"
+
+int Y_SIZE;
+int X_SIZE;
+int N_GOAL;
+
+class PedestrianState
+{
+	public:
+		Coord RobPos;
+		Coord PedPos;
+		int Vel;
+		int Goal;
+
+		PedestrianState() {}
+
+		PedestrianState(int id) {
+			if(id == X_SIZE * Y_SIZE * Y_SIZE * 3 * N_GOAL) {
+				Vel = -1;
+				return;
+			}
+
+			RobPos.X = 1;
+
+			int N = id;
+			Goal = (N/(X_SIZE*Y_SIZE*Y_SIZE*3));
+			N = N%(X_SIZE*Y_SIZE*Y_SIZE*3);
+
+			Vel = N/(X_SIZE*Y_SIZE*Y_SIZE);
+			N = N%(X_SIZE*Y_SIZE*Y_SIZE);
+
+			RobPos.Y = N/(X_SIZE*Y_SIZE);
+			N = N%(X_SIZE*Y_SIZE);
+
+			PedPos.Y = N/X_SIZE;
+			N = N%X_SIZE;
+
+			PedPos.X = N;
+		}
+
+		/* TODO: bug due to wrong mapping - UpperBound table*/
+		operator int() const {
+			if(Vel == -1) return X_SIZE * Y_SIZE * Y_SIZE * 3 * N_GOAL;
+
+			int add_goal = (X_SIZE*Y_SIZE*Y_SIZE*3)*(Goal);
+			int add_vel = (X_SIZE*Y_SIZE*Y_SIZE)*Vel;
+			int add_Y1 = (X_SIZE*Y_SIZE)*RobPos.Y;
+			int add_Y2 = X_SIZE*PedPos.Y;
+			int add_X = PedPos.X;
+
+			int N = add_X+add_Y2+add_Y1+add_vel+add_goal;
+
+			return N;
+		}
+};
+
+template<>
+class Model<PedestrianState> : public IUpperBound<PedestrianState>
+{
+	public:
+		Model(const RandomStreams& streams, string filename);
+		void SetStartState(PedestrianState& state);
+		PedestrianState GetStartState() const;
+		vector<PedestrianState> GetStartStates(int num_ped) const;
+		uint64_t Observe(const PedestrianState& state) const; // Observation for non-terminal state
+		void RobStep(PedestrianState& state, int action, Uniform unif) const;
+		void PedStep(PedestrianState& state, Uniform unif) const;
+		void StepMultiple(vector<PedestrianState>& states, double rNum, int action, vector<double>& rewards, vector<uint64_t>& obss) const;
+		void Step(PedestrianState& state, double rNum, int action, double& reward, uint64_t& obs) const;
+		/* TODO: bug due to not passing by reference for state - UpperBound computation*/
+		void Step(PedestrianState& state, double rNum, int action, double& reward) const {
+			uint64_t obs;
+			return Step(state, rNum, action, reward, obs);
+		}
+		double ObsProb(uint64_t z, const PedestrianState s, int action) const;
+		double FringeUpperBound(const PedestrianState& s) const;
+
+		double UpperBound(const vector<Particle<PedestrianState>*>& particles,
+				const Model<PedestrianState>& model,
+				int stream_position,
+				History& history) const {
+			double ub = 0;
+			for(auto particle : particles)
+				ub += FringeUpperBound(particle->state);
+			return ub / particles.size();
+		}
+
+		double FringeLowerBound(const vector<Particle<PedestrianState>*>& particles) const;
+		vector<pair<PedestrianState, double>> InitialBelief() const;
+
+		PedestrianState RandomState(unsigned& seed, uint64_t obs) const {
+			return rand_r(&seed) % NumStates();
+		}
+
+		void InitModel();
+		void Statistics(const vector<Particle<PedestrianState>*> particles) const {
+			int goal_count[10]={0};
+			for(int i=0;i<particles.size();i++)
+			{
+				PedestrianState state=particles[i]->state;
+				goal_count[state.Goal]++;
+			}
+			cout<<"Belief is ";
+			for(int i=0;i<N_GOAL;i++)
+			{
+				cout<<(goal_count[i]+0.0)/particles.size()<<" ";
+			}
+			cout<<endl;
+		}
+
+		void PrintState(const PedestrianState& state, ostream& out = cout) const;
+		void PrintObs(uint64_t obs, ostream& out = cout) const { out << obs; }
+
+		int NumStates() const { 
+			return X_SIZE * Y_SIZE * Y_SIZE * 3 * N_GOAL+1;  //plus one dummy state	
+		}
+		int NumActions() const { return 3; }
+		bool IsTerminal(PedestrianState s) const {
+			return s.Vel == -1;
+		}
+
+		uint64_t MaxObs() const {
+			return X_SIZE*Y_SIZE*(Y_SIZE+5)*3+2;
+		}
+		uint64_t TerminalObs() const {
+			return MaxObs()-1;
+		}
+
+		int LowerBoundAction(const PedestrianState& s) {
+			return ACT_CUR;
+		}
+
+		Particle<PedestrianState>* Copy(const Particle<PedestrianState>* particle) const {
+			Particle<PedestrianState>* new_particle = Allocate();
+			*new_particle = *particle;
+			return new_particle;
+		}
+
+		Particle<PedestrianState>* Allocate() const {
+			return memory_pool_.Allocate();
+		}
+
+		void Free(Particle<PedestrianState>* particle) const {
+			memory_pool_.Free(particle);
+		}
+
+		shared_ptr<vector<int>> GeneratePreferred(const PedestrianState& state,
+				const History& history) const {
+			return shared_ptr<vector<int>>(new vector<int>());
+		}
+
+		shared_ptr<vector<int>> GenerateLegal(const PedestrianState& state,
+				const History& history) const {
+			static shared_ptr<vector<int>> actions = nullptr;
+			if (!actions) {
+				int num_actions = NumActions();
+				actions = shared_ptr<vector<int>>(new vector<int>(num_actions));
+				for (int a = 0; a < num_actions; a++)
+					(*actions)[a] = a;
+			}
+			return actions;
+		}
+
+
+	double model[10][20][6][10][20];  
+	std::vector<std::pair<int,int> > rob_map;
+
+	protected:
+		double OBSTACLE_PROB;
+
+		enum
+		{
+			ACT_CUR,
+			ACT_ACC,
+			ACT_DEC
+		};
+	private:
+		int** map;
+		PedestrianState startState;
+		mutable MemoryPool<Particle<PedestrianState>> memory_pool_;
+		int configSeed;
+		mutable Uniform unif_;
+
+		double robotNoisyMove[3][3]; /*vel,move*/
+		double robotMoveProbs[3][3]; 
+		double robotVelUpdate[3][3][3]; /*action,vel,new vel*/ 
+		double robotUpdateProb[3][3][3];
+
+		int lookup(const double probs[], double prob) const {
+			int pos = 0;
+			double sum = probs[0];
+			while(sum < prob) {
+				pos ++;
+				sum += probs[pos];
+			}
+			return pos;
+		}
+};
+
+const int CRASH_PENALTY =-10000;
+const int GOAL_REWARD = 1000;
+
+Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)
+{
+	ifstream fin(filename, ios::in);
+	X_SIZE = 5;
+	N_GOAL=4;
+
+	fin >> Y_SIZE;
+	Y_SIZE=10;
+	fin.close();
+
+	configSeed = Globals::config.root_seed ^ (Globals::config.n_particles + 3); // TODO: set config seed in main.cpp
+	unif_ = Uniform((1.0 * configSeed) / RAND_MAX);
+	OBSTACLE_PROB = 0.0;
+
+	//InitModel();
+
+	double noisyMove[3][3] /*vel, move*/ = {{0, 1, 0},
+		{0, 1, 2},
+		//{1, 2, 3}};
+		{0, 1, 2}};
+	memcpy(robotNoisyMove, noisyMove, sizeof(noisyMove));
+
+	double moveProbs[3][3] = {{0.9, 0.1, 0.0},
+		{0.1, 0.8, 0.1},
+	//	{0.1, 0.8, 0.1}};
+		{0.1, 0.1, 0.8}};
+	memcpy(robotMoveProbs, moveProbs, sizeof(moveProbs));
+
+	double velUpdate[3][3][3] /*action,vel,updated*/ = {
+		{{0, 1, 0}, {0, 1, 2}, {0, 1, 2}},
+		{{0, 1, 2}, {0, 1, 2}, {0, 1, 2}},
+		{{0, 1, 0}, {0, 1, 0}, {0, 1, 2}}};
+	memcpy(robotVelUpdate, velUpdate, sizeof(velUpdate));
+
+	double updateProb[3][3][3] /*action,vel,updated*/ = {
+		{{0.9, 0.1, 0.0}, {0.2, 0.7, 0.1}, {0.1, 0.1, 0.8}},
+		{{0.2, 0.7, 0.1}, {0.1, 0.1, 0.8}, {0.1, 0.1, 0.8}},
+		{{0.9, 0.1, 0.0}, {0.9, 0.1, 0.0}, {0.2, 0.7, 0.1}}};
+	memcpy(robotUpdateProb, updateProb, sizeof(updateProb));
+
+	double prob = unif_.next(),
+				 sum = 0;
+
+	vector<pair<PedestrianState, double>> belief;
+	for(int pedX=0; pedX<X_SIZE; pedX++) {
+		for(int pedY=0; pedY<Y_SIZE; pedY++) {
+			for(int goal=0; goal<N_GOAL; goal++) {
+				PedestrianState state;
+				state.RobPos.Y = 0;
+				state.Vel=1;
+
+				state.Goal = goal;
+				state.PedPos.X = pedX;
+				state.PedPos.Y = pedY;
+
+				if(fabs(pedX-2)+fabs(pedY-0)<=3) continue;
+
+				belief.push_back(pair<PedestrianState,double>(state, 1.0/(X_SIZE * Y_SIZE * N_GOAL)));
+			}
+		}
+	}
+	for(pair<PedestrianState, double> state : belief) {
+		sum += state.second;
+		if(sum >= prob) {
+			startState = state.first;
+			break;
+		}
+	}
+
+	/*
+		 auto initialBelief = InitialBelief();
+		 for(pair<PedestrianState, double> state : initialBelief) {
+		 sum += state.second;
+		 if(sum >= prob) {
+		 startState = state.first;
+		 break;
+		 }
+		 }
+		 */
+}
+
+void Model<PedestrianState>::PrintState(const PedestrianState& state, ostream& ostr) const
+{
+
+	cout << "Rob Pos: " << rob_map[state.RobPos.Y].first << " " <<rob_map[state.RobPos.Y].second <<endl;
+	cout << "Ped Pos: " << state.PedPos.X << " " <<state.PedPos.Y <<endl;
+	cout << "Vel: " << state.Vel << endl;
+	cout << "Goal: " << state.Goal << endl;
+}
+
+void Model<PedestrianState>::InitModel()
+{
+	map = new int*[X_SIZE];
+	for(int x=0; x<X_SIZE; x++) {
+		map[x] = new int[Y_SIZE];
+	}
+
+	double p;
+	cerr<<OBSTACLE_PROB<<endl;
+	for(int i=1; i<Y_SIZE-1; i++)
+	{
+		p = unif_.next(); 
+		map[0][i] = (p < OBSTACLE_PROB);
+	}
+	for(int i=1; i<Y_SIZE-1; i++)
+	{
+		p = unif_.next();
+		map[3][i] = (p < OBSTACLE_PROB);
+	}
+
+	cerr << "Map" << endl;
+	for(int y=0; y<Y_SIZE; y++) {
+		for(int x=0; x<X_SIZE; x++)
+			cerr << map[x][y] << " "; 
+		cerr << endl;
+	}
+	cerr << endl;
+}
+
+uint64_t Model<PedestrianState>::Observe(const PedestrianState& state) const {
+	uint64_t obs = state.Vel*(X_SIZE*Y_SIZE*rob_map.size())+state.RobPos.Y*(X_SIZE*Y_SIZE)+state.PedPos.X*Y_SIZE+state.PedPos.Y;
+	return obs;
+}
+
+void Model<PedestrianState>::RobStep(PedestrianState& state, int action, Uniform unif) const {
+	int &robY= state.RobPos.Y;
+	int &rob_vel = state.Vel;
+
+	double p = unif.next();
+
+	// cout << robY;
+	robY += robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)];
+	// cout << " " << robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)] << " " << robY << endl;
+	/*
+		 for(int i=0; i<3; i++)
+		 cout << robotMoveProbs[rob_vel][i] << ":" << robotNoisyMove[rob_vel][i] << " ";
+		 cout << p << " " << lookup(robotMoveProbs[rob_vel], p) << endl;
+		 */
+
+	if(robY >= Y_SIZE) robY = Y_SIZE - 1;
+
+	p = unif.next();
+
+	// cout << rob_vel ;
+	rob_vel = robotVelUpdate[action][rob_vel][lookup(robotUpdateProb[action][rob_vel], p)];
+	/*
+		 cout << " " << rob_vel << " " << action << endl;
+		 for(int i=0; i<3; i++)
+		 cout << robotUpdateProb[action][rob_vel][i] << ":" << robotVelUpdate[action][rob_vel][i] << " ";
+		 cout << p << " " << lookup(robotUpdateProb[action][rob_vel], p) << endl;
+		 */
+}
+
+void Model<PedestrianState>::PedStep(PedestrianState& state, Uniform unif) const
+{
+
+	int &pedX=state.PedPos.X;
+	int &pedY=state.PedPos.Y;
+	int goal=state.Goal;
+	//double p=(rand()+0.0)/RAND_MAX;
+	double p=unif.next();
+	double prob=0;
+	bool inner=false;
+	
+	int tempx=pedX,tempy=pedY;
+	for(int i=0;i<X_SIZE,inner==false;i++)
+		for(int j=0;j<Y_SIZE;j++)
+		{
+			prob+=model[pedX][pedY][goal][i][j];
+			if(p<prob)
+			{
+				//cout<<model[pedX][pedY][goal][i][j]<<endl;
+				//cout<<pedX<<" "<<pedY<<endl;
+				//cout<<i<<" "<<j<<endl;
+				pedX=i;
+				pedY=j;
+				inner=true;
+				break;
+			}
+		}
+	
+}
+
+void Model<PedestrianState>::StepMultiple(vector<PedestrianState>& states, double rNum, int action, vector<double>& rewards, vector<uint64_t>& obss) const {
+	Uniform unif(rNum);
+	for(int i=0; i<states.size(); i++) {
+		double reward;
+		uint64_t obs;
+		/*
+		cout << "Before step " << i << " " << &states[i] << endl;
+		PrintState(states[i]);
+		*/
+		Step(states[i], unif.next(), action, reward, obs);
+		/*
+		cout << "After step" << &states[i] << endl;
+		PrintState(states[i]);
+		*/
+
+		if(i > 0) {
+			states[i].RobPos = states[0].RobPos;
+			states[i].Vel = states[0].Vel;
+			if(obs != TerminalObs())
+				obs = Observe(states[i]);
+		}
+		rewards.push_back(reward);
+		obss.push_back(obs);
+	}
+}
+
+void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int action, double& reward, uint64_t& obs) const {
+	reward = 0;
+	obs = TerminalObs();
+
+	int &pedX = state.PedPos.X;
+	int &pedY = state.PedPos.Y;
+
+	int &robY = state.RobPos.Y;
+	int &rob_vel = state.Vel;
+
+
+	if(robY == rob_map.size()-1) {
+		reward = GOAL_REWARD;
+		state.Vel = -1;
+		return;
+	}
+	if(pedX==rob_map[robY].first && rob_map[robY].second==pedY) {
+		reward = CRASH_PENALTY;
+		state.Vel = -1;
+		return;
+	}
+
+			
+	if(pedX==rob_map[robY].first && pedY==rob_map[robY].second+1) {
+		if((rob_vel==0 && action==1) || (rob_vel == 1 && action < 2) || rob_vel == 2) {
+			reward = CRASH_PENALTY;
+			state.Vel = -1;
+			return;
+		}
+	}
+	if(pedX==rob_map[robY].first && pedY==rob_map[robY].second+2) {
+		if((rob_vel==1&&action==1) || (rob_vel == 2 && action < 2)) {
+			reward=CRASH_PENALTY;
+			state.Vel = -1;
+			return;
+		}
+	}
+
+	Uniform unif(rNum);
+
+	RobStep(state, action, unif);
+	PedStep(state, unif);
+
+	reward=-50;
+
+	obs = Observe(state);
+}
+
+double Model<PedestrianState>::ObsProb(uint64_t obs, const PedestrianState s, int action) const {
+	return (!IsTerminal(s) && obs == Observe(s)) || (IsTerminal(s) && obs == TerminalObs());
+}
+
+double Model<PedestrianState>::FringeUpperBound(const PedestrianState& s) const {
+	if (IsTerminal(s)) { // TODO: bug due to missing this - UpperBound table
+		return 0;
+	}
+
+	int d = (int)(fabs(rob_map.size() - s.RobPos.Y)) / 3;
+	/* TODO: There was a bug caused by not using the global discount factor - UpperBound table.*/
+	return GOAL_REWARD * pow(Globals::config.discount, d);
+}
+
+double Model<PedestrianState>::FringeLowerBound(const vector<Particle<PedestrianState>*>& particles) const {
+	return CRASH_PENALTY;
+}
+
+void Model<PedestrianState>::SetStartState(PedestrianState& state) {
+	startState = state;
+}
+
+PedestrianState Model<PedestrianState>::GetStartState() const {
+	return startState;
+}
+
+vector<PedestrianState> Model<PedestrianState>::GetStartStates(int num_ped) const {
+	vector<PedestrianState> states;
+	for(int i=0; i<num_ped; i++) {
+		PedestrianState state;
+		state.RobPos.X = 1;
+		state.RobPos.Y = 0;
+		state.Vel = 1;
+
+		state.Goal = unif_.nextInt(N_GOAL);
+		state.PedPos.X = unif_.nextInt(X_SIZE);
+		state.PedPos.Y = unif_.nextInt(Y_SIZE);
+		states.push_back(state);
+	}
+	return states;
+}
+
+vector<pair<PedestrianState, double>> Model<PedestrianState>::InitialBelief() const {
+	vector<pair<PedestrianState, double>> belief;
+	for(int goal=0; goal<N_GOAL; goal++) {
+		PedestrianState state = startState;
+		state.Goal = goal;
+
+		belief.push_back(pair<PedestrianState,double>(state, 1.0/N_GOAL));
+	}
+
+	return belief;
+}
+
+
+
+#endif

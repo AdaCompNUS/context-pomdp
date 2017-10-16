@@ -1,0 +1,21 @@
+<launch>
+	 <node pkg="stage" type="stageros" name="stageros" args="$(find dummyPed)/worlds/ped_eng_single.world" respawn="false">
+   		 <param name="base_watchdog_timeout" value="0.2"/>
+   		 <remap from="base_scan" to="sick_scan2"/>
+  	</node>
+  	<param name="use_sim_time" value="true"/>
+	<node name="curb_map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/curb_map.yaml">
+		<remap from="map" to="curb_map"/>
+	</node>
+	<node name="plane_map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/planar_map.yaml">
+		<remap from="map" to="planar_map"/>
+	</node>	
+	<node name="momdp_map_server" pkg="map_server" type="map_server" args="$(find dummyPed)/worlds/momdp_map.yaml">
+		<remap from="map" to="momdp_map"/>
+		<param name="frame_id" value="momdp"/>
+	</node>	
+	<include file="$(find ped_is_despot)/move_base.launch"/>
+	<node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find ped_is_despot)/simulation_odomOnly.vcg"/>
+	<node pkg="tf" type="static_transform_publisher" name="map_to_mompdp" args="126, 81, 0 2.0 0 0 /map /momdp 100" />
+</launch>
+

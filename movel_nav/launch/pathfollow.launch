@@ -1,0 +1,13 @@
+<launch>
+		<arg name="path" default=""/>
+    <arg name="reverse" default="false" />
+    <node pkg="movel_nav" type="purepursuit.py" name="purepursuit" args="$(arg path)" output="screen" cwd="node">
+        <param name="reverse" value="$(arg reverse)" />
+        <remap from="vslam2d_pose" to="/odometry/filtered" />
+        <remap from="cmd_vel" to="cmd_vel_mux/path_follow"/>
+    </node>
+
+    <node pkg="rviz" type="rviz" name="rviz_pathfollow" args="-d $(find movel_nav)/pathfollow.rviz" />
+
+</launch>
+

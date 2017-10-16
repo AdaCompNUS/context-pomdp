@@ -1,0 +1,30 @@
+./solver.h~:		model_.PrintState(particle->state);
+./world.h~:  cout << "State = \n"; model_.PrintState(state_);
+./model.h~:  void PrintState(const T& state, ostream& out = cout) const;
+./model.h:  void PrintState(const T& state, ostream& out = cout) const;
+./lower_bound/lower_bound_policy.h~:    model.PrintState(it->state);
+./lower_bound/lower_bound_policy.h~:			model.PrintState(particles[0]->state); 
+./lower_bound/lower_bound_policy.h:    model.PrintState(it->state);
+./lower_bound/lower_bound_policy.h:			model.PrintState(particles[0]->state); 
+Binary file ./lower_bound/.lower_bound_policy.h.swp matches
+./solver.h:		model_.PrintState(particle->state);
+./world.h:  cout << "State = \n"; model_.PrintState(state_);
+./main.cpp:  //model->PrintState(model->GetStartState());
+./problems/tag/tag.h:  void PrintState(const TagState& s, ostream& out = cout) const; 
+./problems/tag/tag.cpp:void Model<TagState>::PrintState(const TagState& state, ostream& out) const {
+./problems/lasertag/lasertag.h:  void PrintState(const LaserTagState& state, ostream& out = cout) const;
+./problems/lasertag/lasertag.h:void Model<LaserTagState>::PrintState(const LaserTagState& state, 
+./problems/bridge/bridge.h:  void PrintState(const BridgeState& state, ostream& out = cout) const;
+./problems/bridge/bridge.h:void Model<BridgeState>::PrintState(const BridgeState& state, 
+./problems/tiger/tiger.h:  void PrintState(const TigerState& state, ostream& out = cout) const;
+./problems/tiger/tiger.h:void Model<TigerState>::PrintState(const TigerState& state, ostream& out) 
+./problems/chain/chain.h:  void PrintState(const ChainState& s, ostream& out = cout) const { 
+./problems/pocman/pocman.h:  void PrintState(const PocmanState& state, ostream& out = cout) const;
+./problems/pocman/pocman.h:void POCMAN::PrintState(const PocmanState& state, ostream& ostr) const {
+./problems/rocksample/rocksample.h:  void PrintState(const RockSampleState& state, ostream& out = cout) const;
+./problems/rocksample/rocksample.h:void Model<RockSampleState>::PrintState(const RockSampleState& state, 
+./problems/pedestrian/pedestrian.h~:		void PrintState(const PedestrianState& state, ostream& out = cout) const;
+./problems/pedestrian/pedestrian.h~:void Model<PedestrianState>::PrintState(const PedestrianState& state, ostream& ostr) const
+./problems/pedestrian/pedestrian.h:		void PrintState(const PedestrianState& state, ostream& out = cout) const;
+./problems/pedestrian/pedestrian.h:void Model<PedestrianState>::PrintState(const PedestrianState& state, ostream& ostr) const
+./main.cpp~:  //model->PrintState(model->GetStartState());

@@ -1,0 +1,13 @@
+.DS_Store
+*.swp
+*.un~
+*.gcov
+*.o
+*.gcda
+*.gcno
+*.out
+bin/
+build/
+.deps
+profile
+*~

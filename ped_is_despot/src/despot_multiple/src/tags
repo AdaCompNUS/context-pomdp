@@ -1,0 +1,752 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+ACT_ACC	problems/pedestrian_changelane/pedestrian_changelane.h	/^			ACT_ACC,$/;"	e	enum:Model::__anon2
+ACT_CUR	problems/pedestrian_changelane/pedestrian_changelane.h	/^			ACT_CUR,$/;"	e	enum:Model::__anon2
+ACT_DEC	problems/pedestrian_changelane/pedestrian_changelane.h	/^			ACT_DEC$/;"	e	enum:Model::__anon2
+APPROX_BOUNDS	main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+ARG_IGNORE	optionparser.h	/^  ARG_IGNORE,$/;"	e	enum:option::ArgStatus
+ARG_ILLEGAL	optionparser.h	/^  ARG_ILLEGAL$/;"	e	enum:option::ArgStatus
+ARG_NONE	optionparser.h	/^  ARG_NONE,$/;"	e	enum:option::ArgStatus
+ARG_OK	optionparser.h	/^  ARG_OK,$/;"	e	enum:option::ArgStatus
+Action	history.h	/^	int Action(int t) const { return actions_[t]; }$/;"	f	class:History
+Action	lower_bound/lower_bound_policy_mode.h	/^int ModePolicyLowerBound<T>::Action($/;"	f	class:ModePolicyLowerBound
+Action	lower_bound/lower_bound_policy_random.h	/^int RandomPolicyLowerBound<T>::Action($/;"	f	class:RandomPolicyLowerBound
+Action	lower_bound/lower_bound_policy_suffix.h	/^  int Action(const vector<Particle<T>*>& particles,$/;"	f	class:SuffixPolicyLowerBound
+Action	optionparser.h	/^struct Parser::Action$/;"	s	class:option::Parser
+Add	history.h	/^	void Add(int action, uint64_t obs) {$/;"	f	class:History
+AddVector	problems/pedestrian_changelane/math_utils.cpp	/^void AddVector(double in_angle,double in_length,double &out_angle,double &out_length)$/;"	f
+AdjustLength	problems/pedestrian_changelane/math_utils.cpp	/^void MyVector::AdjustLength(double length)$/;"	f	class:MyVector
+Allocate	memorypool.h	/^  T* Allocate() { $/;"	f	class:MemoryPool
+Allocate	model.h	/^  Particle<T>* Allocate() const {$/;"	f	class:Model
+Allocate	problems/pedestrian_changelane/pedestrian_changelane.h	/^		Particle<PedestrianState>* Allocate() const {$/;"	f	class:Model
+Anticlockwise	coord.h	/^  static int Anticlockwise(int dir) { return (dir + 3) % 4; }$/;"	f	struct:Coord
+Arg	optionparser.h	/^struct Arg$/;"	s	namespace:option
+ArgStatus	optionparser.h	/^enum ArgStatus$/;"	g	namespace:option
+BELIEF	main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+BELIEF_UPDATE_H	belief_update/belief_update.h	2;"	d
+Belief	qnode.h	/^  unique_ptr<VNode<T>>& Belief(uint64_t obs) {$/;"	f	class:QNode
+BeliefUpdate	belief_update/belief_update.h	/^  BeliefUpdate(unsigned belief_update_seed, const Model<T>& model) :$/;"	f	class:BeliefUpdate
+BeliefUpdate	belief_update/belief_update.h	/^class BeliefUpdate {$/;"	c
+BeliefUpdateSeed	main.cpp	/^int BeliefUpdateSeed() {$/;"	f
+BestWEUO	qnode.h	/^pair<uint64_t, double> QNode<T>::BestWEUO($/;"	f	class:QNode
+BranchLabels	qnode.h	/^	vector<uint64_t> BranchLabels() const {$/;"	f	class:QNode
+BuildPriorTable	problems/pedestrian_changelane/SFM.h	/^	void BuildPriorTable()$/;"	f	class:SFM
+COORD_H	coord.h	2;"	d
+CRASH_PENALTY	problems/pedestrian_changelane/pedestrian_changelane.h	/^const int CRASH_PENALTY =-10000;$/;"	v
+Car	problems/pedestrian_changelane/SFM.h	/^	Car(MyMap*pt):map(pt) {carPos=w=h=0;}$/;"	f	class:Car
+Car	problems/pedestrian_changelane/SFM.h	/^	Car(MyMap*pt,int pos):map(pt)$/;"	f	class:Car
+Car	problems/pedestrian_changelane/SFM.h	/^class Car$/;"	c
+CheckArg	optionparser.h	/^typedef ArgStatus (*CheckArg)(const Option& option, bool msg);$/;"	t	namespace:option
+Children	vnode.h	/^  vector<QNode<T>>& Children() { return qnodes_; }$/;"	f	class:VNode
+Chunk	memorypool.h	/^  struct Chunk {$/;"	s	class:MemoryPool
+CleanProblem	main.cpp	/^void CleanProblem(int active_id)$/;"	f
+Clear	lower_bound/lower_bound_policy_suffix.h	/^	void Clear()  {$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+ClearAllocated	memorypool.h	/^  void ClearAllocated() { allocated_ = false; }$/;"	f	class:MemoryObject
+Clockwise	coord.h	/^  static int Clockwise(int dir) { return (dir + 1) % 4; }$/;"	f	struct:Coord
+CollectSearchInformation	lower_bound/lower_bound.h	/^	virtual void CollectSearchInformation(Solver<T>* solver) {$/;"	f	class:ILowerBound
+CollectSearchInformation	lower_bound/lower_bound_policy_suffix.h	/^	void CollectSearchInformation(Solver<T>* solver) {$/;"	f	class:SuffixPolicyLowerBound
+Compass	coord.cpp	/^const Coord Coord::Compass[8] = $/;"	m	class:Coord	file:
+Compass	coord.h	/^  static const Coord Compass[8];$/;"	m	struct:Coord
+CompassString	coord.cpp	/^const char* Coord::CompassString[8] = $/;"	m	class:Coord	file:
+CompassString	coord.h	/^  static const char* CompassString[8];$/;"	m	struct:Coord
+Config	globals.h	/^  Config() : $/;"	f	struct:Globals::Config
+Config	globals.h	/^struct Config {$/;"	s	namespace:Globals
+Construct	memorypool.h	/^  T* Construct() {$/;"	f	class:MemoryPool
+ConstructMapping	lower_bound/lower_bound_policy_suffix.h	/^	void ConstructMapping() {$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+Coord	coord.h	/^  Coord() {}$/;"	f	struct:Coord
+Coord	coord.h	/^  Coord(int x, int y) : X(x), Y(y) {}$/;"	f	struct:Coord
+Coord	coord.h	/^struct Coord$/;"	s
+Copy	model.h	/^  Particle<T>* Copy(const Particle<T>* particle) const {$/;"	f	class:Model
+Copy	problems/pedestrian_changelane/pedestrian_changelane.h	/^		Particle<PedestrianState>* Copy(const Particle<PedestrianState>* particle) const {$/;"	f	class:Model
+Count	lower_bound/lower_bound_policy_suffix.h	/^	int Count() { return count; }$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+CountOptionsAction	optionparser.h	/^  CountOptionsAction(unsigned* buffer_max_) :$/;"	f	class:option::Stats::CountOptionsAction
+CountOptionsAction	optionparser.h	/^class Stats::CountOptionsAction: public Parser::Action$/;"	c	class:option::Stats
+DEPTH	main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+DIRICHLET_H	dirichlet.h	5;"	d
+DISCOUNT	main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+DeleteAll	memorypool.h	/^  void DeleteAll() {$/;"	f	class:MemoryPool
+Descriptor	optionparser.h	/^struct Descriptor$/;"	s	namespace:option
+Destroy	memorypool.h	/^  void Destroy(T* obj) {$/;"	f	class:MemoryPool
+DirectionalDistance	coord.h	/^inline int Coord::DirectionalDistance(Coord lhs, Coord rhs, int direction) {$/;"	f	class:Coord
+Dirichlet	dirichlet.h	/^  Dirichlet (vector<double> alpha) {$/;"	f	class:Dirichlet
+Dirichlet	dirichlet.h	/^class Dirichlet {$/;"	c
+DotProduct	problems/pedestrian_changelane/math_utils.cpp	/^double DotProduct(double x1,double y1,double x2,double y2)$/;"	f
+EXACT_BELIEF_UPDATE_H	belief_update/belief_update_exact.h	2;"	d
+E_EAST	coord.h	/^    E_EAST,$/;"	e	enum:Coord::__anon1
+E_NORTH	coord.h	/^    E_NORTH,$/;"	e	enum:Coord::__anon1
+E_NORTHEAST	coord.h	/^    E_NORTHEAST,$/;"	e	enum:Coord::__anon1
+E_NORTHWEST	coord.h	/^    E_NORTHWEST$/;"	e	enum:Coord::__anon1
+E_SOUTH	coord.h	/^    E_SOUTH,$/;"	e	enum:Coord::__anon1
+E_SOUTHEAST	coord.h	/^    E_SOUTHEAST,$/;"	e	enum:Coord::__anon1
+E_SOUTHWEST	coord.h	/^    E_SOUTHWEST,$/;"	e	enum:Coord::__anon1
+E_WEST	coord.h	/^    E_WEST,$/;"	e	enum:Coord::__anon1
+East	coord.h	/^  static const Coord North, East, South, West;$/;"	m	struct:Coord
+Entry	random_streams.h	/^	double Entry(int stream, int pos) const {$/;"	f	class:RandomStreams
+EuclideanDistance	coord.h	/^inline double Coord::EuclideanDistance(Coord lhs, Coord rhs) {$/;"	f	class:Coord
+ExactBeliefUpdate	belief_update/belief_update_exact.h	/^  ExactBeliefUpdate(unsigned belief_update_seed, const Model<T>& model)$/;"	f	class:ExactBeliefUpdate
+ExactBeliefUpdate	belief_update/belief_update_exact.h	/^class ExactBeliefUpdate : public BeliefUpdate<T> {$/;"	c
+ExcessUncertainty	globals.h	/^inline double ExcessUncertainty(double l, double u, double root_l, $/;"	f	namespace:Globals
+ExpandOneStep	solver.h	/^void Solver<T>::ExpandOneStep(unique_ptr<VNode<T>>& node, bool debug) {$/;"	f	class:Solver
+Fequals	globals.h	/^inline bool Fequals(double a, double b) { $/;"	f	namespace:Globals
+Finished	solver.h	/^bool Solver<T>::Finished() const {$/;"	f	class:Solver
+Free	memorypool.h	/^  void Free(T* obj) { $/;"	f	class:MemoryPool
+Free	model.h	/^  void Free(Particle<T>* particle) const {$/;"	f	class:Model
+Free	problems/pedestrian_changelane/pedestrian_changelane.h	/^		void Free(Particle<PedestrianState>* particle) const {$/;"	f	class:Model
+FringeLowerBound	problems/pedestrian_changelane/pedestrian_changelane.h	/^double Model<PedestrianState>::FringeLowerBound(const vector<Particle<PedestrianState>*>& particles) const {$/;"	f	class:Model
+FringeUpperBound	problems/pedestrian_changelane/pedestrian_changelane.h	/^double Model<PedestrianState>::FringeUpperBound(const PedestrianState& s) const {$/;"	f	class:Model
+FunctionWriter	optionparser.h	/^    FunctionWriter(Function* w) :$/;"	f	struct:option::PrintUsageImplementation::FunctionWriter
+FunctionWriter	optionparser.h	/^  struct FunctionWriter: public IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+GAMMA_H	gamma.h	2;"	d
+GOAL_REWARD	problems/pedestrian_changelane/pedestrian_changelane.h	/^const int GOAL_REWARD = 1000;$/;"	v
+Gamma	gamma.h	/^	Gamma(double k, double theta) {$/;"	f	class:Gamma
+Gamma	gamma.h	/^class Gamma {$/;"	c
+GenerateLegal	model.h	/^  shared_ptr<vector<int>> GenerateLegal(const T& state, const History& history)$/;"	f	class:Model
+GenerateLegal	problems/pedestrian_changelane/pedestrian_changelane.h	/^		shared_ptr<vector<int>> GenerateLegal(const PedestrianState& state,$/;"	f	class:Model
+GeneratePreferred	problems/pedestrian_changelane/pedestrian_changelane.h	/^		shared_ptr<vector<int>> GeneratePreferred(const PedestrianState& state,$/;"	f	class:Model
+GetAngle	problems/pedestrian_changelane/math_utils.cpp	/^double MyVector::GetAngle()   \/\/[-pi,pi]$/;"	f	class:MyVector
+GetCategory	util.h	/^	inline int GetCategory(vector<double> probs, double r) {$/;"	f	namespace:Util
+GetCurrObs	main.cpp	/^int GetCurrObs()$/;"	f
+GetCurrentState	main.cpp	/^void  GetCurrentState(Pedestrian &ped)$/;"	f
+GetLength	problems/pedestrian_changelane/math_utils.cpp	/^double MyVector::GetLength()$/;"	f	class:MyVector
+GetPolar	problems/pedestrian_changelane/math_utils.cpp	/^void MyVector::GetPolar(double &angle,double &length)$/;"	f	class:MyVector
+GetStartState	problems/pedestrian_changelane/pedestrian_changelane.h	/^PedestrianState Model<PedestrianState>::GetStartState() const {$/;"	f	class:Model
+GetState	world.h	/^  T GetState()$/;"	f	class:World
+GetYaw	problems/pedestrian_changelane/window.cpp	/^double MyWindow::GetYaw()$/;"	f	class:MyWindow
+GlobalToLocal	problems/pedestrian_changelane/window.cpp	/^void MyWindow::GlobalToLocal(int globalW,int globalH,int &localW,int&localH)$/;"	f	class:MyWindow
+Globals	globals.cpp	/^namespace Globals {$/;"	n	file:
+Globals	globals.h	/^namespace Globals {$/;"	n
+GoalReached	main.cpp	/^bool GoalReached()$/;"	f
+HELP	main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+HISTORY_H	history.h	2;"	d
+History	history.h	/^class History {$/;"	c
+ILowerBound	lower_bound/lower_bound.h	/^  ILowerBound(const RandomStreams& streams) : streams_(streams) {}$/;"	f	class:ILowerBound
+ILowerBound	lower_bound/lower_bound.h	/^class ILowerBound {$/;"	c
+INF	globals.cpp	/^const double INF = 1e8;$/;"	m	namespace:Globals	file:
+IStringWriter	optionparser.h	/^  struct IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+IUpperBound	upper_bound/upper_bound.h	/^  IUpperBound(const RandomStreams& streams) : streams_(streams) {}$/;"	f	class:IUpperBound
+IUpperBound	upper_bound/upper_bound.h	/^class IUpperBound {$/;"	c
+InCollision	main.cpp	/^bool InCollision(int action)$/;"	f
+InWindow	problems/pedestrian_changelane/window.cpp	/^bool MyWindow::InWindow(int w,int h)$/;"	f	class:MyWindow
+Init	solver.h	/^void Solver<T>::Init() {$/;"	f	class:Solver
+InitModel	problems/pedestrian_changelane/pedestrian_changelane.h	/^void Model<PedestrianState>::InitModel()$/;"	f	class:Model
+InitPedestrians	main.cpp	/^void InitPedestrians()$/;"	f
+InitialBelief	problems/pedestrian_changelane/pedestrian_changelane.h	/^vector<pair<PedestrianState, double>> Model<PedestrianState>::InitialBelief() const {$/;"	f	class:Model
+Instance	lower_bound/lower_bound_policy_suffix.h	/^SuffixPolicyLowerBound<T>* SuffixPolicyLowerBound<T>::Instance(string name, const RandomStreams& streams, int num_states, unsigned action_root_seed) {$/;"	f	class:SuffixPolicyLowerBound
+IsAllocated	memorypool.h	/^  bool IsAllocated() const { return allocated_; }$/;"	f	class:MemoryObject
+IsTerminal	problems/pedestrian_changelane/pedestrian_changelane.h	/^		bool IsTerminal(PedestrianState s) const {$/;"	f	class:Model
+KNOWLEDGE	main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+LBTYPE	main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+LOWERBOUND_H	lower_bound/lower_bound.h	2;"	d
+LOWER_BOUND_POLICY_MODE	lower_bound/lower_bound_policy_mode.h	2;"	d
+LOWER_BOUND_POLICY_RANDOM_H	lower_bound/lower_bound_policy_random.h	2;"	d
+LOWER_BOUND_POLICY_SUFFIX_H	lower_bound/lower_bound_policy_suffix.h	2;"	d
+Lane	problems/pedestrian_changelane/pedestrian_state.h	/^		int Lane;$/;"	m	class:PedestrianState
+LastAction	history.h	/^	int LastAction() const { return actions_.back(); }$/;"	f	class:History
+LastObservation	history.h	/^	uint64_t LastObservation() const { return observations_.back(); }$/;"	f	class:History
+LeftHanded	problems/pedestrian_changelane/window.cpp	/^bool MyWindow::LeftHanded(int x,int y,int vx,int vy)  \/\/x,y on the left hand side of vx,vy$/;"	f	class:MyWindow
+Length	random_streams.h	/^	int Length() const { return streams_.size() > 0 ? streams_[0].size() : 0; }$/;"	f	class:RandomStreams
+LinePartIterator	optionparser.h	/^    LinePartIterator(const Descriptor usage[]) :$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+LinePartIterator	optionparser.h	/^  class LinePartIterator$/;"	c	struct:option::PrintUsageImplementation
+LineWrapper	optionparser.h	/^    LineWrapper(int x1, int x2) :$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+LineWrapper	optionparser.h	/^  class LineWrapper$/;"	c	struct:option::PrintUsageImplementation
+LoadMap	problems/pedestrian_changelane/map.cpp	/^void MyMap::LoadMap()$/;"	f	class:MyMap
+LoadPath	problems/pedestrian_changelane/map.cpp	/^void MyMap::LoadPath(int i)$/;"	f	class:MyMap
+LocalToGlobal	problems/pedestrian_changelane/window.cpp	/^void MyWindow::LocalToGlobal(int localW,int localH,int & globalW,int & globalH)$/;"	f	class:MyWindow
+LowerBound	lower_bound/lower_bound_policy.h	/^pair<double, int> PolicyLowerBound<T>::LowerBound($/;"	f	class:PolicyLowerBound
+LowerBound	qnode.h	/^double QNode<T>::LowerBound() const {$/;"	f	class:QNode
+LowerBoundAction	problems/pedestrian_changelane/pedestrian_changelane.h	/^		int LowerBoundAction(const PedestrianState& s) {$/;"	f	class:Model
+LowerBoundImpl	lower_bound/lower_bound_policy.h	/^pair<double, int> PolicyLowerBound<T>::LowerBoundImpl($/;"	f	class:PolicyLowerBound
+MAP	globals.h	26;"	d
+MATHUTILS_H	problems/pedestrian_changelane/math_utils.h	2;"	d
+MEMORYPOOL_H	memorypool.h	2;"	d
+MODELPARAMS_H	problems/pedestrian_changelane/param.h	3;"	d
+MODEL_H	model.h	2;"	d
+MSC_Builtin_CLZ	optionparser.h	/^struct MSC_Builtin_CLZ$/;"	s	namespace:option
+MYMAP_H	problems/pedestrian_changelane/map.h	2;"	d
+ManhattanDistance	coord.h	/^inline int Coord::ManhattanDistance(Coord lhs, Coord rhs) {$/;"	f	class:Coord
+MapWindowSplit	problems/pedestrian_changelane/window.cpp	/^void MyWindow::MapWindowSplit(double w,double h,double yaw)$/;"	f	class:MyWindow
+MaxObs	problems/pedestrian_changelane/pedestrian_changelane.h	/^		uint64_t MaxObs() const {$/;"	f	class:Model
+MemoryObject	memorypool.h	/^class MemoryObject {$/;"	c
+MemoryPool	memorypool.h	/^  MemoryPool() : num_allocated_(0) {}$/;"	f	class:MemoryPool
+MemoryPool	memorypool.h	/^class MemoryPool {$/;"	c
+ModePolicyLowerBound	lower_bound/lower_bound_policy_mode.h	/^  ModePolicyLowerBound(const RandomStreams& streams, int num_states)$/;"	f	class:ModePolicyLowerBound
+ModePolicyLowerBound	lower_bound/lower_bound_policy_mode.h	/^class ModePolicyLowerBound : public PolicyLowerBound<T> {$/;"	c
+Model	model.h	/^class Model : public ILowerBound<T>, public IUpperBound<T> {$/;"	c
+Model	problems/pedestrian_changelane/pedestrian_changelane.h	/^Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)$/;"	f	class:Model
+Model	problems/pedestrian_changelane/pedestrian_changelane.h	/^class Model<PedestrianState> : public IUpperBound<PedestrianState>$/;"	c
+ModelParams	problems/pedestrian_changelane/param.h	/^namespace ModelParams {$/;"	n
+ModelTrans	problems/pedestrian_changelane/SFM.cpp	/^void SFM::ModelTrans(PedestrianState&state,UtilUniform unif)$/;"	f	class:SFM
+MyMap	problems/pedestrian_changelane/map.h	/^class MyMap {$/;"	c
+MyVector	problems/pedestrian_changelane/math_utils.cpp	/^MyVector::MyVector() {dw=0;dh=0;}$/;"	f	class:MyVector
+MyVector	problems/pedestrian_changelane/math_utils.cpp	/^MyVector::MyVector(double _dw,double _dh) {dw=_dw;dh=_dh;}$/;"	f	class:MyVector
+MyVector	problems/pedestrian_changelane/math_utils.cpp	/^MyVector::MyVector(double angle,double length,int dummy)$/;"	f	class:MyVector
+MyVector	problems/pedestrian_changelane/math_utils.h	/^class MyVector$/;"	c
+MyWindow	problems/pedestrian_changelane/window.h	/^	MyWindow(MyMap * pt) {map=pt;}$/;"	f	class:MyWindow
+MyWindow	problems/pedestrian_changelane/window.h	/^class MyWindow  {$/;"	c
+NGOAL	problems/pedestrian_changelane/param.h	/^	const int NGOAL=4;$/;"	m	namespace:ModelParams
+NPARTICLES	main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+NUMBER	main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+NUM_EFF_PARTICLE_FRACTION	belief_update/belief_update_particle.h	/^  static constexpr double NUM_EFF_PARTICLE_FRACTION = 0.05;$/;"	m	class:ParticleFilterUpdate
+NUM_EFF_PARTICLE_FRACTION	belief_update/belief_update_particle.h	/^constexpr double ParticleFilterUpdate<T>::NUM_EFF_PARTICLE_FRACTION;$/;"	m	class:ParticleFilterUpdate
+N_GOAL	problems/pedestrian_changelane/pedestrian_changelane.h	/^int N_GOAL;$/;"	v
+N_PED	problems/pedestrian_changelane/param.h	/^	const int N_PED=2;$/;"	m	namespace:ModelParams
+Name	lower_bound/lower_bound_policy_mode.h	/^  static string Name() { return "mode"; }$/;"	f	class:ModePolicyLowerBound
+Name	lower_bound/lower_bound_policy_random.h	/^  static string Name() { return "random"; }$/;"	f	class:RandomPolicyLowerBound
+Name	lower_bound/lower_bound_policy_suffix.h	/^	static string Name() { return "suffix"; }$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+Name	lower_bound/lower_bound_policy_suffix.h	/^  static string Name() { return "suffix"; }$/;"	f	class:SuffixPolicyLowerBound
+NewChunk	memorypool.h	/^  void NewChunk() {$/;"	f	class:MemoryPool
+None	optionparser.h	/^  static ArgStatus None(const Option&, bool)$/;"	f	struct:option::Arg
+Norm	problems/pedestrian_changelane/math_utils.cpp	/^double Norm(double x,double y)$/;"	f
+Normalize	belief_update/belief_update.h	/^void BeliefUpdate<T>::Normalize(vector<Particle<T>*>& particles) const {$/;"	f	class:BeliefUpdate
+North	coord.h	/^  static const Coord North, East, South, West;$/;"	m	struct:Coord
+NorthEast	coord.h	/^  static const Coord NorthEast, SouthEast, SouthWest, NorthWest;$/;"	m	struct:Coord
+NorthWest	coord.h	/^  static const Coord NorthEast, SouthEast, SouthWest, NorthWest;$/;"	m	struct:Coord
+Null	coord.h	/^  static const Coord Null;$/;"	m	struct:Coord
+NumActions	problems/pedestrian_changelane/pedestrian_changelane.h	/^		int NumActions() const { return 3; }$/;"	f	class:Model
+NumRuns	main.cpp	/^int NumRuns=1;$/;"	v
+NumStates	problems/pedestrian_changelane/pedestrian_changelane.h	/^		int NumStates() const { $/;"	f	class:Model
+NumStreams	random_streams.h	/^	int NumStreams() const { return streams_.size(); }$/;"	f	class:RandomStreams
+OBSSET_H	qnode.h	2;"	d
+OBSTACLE_PROB	problems/pedestrian_changelane/pedestrian_changelane.h	/^		double OBSTACLE_PROB;$/;"	m	class:Model
+OPTIONPARSER_H_	optionparser.h	215;"	d
+OStreamWriter	optionparser.h	/^    OStreamWriter(OStream& o) :$/;"	f	struct:option::PrintUsageImplementation::OStreamWriter
+OStreamWriter	optionparser.h	/^  struct OStreamWriter: public IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+Objects	memorypool.h	/^    T Objects[Size];$/;"	m	struct:MemoryPool::Chunk
+ObsProb	problems/pedestrian_changelane/pedestrian_changelane.h	/^double Model<PedestrianState>::ObsProb(uint64_t obs, const PedestrianState s, int action) const {$/;"	f	class:Model
+Observation	history.h	/^	uint64_t Observation(int t) const { return observations_[t]; }$/;"	f	class:History
+Observe	problems/pedestrian_changelane/pedestrian_changelane.h	/^uint64_t Model<PedestrianState>::Observe(const PedestrianState& state) const {$/;"	f	class:Model
+Opposite	coord.h	/^  static int Opposite(int dir) { return (dir + 2) % 4; }$/;"	f	struct:Coord
+OptimalAction	vnode.h	/^int VNode<T>::OptimalAction() const {$/;"	f	class:VNode
+Option	optionparser.h	/^  Option() :$/;"	f	class:option::Option
+Option	optionparser.h	/^  Option(const Descriptor* desc_, const char* name_, const char* arg_)$/;"	f	class:option::Option
+Option	optionparser.h	/^  Option(const Option& orig)$/;"	f	class:option::Option
+Option	optionparser.h	/^class Option$/;"	c	namespace:option
+Optional	optionparser.h	/^  static ArgStatus Optional(const Option& option, bool)$/;"	f	struct:option::Arg
+PARAMS_FILE	main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+PARTICLE_FILTER_UPDATE	belief_update/belief_update_particle.h	2;"	d
+PARTICLE_H	particle.h	2;"	d
+PARTICLE_WT_THRESHOLD	belief_update/belief_update.h	/^  static constexpr double PARTICLE_WT_THRESHOLD = 1e-20;$/;"	m	class:BeliefUpdate
+PARTICLE_WT_THRESHOLD	belief_update/belief_update.h	/^constexpr double BeliefUpdate<T>::PARTICLE_WT_THRESHOLD;$/;"	m	class:BeliefUpdate
+PEDESTRIAN_H	problems/pedestrian_changelane/pedestrian_changelane.h	2;"	d
+POLICY_LOWER_BOUND_H	lower_bound/lower_bound_policy.h	2;"	d
+PROBLEM	main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+PRUNE	main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+Parser	optionparser.h	/^  Parser() :$/;"	f	class:option::Parser
+Parser	optionparser.h	/^  Parser(bool gnu, const Descriptor usage[], int argc, char** argv, Option options[], Option buffer[],$/;"	f	class:option::Parser
+Parser	optionparser.h	/^  Parser(bool gnu, const Descriptor usage[], int argc, const char** argv, Option options[], Option buffer[],$/;"	f	class:option::Parser
+Parser	optionparser.h	/^  Parser(const Descriptor usage[], int argc, char** argv, Option options[], Option buffer[], int min_abbr_len = 0,$/;"	f	class:option::Parser
+Parser	optionparser.h	/^  Parser(const Descriptor usage[], int argc, const char** argv, Option options[], Option buffer[], int min_abbr_len = 0,$/;"	f	class:option::Parser
+Parser	optionparser.h	/^class Parser$/;"	c	namespace:option
+Particle	particle.h	/^  Particle() : id(0), wt(0) {}$/;"	f	class:Particle
+Particle	particle.h	/^  Particle(T s, int id_, double weight) : state(s), id(id_), wt(weight) {}$/;"	f	class:Particle
+Particle	particle.h	/^class Particle : public MemoryObject {$/;"	c
+ParticleFilterUpdate	belief_update/belief_update_particle.h	/^  ParticleFilterUpdate(unsigned belief_update_seed, const Model<T>& model) $/;"	f	class:ParticleFilterUpdate
+ParticleFilterUpdate	belief_update/belief_update_particle.h	/^class ParticleFilterUpdate : public BeliefUpdate<T> {$/;"	c
+PedPos	problems/pedestrian_changelane/pedestrian_state.h	/^		Coord PedPos;$/;"	m	class:PedestrianState
+PedPoses	problems/pedestrian_changelane/pedestrian_state.h	/^		vector<pair<Coord,int>> PedPoses;    \/\/(coor,goal)$/;"	m	class:PedestrianState
+PedStep	problems/pedestrian_changelane/pedestrian_changelane.h	/^void Model<PedestrianState>::PedStep(PedestrianState& state, UtilUniform unif) const$/;"	f	class:Model
+PedToCar	problems/pedestrian_changelane/SFM.cpp	/^MyVector SFM::PedToCar(Pedestrian & ped,Car & car)$/;"	f	class:SFM
+PedToGoal	problems/pedestrian_changelane/SFM.cpp	/^MyVector SFM::PedToGoal(Pedestrian &ped,int goal_w,int goal_h)$/;"	f	class:SFM
+PedToPed	problems/pedestrian_changelane/SFM.cpp	/^MyVector SFM::PedToPed(Pedestrian &ped, vector<Pedestrian> &ped_list)$/;"	f	class:SFM
+Pedestrian	problems/pedestrian_changelane/SFM.h	/^	Pedestrian() {}$/;"	f	class:Pedestrian
+Pedestrian	problems/pedestrian_changelane/SFM.h	/^	Pedestrian(int _w,int _h,int _goal,int _id) {w=_w;h=_h;goal=_goal;id=_id;}$/;"	f	class:Pedestrian
+Pedestrian	problems/pedestrian_changelane/SFM.h	/^class Pedestrian$/;"	c
+PedestrianState	problems/pedestrian_changelane/pedestrian_state.cpp	/^PedestrianState::PedestrianState(int id) {$/;"	f	class:PedestrianState
+PedestrianState	problems/pedestrian_changelane/pedestrian_state.h	/^		PedestrianState() {}$/;"	f	class:PedestrianState
+PedestrianState	problems/pedestrian_changelane/pedestrian_state.h	/^class PedestrianState$/;"	c
+Plan	main.cpp	/^void Plan()$/;"	f
+PolicyLowerBound	lower_bound/lower_bound_policy.h	/^  PolicyLowerBound(const RandomStreams& streams) : ILowerBound<T>(streams) {}$/;"	f	class:PolicyLowerBound
+PolicyLowerBound	lower_bound/lower_bound_policy.h	/^class PolicyLowerBound : public ILowerBound<T> {$/;"	c
+PrintObs	problems/pedestrian_changelane/pedestrian_changelane.h	/^		void PrintObs(uint64_t obs, ostream& out = cout) const { out << obs; }$/;"	f	class:Model
+PrintState	problems/pedestrian_changelane/pedestrian_changelane.h	/^void Model<PedestrianState>::PrintState(const PedestrianState& state, ostream& ostr) const$/;"	f	class:Model
+PrintTree	solver.h	/^void Solver<T>::PrintTree(unique_ptr<VNode<T>>& node) {$/;"	f	class:Solver
+PrintUsageImplementation	optionparser.h	/^struct PrintUsageImplementation$/;"	s	namespace:option
+Prune	qnode.h	/^double QNode<T>::Prune(int& total_pruned) const {$/;"	f	class:QNode
+Prune	vnode.h	/^double VNode<T>::Prune(int& total_pruned) {$/;"	f	class:VNode
+Put	lower_bound/lower_bound_policy_suffix.h	/^	void Put(const History& history, int action) {$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+QNode	qnode.h	/^QNode<T>::QNode($/;"	f	class:QNode
+QNode	qnode.h	/^class QNode {$/;"	c
+RANDOM_STREAMS_H	random_streams.h	2;"	d
+RMMax	problems/pedestrian_changelane/param.h	/^	const int RMMax=10;   \/\/maximum length of the rob_map structure$/;"	m	namespace:ModelParams
+RandomActionSeed	main.cpp	/^int RandomActionSeed() {$/;"	f
+RandomCategory	util.h	/^	inline int RandomCategory(vector<double> probs) {$/;"	f	namespace:Util
+RandomDouble	util.h	/^	inline double RandomDouble() {$/;"	f	namespace:Util
+RandomDouble	util.h	/^	inline double RandomDouble(double min, double max) {$/;"	f	namespace:Util
+RandomPolicyLowerBound	lower_bound/lower_bound_policy_random.h	/^  RandomPolicyLowerBound(const RandomStreams& streams, $/;"	f	class:RandomPolicyLowerBound
+RandomPolicyLowerBound	lower_bound/lower_bound_policy_random.h	/^class RandomPolicyLowerBound : public PolicyLowerBound<T> {$/;"	c
+RandomSeed	util.h	/^	inline void RandomSeed(int seed) {$/;"	f	namespace:Util
+RandomState	problems/pedestrian_changelane/pedestrian_changelane.h	/^		PedestrianState RandomState(unsigned& seed, uint64_t obs) const {$/;"	f	class:Model
+RandomStreams	random_streams.cpp	/^RandomStreams::RandomStreams(int num_streams, int length, unsigned seed)$/;"	f	class:RandomStreams
+RandomStreams	random_streams.h	/^class RandomStreams {$/;"	c
+RemoveLast	history.h	/^	void RemoveLast() { $/;"	f	class:History
+Required	optionparser.h	/^  static option::ArgStatus Required(const option::Option& option, bool msg)$/;"	f	struct:option::Arg
+Reset	belief_update/belief_update.h	/^  void Reset() { $/;"	f	class:BeliefUpdate
+Reset	solver.h	/^void Solver<T>::Reset() {$/;"	f	class:Solver
+Reset	world.h	/^void World<T>::Reset() {$/;"	f	class:World
+RetrieveHistoryActionMapping	solver.h	/^void Solver<T>::RetrieveHistoryActionMapping(SuffixPolicyLowerBound<T>* suffix_policy) {$/;"	f	class:Solver
+RetrieveHistoryActionMapping	solver.h	/^void Solver<T>::RetrieveHistoryActionMapping(unique_ptr<VNode<T>>& node,$/;"	f	class:Solver
+RobPos	problems/pedestrian_changelane/pedestrian_state.h	/^		Coord RobPos;$/;"	m	class:PedestrianState
+RobStep	problems/pedestrian_changelane/pedestrian_changelane.h	/^void Model<PedestrianState>::RobStep(PedestrianState& state, int action, UtilUniform unif) const {$/;"	f	class:Model
+Run	main.cpp	/^int Run(Model<T>* model, ILowerBound<T>* lb, IUpperBound<T>* ub, $/;"	f
+RunMultiple	main.cpp	/^int RunMultiple(Model<T>* model, ILowerBound<T>* lb, IUpperBound<T>* ub, $/;"	f
+RunPedestrian	main.cpp	/^int RunPedestrian(option::Option* options, const RandomStreams& streams) {$/;"	f
+SEED	main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+SFM	problems/pedestrian_changelane/SFM.h	/^	SFM (MyMap*m_pt,MyWindow*w_pt)$/;"	f	class:SFM
+SFM	problems/pedestrian_changelane/SFM.h	/^class SFM $/;"	c
+SFM_H	problems/pedestrian_changelane/SFM.h	2;"	d
+SHARED_H	globals.h	2;"	d
+SIMLEN	main.cpp	/^  NPARTICLES, PRUNE, SIMLEN, LBTYPE, BELIEF, KNOWLEDGE, APPROX_BOUNDS, NUMBER$/;"	e	enum:optionIndex	file:
+SOLVER_H	solver.h	2;"	d
+Sample	belief_update/belief_update.h	/^vector<Particle<T>*> BeliefUpdate<T>::Sample($/;"	f	class:BeliefUpdate
+Search	solver.h	/^int Solver<T>::Search(double max_time, int& n_trials) {$/;"	f	class:Solver
+SearchForLongestSuffixMatchActions	lower_bound/lower_bound_policy_suffix.h	/^	vector<int> SearchForLongestSuffixMatchActions(const History& history) const {$/;"	f	class:SuffixPolicyLowerBoundMapImpl
+SelectPhase	problems/pedestrian_changelane/SFM.h	/^	int SelectPhase(double angle,double length)$/;"	f	class:SFM
+SetAllocated	memorypool.h	/^  void SetAllocated() { allocated_ = true; }$/;"	f	class:MemoryObject
+SetStartState	problems/pedestrian_changelane/pedestrian_changelane.h	/^void Model<PedestrianState>::SetStartState(PedestrianState& state) {$/;"	f	class:Model
+SetStartStates	world.h	/^	void SetStartStates(vector<T>& states) {$/;"	f	class:World
+Size	history.h	/^	size_t Size() const { return actions_.size(); }$/;"	f	class:History
+Size	memorypool.h	/^    static const int Size = 256;$/;"	m	struct:MemoryPool::Chunk
+SocialForce	problems/pedestrian_changelane/SFM.cpp	/^MyVector  SFM::SocialForce(Pedestrian & ped,vector<Pedestrian> & ped_list,Car& car)$/;"	f	class:SFM
+Solver	solver.h	/^  Solver(const Model<T>& model,$/;"	f	class:Solver
+Solver	solver.h	/^class Solver {$/;"	c
+South	coord.h	/^  static const Coord North, East, South, West;$/;"	m	struct:Coord
+SouthEast	coord.h	/^  static const Coord NorthEast, SouthEast, SouthWest, NorthWest;$/;"	m	struct:Coord
+SouthWest	coord.h	/^  static const Coord NorthEast, SouthEast, SouthWest, NorthWest;$/;"	m	struct:Coord
+Statistics	problems/pedestrian_changelane/pedestrian_changelane.h	/^		void Statistics(const vector<Particle<PedestrianState>*> particles) const {$/;"	f	class:Model
+Stats	optionparser.h	/^  Stats() :$/;"	f	struct:option::Stats
+Stats	optionparser.h	/^  Stats(bool gnu, const Descriptor usage[], int argc, char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+Stats	optionparser.h	/^  Stats(bool gnu, const Descriptor usage[], int argc, const char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+Stats	optionparser.h	/^  Stats(const Descriptor usage[], int argc, char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+Stats	optionparser.h	/^  Stats(const Descriptor usage[], int argc, const char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+Stats	optionparser.h	/^struct Stats$/;"	s	namespace:option
+Step	model.h	/^  void Step(T& state, double random_num, int action, double& reward) const {$/;"	f	class:Model
+Step	problems/pedestrian_changelane/SFM.h	/^	void Step()   \/\/Pedestrian move according to SFM Model$/;"	f	class:Pedestrian
+Step	problems/pedestrian_changelane/pedestrian_changelane.h	/^		void Step(PedestrianState& state, double rNum, int action, double& reward) const {$/;"	f	class:Model
+Step	problems/pedestrian_changelane/pedestrian_changelane.h	/^void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int action, double& reward, uint64_t& obs) const {$/;"	f	class:Model
+Step	world.h	/^void World<T>::Step(int action, uint64_t& obs, double& reward) {$/;"	f	class:World
+StepMultiple	problems/pedestrian_changelane/pedestrian_changelane.h	/^void Model<PedestrianState>::StepMultiple(vector<PedestrianState>& states, double rNum, int action, vector<double>& rewards, vector<uint64_t>& obss) const {$/;"	f	class:Model
+StepMultiple	world.h	/^void World<T>::StepMultiple(int action, vector<uint64_t>& obss, vector<double>& rewards) {$/;"	f	class:World
+StepN	problems/pedestrian_changelane/window.cpp	/^void MyWindow::StepN(int w,int h,int & dest_w,int & dest_h,double angle,int step_size)$/;"	f	class:MyWindow
+StoreOptionAction	optionparser.h	/^  StoreOptionAction(Parser& parser_, Option options_[], Option buffer_[], int bufmax_) :$/;"	f	class:option::Parser::StoreOptionAction
+StoreOptionAction	optionparser.h	/^class Parser::StoreOptionAction: public Parser::Action$/;"	c	class:option::Parser
+StreamWriter	optionparser.h	/^    StreamWriter(Function* w, Stream* s) :$/;"	f	struct:option::PrintUsageImplementation::StreamWriter
+StreamWriter	optionparser.h	/^  struct StreamWriter: public IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+Suffix	history.h	/^	History Suffix(int s) const {$/;"	f	class:History
+SuffixPolicyLowerBound	lower_bound/lower_bound_policy_suffix.h	/^	SuffixPolicyLowerBound(const RandomStreams& streams, int num_states) : PolicyLowerBound<T>(streams) {$/;"	f	class:SuffixPolicyLowerBound
+SuffixPolicyLowerBound	lower_bound/lower_bound_policy_suffix.h	/^class SuffixPolicyLowerBound : public PolicyLowerBound<T> {$/;"	c
+SuffixPolicyLowerBoundMapImpl	lower_bound/lower_bound_policy_suffix.h	/^	SuffixPolicyLowerBoundMapImpl(const RandomStreams& streams, int num_states, unsigned action_root_seed) $/;"	f	class:SuffixPolicyLowerBoundMapImpl
+SuffixPolicyLowerBoundMapImpl	lower_bound/lower_bound_policy_suffix.h	/^class SuffixPolicyLowerBoundMapImpl : public SuffixPolicyLowerBound<T> {$/;"	c
+SyscallWriter	optionparser.h	/^    SyscallWriter(Syscall* w, int f) :$/;"	f	struct:option::PrintUsageImplementation::SyscallWriter
+SyscallWriter	optionparser.h	/^  struct SyscallWriter: public IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+TIMEOUT	main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+TINY	globals.cpp	/^const double TINY = 1e-8;$/;"	m	namespace:Globals	file:
+T_	belief_update/belief_update_exact.h	/^  vector<vector<UMAP<T, double>>> T_;$/;"	m	class:ExactBeliefUpdate
+TemporaryWriter	optionparser.h	/^    TemporaryWriter(const Temporary& u) :$/;"	f	struct:option::PrintUsageImplementation::TemporaryWriter
+TemporaryWriter	optionparser.h	/^  struct TemporaryWriter: public IStringWriter$/;"	s	struct:option::PrintUsageImplementation
+TerminalObs	problems/pedestrian_changelane/pedestrian_changelane.h	/^		uint64_t TerminalObs() const {$/;"	f	class:Model
+TestSimulator	main.cpp	/^void TestSimulator()$/;"	f
+Tokenize	globals.h	/^inline vector<string> Tokenize(string line, char delim) {$/;"	f	namespace:Globals
+TotalReward	world.h	/^double World<T>::TotalReward() {$/;"	f	class:World
+TotalUndiscountedReward	world.h	/^double World<T>::TotalUndiscountedReward() {$/;"	f	class:World
+TransitionModel	main.cpp	/^void TransitionModel(){}$/;"	f
+Trial	solver.h	/^int Solver<T>::Trial(unique_ptr<VNode<T>>& node, bool debug) {$/;"	f	class:Solver
+Truncate	history.h	/^	void Truncate(int d) {$/;"	f	class:History
+UCT_CONST	problems/pedestrian_changelane/param.h	/^	const int UCT_CONST=50000;$/;"	m	namespace:ModelParams
+UMAP	globals.h	27;"	d
+UNKNOWN	main.cpp	/^  UNKNOWN, HELP, PROBLEM, PARAMS_FILE, DEPTH, DISCOUNT, SEED, TIMEOUT, $/;"	e	enum:optionIndex	file:
+UPPER_BOUND_H	upper_bound/upper_bound.h	2;"	d
+UPPER_BOUND_NONSTOCHASTIC_H	upper_bound/upper_bound_nonstochastic.h	2;"	d
+UPPER_BOUND_STOCHASTIC_H	upper_bound/upper_bound_stochastic.h	2;"	d
+UTILUNIFORM_H	util_uniform.h	2;"	d
+UTIL_H	util.h	2;"	d
+Uniform	problems/pedestrian_changelane/math_utils.cpp	/^double Uniform(double x,double y,double &ux,double &uy)$/;"	f
+UnitTest	coord.cpp	/^void Coord::UnitTest()$/;"	f	class:Coord
+Update	belief_update/belief_update.h	/^  vector<Particle<T>*> Update(const vector<Particle<T>*>& particles,$/;"	f	class:BeliefUpdate
+Update	main.cpp	/^bool Update(int action)$/;"	f
+UpdateBelief	solver.h	/^void Solver<T>::UpdateBelief(int act, uint64_t obs) {$/;"	f	class:Solver
+UpdateImpl	belief_update/belief_update_exact.h	/^vector<Particle<T>*> ExactBeliefUpdate<T>::UpdateImpl($/;"	f	class:ExactBeliefUpdate
+UpdateImpl	belief_update/belief_update_particle.h	/^vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl($/;"	f	class:ParticleFilterUpdate
+UpdatePed	main.cpp	/^void UpdatePed(int action)$/;"	f
+UpdateRobMap	problems/pedestrian_changelane/window.cpp	/^void MyWindow::UpdateRobMap(int windowOrigin)$/;"	f	class:MyWindow
+UpdateSim	main.cpp	/^void UpdateSim()$/;"	f
+UpperBound	problems/pedestrian_changelane/pedestrian_changelane.h	/^		double UpperBound(const vector<Particle<PedestrianState>*>& particles,$/;"	f	class:Model
+UpperBound	qnode.h	/^double QNode<T>::UpperBound() const {$/;"	f	class:QNode
+UpperBound	upper_bound/upper_bound_nonstochastic.h	/^double UpperBoundNonStochastic<T>::UpperBound($/;"	f	class:UpperBoundNonStochastic
+UpperBound	upper_bound/upper_bound_stochastic.h	/^double UpperBoundStochastic<T>::UpperBound($/;"	f	class:UpperBoundStochastic
+UpperBound	upper_bound/upper_bound_stochastic.h	/^double UpperBoundStochastic<T>::UpperBound(const Particle<T>& p, $/;"	f	class:UpperBoundStochastic
+UpperBoundAct	upper_bound/upper_bound_nonstochastic.h	/^  const vector<int>& UpperBoundAct() const { return upper_bound_act_; }$/;"	f	class:UpperBoundNonStochastic
+UpperBoundNonStochastic	upper_bound/upper_bound_nonstochastic.h	/^UpperBoundNonStochastic<T>::UpperBoundNonStochastic($/;"	f	class:UpperBoundNonStochastic
+UpperBoundNonStochastic	upper_bound/upper_bound_nonstochastic.h	/^class UpperBoundNonStochastic : public IUpperBound<T> {$/;"	c
+UpperBoundStochastic	upper_bound/upper_bound_stochastic.h	/^UpperBoundStochastic<T>::UpperBoundStochastic($/;"	f	class:UpperBoundStochastic
+UpperBoundStochastic	upper_bound/upper_bound_stochastic.h	/^class UpperBoundStochastic : public IUpperBound<T> {$/;"	c
+Util	util.h	/^namespace Util {$/;"	n
+UtilUniform	util_uniform.h	/^	UtilUniform() : seed_(0) {}$/;"	f	class:UtilUniform
+UtilUniform	util_uniform.h	/^	UtilUniform(double rNum) {$/;"	f	class:UtilUniform
+UtilUniform	util_uniform.h	/^	UtilUniform(unsigned seed) : seed_(seed) {}$/;"	f	class:UtilUniform
+UtilUniform	util_uniform.h	/^class UtilUniform {$/;"	c
+VNODE_H	vnode.h	2;"	d
+VNode	vnode.h	/^  VNode(vector<Particle<T>*>&& particles, double l, double u, int depth,$/;"	f	class:VNode
+VNode	vnode.h	/^class VNode {$/;"	c
+Valid	coord.h	/^  bool Valid() const {$/;"	f	struct:Coord
+ValidateBounds	globals.h	/^inline void ValidateBounds(double& lb, double& ub) {$/;"	f	namespace:Globals
+Vel	problems/pedestrian_changelane/pedestrian_state.h	/^		int Vel;$/;"	m	class:PedestrianState
+WINDOW_H	problems/pedestrian_changelane/window.h	2;"	d
+WORLD_H	world.h	2;"	d
+West	coord.h	/^  static const Coord North, East, South, West;$/;"	m	struct:Coord
+World	world.h	/^  World(unsigned seed, const Model<T>& model)$/;"	f	class:World
+World	world.h	/^class World {$/;"	c
+WorldSeed	main.cpp	/^int WorldSeed() {$/;"	f
+X	coord.h	/^  int X, Y;$/;"	m	struct:Coord
+XSIZE	problems/pedestrian_changelane/param.h	/^	const int XSIZE=5;$/;"	m	namespace:ModelParams
+X_SIZE	problems/pedestrian_changelane/pedestrian_changelane.h	/^int X_SIZE;$/;"	v
+Y	coord.h	/^  int X, Y;$/;"	m	struct:Coord
+YSIZE	problems/pedestrian_changelane/param.h	/^	const int YSIZE=10;$/;"	m	namespace:ModelParams
+Y_SIZE	problems/pedestrian_changelane/pedestrian_changelane.h	/^int Y_SIZE;$/;"	v
+__builtin_clz	optionparser.h	233;"	d
+action_root_seed_	lower_bound/lower_bound_policy_random.h	/^	mutable unsigned action_root_seed_;$/;"	m	class:RandomPolicyLowerBound
+action_root_seed_	lower_bound/lower_bound_policy_suffix.h	/^	mutable unsigned action_root_seed_;$/;"	m	class:SuffixPolicyLowerBound
+action_root_seed_	lower_bound/lower_bound_policy_suffix.h	/^	mutable unsigned action_root_seed_;$/;"	m	class:SuffixPolicyLowerBoundMapImpl
+actions_	history.h	/^  vector<int> actions_;$/;"	m	class:History
+add	optionparser.h	/^  void add(bool gnu, const Descriptor usage[], int argc, char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+add	optionparser.h	/^  void add(const Descriptor usage[], int argc, char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+add	optionparser.h	/^  void add(const Descriptor usage[], int argc, const char** argv, int min_abbr_len = 0, \/\/$/;"	f	struct:option::Stats
+add	optionparser.h	/^inline void Stats::add(bool gnu, const Descriptor usage[], int argc, const char** argv, int min_abbr_len,$/;"	f	class:option::Stats
+allocated_	memorypool.h	/^  bool allocated_;$/;"	m	class:MemoryObject
+alpha	dirichlet.h	/^  vector<double> alpha() {$/;"	f	class:Dirichlet
+alpha_	dirichlet.h	/^  vector<double> alpha_; $/;"	m	class:Dirichlet
+append	optionparser.h	/^  void append(Option* new_last)$/;"	f	class:option::Option
+approximate_bounds	globals.h	/^  bool approximate_bounds;$/;"	m	struct:Globals::Config
+arg	optionparser.h	/^  const char* arg;$/;"	m	class:option::Option
+belief_	belief_update/belief_update_exact.h	/^  UMAP<T, double> belief_; \/\/ Mapping from state to probability.$/;"	m	class:ExactBeliefUpdate
+belief_update_seed_	belief_update/belief_update.h	/^  unsigned belief_update_seed_;$/;"	m	class:BeliefUpdate
+best_ub_action	vnode.h	/^  int best_ub_action() const { return best_ub_action_; }$/;"	f	class:VNode
+best_ub_action_	vnode.h	/^  int best_ub_action_;   \/\/ Action that gives the highest upper bound$/;"	m	class:VNode
+bu_	solver.h	/^  BeliefUpdate<T>& bu_;$/;"	m	class:Solver
+bu_global	main.cpp	/^BeliefUpdate<PedestrianState>* bu_global;$/;"	v
+buf_empty	optionparser.h	/^    bool buf_empty()$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+buf_full	optionparser.h	/^    bool buf_full()$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+buf_next	optionparser.h	/^    void buf_next()$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+buf_store	optionparser.h	/^    void buf_store(const char* data, int len)$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+buffer	optionparser.h	/^  Option* buffer;$/;"	m	class:option::Parser::StoreOptionAction
+buffer_max	optionparser.h	/^  unsigned buffer_max;$/;"	m	struct:option::Stats
+buffer_max	optionparser.h	/^  unsigned* buffer_max;$/;"	m	class:option::Stats::CountOptionsAction
+bufmask	optionparser.h	/^    static const int bufmask = 15; \/\/!< Must be a power of 2 minus 1.$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+bufmax	optionparser.h	/^  int bufmax; \/\/! Number of slots in @c buffer. @c -1 means "large enough".$/;"	m	class:option::Parser::StoreOptionAction
+builtin_clz	optionparser.h	/^  static int builtin_clz(unsigned x)$/;"	f	struct:option::MSC_Builtin_CLZ
+carPos	problems/pedestrian_changelane/SFM.h	/^	int carPos;$/;"	m	class:Car
+check_arg	optionparser.h	/^  const CheckArg check_arg;$/;"	m	struct:option::Descriptor
+chunk_iterator_	memorypool.h	/^  typedef typename std::vector<Chunk*>::iterator chunk_iterator_;$/;"	t	class:MemoryPool
+chunks_	memorypool.h	/^  std::vector<Chunk*> chunks_;$/;"	m	class:MemoryPool
+col	optionparser.h	/^    int col; \/\/!< Index of current column.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+column	optionparser.h	/^    int column()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+config	globals.cpp	/^Config config;$/;"	m	namespace:Globals	file:
+configSeed	problems/pedestrian_changelane/pedestrian_changelane.h	/^		int configSeed;$/;"	m	class:Model
+count	lower_bound/lower_bound_policy_suffix.h	/^	int count;$/;"	m	class:SuffixPolicyLowerBoundMapImpl
+count	optionparser.h	/^  int count()$/;"	f	class:option::Option
+curr_state	main.cpp	/^PedestrianState* curr_state;$/;"	v
+data	optionparser.h	/^    const char* data()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+datbuf	optionparser.h	/^    const char* datbuf[bufmask + 1];$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+debug	problems/pedestrian_changelane/SFM.h	/^	bool debug;$/;"	m	class:SFM
+defaultCount	lower_bound/lower_bound_policy_suffix.h	/^	mutable int defaultCount;$/;"	m	class:SuffixPolicyLowerBound
+default_action_	solver.h	/^  int default_action_; \/\/ Action for the lower bound at the root$/;"	m	class:Solver
+default_policy	lower_bound/lower_bound_policy_suffix.h	/^	PolicyLowerBound<T>* default_policy;$/;"	m	class:SuffixPolicyLowerBound
+default_value_	vnode.h	/^  const double default_value_; \/\/ Value under default policy (= lbound value$/;"	m	class:VNode
+depth	vnode.h	/^  int depth() const { return depth_; }$/;"	f	class:VNode
+depth_	qnode.h	/^  int depth_; \/\/ Depth of the belief node *above* this node$/;"	m	class:QNode
+depth_	vnode.h	/^  const int depth_;$/;"	m	class:VNode
+desc	optionparser.h	/^  const Descriptor* desc;$/;"	m	class:option::Option
+dest_h	main.cpp	/^double dest_w,dest_h,dest_o;$/;"	v
+dest_o	main.cpp	/^double dest_w,dest_h,dest_o;$/;"	v
+dest_w	main.cpp	/^double dest_w,dest_h,dest_o;$/;"	v
+dh	problems/pedestrian_changelane/math_utils.h	/^	double dw,dh;$/;"	m	class:MyVector
+disableBufferedIO	main.cpp	/^void disableBufferedIO(void)$/;"	f
+discount	globals.h	/^  double discount;$/;"	m	struct:Globals::Config
+dw	problems/pedestrian_changelane/math_utils.h	/^	double dw,dh;$/;"	m	class:MyVector
+err	optionparser.h	/^  bool err; \/\/!< @internal @brief see error()$/;"	m	class:option::Parser
+error	optionparser.h	/^  bool error()$/;"	f	class:option::Parser
+eta	globals.h	/^  double eta;$/;"	m	struct:Globals::Config
+fd	optionparser.h	/^    int fd;$/;"	m	struct:option::PrintUsageImplementation::SyscallWriter
+finished	optionparser.h	/^  bool finished(int numargs, const char** args)$/;"	f	class:option::Parser::StoreOptionAction
+finished	optionparser.h	/^  virtual bool finished(int numargs, const char** args)$/;"	f	struct:option::Parser::Action
+first	optionparser.h	/^  Option* first()$/;"	f	class:option::Option
+first_step_reward	qnode.h	/^  double first_step_reward() const { return first_step_reward_; }$/;"	f	class:QNode
+first_step_reward_	qnode.h	/^  double first_step_reward_;$/;"	m	class:QNode
+flush	optionparser.h	/^    void flush(IStringWriter& write)$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+freelist_	memorypool.h	/^  std::vector<T*> freelist_;$/;"	m	class:MemoryPool
+full_map	problems/pedestrian_changelane/map.h	/^	int full_map[3000][3000];$/;"	m	class:MyMap
+fwrite	optionparser.h	/^    Function* fwrite;$/;"	m	struct:option::PrintUsageImplementation::StreamWriter
+global_plan	problems/pedestrian_changelane/map.h	/^	int global_plan[10000][2];   \/\/maximum 10000 points$/;"	m	class:MyMap
+goal	problems/pedestrian_changelane/SFM.h	/^	int w,h,goal;$/;"	m	class:Pedestrian
+goal_pos	problems/pedestrian_changelane/map.h	/^	int goal_pos[ModelParams::NGOAL][2];$/;"	m	class:MyMap
+h	problems/pedestrian_changelane/SFM.h	/^	int w,h,goal;$/;"	m	class:Pedestrian
+h	problems/pedestrian_changelane/SFM.h	/^	int w,h;$/;"	m	class:Car
+h0	problems/pedestrian_changelane/window.h	/^	int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	m	class:MyWindow
+h1	problems/pedestrian_changelane/window.h	/^	int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	m	class:MyWindow
+h2	problems/pedestrian_changelane/window.h	/^	int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	m	class:MyWindow
+h3	problems/pedestrian_changelane/window.h	/^	int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	m	class:MyWindow
+hash	history.h	/^	struct hash<History> {$/;"	s	namespace:std
+hash	util.h	/^	struct hash<pair<S, T>> {$/;"	s	namespace:std
+hash	util.h	/^	struct hash<vector<T>> {$/;"	s	namespace:std
+hash_combine	util.h	/^	inline void hash_combine(size_t& seed, const T& v) {$/;"	f	namespace:std
+head	optionparser.h	/^    int head; \/\/!< @brief index for next write$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+height	problems/pedestrian_changelane/map.h	/^	int height;$/;"	m	class:MyMap
+help	optionparser.h	/^  const char* help;$/;"	m	struct:option::Descriptor
+history_	solver.h	/^	History history_; \/\/ Updated after each belief update and during search$/;"	m	class:Solver
+hit_target_line	optionparser.h	/^    bool hit_target_line; \/\/!< Flag whether we encountered a part with line index target_line_in_block in the current cell.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+id	particle.h	/^  int id;$/;"	m	class:Particle
+id	problems/pedestrian_changelane/SFM.h	/^	int id;   \/\/each pedestrian has a unique identity$/;"	m	class:Pedestrian
+in_tree	vnode.h	/^  bool in_tree() const { return in_tree_; }$/;"	f	class:VNode
+in_tree_	vnode.h	/^  bool in_tree_;         \/\/ True if the node is visited by Solver::trial().$/;"	m	class:VNode
+indent	optionparser.h	/^  static void indent(IStringWriter& write, int& x, int want_x)$/;"	f	struct:option::PrintUsageImplementation
+index	optionparser.h	/^  const unsigned index;$/;"	m	struct:option::Descriptor
+index	optionparser.h	/^  int index() const$/;"	f	class:option::Option
+init	optionparser.h	/^  void init(const Descriptor* desc_, const char* name_, const char* arg_)$/;"	f	class:option::Option
+init_belief_update_seed_	belief_update/belief_update.h	/^  const unsigned init_belief_update_seed_;$/;"	m	class:BeliefUpdate
+init_h	main.cpp	/^double init_w,init_h,init_o;$/;"	v
+init_o	main.cpp	/^double init_w,init_h,init_o;$/;"	v
+init_w	main.cpp	/^double init_w,init_h,init_o;$/;"	v
+initial_belief_	solver.h	/^  vector<pair<T, double>> initial_belief_;$/;"	m	class:Solver
+initial_seed_	world.h	/^  const unsigned initial_seed_;$/;"	m	class:World
+initial_state_	world.h	/^  const T initial_state_;$/;"	m	class:World
+instr	optionparser.h	/^  static bool instr(char ch, const char* st)$/;"	f	class:option::Parser
+isFirst	optionparser.h	/^  bool isFirst() const$/;"	f	class:option::Option
+isLast	optionparser.h	/^  bool isLast() const$/;"	f	class:option::Option
+isTagged	optionparser.h	/^  static bool isTagged(Option* ptr)$/;"	f	class:option::Option
+isWideChar	optionparser.h	/^  static bool isWideChar(unsigned ch)$/;"	f	struct:option::PrintUsageImplementation
+k_	gamma.h	/^	double k_;$/;"	m	class:Gamma
+knowledge_	lower_bound/lower_bound_policy_random.h	/^  int knowledge_;$/;"	m	class:RandomPolicyLowerBound
+last	optionparser.h	/^  Option* last()$/;"	f	class:option::Option
+lb_	solver.h	/^  ILowerBound<T>& lb_;$/;"	m	class:Solver
+lb_global	main.cpp	/^ILowerBound<PedestrianState>* lb_global;$/;"	v
+lbound	vnode.h	/^  double lbound() const { return lbound_; }$/;"	f	class:VNode
+lbound_	vnode.h	/^  double lbound_;$/;"	m	class:VNode
+len	optionparser.h	/^    int len; \/\/!< Length of the current part (that ptr points at) in BYTES$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+lenbuf	optionparser.h	/^    int lenbuf[bufmask + 1];$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+length	optionparser.h	/^    int length()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+less	history.h	/^	struct less<History> {$/;"	s	namespace:std
+line	optionparser.h	/^    int line()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+line_in_block	optionparser.h	/^    int line_in_block; \/\/!< Line index within the current cell of the current part.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+longopt	optionparser.h	/^  const char* const longopt;$/;"	m	struct:option::Descriptor
+lookup	problems/pedestrian_changelane/pedestrian_changelane.h	/^		int lookup(const double probs[], double prob) const {$/;"	f	class:Model
+main	main.cpp	/^int main(int argc, char* argv[]) {$/;"	f
+map	problems/pedestrian_changelane/SFM.h	/^	MyMap *map;$/;"	m	class:Car
+map	problems/pedestrian_changelane/pedestrian_changelane.h	/^		int** map;$/;"	m	class:Model
+map	problems/pedestrian_changelane/window.h	/^	MyMap*map;$/;"	m	class:MyWindow
+max_line_in_block	optionparser.h	/^    int max_line_in_block; \/\/!< Greatest index of a line within the block. This is the number of \\\\v within the cell with the most \\\\vs.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+memory_pool_	problems/pedestrian_changelane/pedestrian_changelane.h	/^		mutable MemoryPool<Particle<PedestrianState>> memory_pool_;$/;"	m	class:Model
+model	main.cpp	/^double model[ModelParams::XSIZE][ModelParams::YSIZE][ModelParams::NGOAL][ModelParams::XSIZE][ModelParams::YSIZE];   \/\/x,y,goal,next_x,next_y$/;"	v
+model	problems/pedestrian_changelane/pedestrian_changelane.h	/^	double model[10][20][6][10][20];  $/;"	m	class:Model
+model_	belief_update/belief_update.h	/^  const Model<T>& model_;$/;"	m	class:BeliefUpdate
+model_	solver.h	/^  const Model<T>& model_;$/;"	m	class:Solver
+model_	vnode.h	/^  static const Model<T>* model_;$/;"	m	class:VNode
+model_	vnode.h	/^template<typename T> const Model<T>* VNode<T>::model_;$/;"	m	class:VNode
+model_	world.h	/^  const Model<T>& model_;$/;"	m	class:World
+my_map	main.cpp	/^Car car(&my_map);$/;"	v
+my_map	main.cpp	/^MyMap  my_map;$/;"	v
+my_map	main.cpp	/^MyWindow my_window(&my_map);$/;"	v
+n_particles	globals.h	/^  int n_particles;$/;"	m	struct:Globals::Config
+n_steps_	world.h	/^  int n_steps_;$/;"	m	class:World
+n_tree_nodes	vnode.h	/^  int n_tree_nodes() const { return n_tree_nodes_; }$/;"	f	class:VNode
+n_tree_nodes_	vnode.h	/^  int n_tree_nodes_;     \/\/ Number of nodes with in_tree_ = true in the subtree$/;"	m	class:VNode
+name	optionparser.h	/^  const char* name;$/;"	m	class:option::Option
+namelen	optionparser.h	/^  int namelen;$/;"	m	class:option::Option
+next	dirichlet.h	/^  static vector<double> next(vector<double> alpha) {$/;"	f	class:Dirichlet
+next	dirichlet.h	/^  vector<double> next(){$/;"	f	class:Dirichlet
+next	gamma.h	/^	double next() {$/;"	f	class:Gamma
+next	gamma.h	/^	static double next(double k, double theta) {$/;"	f	class:Gamma
+next	optionparser.h	/^    bool next()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+next	optionparser.h	/^  Option* next()$/;"	f	class:option::Option
+next	util_uniform.h	/^	double next() {$/;"	f	class:UtilUniform
+nextInt	util_uniform.h	/^	int nextInt(int n) {$/;"	f	class:UtilUniform
+nextRow	optionparser.h	/^    bool nextRow()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+nextTable	optionparser.h	/^    bool nextTable()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+next_	optionparser.h	/^  Option* next_;$/;"	m	class:option::Option
+next_grid	problems/pedestrian_changelane/SFM.h	/^	int next_grid[9][2]={$/;"	m	class:SFM
+nextwrap	optionparser.h	/^  Option* nextwrap()$/;"	f	class:option::Option
+node_count	vnode.h	/^  static int node_count() { return node_count_; }$/;"	f	class:VNode
+node_count_	vnode.h	/^  static int node_count_;      \/\/ Total number of nodes created$/;"	m	class:VNode
+node_count_	vnode.h	/^template<typename T> int VNode<T>::node_count_;$/;"	m	class:VNode
+nonOption	optionparser.h	/^  const char* nonOption(int i)$/;"	f	class:option::Parser
+nonOptions	optionparser.h	/^  const char** nonOptions()$/;"	f	class:option::Parser
+nonOptionsCount	optionparser.h	/^  int nonOptionsCount()$/;"	f	class:option::Parser
+nonop_args	optionparser.h	/^  const char** nonop_args; \/\/!< @internal @brief see nonOptions()$/;"	m	class:option::Parser
+nonop_count	optionparser.h	/^  int nonop_count; \/\/!< @internal @brief see nonOptionsCount()$/;"	m	class:option::Parser
+num_allocated_	memorypool.h	/^  int num_allocated_;$/;"	m	class:MemoryPool
+num_updates_	belief_update/belief_update.h	/^  int num_updates_;$/;"	m	class:BeliefUpdate
+number	globals.h	/^	int number;$/;"	m	struct:Globals::Config
+obs_map	problems/pedestrian_changelane/map.h	/^	int obs_map[ModelParams::XSIZE][ModelParams::YSIZE];    \/\/height,width$/;"	m	class:MyMap
+obs_to_node_	qnode.h	/^  MAP<uint64_t, unique_ptr<VNode<T>>> obs_to_node_; \/\/ Mapping from obs to$/;"	m	class:QNode
+observations_	history.h	/^  vector<uint64_t> observations_;$/;"	m	class:History
+op_count	optionparser.h	/^  int op_count; \/\/!< @internal @brief see optionsCount()$/;"	m	class:option::Parser
+operator !=	coord.h	/^  bool operator!=(Coord rhs) const {$/;"	f	struct:Coord
+operator ()	history.h	/^		bool operator()(const History& h1, const History& h2) const {$/;"	f	struct:std::less
+operator ()	history.h	/^		size_t operator()(const History& h) const {$/;"	f	struct:std::hash
+operator ()	optionparser.h	/^    virtual void operator()(const char* str, int size)$/;"	f	struct:option::PrintUsageImplementation::FunctionWriter
+operator ()	optionparser.h	/^    virtual void operator()(const char* str, int size)$/;"	f	struct:option::PrintUsageImplementation::OStreamWriter
+operator ()	optionparser.h	/^    virtual void operator()(const char* str, int size)$/;"	f	struct:option::PrintUsageImplementation::StreamWriter
+operator ()	optionparser.h	/^    virtual void operator()(const char* str, int size)$/;"	f	struct:option::PrintUsageImplementation::SyscallWriter
+operator ()	optionparser.h	/^    virtual void operator()(const char* str, int size)$/;"	f	struct:option::PrintUsageImplementation::TemporaryWriter
+operator ()	optionparser.h	/^    virtual void operator()(const char*, int)$/;"	f	struct:option::PrintUsageImplementation::IStringWriter
+operator ()	util.h	/^		inline size_t operator()(const pair<S, T>& v) const {$/;"	f	struct:std::hash
+operator ()	util.h	/^		inline size_t operator()(const vector<T>& v) const {$/;"	f	struct:std::hash
+operator *	coord.h	/^  Coord operator*(int mul) const$/;"	f	struct:Coord
+operator +	coord.h	/^  Coord operator+(Coord rhs) const {$/;"	f	struct:Coord
+operator +	problems/pedestrian_changelane/math_utils.cpp	/^MyVector  MyVector::operator + (MyVector  vec)$/;"	f	class:MyVector
+operator +=	coord.h	/^  void operator+=(Coord offset) {$/;"	f	struct:Coord
+operator <	coord.h	/^  bool operator<(const Coord& other) const {$/;"	f	struct:Coord
+operator <<	coord.h	/^inline std::ostream& operator<<(std::ostream& ostr, Coord& coord) {$/;"	f
+operator =	optionparser.h	/^  void operator=(const Option& orig)$/;"	f	class:option::Option
+operator =	particle.h	/^  Particle& operator=(const Particle& particle) {$/;"	f	class:Particle
+operator ==	coord.h	/^  bool operator==(Coord rhs) const {$/;"	f	struct:Coord
+operator Option*	optionparser.h	/^  operator Option*()$/;"	f	class:option::Option
+operator const Option*	optionparser.h	/^  operator const Option*() const$/;"	f	class:option::Option
+operator int	problems/pedestrian_changelane/pedestrian_state.cpp	/^PedestrianState::operator int() const {$/;"	f	class:PedestrianState
+option	optionparser.h	/^namespace option$/;"	n
+optionIndex	main.cpp	/^enum optionIndex { $/;"	g	file:
+options	optionparser.h	/^  Option* options;$/;"	m	class:option::Parser::StoreOptionAction
+optionsCount	optionparser.h	/^  int optionsCount()$/;"	f	class:option::Parser
+options_global	main.cpp	/^option::Option* options_global;$/;"	v
+options_max	optionparser.h	/^  unsigned options_max;$/;"	m	struct:option::Stats
+ostream	optionparser.h	/^    OStream& ostream;$/;"	m	struct:option::PrintUsageImplementation::OStreamWriter
+output	optionparser.h	/^    void output(IStringWriter& write, const char* data, int len)$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+parse	optionparser.h	/^  void parse(bool gnu, const Descriptor usage[], int argc, char** argv, Option options[], Option buffer[],$/;"	f	class:option::Parser
+parse	optionparser.h	/^  void parse(const Descriptor usage[], int argc, char** argv, Option options[], Option buffer[], int min_abbr_len = 0,$/;"	f	class:option::Parser
+parse	optionparser.h	/^  void parse(const Descriptor usage[], int argc, const char** argv, Option options[], Option buffer[],$/;"	f	class:option::Parser
+parse	optionparser.h	/^inline void Parser::parse(bool gnu, const Descriptor usage[], int argc, const char** argv, Option options[],$/;"	f	class:option::Parser
+parser	optionparser.h	/^  Parser& parser;$/;"	m	class:option::Parser::StoreOptionAction
+particles	vnode.h	/^  const vector<Particle<T>*>& particles() { return particles_; }$/;"	f	class:VNode
+particles_	vnode.h	/^  vector<Particle<T>*> particles_;$/;"	m	class:VNode
+pathLength	problems/pedestrian_changelane/map.h	/^	int pathLength;$/;"	m	class:MyMap
+path_rln	problems/pedestrian_changelane/param.h	/^	const double path_rln=40;$/;"	m	namespace:ModelParams
+pedInView_list	main.cpp	/^vector<int> pedInView_list;$/;"	v
+ped_list	main.cpp	/^vector<Pedestrian> ped_list;$/;"	v
+perform	optionparser.h	/^  bool perform(Option& option)$/;"	f	class:option::Parser::StoreOptionAction
+perform	optionparser.h	/^  bool perform(Option&)$/;"	f	class:option::Stats::CountOptionsAction
+perform	optionparser.h	/^  virtual bool perform(Option&)$/;"	f	struct:option::Parser::Action
+pi	problems/pedestrian_changelane/param.h	/^	const double pi=3.1415926;$/;"	m	namespace:ModelParams
+pii	globals.h	/^typedef std::pair<int, int> pii;$/;"	t
+prev	optionparser.h	/^  Option* prev()$/;"	f	class:option::Option
+prev_	optionparser.h	/^  Option* prev_;$/;"	m	class:option::Option
+prevwrap	optionparser.h	/^  Option* prevwrap()$/;"	f	class:option::Option
+pri_table	problems/pedestrian_changelane/SFM.h	/^	int pri_table[9][9][3];$/;"	m	class:SFM
+printError	optionparser.h	/^  static void printError(const char* msg1, const option::Option& opt, const char* msg2)$/;"	f	struct:option::Arg
+printUsage	optionparser.h	/^  static void printUsage(IStringWriter& write, const Descriptor usage[], int width = 80, \/\/$/;"	f	struct:option::PrintUsageImplementation
+printUsage	optionparser.h	/^void printUsage(Function* prn, Stream* stream, const Descriptor usage[], int width = 80, int last_column_min_percent =$/;"	f	namespace:option
+printUsage	optionparser.h	/^void printUsage(Function* prn, const Descriptor usage[], int width = 80, int last_column_min_percent = 50,$/;"	f	namespace:option
+printUsage	optionparser.h	/^void printUsage(OStream& prn, const Descriptor usage[], int width = 80, int last_column_min_percent = 50,$/;"	f	namespace:option
+printUsage	optionparser.h	/^void printUsage(Syscall* prn, int fd, const Descriptor usage[], int width = 80, int last_column_min_percent = 50,$/;"	f	namespace:option
+printUsage	optionparser.h	/^void printUsage(const Temporary& prn, const Descriptor usage[], int width = 80, int last_column_min_percent = 50,$/;"	f	namespace:option
+process	optionparser.h	/^    void process(IStringWriter& write, const char* data, int len)$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+pruned_action	vnode.h	/^  int pruned_action() const { return pruned_action_; }$/;"	f	class:VNode
+pruned_action_	vnode.h	/^  int pruned_action_;    \/\/ Best action at the node after pruning$/;"	m	class:VNode
+pruning_constant	globals.h	/^  double pruning_constant;$/;"	m	struct:Globals::Config
+ptr	optionparser.h	/^    const char* ptr; \/\/!< Ptr to current part within the current row.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+qnodes_	vnode.h	/^  vector<QNode<T>> qnodes_; \/\/ Vector of children q-nodes$/;"	m	class:VNode
+random_streams	solver.h	/^  const RandomStreams& random_streams() const { return streams_; }$/;"	f	class:Solver
+restartRow	optionparser.h	/^    void restartRow()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+restartTable	optionparser.h	/^    void restartTable()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+rln	problems/pedestrian_changelane/param.h	/^	const double rln=20;$/;"	m	namespace:ModelParams
+robPosGlobal	main.cpp	/^int robPosGlobal;$/;"	v
+rob_map	problems/pedestrian_changelane/pedestrian_changelane.h	/^	std::vector<std::pair<int,int> > rob_map;$/;"	m	class:Model
+rob_map	problems/pedestrian_changelane/window.h	/^	vector<pair<int,int> > rob_map;$/;"	m	class:MyWindow
+rob_out	main.cpp	/^ofstream rob_out;$/;"	v
+robotMoveProbs	problems/pedestrian_changelane/pedestrian_changelane.h	/^		double robotMoveProbs[3][3]; $/;"	m	class:Model
+robotNoisyMove	problems/pedestrian_changelane/pedestrian_changelane.h	/^		double robotNoisyMove[3][3]; \/*vel,move*\/$/;"	m	class:Model
+robotUpdateProb	problems/pedestrian_changelane/pedestrian_changelane.h	/^		double robotUpdateProb[3][3][3];$/;"	m	class:Model
+robotVelUpdate	problems/pedestrian_changelane/pedestrian_changelane.h	/^		double robotVelUpdate[3][3][3]; \/*action,vel,new vel*\/ $/;"	m	class:Model
+root_	solver.h	/^  unique_ptr<VNode<T>> root_; \/\/ Root of the search tree$/;"	m	class:Solver
+root_seed	globals.h	/^  unsigned int root_seed;$/;"	m	struct:Globals::Config
+rowdesc	optionparser.h	/^    const Descriptor* rowdesc; \/\/!< The Descriptor that contains the current row.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+rowstart	optionparser.h	/^    const char* rowstart; \/\/!< Ptr to 1st character of current row within rowdesc->help.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+screenLength	optionparser.h	/^    int screenLength()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+screenlen	optionparser.h	/^    int screenlen; \/\/!< Length of the current part in screen columns (taking narrow\/wide chars into account).$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+search_depth	globals.h	/^  int search_depth;$/;"	m	struct:Globals::Config
+seed_	util_uniform.h	/^	unsigned seed_;$/;"	m	class:UtilUniform
+seed_	world.h	/^  unsigned seed_;$/;"	m	class:World
+set_best_ub_action	vnode.h	/^  void set_best_ub_action(int val) { best_ub_action_ = val; }$/;"	f	class:VNode
+set_in_tree	vnode.h	/^  void set_in_tree(bool val) { in_tree_ = val; }$/;"	f	class:VNode
+set_lbound	vnode.h	/^  void set_lbound(double val) { lbound_ = val; }$/;"	f	class:VNode
+set_model	vnode.h	/^  static void set_model(const Model<T>& model) { model_ = &model; }$/;"	f	class:VNode
+set_n_tree_nodes	vnode.h	/^  void set_n_tree_nodes(int val) { n_tree_nodes_ = val; }$/;"	f	class:VNode
+set_ubound	vnode.h	/^  void set_ubound(double val) { ubound_ = val; }$/;"	f	class:VNode
+sfm	problems/pedestrian_changelane/SFM.h	/^	SFM*sfm;$/;"	m	class:Pedestrian
+sfm	problems/pedestrian_changelane/pedestrian_changelane.h	/^	SFM*sfm;$/;"	m	class:Model
+sfm_global	main.cpp	/^SFM sfm_global(&my_map,&my_window);$/;"	v
+sfm_map	problems/pedestrian_changelane/SFM.h	/^	MyMap *sfm_map;	$/;"	m	class:SFM
+sfm_window	problems/pedestrian_changelane/SFM.h	/^	MyWindow *sfm_window;$/;"	m	class:SFM
+shift	optionparser.h	/^  static void shift(const char** args, int count)$/;"	f	class:option::Parser
+shortopt	optionparser.h	/^  const char* const shortopt;$/;"	m	struct:option::Descriptor
+sim_len	globals.h	/^  int sim_len;$/;"	m	struct:Globals::Config
+solver_list	main.cpp	/^vector<Solver<PedestrianState>* > solver_list;$/;"	v
+startState	problems/pedestrian_changelane/pedestrian_changelane.h	/^		PedestrianState startState;$/;"	m	class:Model
+state	particle.h	/^  T state;$/;"	m	class:Particle
+state_	world.h	/^  T state_;$/;"	m	class:World
+state_weight_	lower_bound/lower_bound_policy_mode.h	/^  mutable vector<double> state_weight_;$/;"	m	class:ModePolicyLowerBound
+states_	world.h	/^	vector<T> states_;$/;"	m	class:World
+std	history.h	/^namespace std {$/;"	n
+std	util.h	/^namespace std {$/;"	n
+step	main.cpp	/^int step=1;$/;"	v
+stream	optionparser.h	/^    Stream* stream;$/;"	m	struct:option::PrintUsageImplementation::StreamWriter
+streams_	lower_bound/lower_bound.h	/^  const RandomStreams& streams_;$/;"	m	class:ILowerBound
+streams_	random_streams.h	/^  vector<vector<double>> streams_; \/\/ Each particle is associated with a single$/;"	m	class:RandomStreams
+streams_	solver.h	/^	const RandomStreams& streams_;$/;"	m	class:Solver
+streams_	upper_bound/upper_bound.h	/^  const RandomStreams& streams_;$/;"	m	class:IUpperBound
+streams_global	main.cpp	/^RandomStreams * streams_global;$/;"	v
+streq	optionparser.h	/^  static bool streq(const char* st1, const char* st2)$/;"	f	class:option::Parser
+streqabbr	optionparser.h	/^  static bool streqabbr(const char* st1, const char* st2, long long min)$/;"	f	class:option::Parser
+suffixCount	lower_bound/lower_bound_policy_suffix.h	/^	mutable int suffixCount;$/;"	m	class:SuffixPolicyLowerBound
+suffix_action_map	lower_bound/lower_bound_policy_suffix.h	/^	map<History, vector<int>> suffix_action_map;$/;"	m	class:SuffixPolicyLowerBoundMapImpl
+tablestart	optionparser.h	/^    const Descriptor* tablestart; \/\/!< The 1st descriptor of the current table.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+tag	optionparser.h	/^  static Option* tag(Option* ptr)$/;"	f	class:option::Option
+tail	optionparser.h	/^    int tail; \/\/!< @brief index for next read - 1 (i.e. increment tail BEFORE read)$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+target_line_in_block	optionparser.h	/^    int target_line_in_block; \/\/!< Line index of the parts we should return to the user on this iteration.$/;"	m	class:option::PrintUsageImplementation::LinePartIterator
+theta_	gamma.h	/^	double theta_;$/;"	m	class:Gamma
+time_per_move	globals.h	/^  double time_per_move;$/;"	m	struct:Globals::Config
+total_reward_	world.h	/^  double total_reward_;$/;"	m	class:World
+total_undiscounted_reward_	world.h	/^  double total_undiscounted_reward_;$/;"	m	class:World
+type	optionparser.h	/^  const int type;$/;"	m	struct:option::Descriptor
+type	optionparser.h	/^  int type() const$/;"	f	class:option::Option
+ub_	solver.h	/^  IUpperBound<T>& ub_;$/;"	m	class:Solver
+ub_global	main.cpp	/^IUpperBound<PedestrianState>* ub_global;$/;"	v
+ubound	vnode.h	/^  double ubound() const { return ubound_; }$/;"	f	class:VNode
+ubound_	vnode.h	/^  double ubound_;$/;"	m	class:VNode
+unif_	problems/pedestrian_changelane/pedestrian_changelane.h	/^		mutable UtilUniform unif_;$/;"	m	class:Model
+untag	optionparser.h	/^  static Option* untag(Option* ptr)$/;"	f	class:option::Option
+update_length	optionparser.h	/^    void update_length()$/;"	f	class:option::PrintUsageImplementation::LinePartIterator
+upmax	optionparser.h	/^  static void upmax(int& i1, int i2)$/;"	f	struct:option::PrintUsageImplementation
+upper_bound_act_	upper_bound/upper_bound_nonstochastic.h	/^  vector<int> upper_bound_act_;$/;"	m	class:UpperBoundNonStochastic
+upper_bound_memo_	upper_bound/upper_bound_nonstochastic.h	/^  vector<double> upper_bound_memo_;$/;"	m	class:UpperBoundNonStochastic
+upper_bound_memo_	upper_bound/upper_bound_stochastic.h	/^  vector<vector<vector<double>>> upper_bound_memo_;$/;"	m	class:UpperBoundStochastic
+usage	main.cpp	/^const option::Descriptor usage[] = {$/;"	v
+userstream	optionparser.h	/^    const Temporary& userstream;$/;"	m	struct:option::PrintUsageImplementation::TemporaryWriter
+velGlobal	main.cpp	/^int velGlobal;$/;"	v
+w	problems/pedestrian_changelane/SFM.h	/^	int w,h,goal;$/;"	m	class:Pedestrian
+w	problems/pedestrian_changelane/SFM.h	/^	int w,h;$/;"	m	class:Car
+w0	problems/pedestrian_changelane/window.h	/^	int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	m	class:MyWindow
+w1	problems/pedestrian_changelane/window.h	/^	int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	m	class:MyWindow
+w2	problems/pedestrian_changelane/window.h	/^	int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	m	class:MyWindow
+w3	problems/pedestrian_changelane/window.h	/^	int w0,h0,w1,h1,w2,h2,w3,h3;$/;"	m	class:MyWindow
+weight	problems/pedestrian_changelane/SFM.h	/^	int weight[10]={30,10,4,2,1,8};$/;"	m	class:SFM
+weight	vnode.h	/^  double weight() const { return weight_; }$/;"	f	class:VNode
+weight_	vnode.h	/^  const double weight_;  \/\/ Sum of weights of particles at this belief$/;"	m	class:VNode
+weight_sum_	qnode.h	/^  double weight_sum_; \/\/ The combined weight of particles at this node$/;"	m	class:QNode
+width	optionparser.h	/^    int width;$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+width	problems/pedestrian_changelane/map.h	/^	int width;$/;"	m	class:MyMap
+windowOrigin	main.cpp	/^int windowOrigin;$/;"	v
+workhorse	optionparser.h	/^inline bool Parser::workhorse(bool gnu, const Descriptor usage[], int numargs, const char** args, Action& action,$/;"	f	class:option::Parser
+write	optionparser.h	/^    Function* write;$/;"	m	struct:option::PrintUsageImplementation::FunctionWriter
+write	optionparser.h	/^    Syscall* write;$/;"	m	struct:option::PrintUsageImplementation::SyscallWriter
+write_one_line	optionparser.h	/^    void write_one_line(IStringWriter& write)$/;"	f	class:option::PrintUsageImplementation::LineWrapper
+wrote_something	optionparser.h	/^    bool wrote_something;$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+wt	particle.h	/^  double wt;$/;"	m	class:Particle
+x	optionparser.h	/^    int x;$/;"	m	class:option::PrintUsageImplementation::LineWrapper
+~BeliefUpdate	belief_update/belief_update.h	/^  virtual ~BeliefUpdate() {}$/;"	f	class:BeliefUpdate
+~ILowerBound	lower_bound/lower_bound.h	/^  virtual ~ILowerBound() {}$/;"	f	class:ILowerBound
+~IUpperBound	upper_bound/upper_bound.h	/^  virtual ~IUpperBound() {};$/;"	f	class:IUpperBound
+~MemoryPool	memorypool.h	/^  ~MemoryPool() { DeleteAll(); }$/;"	f	class:MemoryPool
+~PolicyLowerBound	lower_bound/lower_bound_policy.h	/^  virtual ~PolicyLowerBound() {}$/;"	f	class:PolicyLowerBound
+~VNode	vnode.h	/^  ~VNode() { $/;"	f	class:VNode

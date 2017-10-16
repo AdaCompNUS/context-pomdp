@@ -1,0 +1,1030 @@
+path length 800
+window Origin 0
+79 19 -0
+55 19
+103 19
+103 119
+55 119
+2 0
+robot map rln 10
+2 1
+2 2
+2 3
+2 4
+2 5
+2 6
+2 7
+2 8
+2 9
+rob map size 10
+DEBUG: seed 0.62
+num ped in view  0
+rob map size 10
+DEBUG: Finished initializing WorldSimulator
+option seed 42
+root seed42
+DEBUG: Call Init() in WorldSimulator
+rob pos 0
+rob pos global 79 19
+rob pos local 2 0
+window Origin 0
+79 19 -0
+55 19
+103 19
+103 119
+55 119
+2 0
+robot map rln 10
+2 1
+2 2
+2 3
+2 4
+2 5
+2 6
+2 7
+2 8
+2 9
+rob map size 10
+all pedestrians after shift window
+Num Ped In View = 0
+print local goals
+-5 8
+9 8
+-5 18
+9 18
+-5 28
+9 28
+local obs map
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+time stamp simulator1
+finish shift window
+here
+Num Ped Total 1
+10 100
+initial ped  625 535 0
+finish initial pedestrians
+rob pos 0
+rob pos global 79 19
+rob pos local 2 0
+window Origin 0
+79 19 -0
+55 19
+103 19
+103 119
+55 119
+2 0
+robot map rln 10
+2 1
+2 2
+2 3
+2 4
+2 5
+2 6
+2 7
+2 8
+2 9
+rob map size 10
+all pedestrians after shift window
+x,y,id 59 51 0
+Num Ped In View = 0
+print local goals
+-5 8
+9 8
+-5 18
+9 18
+-5 28
+9 28
+local obs map
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+time stamp simulator2
+finish shift window
+here
+DEBUG: Done Init() in WorldSimulator
+start run loop
+start planning
+rob pos 0
+rob pos global 79 19
+rob pos local 2 0
+Initial State
+rob pos 0
+rob pos global 79 19
+rob pos local 2 0
+Rob Pos: 2 0
+Vel: 3
+num  0
+belief size 1
+finish initial belief
+DEBUG: Initialized initial belief with 1000
+DEBUG: Sampled 500 particles from initial belief
+Run 0
+Starting despot search...
+Optimal
+Action = 0
+start printing tree 
+a=0 (-10221.4 473)
+ o=2654435835
+  a=0 (-10758.3 473)
+   o=2654435835
+  a=1 (-10758.3 499)
+   o=2654435835
+   o=2654435836
+  a=2 (-10767.3 490)
+   o=2654435834
+   o=2654435835
+a=1 (-10221.4 499)
+ o=2654435835
+ o=2654435836
+a=2 (-10230.4 490)
+ o=2654435834
+ o=2654435835
+action 0
+rob pos 0
+rob pos global 79 19
+rob pos local 2 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 625 535
+goal force -2.44925 -1.73239
+total force -2.44925 -1.73239
+-2.52597 1.5708
+curr_i curr_j 625 535
+625 543 2 1
+633 543 2 1
+633 535 2 1
+633 527 2 1
+625 527 1000 1
+617 527 10000 1
+617 535 10000 1
+617 543 1000 1
+625 535 10000 1
+next i next j prob 625 543 6.24844e-05
+next i next j prob 633 543 6.24844e-05
+next i next j prob 633 535 6.24844e-05
+next i next j prob 633 527 6.24844e-05
+next i next j prob 625 527 0.0312422
+next i next j prob 617 527 0.312422
+next i next j prob 617 535 0.312422
+next i next j prob 617 543 0.0312422
+next i next j prob 625 535 0.312422
+prob 0.0245165
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+before shift window
+Rob Pos: 2 0
+Vel: 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 625 527
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+window Origin 0
+79 19 -0
+55 19
+103 19
+103 119
+55 119
+2 0
+robot map rln 10
+2 1
+2 2
+2 3
+2 4
+2 5
+2 6
+2 7
+2 8
+2 9
+rob map size 10
+all pedestrians after shift window
+x,y,id 59 50 0
+Num Ped In View = 0
+print local goals
+-5 8
+9 8
+-5 18
+9 18
+-5 28
+9 28
+local obs map
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+time stamp simulator3
+finish shift window
+after shift window
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Rob Pos: 2 0
+Vel: 0
+num  0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 625 527
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+print new state
+Rob Pos: 2 0
+Vel: 0
+num  0
+Belief before update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 3
+num  0
+After update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+num_eff_particles 1000
+After Modify 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+DEBUG: Current number of particles in belief: 1000
+DEBUG: Sampled 500 particles from initial belief
+Run 1
+Starting despot search...
+Optimal
+Action = 0
+start printing tree 
+a=0 (-10221.4 473)
+ o=2654435832
+  a=0 (-10758.3 473)
+   o=2654435832
+  a=1 (-10758.3 499)
+   o=2654435832
+   o=2654435833
+  a=2 (-10767.3 490)
+   o=2654435832
+a=1 (-10221.4 499)
+ o=2654435832
+ o=2654435833
+a=2 (-10230.4 490)
+ o=2654435832
+action 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 625 527
+goal force -2.46427 -1.71096
+total force -2.46427 -1.71096
+-2.5347 1.5708
+curr_i curr_j 625 527
+625 535 2 1
+633 535 2 1
+633 527 2 1
+633 519 2 1
+625 519 1000 1
+617 519 10000 1
+617 527 10000 1
+617 535 1000 1
+625 527 10000 1
+next i next j prob 625 535 6.24844e-05
+next i next j prob 633 535 6.24844e-05
+next i next j prob 633 527 6.24844e-05
+next i next j prob 633 519 6.24844e-05
+next i next j prob 625 519 0.0312422
+next i next j prob 617 519 0.312422
+next i next j prob 617 527 0.312422
+next i next j prob 617 535 0.0312422
+next i next j prob 625 527 0.312422
+prob 0.0396214
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+before shift window
+Rob Pos: 2 0
+Vel: 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 617 519
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+window Origin 0
+79 19 -0
+55 19
+103 19
+103 119
+55 119
+2 0
+robot map rln 10
+2 1
+2 2
+2 3
+2 4
+2 5
+2 6
+2 7
+2 8
+2 9
+rob map size 10
+all pedestrians after shift window
+x,y,id 58 50 0
+Num Ped In View = 0
+print local goals
+-5 8
+9 8
+-5 18
+9 18
+-5 28
+9 28
+local obs map
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+time stamp simulator4
+finish shift window
+after shift window
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Rob Pos: 2 0
+Vel: 0
+num  0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 617 519
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+print new state
+Rob Pos: 2 0
+Vel: 0
+num  0
+Belief before update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+After update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+num_eff_particles 1000
+After Modify 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+DEBUG: Current number of particles in belief: 1000
+DEBUG: Sampled 500 particles from initial belief
+Run 2
+Starting despot search...
+Optimal
+Action = 0
+start printing tree 
+a=0 (-10221.4 473)
+ o=2654435832
+  a=0 (-10758.3 473)
+   o=2654435832
+  a=1 (-10758.3 499)
+   o=2654435832
+   o=2654435833
+  a=2 (-10767.3 490)
+   o=2654435832
+a=1 (-10221.4 499)
+ o=2654435832
+ o=2654435833
+a=2 (-10230.4 490)
+ o=2654435832
+action 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 617 519
+goal force -2.46892 -1.70424
+total force -2.46892 -1.70424
+-2.53742 1.5708
+curr_i curr_j 617 519
+617 527 2 1
+625 527 2 1
+625 519 2 1
+625 511 2 1
+617 511 1000 1
+609 511 10000 1
+609 519 10000 1
+609 527 1000 1
+617 519 10000 1
+next i next j prob 617 527 6.24844e-05
+next i next j prob 625 527 6.24844e-05
+next i next j prob 625 519 6.24844e-05
+next i next j prob 625 511 6.24844e-05
+next i next j prob 617 511 0.0312422
+next i next j prob 609 511 0.312422
+next i next j prob 609 519 0.312422
+next i next j prob 609 527 0.0312422
+next i next j prob 617 519 0.312422
+prob 0.423365
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+before shift window
+Rob Pos: 2 0
+Vel: 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 609 519
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+window Origin 0
+79 19 -0
+55 19
+103 19
+103 119
+55 119
+2 0
+robot map rln 10
+2 1
+2 2
+2 3
+2 4
+2 5
+2 6
+2 7
+2 8
+2 9
+rob map size 10
+all pedestrians after shift window
+x,y,id 57 50 0
+Num Ped In View = 0
+print local goals
+-5 8
+9 8
+-5 18
+9 18
+-5 28
+9 28
+local obs map
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+time stamp simulator5
+finish shift window
+after shift window
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Rob Pos: 2 0
+Vel: 0
+num  0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 609 519
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+print new state
+Rob Pos: 2 0
+Vel: 0
+num  0
+Belief before update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+After update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+num_eff_particles 1000
+After Modify 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+DEBUG: Current number of particles in belief: 1000
+DEBUG: Sampled 500 particles from initial belief
+Run 3
+Starting despot search...
+Optimal
+Action = 0
+start printing tree 
+a=0 (-10221.4 473)
+ o=2654435832
+  a=0 (-10758.3 473)
+   o=2654435832
+  a=1 (-10758.3 499)
+   o=2654435832
+   o=2654435833
+  a=2 (-10767.3 490)
+   o=2654435832
+a=1 (-10221.4 499)
+ o=2654435832
+ o=2654435833
+a=2 (-10230.4 490)
+ o=2654435832
+action 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 609 519
+goal force -2.45827 -1.71956
+total force -2.45827 -1.71956
+-2.5312 1.5708
+curr_i curr_j 609 519
+609 527 2 1
+617 527 2 1
+617 519 2 1
+617 511 2 1
+609 511 1000 1
+601 511 10000 1
+601 519 10000 1
+601 527 1000 1
+609 519 10000 1
+next i next j prob 609 527 6.24844e-05
+next i next j prob 617 527 6.24844e-05
+next i next j prob 617 519 6.24844e-05
+next i next j prob 617 511 6.24844e-05
+next i next j prob 609 511 0.0312422
+next i next j prob 601 511 0.312422
+next i next j prob 601 519 0.312422
+next i next j prob 601 527 0.0312422
+next i next j prob 609 519 0.312422
+prob 0.391273
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+before shift window
+Rob Pos: 2 0
+Vel: 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 601 519
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+window Origin 0
+79 19 -0
+55 19
+103 19
+103 119
+55 119
+2 0
+robot map rln 10
+2 1
+2 2
+2 3
+2 4
+2 5
+2 6
+2 7
+2 8
+2 9
+rob map size 10
+all pedestrians after shift window
+x,y,id 56 50 0
+Num Ped In View = 0
+print local goals
+-5 8
+9 8
+-5 18
+9 18
+-5 28
+9 28
+local obs map
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+time stamp simulator6
+finish shift window
+after shift window
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Rob Pos: 2 0
+Vel: 0
+num  0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 601 519
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+print new state
+Rob Pos: 2 0
+Vel: 0
+num  0
+Belief before update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+After update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+num_eff_particles 1000
+After Modify 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+DEBUG: Current number of particles in belief: 1000
+DEBUG: Sampled 500 particles from initial belief
+Run 4
+Starting despot search...
+Optimal
+Action = 0
+start printing tree 
+a=0 (-10221.4 473)
+ o=2654435832
+  a=0 (-10758.3 473)
+   o=2654435832
+  a=1 (-10758.3 499)
+   o=2654435832
+   o=2654435833
+  a=2 (-10767.3 490)
+   o=2654435832
+a=1 (-10221.4 499)
+ o=2654435832
+ o=2654435833
+a=2 (-10230.4 490)
+ o=2654435832
+action 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 601 519
+goal force -2.44734 -1.73509
+total force -2.44734 -1.73509
+-2.52487 1.5708
+curr_i curr_j 601 519
+601 527 2 1
+609 527 2 1
+609 519 2 1
+609 511 2 1
+601 511 1000 1
+593 511 10000 1
+593 519 10000 1
+593 527 1000 1
+601 519 10000 1
+next i next j prob 601 527 6.24844e-05
+next i next j prob 609 527 6.24844e-05
+next i next j prob 609 519 6.24844e-05
+next i next j prob 609 511 6.24844e-05
+next i next j prob 601 511 0.0312422
+next i next j prob 593 511 0.312422
+next i next j prob 593 519 0.312422
+next i next j prob 593 527 0.0312422
+next i next j prob 601 519 0.312422
+prob 0.755764
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+before shift window
+Rob Pos: 2 0
+Vel: 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 601 519
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+window Origin 0
+79 19 -0
+55 19
+103 19
+103 119
+55 119
+2 0
+robot map rln 10
+2 1
+2 2
+2 3
+2 4
+2 5
+2 6
+2 7
+2 8
+2 9
+rob map size 10
+all pedestrians after shift window
+x,y,id 56 50 0
+Num Ped In View = 0
+print local goals
+-5 8
+9 8
+-5 18
+9 18
+-5 28
+9 28
+local obs map
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+time stamp simulator7
+finish shift window
+after shift window
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Rob Pos: 2 0
+Vel: 0
+num  0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+Car Pos 79 24
+Window Pos 0
+Rob Pos 10
+ped num 0
+Real Ped Pos 601 519
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+print new state
+Rob Pos: 2 0
+Vel: 0
+num  0
+Belief before update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+After update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+num_eff_particles 1000
+After Modify 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+DEBUG: Current number of particles in belief: 1000
+DEBUG: Sampled 500 particles from initial belief
+Run 5
+Starting despot search...
+Optimal
+Action = 0
+start printing tree 
+a=0 (-10221.4 473)
+ o=2654435832
+  a=0 (-10758.3 473)
+   o=2654435832
+  a=1 (-10758.3 499)
+   o=2654435832
+   o=2654435833
+  a=2 (-10767.3 490)
+   o=2654435832
+a=1 (-10221.4 499)
+ o=2654435832
+ o=2654435833
+a=2 (-10230.4 490)
+ o=2654435832
+action 0
+rob pos 10
+rob pos global 79 24
+rob pos local 2 0
+rob pos 20
+rob pos global 79 29
+rob pos local 2 1
+Car Pos 79 29
+Window Pos 0
+Rob Pos 20
+ped num 0
+Real Ped Pos 601 519
+goal force -2.44734 -1.73509
+total force -2.44734 -1.73509
+-2.52487 1.5708
+curr_i curr_j 601 519
+601 527 2 1
+609 527 2 1
+609 519 2 1
+609 511 2 1
+601 511 1000 1
+593 511 10000 1
+593 519 10000 1
+593 527 1000 1
+601 519 10000 1
+next i next j prob 601 527 6.24844e-05
+next i next j prob 609 527 6.24844e-05
+next i next j prob 609 519 6.24844e-05
+next i next j prob 609 511 6.24844e-05
+next i next j prob 601 511 0.0312422
+next i next j prob 593 511 0.312422
+next i next j prob 593 519 0.312422
+next i next j prob 593 527 0.0312422
+next i next j prob 601 519 0.312422
+prob 0.831531
+rob pos 20
+rob pos global 79 29
+rob pos local 2 1
+before shift window
+Rob Pos: 2 1
+Vel: 0
+rob pos 20
+rob pos global 79 29
+rob pos local 2 1
+Car Pos 79 29
+Window Pos 0
+Rob Pos 20
+ped num 0
+Real Ped Pos 601 519
+rob pos 20
+rob pos global 79 29
+rob pos local 2 1
+window Origin 0
+79 19 -0
+55 19
+103 19
+103 119
+55 119
+2 0
+robot map rln 10
+2 1
+2 2
+2 3
+2 4
+2 5
+2 6
+2 7
+2 8
+2 9
+rob map size 10
+all pedestrians after shift window
+x,y,id 56 50 0
+Num Ped In View = 0
+print local goals
+-5 8
+9 8
+-5 18
+9 18
+-5 28
+9 28
+local obs map
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 
+time stamp simulator8
+finish shift window
+after shift window
+rob pos 20
+rob pos global 79 29
+rob pos local 2 1
+Rob Pos: 2 1
+Vel: 0
+num  0
+rob pos 20
+rob pos global 79 29
+rob pos local 2 1
+Car Pos 79 29
+Window Pos 0
+Rob Pos 20
+ped num 0
+Real Ped Pos 601 519
+rob pos 20
+rob pos global 79 29
+rob pos local 2 1
+print new state
+Rob Pos: 2 1
+Vel: 0
+num  0
+Belief before update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 0
+Vel: 0
+num  0
+After update 
+Current Belief 
+particles num 1000
+Rob Pos: 2 1
+Vel: 0
+num  0
+num_eff_particles 1000
+After Modify 
+Current Belief 
+particles num 1000
+Rob Pos: 2 1
+Vel: 0
+num  0
+DEBUG: Current number of particles in belief: 1000
+DEBUG: Sampled 500 particles from initial belief
+Run 6
+Starting despot search...

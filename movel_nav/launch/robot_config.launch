@@ -1,0 +1,4 @@
+<launch>
+	<include file="$(find turtle)/base.launch"/>
+	<include file="$(find rplidar_ros)/launch/rplidar.launch"/>
+</launch>

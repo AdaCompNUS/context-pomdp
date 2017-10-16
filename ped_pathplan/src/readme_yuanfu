@@ -1,0 +1,11 @@
+useless:
+navtest.cpp
+navwin.cpp
+navfn.cpp
+navfn_node.cpp
+navfn_ros.cpp
+
+Although PathPlanner.cpp includes costmap_2d header, it actually uses ped_costmap package instead of costmap_2d package because it claims that it depends on ped_costmap and it links to the ped_costmap library
+
+Read from ped_is_despot/pathplan.launch, you will see that it create the map using map_server, to load the map from the *.yaml file. And then it remaps from map to map_cost. 
+The ped_path_planner nodes load the param file from the params.yaml file, and in the params.yaml file, it says that the map_topic is map_cost. Hence in the ped_path_planner, the costmap will use map_cost as the map to computes the cost. I think the function of Costmap2DROS is just to provide many convience interfaces related to the map. So actually, we can directly use costmap_2d to do planning, but it does not have so may convience interfaces, hence we want to use a Costmap2DROS object for planning.

@@ -1,0 +1,23 @@
+goalx: -170.5
+goaly: -146.68
+
+fixed_path: false
+pruning_constant: 0
+#pruning_constant: 1000000000
+#pathplan_ahead: 3.0
+pathplan_ahead: 1.5
+
+
+crash_penalty: -300.0
+#reward_factor_vel: 0.5
+reward_factor_vel: 4
+reward_base_crash_vel: 0.5
+belief_smoothing: 0.05
+noise_robvel: 0.05
+noise_goal_angle_deg: 45
+max_vel: 1.5
+#collision_distance: 1.5
+collision_distance: 0.5
+infront_angle_deg: 70
+#places the car drives at (used for selecting goals of peds). 0: utown_small_fill. 1: inside smart office (my_create)
+driving_place: 0
