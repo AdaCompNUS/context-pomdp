@@ -1,5 +1,10 @@
 #include <ped_path_predictor/ped_path_predictor.h>
 
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+
 using namespace std;
 
 /*
@@ -27,39 +32,31 @@ PedPathPredictor::PedPathPredictor(){
 
  void PedPathPredictor::AddObstacle(){
 
- 	//TO DO: add obstales to RVO simulator. Get the obstacles info from map_server. Following is just an example
+    ifstream file;
+    file.open("obstacles.txt", std::ifstream::in);
 
-     std::vector<RVO::Vector2> obstacle1, obstacle2, obstacle3, obstacle4;
+    std::vector<RVO::Vector2> obstacles[100];
 
-     // Add (polygonal) obstacle(s), specifying vertices in counterclockwise order.
-     float map_width = 20, map_height=15, obs_width = 6, obs_height = 4;
-     obstacle1.push_back(RVO::Vector2(0.0f, 0.0f));
-     obstacle1.push_back(RVO::Vector2(obs_width, 0.0f));
-     obstacle1.push_back(RVO::Vector2(obs_width, obs_height));
-     obstacle1.push_back(RVO::Vector2(0.0f, obs_height));
+    std::string line;
+    int obst_num = 0;
+    while (std::getline(file, line))
+    {
+        std::istringstream iss(line);
+        
+        double x;
+        double y;
+        while (iss >> x >>y){
+            cout << x <<" "<< y<<endl;
+            obstacles[obst_num].push_back(RVO::Vector2(x, y));
+        }
 
-     obstacle2.push_back(RVO::Vector2(map_width-obs_width, 0.0f));
-     obstacle2.push_back(RVO::Vector2(map_width, 0.0f));
-     obstacle2.push_back(RVO::Vector2(map_width, obs_height));
-     obstacle2.push_back(RVO::Vector2(map_width-obs_width, obs_height));
+        sim->addObstacle(obstacles[obst_num]);
+        obst_num++;
+        if(obst_num > 99) break;
+    }
+    sim->processObstacles();
 
-     obstacle3.push_back(RVO::Vector2(map_width-obs_width, map_height-obs_height));
-     obstacle3.push_back(RVO::Vector2(map_width, map_height-obs_height));
-     obstacle3.push_back(RVO::Vector2(map_width, map_height));
-     obstacle3.push_back(RVO::Vector2(map_width-obs_width, map_height));
-
-     obstacle4.push_back(RVO::Vector2(0.0f, map_height-obs_height));
-     obstacle4.push_back(RVO::Vector2(obs_width, map_height-obs_height));
-     obstacle4.push_back(RVO::Vector2(obs_width, map_height));
-     obstacle4.push_back(RVO::Vector2(0.0f, map_height));
-
-     sim->addObstacle(obstacle1);
-     sim->addObstacle(obstacle2);
-     sim->addObstacle(obstacle3);
-     sim->addObstacle(obstacle4);
-
-     /* Process the obstacles so that they are accounted for in the simulation. */
-     sim->processObstacles();
+    file.close();
 }
 
 PedPathPredictor::~PedPathPredictor(){
