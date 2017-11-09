@@ -30,13 +30,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Eigen)
 
 
-include_directories(
-    include
-    ${catkin_INCLUDE_DIRS}
-    ${EIGEN_INCLUDE_DIRS}
-    #${PCL_INCLUDE_DIRS}
-    #${Boost_INCLUDE_DIRS}
-)
+
 
 add_definitions(${EIGEN_DEFINITIONS})
 
@@ -64,6 +58,14 @@ catkin_package(
   LIBRARIES ped_costmap
 #  CATKIN_DEPENDS geometry_msgs roscpp std_msgs
 #  DEPENDS system_lib
+)
+
+include_directories(
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${EIGEN_INCLUDE_DIRS}
+    #${PCL_INCLUDE_DIRS}
+    #${Boost_INCLUDE_DIRS}
 )
 
 add_library(ped_costmap src/costmap_2d.cpp src/observation_buffer.cpp src/costmap_2d_ros.cpp src/costmap_2d_publisher.cpp src/voxel_costmap_2d.cpp)

@@ -17,7 +17,8 @@ PedPathPredictor::PedPathPredictor(){
 	// Specify global time step of the simulation.
     sim->setTimeStep(0.33f);    
     // Specify default parameters for agents that are subsequently added.
-    sim->setAgentDefaults(5.0f, 8, 10.0f, 5.0f, 0.5f, 2.0f);
+    //sim->setAgentDefaults(5.0f, 8, 10.0f, 5.0f, 0.5f, 2.0f);
+    sim->setAgentDefaults(1.5f, 1, 3.0f, 6.0f, 0.12f, 3.0f);
 
     //global_frame_id = ModelParams::rosns + "/map";
     global_frame_id = "/map";
@@ -25,15 +26,20 @@ PedPathPredictor::PedPathPredictor(){
     
     ped_prediction_pub = nh.advertise<sensor_msgs::PointCloud>("ped_prediction", 1);
 
-    //AddObstacle();
+    AddObstacle();
 
     timer = nh.createTimer(ros::Duration(1.0/ModelParams::control_freq), &PedPathPredictor::Predict, this);
 }
 
  void PedPathPredictor::AddObstacle(){
 
-    ifstream file;
+/*    ifstream file;
     file.open("obstacles.txt", std::ifstream::in);
+
+    if(file.fail()){
+        cout<<"open obstacle.txt failed"<<endl;
+        return;
+    }
 
     std::vector<RVO::Vector2> obstacles[100];
 
@@ -56,7 +62,76 @@ PedPathPredictor::PedPathPredictor(){
     }
     sim->processObstacles();
 
-    file.close();
+    file.close();*/
+
+        std::vector<RVO::Vector2> obstacle[12];
+
+        obstacle[0].push_back(RVO::Vector2(-222.55,-137.84));
+        obstacle[0].push_back(RVO::Vector2(-203.23,-138.35));
+        obstacle[0].push_back(RVO::Vector2(-202.49,-127));
+        obstacle[0].push_back(RVO::Vector2(-222.33,-127));
+
+        obstacle[1].push_back(RVO::Vector2(-194.3,-137.87));
+        obstacle[1].push_back(RVO::Vector2(-181.8,-138));
+        obstacle[1].push_back(RVO::Vector2(-181.5,-127));
+        obstacle[1].push_back(RVO::Vector2(-194.3,-127));
+
+        obstacle[2].push_back(RVO::Vector2(-178.5,-137.66));
+        obstacle[2].push_back(RVO::Vector2(-164.95,-137.66));
+        obstacle[2].push_back(RVO::Vector2(-164.95,-127));
+        obstacle[2].push_back(RVO::Vector2(-178.5,-127));
+
+        obstacle[3].push_back(RVO::Vector2(-166.65,-148.05));
+        obstacle[3].push_back(RVO::Vector2(-164,-148.05));
+        obstacle[3].push_back(RVO::Vector2(-164,-138));
+        obstacle[3].push_back(RVO::Vector2(-166.65,-138));
+
+        obstacle[4].push_back(RVO::Vector2(-172.06,-156));
+        obstacle[4].push_back(RVO::Vector2(-166,-156));
+        obstacle[4].push_back(RVO::Vector2(-166,-148.25));
+        obstacle[4].push_back(RVO::Vector2(-172.06,-148.25));
+
+        obstacle[5].push_back(RVO::Vector2(-197.13,-156));
+        obstacle[5].push_back(RVO::Vector2(-181.14,-156));
+        obstacle[5].push_back(RVO::Vector2(-181.14,-148.65));
+        obstacle[5].push_back(RVO::Vector2(-197.13,-148.65));
+
+        obstacle[6].push_back(RVO::Vector2(-222.33,-156));
+        obstacle[6].push_back(RVO::Vector2(-204.66,-156));
+        obstacle[6].push_back(RVO::Vector2(-204.66,-148.28));
+        obstacle[6].push_back(RVO::Vector2(-222.33,-148.28));
+
+        obstacle[7].push_back(RVO::Vector2(-214.4,-143.25));
+        obstacle[7].push_back(RVO::Vector2(-213.5,-143.25));
+        obstacle[7].push_back(RVO::Vector2(-213.5,-142.4));
+        obstacle[7].push_back(RVO::Vector2(-214.4,-142.4));
+
+        obstacle[8].push_back(RVO::Vector2(-209.66,-144.35));
+        obstacle[8].push_back(RVO::Vector2(-208.11,-144.35));
+        obstacle[8].push_back(RVO::Vector2(-208.11,-142.8));
+        obstacle[8].push_back(RVO::Vector2(-209.66,-142.8));
+
+        obstacle[9].push_back(RVO::Vector2(-198.58,-144.2));
+        obstacle[9].push_back(RVO::Vector2(-197.2,-144.2));
+        obstacle[9].push_back(RVO::Vector2(-197.2,-142.92));
+        obstacle[9].push_back(RVO::Vector2(-198.58,-142.92));
+
+        obstacle[10].push_back(RVO::Vector2(-184.19,-143.88));
+        obstacle[10].push_back(RVO::Vector2(-183.01,-143.87));
+        obstacle[10].push_back(RVO::Vector2(-181.5,-141.9));
+        obstacle[10].push_back(RVO::Vector2(-184.19,-142.53));
+
+        obstacle[11].push_back(RVO::Vector2(-176,-143.69));
+        obstacle[11].push_back(RVO::Vector2(-174.43,-143.69));
+        obstacle[11].push_back(RVO::Vector2(-174.43,-142));
+        obstacle[11].push_back(RVO::Vector2(-176,-142));
+
+
+        for (int i=0; i<12; i++){
+           sim->addObstacle(obstacle[i]);
+        }
+
+        sim->processObstacles();
 }
 
 PedPathPredictor::~PedPathPredictor(){
@@ -114,3 +189,5 @@ void PedPathPredictor::Predict(const ros::TimerEvent &e){
 
 	ped_prediction_pub.publish(pc);
 }
+
+

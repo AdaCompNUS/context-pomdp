@@ -27,13 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Eigen)
 
 
-include_directories(
-    include
-    ${catkin_INCLUDE_DIRS}
-    ${EIGEN_INCLUDE_DIRS}
-    #${PCL_INCLUDE_DIRS}
-    #${Boost_INCLUDE_DIRS}
-)
+
 
 add_definitions(${EIGEN_DEFINITIONS})
 
@@ -47,6 +41,21 @@ generate_messages(
     DEPENDENCIES
         std_msgs
         geometry_msgs
+)
+
+catkin_package(
+  INCLUDE_DIRS include
+# LIBRARIES strands_gazing
+  CATKIN_DEPENDS std_msgs geometry_msgs visualization_msgs
+# DEPENDS system_lib
+)
+
+include_directories(
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${EIGEN_INCLUDE_DIRS}
+    #${PCL_INCLUDE_DIRS}
+    #${Boost_INCLUDE_DIRS}
 )
 
 add_library(ped_pathplan src/pathplan.cpp src/pathplan_ros.cpp)

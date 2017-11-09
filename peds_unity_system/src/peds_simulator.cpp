@@ -152,7 +152,7 @@ public:
         }
 
         //addAgent (const Vector2 &position, float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed)
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 3.0f, 1, 3.0f, 5.0f, 0.8f, 3.0f);
+        ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 3.0f, 1, 3.0f, 5.0f, 0.8f, 3.0f, RVO::Vector2(), "vehicle");
         ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(car.yaw), car.vel * sin(car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity
 
         // Set the preferred velocity for each agent.

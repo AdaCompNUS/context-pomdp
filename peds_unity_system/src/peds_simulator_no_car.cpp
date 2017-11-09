@@ -67,8 +67,8 @@ public:
         // Specify global time step of the simulation.
         ped_sim_->setTimeStep(1.0f/freq);    
 
-        // Specify default parameters for agents that are subsequently added.
-        ped_sim_->setAgentDefaults(1.5f, 2, 3.0f, 6.0f, 0.15f, 3.0f);
+        // setAgentDefaults (float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, const Vector2 &velocity=Vector2())
+        ped_sim_->setAgentDefaults(3.0f, 2, 2.0f, 2.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
 
         addObstacle();
     }
@@ -143,7 +143,47 @@ public:
 
     void RVO2PedStep(){
 
-        ped_sim_->clearAllAgents();
+        ped_sim_->setNotUpdated();
+
+        //adding pedestrians
+        for(int i=0; i<peds.size(); i++){
+
+            int goal_id = peds[i].goal;
+            RVO::Vector2 pos = RVO::Vector2(peds[i].pos.x, peds[i].pos.y);
+            RVO::Vector2 pref_vel;
+
+            if (goal_id >= goals.size()-1) { /// stop intention
+                pref_vel = RVO::Vector2(0.0f, 0.0f);
+            }
+            else{
+                RVO::Vector2 goal(goals[goal_id].x, goals[goal_id].y);
+                if ( absSq(goal - pos) < 0.0625 ) {
+                    pref_vel = normalize(goal - pos)*0.6;
+                } else {
+                    pref_vel = normalize(goal - pos)*1.2;
+                }
+            }
+
+            ped_sim_->updateAgent(peds[i].id, pos, pref_vel);
+        }
+
+        ped_sim_->deleteOldAgents();
+
+        //addAgent (const Vector2 &position, float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed)
+        ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
+        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(car.yaw), car.vel * sin(car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
+
+        ped_sim_->doStep();
+
+        for(int i=0; i<peds.size(); i++){
+            peds[i].vel = freq*sqrt((ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)*(ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)
+                +(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y)*(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y));
+                peds[i].pos.x=ped_sim_->getAgentPosition(i).x();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+                peds[i].pos.y=ped_sim_->getAgentPosition(i).y();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+
+        }
+
+/*        ped_sim_->clearAllAgents();
 
         //adding pedestrians
         for(int i=0; i<peds.size(); i++){
@@ -151,7 +191,7 @@ public:
         }
 
         //addAgent (const Vector2 &position, float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed)
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 3.0f, 1, 3.0f, 5.0f, 0.8f, 3.0f);
+        ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 3.0f, 1, 1.0f, 2.0f, 0.8f, 3.0f, RVO::Vector2(), "vehicle");
         ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(car.yaw), car.vel * sin(car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity
 
         // Set the preferred velocity for each agent.
@@ -179,12 +219,13 @@ public:
         for(int i=0; i<peds.size(); i++){
             peds[i].vel = freq*sqrt((ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)*(ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)
                 +(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y)*(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y));
-/*            if (peds[i].vel < 0.2 && peds[i].vel > 0){
-                peds[i].pos.x=ped_sim_->getAgentPosition(i).x() + (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)*(1/peds[i].vel); //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
-                peds[i].pos.y=ped_sim_->getAgentPosition(i).y() + (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)*(1/peds[i].vel);//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
-                peds[i].vel = freq*sqrt((ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)*(ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)
-                    +(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y)*(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y));
-            }*/
+            // if (peds[i].vel < 0.5 && peds[i].vel > 0){
+            //     peds[i].pos.x=ped_sim_->getAgentPosition(i).x() + (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)*(1/peds[i].vel); //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+            //     peds[i].pos.y=ped_sim_->getAgentPosition(i).y() + (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)*(1/peds[i].vel);//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+            //     peds[i].vel = freq*sqrt((ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)*(ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)
+            //         +(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y)*(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y));
+            // }
+
             // if(peds[i].pos.x==ped_sim_->getAgentPosition(i).x()){
             //     std::cout<<"ped not changed!!!!!!"<<std::endl;
             // }
@@ -201,7 +242,7 @@ public:
                 peds[i].pos.x=ped_sim_->getAgentPosition(i).x();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
                 peds[i].pos.y=ped_sim_->getAgentPosition(i).y();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
         //    } 
-        }
+        }*/
     }
 
 

@@ -189,7 +189,7 @@ namespace RVO {
 		size_t addAgent(const Vector2 &position, float neighborDist,
 						size_t maxNeighbors, float timeHorizon,
 						float timeHorizonObst, float radius, float maxSpeed,
-						const Vector2 &velocity = Vector2());
+						const Vector2 &velocity = Vector2(), std::string tag = "pedestrian");
 
 		/**
 		 * \brief      Adds a new obstacle to the simulation.
@@ -480,7 +480,7 @@ namespace RVO {
 		void setAgentDefaults(float neighborDist, size_t maxNeighbors,
 							  float timeHorizon, float timeHorizonObst,
 							  float radius, float maxSpeed,
-							  const Vector2 &velocity = Vector2());
+							  const Vector2 &velocity = Vector2(), std::string tag = "pedestrian");
 
 		/**
 		 * \brief      Sets the maximum neighbor count of a specified agent.
@@ -576,6 +576,12 @@ namespace RVO {
 		void setTimeStep(float timeStep);
 
 		void clearAllAgents();
+
+		void setNotUpdated();
+		void deleteOldAgents();
+
+		size_t addAgent(const Vector2 &position, const Vector2 &pref_vel, size_t ped_id);
+		void updateAgent(size_t ped_id, RVO::Vector2 pos, RVO::Vector2 pref_vel);
 
 	private:
 		std::vector<Agent *> agents_;

@@ -51,7 +51,7 @@ rviz
 cd ~/workspace/catkin_ws/src/purepursuit_combined/ && python purepursuit_NavPath_unity.py
 ```
 
-### test path planning with pedestrians
+### test path planning with ped_path_prediction
 ```
 roscore
 rosrun tf static_transform_publisher -205 -143 0.0 0.0 0.0 0.0 /map /odom 1000 # -207.26 -143.595
@@ -64,7 +64,7 @@ roslaunch ped_pathplan pathplan.launch
 rviz
 rosrun peds_unity_system peds_simulator_no_car
 roscd peds_unity_system/src && python unity_connector.py
-roslaunch ped_is_despot is_despot.launch
+ rosrun ped_path_predictor ped_path_predictor_node 
 ```
 
 

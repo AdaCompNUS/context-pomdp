@@ -95,6 +95,7 @@ namespace RVO {
 		agent->timeHorizon_ = defaultAgent_->timeHorizon_;
 		agent->timeHorizonObst_ = defaultAgent_->timeHorizonObst_;
 		agent->velocity_ = defaultAgent_->velocity_;
+		agent->tag_ = defaultAgent_->tag_;
 
 		agent->id_ = agents_.size();
 
@@ -103,7 +104,36 @@ namespace RVO {
 		return agents_.size() - 1;
 	}
 
-	size_t RVOSimulator::addAgent(const Vector2 &position, float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, const Vector2 &velocity)
+
+	size_t RVOSimulator::addAgent(const Vector2 &position, const Vector2 &pref_vel, size_t ped_id)
+	{
+		if (defaultAgent_ == NULL) {
+			return RVO_ERROR;
+		}
+
+		Agent *agent = new Agent(this);
+
+		agent->position_ = position;
+		agent->maxNeighbors_ = defaultAgent_->maxNeighbors_;
+		agent->maxSpeed_ = defaultAgent_->maxSpeed_;
+		agent->neighborDist_ = defaultAgent_->neighborDist_;
+		agent->radius_ = defaultAgent_->radius_;
+		agent->timeHorizon_ = defaultAgent_->timeHorizon_;
+		agent->timeHorizonObst_ = defaultAgent_->timeHorizonObst_;
+		agent->velocity_ = defaultAgent_->velocity_;
+		agent->tag_ = defaultAgent_->tag_;
+
+		agent->id_ = agents_.size();
+
+		agent->prefVelocity_ = pref_vel;
+		agent->ped_id_ = ped_id;
+
+		agents_.push_back(agent);
+
+		return agents_.size() - 1;
+	}
+
+	size_t RVOSimulator::addAgent(const Vector2 &position, float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, const Vector2 &velocity, std::string tag)
 	{
 		Agent *agent = new Agent(this);
 
@@ -115,6 +145,7 @@ namespace RVO {
 		agent->timeHorizon_ = timeHorizon;
 		agent->timeHorizonObst_ = timeHorizonObst;
 		agent->velocity_ = velocity;
+		agent->tag_ = tag;
 
 		agent->id_ = agents_.size();
 
@@ -160,6 +191,40 @@ namespace RVO {
 		}
 
 		return obstacleNo;
+	}
+
+	void RVOSimulator::updateAgent(size_t ped_id, RVO::Vector2 pos, RVO::Vector2 pref_vel){
+		int i;
+		for (i = 0; i < static_cast<int>(agents_.size()); ++i) {
+			if(agents_[i]->ped_id_ == ped_id) break;
+		}
+		if(i == static_cast<int>(agents_.size())){ /// new agent, adding to agents_ list
+			addAgent(pos, pref_vel, ped_id);
+			agents_[i]->updated_ = true;
+		} else{ /// old agent, only update its pos and prefered velocity
+			agents_[i]->position_ = pos;
+			agents_[i]->prefVelocity_ = pref_vel;
+			agents_[i]->updated_ = true;
+		}
+	}
+
+	void RVOSimulator::setNotUpdated(){
+		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
+			agents_[i]->updated_ = false;
+		}
+	}
+	void RVOSimulator::deleteOldAgents(){
+		std::vector<Agent *> new_agents;
+		int id = 0;
+		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
+			if(agents_[i]->updated_ == true) {
+				agents_[i] -> id_ = id;
+				id++;
+				new_agents.push_back(agents_[i]);
+			}
+		}
+		agents_.clear();
+		agents_ = new_agents;
 	}
 
 	void RVOSimulator::doStep()
@@ -304,7 +369,7 @@ namespace RVO {
 		return kdTree_->queryVisibility(point1, point2, radius);
 	}
 
-	void RVOSimulator::setAgentDefaults(float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, const Vector2 &velocity)
+	void RVOSimulator::setAgentDefaults(float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, const Vector2 &velocity, std::string tag)
 	{
 		if (defaultAgent_ == NULL) {
 			defaultAgent_ = new Agent(this);
@@ -317,6 +382,7 @@ namespace RVO {
 		defaultAgent_->timeHorizon_ = timeHorizon;
 		defaultAgent_->timeHorizonObst_ = timeHorizonObst;
 		defaultAgent_->velocity_ = velocity;
+		defaultAgent_->tag_ = tag;
 	}
 
 	void RVOSimulator::setAgentMaxNeighbors(size_t agentNo, size_t maxNeighbors)
