@@ -105,7 +105,7 @@ namespace RVO {
 	}
 
 
-	size_t RVOSimulator::addAgent(const Vector2 &position, const Vector2 &pref_vel, size_t ped_id)
+	size_t RVOSimulator::addAgent(const Vector2 &position, const Vector2 &pref_vel, int ped_id)
 	{
 		if (defaultAgent_ == NULL) {
 			return RVO_ERROR;
@@ -193,7 +193,11 @@ namespace RVO {
 		return obstacleNo;
 	}
 
-	void RVOSimulator::updateAgent(size_t ped_id, RVO::Vector2 pos, RVO::Vector2 pref_vel){
+	void RVOSimulator::setAgentPedID(size_t agentNo, int ped_id){
+		agents_[agentNo] -> ped_id_ = ped_id;
+	}
+
+	void RVOSimulator::updateAgent(int ped_id, RVO::Vector2 pos, RVO::Vector2 pref_vel){
 		int i;
 		for (i = 0; i < static_cast<int>(agents_.size()); ++i) {
 			if(agents_[i]->ped_id_ == ped_id) break;

@@ -293,10 +293,21 @@ namespace RVO {
 		//const float invTimeHorizon = 1.0f / timeHorizon_;
 		float invTimeHorizon = 1.0f / timeHorizon_;
 
+		bool vehicle_in_neighbor = false;
+		Vector2 vel_veh_avoiding;
+		Vector2 vel_pos;
+
 		/* Create agent ORCA lines. */
 		for (size_t i = 0; i < agentNeighbors_.size(); ++i) {
 			const Agent *const other = agentNeighbors_[i].second;
-			if(other->tag_ == "vehicle") invTimeHorizon = 1.0f/(timeHorizon_ * 4);
+			if(other->tag_ == "vehicle") {
+				invTimeHorizon = 1.0f/(timeHorizon_ * 4);
+				std::cout<<agentNeighbors_.size()<<" vehicle in neighbor, distance: "<<abs(other->position_ - position_)<<std::endl;
+				vehicle_in_neighbor = true;
+				vel_veh_avoiding = other->prefVelocity_;
+				vel_pos = other->position_;
+				std::cout<<"pref: "<<vel_veh_avoiding<<std::endl;
+			}
 
 			const Vector2 relativePosition = other->position_ - position_;
 			const Vector2 relativeVelocity = velocity_ - other->velocity_;
@@ -375,6 +386,7 @@ namespace RVO {
 					}
 					else{
 						ped_responsibility = 0.05 + (5.0 - dist_to_collision)/5.0 * 0.9;
+						//ped_responsibility = 1.0;
 					}
 					
 					line.point = velocity_ + (1.0f - ped_responsibility) * u;
@@ -396,6 +408,7 @@ namespace RVO {
 					}
 					else{
 						ped_responsibility = 0.05 + (5.0 - dist_to_collision)/5.0 * 0.9;
+						//ped_responsibility = 3.0;
 					}
 					
 					line.point = velocity_ + ped_responsibility * u;
@@ -568,6 +581,16 @@ namespace RVO {
 			}
 		}*/
 
+		std::cout<<"*****: "<<tag_<<std::endl;
+
+		if(vehicle_in_neighbor){
+			if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-vel_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+				prefVelocity_ = vel_veh_avoiding.rotate(90.0);
+			} else{
+				prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
+			}
+			
+		}
 		if(!use_new_pref_vel_){
 			size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_);
 
@@ -575,12 +598,12 @@ namespace RVO {
 
 			if (lineFail < orcaLines_.size()) {
 				linearProgram3(orcaLines_, numObstLines, lineFail, maxSpeed_, newVelocity_);
-				std::cout<<"2 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
+		//		std::cout<<"2 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 			}
 		}else{
 			size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, new_pref_vel_, false, newVelocity_);
 
-			//	std::cout<<"2 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
+				std::cout<<"2 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 
 			if (lineFail < orcaLines_.size()) {
 				linearProgram3(orcaLines_, numObstLines, lineFail, maxSpeed_, newVelocity_);
@@ -632,7 +655,9 @@ namespace RVO {
 	void Agent::insertAgentNeighbor(const Agent *agent, float &rangeSq)
 	{
 		if (this != agent) {
-			const float distSq = absSq(position_ - agent->position_);
+			///const float distSq = absSq(position_ - agent->position_);
+			const float distSq = abs(position_ - agent->position_) - agent->radius_ < 0 ? 0:sqr(abs(position_ - agent->position_) - agent->radius_);
+			//std::cout<<std::sqrt(distSq)<<std::endl;
 
 			if (distSq < rangeSq) {
 				if (agentNeighbors_.size() < maxNeighbors_) {

@@ -580,8 +580,9 @@ namespace RVO {
 		void setNotUpdated();
 		void deleteOldAgents();
 
-		size_t addAgent(const Vector2 &position, const Vector2 &pref_vel, size_t ped_id);
-		void updateAgent(size_t ped_id, RVO::Vector2 pos, RVO::Vector2 pref_vel);
+		size_t addAgent(const Vector2 &position, const Vector2 &pref_vel, int ped_id);
+		void updateAgent(int ped_id, RVO::Vector2 pos, RVO::Vector2 pref_vel);
+		void setAgentPedID(size_t agentNo, int ped_id);
 
 	private:
 		std::vector<Agent *> agents_;
