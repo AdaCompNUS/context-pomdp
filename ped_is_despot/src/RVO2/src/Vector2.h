@@ -237,6 +237,22 @@ namespace RVO {
 			return *this;
 		}
 
+		/**
+		* \brief	rotate angele_deg counter-clockwise
+		*/
+		inline Vector2 rotate(float angle_deg)
+		{
+			float theta = angle_deg * 3.14159/180.0;
+
+			float cs = cos(theta);
+			float sn = sin(theta);
+
+			float px = x_ * cs - y_ * sn; 
+			float py = x_ * sn + y_ * cs;
+
+			return Vector2(px, py);
+		}
+
 	private:
 		float x_;
 		float y_;

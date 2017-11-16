@@ -53,7 +53,8 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
 
     // Specify default parameters for agents that are subsequently added.
     //ped_sim_->setAgentDefaults(5.0f, 8, 10.0f, 5.0f, 0.5f, 2.0f);
-    ped_sim_->setAgentDefaults(1.5f, 1, 3.0f, 6.0f, 0.15f, 3.0f);
+    //ped_sim_->setAgentDefaults(1.5f, 1, 3.0f, 6.0f, 0.15f, 3.0f);
+    ped_sim_->setAgentDefaults(3.0f, 2, 2.0f, 2.0f, 0.25f, 3.0f);
 }
 
 bool WorldModel::isLocalGoal(const PomdpState& state) {
@@ -938,9 +939,10 @@ void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarS
     car_x = path[car.pos].x;
     car_y = path[car.pos].y;
     car_yaw = path.getYaw(car.pos);
-    //ped_sim_->addAgent(RVO::Vector2(car_x, car_y), 5.0f, 8, 10.0f, 5.0f, 0.7f, 1.2f);
-    ped_sim_->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 1, 3.0f, 5.0f, 0.8f, 3.0f);
-    ped_sim_->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity
+  //  ped_sim_->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 1, 3.0f, 5.0f, 0.8f, 3.0f);
+  //  ped_sim_->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity
+    ped_sim_->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
+    ped_sim_->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
 
     // Set the preferred velocity for each agent.
     for (size_t i = 0; i < num_ped; ++i) {
@@ -951,12 +953,12 @@ void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarS
             RVO::Vector2 goal(goals[goal_id].x, goals[goal_id].y);
             if ( absSq(goal - ped_sim_->getAgentPosition(i)) < ped_sim_->getAgentRadius(i) * ped_sim_->getAgentRadius(i) ) {
                 // Agent is within one radius of its goal, set preferred velocity to zero
-                ped_sim_->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
-                //ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i)));
+                //ped_sim_->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
+                ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i))*0.6);
             } else {
                 // Agent is far away from its goal, set preferred velocity as unit vector towards agent's goal.
                 //ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i)));
-                ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i))*1.5);
+                ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i))*1.2);
             }
         }
         
@@ -978,6 +980,52 @@ void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarS
             peds[i].pos.y=ped_sim_->getAgentPosition(i).y();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
         } 
     }
+
+/*    ped_sim_->setNotUpdated();
+
+    //adding pedestrians
+    for(int i=0; i<num_ped; i++){
+
+        int goal_id = peds[i].goal;
+        RVO::Vector2 pos = RVO::Vector2(peds[i].pos.x, peds[i].pos.y);
+        RVO::Vector2 pref_vel;
+
+        if (goal_id >= goals.size()-1) { /// stop intention
+            pref_vel = RVO::Vector2(0.0f, 0.0f);
+        }
+        else{
+            RVO::Vector2 goal(goals[goal_id].x, goals[goal_id].y);
+            if ( absSq(goal - pos) < 0.0625 ) {
+                pref_vel = normalize(goal - pos)*0.6;
+            } else {
+                pref_vel = normalize(goal - pos)*1.2;
+            }
+        }
+
+        ped_sim_->updateAgent(peds[i].id, pos, pref_vel);
+    }
+
+    ped_sim_->deleteOldAgents();
+
+    double car_x, car_y, car_yaw;
+    car_x = path[car.pos].x;
+    car_y = path[car.pos].y;
+    car_yaw = path.getYaw(car.pos);
+
+    //addAgent (const Vector2 &position, float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed)
+    ped_sim_->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
+    ped_sim_->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
+    ped_sim_->setAgentPedID(num_ped,-1);
+    
+    ped_sim_->doStep();
+
+    for(int i=0; i<num_ped; i++){
+        peds[i].vel = freq*sqrt((ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)*(ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)
+            +(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y)*(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y));
+            peds[i].pos.x=ped_sim_->getAgentPosition(i).x();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+            peds[i].pos.y=ped_sim_->getAgentPosition(i).y();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+
+    }*/
 }
 
 /*void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarStruct car){

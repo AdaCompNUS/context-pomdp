@@ -584,11 +584,15 @@ namespace RVO {
 		std::cout<<"*****: "<<tag_<<std::endl;
 
 		if(vehicle_in_neighbor){
-			if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-vel_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
-				prefVelocity_ = vel_veh_avoiding.rotate(90.0);
-			} else{
-				prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
+			float dist_to_veh = abs(position_-vel_pos);
+			if(dist_to_veh < 1.5f){
+				if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-vel_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+					prefVelocity_ = vel_veh_avoiding.rotate(90.0);
+				} else{
+					prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
+				}
 			}
+			
 			
 		}
 		if(!use_new_pref_vel_){

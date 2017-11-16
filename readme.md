@@ -1,8 +1,8 @@
 ### run the whole system
 ```
 roscore
-rosrun tf static_transform_publisher -205 -143 0.0 0.0 0.0 0.0 /map /odom 1000 # -207.26 -143.595
-rosrun tf static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 /base_link /laser_frame 1000
+rosrun tf static_transform_publisher -205 -143 0.0 0.0 0.0 0.0 /map /odom 10 # -207.26 -143.595
+rosrun tf static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 /base_link /laser_frame 10
 cd ~ && rosrun map_server map_server airport_departure.yaml
 cd ~/Unity/DESPOT-Unity/Assets/Sensors/Scripts/ROS/ && python OdometryROS.py
 # cd ~/Unity/DESPOT-Unity/Assets/Sensors/Scripts/ROS/ && python LidarROS.py
