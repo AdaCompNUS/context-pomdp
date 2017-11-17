@@ -1,5 +1,33 @@
-cmake_minimum_required(VERSION 2.8.3)
-project(ped_is_despot)
+cmake_minimum_required(VERSION 3.8)
+
+
+set(CUDA_SDK_ROOT_DIR "/usr/local/cuda/samples")
+
+project(ped_is_despot CXX CUDA)
+
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 11)
+  set(CMAKE_CXX_STANDARD_REQUIRED True)
+endif()
+
+if(NOT DEFINED CMAKE_CUDA_STANDARD)
+  set(CMAKE_CUDA_STANDARD 11)
+  set(CMAKE_CUDA_STANDARD_REQUIRED True)
+endif()
+
+set(BINARY_INSTALL_PATH "bin" CACHE PATH "Binary install path")
+set(LIBRARY_INSTALL_PATH "lib" CACHE PATH "Library install path")
+set(INCLUDE_INSTALL_PATH "include" CACHE PATH "Include install path")
+set(CONFIG_INSTALL_PATH "${LIBRARY_INSTALL_PATH}/${PROJECT_NAME}/cmake")
+
+set(DESPOT_BUILD_EXAMPLES ON CACHE BOOL "Build C++ model examples")
+set(DESPOT_BUILD_POMDPX ON CACHE BOOL "Build POMDPX example")
+set(DESPOT_BUILD_GPUS ON CACHE BOOL "Build GPU despot")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -mfpmath=sse")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_30")
+set(CMAKE_MODULE_PATH ${CMAKE_PREFIX_PATH} "${PROJECT_SOURCE_DIR}/cmake")
+
 
 ## Add support for C++11, supported in ROS Kinetic and newer
 add_definitions(-std=c++0x -O3)
@@ -15,8 +43,11 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   cluster_assoc
   pnc_msgs
+  car_hyp_despot
 )
 
+#add_subdirectory(src/HypDespot/)
+#add_subdirectory(src/planner/)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -100,6 +131,7 @@ generate_messages(
 ################################################
 
 ## To declare and build dynamic reconfigure parameters within this
+
 ## package, follow these steps:
 ## * In the file package.xml:
 ##   * add a build_depend and a run_depend tag for "dynamic_reconfigure"
@@ -141,24 +173,26 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  src/despot/include
-  src/planner
   src/RVO2/src
+  ../car_hyp_despot/src/planner/
+  ../car_hyp_despot/src/HypDespot/include/
+  ../car_hyp_despot/src/HypDespot/include/despot
 )
 
 
 
 FILE(GLOB LIBRVO_SRCS  src/RVO2/src/*.cpp)
-FILE(GLOB LIBDESPOT_SRCS src/despot/src/*.cpp src/despot/src/core/*.cpp src/despot/src/ippc/*.cpp src/despot/src/pomdpx/*.cpp src/despot/src/pomdpx/parser/*.cpp src/despot/src/solver/*.cpp src/despot/src/test/*.cpp src/despot/src/util/*.cpp src/despot/src/util/tinyxml/*.cpp src/planner/*.cpp)
+#FILE(GLOB LIBDESPOT_SRCS src/despot/src/*.cpp src/despot/src/core/*.cpp src/despot/src/ippc/*.cpp src/despot/src/pomdpx/*.cpp src/despot/src/pomdpx/parser/*.cpp src/despot/src/solver/*.cpp src/despot/src/test/*.cpp src/despot/src/util/*.cpp src/despot/src/util/tinyxml/*.cpp src/planner/*.cpp)
 
 ## Declare a C++ library
 add_library(rvo
    ${LIBRVO_SRCS}
 )
 
-add_library(despot
-   ${LIBDESPOT_SRCS}
-)
+#add_library(despot
+#   ${LIBDESPOT_SRCS}
+#)
+
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -179,7 +213,7 @@ add_executable(ped_pomdp src/PedPomdpNode.cpp src/controller.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_executable(local_frame src/local_frame.cpp src/planner/param.cpp)
+add_executable(local_frame src/local_frame.cpp)
 add_executable(vel_publisher src/VelPublisher.cpp)
 
 
@@ -189,17 +223,24 @@ add_dependencies(local_frame pnc_msgs_generate_messages_cpp)
 add_dependencies(vel_publisher ped_is_despot_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(despot
-   rvo
-)
+#target_link_libraries(
+   #GPUmodel
+   #/home/panpan/workspace/catkin_ws/src/ped_is_despot/src/planner/build/libGPUmodel.a
+   #${catkin_LIBRARIES}
+   #/home/panpan/workspace/catkin_ws/src/ped_is_despot/src/HypDespot/build/libHypDespot.a
+   #HypDespot
+#)
 
 target_link_libraries(ped_pomdp
    ${catkin_LIBRARIES}
-   despot
+   rvo
+   car_hyp_despot
+   #/home/panpan/workspace/catkin_ws/src/ped_is_despot/src/planner/build/libGPUmodel.a
 )
 
 target_link_libraries(local_frame
    ${catkin_LIBRARIES}
+   car_hyp_despot
 )
 
 target_link_libraries(vel_publisher
@@ -211,6 +252,7 @@ target_link_libraries(vel_publisher
 #############
 ## Install ##
 #############
+
 
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html

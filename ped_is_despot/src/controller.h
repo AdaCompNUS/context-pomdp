@@ -8,7 +8,7 @@
 #ifndef MOMDP_H_
 #define MOMDP_H_
 
-
+#include <RVO.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/LaserScan.h>
@@ -45,6 +45,7 @@
 #include "ped_pomdp.h"
 #include "core/belief.h"
 #include "solver/despot.h"
+#include "simulator_hyp.h"
 #include <ped_pathplan/StartGoal.h>
 
 using namespace std;
@@ -96,6 +97,7 @@ public:
 	WorldBeliefTracker worldBeliefTracker;
 	PedPomdp * despot;
 	DESPOT* solver;
+	Simulator* gpu_handler;
 	double target_speed_, real_speed_;
 	string global_frame_id;
 	visualization_msgs::MarkerArray markers;

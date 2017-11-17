@@ -80,7 +80,7 @@ bool Controller::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_po
 }
 
 void Controller::addObstacle(){
-    std::vector<RVO::Vector2> obstacle[12];
+/*    std::vector<RVO::Vector2> obstacle[12];
 
     obstacle[0].push_back(RVO::Vector2(-222.55,-137.84));
     obstacle[0].push_back(RVO::Vector2(-203.23,-138.35));
@@ -152,8 +152,8 @@ void Controller::addObstacle(){
  	   worldModel.ped_sim_->addObstacle(obstacle[i]);
 	}
 
-    /* Process the obstacles so that they are accounted for in the simulation. */
-    worldModel.ped_sim_->processObstacles();
+    //Process the obstacles so that they are accounted for in the simulation.
+    worldModel.ped_sim_->processObstacles();*/
 }
 
 /*for despot*/
@@ -171,6 +171,13 @@ void Controller::initSimulator()
   Random::RANDOM = Random(seed);
   cerr << "Initialized global random generator with seed " << seed << endl;
 
+  gpu_handler=new Simulator(/*NULL, NULL*/);
+
+  gpu_handler->InitializeDefaultParameters() ;
+
+  gpu_handler->PrepareGPU();
+
+
   despot=new PedPomdp(worldModel); 
   //despot->num_active_particles = 0;
 
@@ -185,7 +192,9 @@ void Controller::initSimulator()
   ScenarioUpperBound *upper_bound = despot->CreateScenarioUpperBound("SMART", "SMART");
 
   //solver = new DESPOT(despot, NULL, *streams);
-  solver = new DESPOT(despot, lower_bound, upper_bound);
+  solver = new DESPOT(despot, lower_bound, upper_bound, NULL, true);
+
+  gpu_handler->PrepareGPUData(despot, solver);
 }
 
 
@@ -196,6 +205,8 @@ Controller::~Controller()
     cmd.angular.z = 0;
     cmd.linear.x = 0;
     cmdPub_.publish(cmd);
+    gpu_handler->ReleaseGPUData(despot, solver);
+    delete gpu_handler;
 }
 
 
@@ -429,6 +440,8 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 void Controller::setGoal(const geometry_msgs::PoseStamped::ConstPtr goal) {
     goalx_ = goal->pose.position.x;
     goaly_ = goal->pose.position.y;
+    gpu_handler->UpdateGPUGoals(despot);
+
 }
 
 void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
@@ -455,6 +468,7 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 	} else {
 		worldModel.setPath(p.interpolate());
 	}
+	gpu_handler->UpdateGPUPath(despot);
 
 	publishPath(path->header.frame_id, worldModel.path);
 }
@@ -643,18 +657,18 @@ void Controller::controlLoop(const ros::TimerEvent &e)
         /****** solve for safe action ******/
 
 		safeAction=solver->Search().action;
-		cout<<"7"<<endl;
+		//cout<<"7"<<endl;
 		//safeAction = 1;
 
 		//actionPub_.publish(action);
 		publishAction(safeAction);
-		cout<<"8"<<endl;
+		//cout<<"8"<<endl;
 
 		cout<<"safe action = "<<safeAction<<endl;
 
 
 		publishBelief();
-		cout<<"9"<<endl;
+		//cout<<"9"<<endl;
 
 
         /****** update target speed ******/

@@ -55,6 +55,8 @@
 
   <build_depend>ped_costmap</build_depend>
   <build_depend>ped_pathplan</build_depend>
+  <build_depend>car_hyp_despot</build_depend>
+
 
   <run_depend>nav_msgs</run_depend>
   <run_depend>rosconsole</run_depend>
@@ -71,6 +73,7 @@
 
   <run_depend>ped_costmap</run_depend>
   <run_depend>ped_pathplan</run_depend>
+  <run_depend>car_hyp_despot</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
