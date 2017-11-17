@@ -1,0 +1,10 @@
+
+Python 3 script to fix error parsing in CMake generated Eclipse project files.
+
+Version 0.01
+
+2014-12-08 Georg Altmann <georg.altmann@fau.de>
+
+
+Usage:
+python3 nsight-err-parse-patch.py path-to-project-dir

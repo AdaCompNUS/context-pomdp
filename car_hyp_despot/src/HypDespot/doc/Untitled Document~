@@ -1,0 +1,5 @@
+To enable the CUDA error parsing in NVIDIA Nsight:
+
+ follow the instructions in nsight_patch/README.
+
+Key file: nsight_patch/nsight-err-parse-patch.py
