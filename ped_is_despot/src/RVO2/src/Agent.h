@@ -105,6 +105,16 @@ namespace RVO {
 
 		friend class KdTree;
 		friend class RVOSimulator;
+
+		std::string tag_;
+
+		bool use_new_pref_vel_;
+		int change_dir_iter_;
+		Vector2 new_pref_vel_;
+
+		//size_t ped_id_; // this is to track whether this pedestrian, for external use, different from id_;
+		int ped_id_;
+		bool updated_;
 	};
 
 	/**

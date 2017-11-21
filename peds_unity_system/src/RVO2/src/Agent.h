@@ -33,6 +33,7 @@
 #ifndef RVO_AGENT_H_
 #define RVO_AGENT_H_
 
+
 /**
  * \file       Agent.h
  * \brief      Contains the Agent class.

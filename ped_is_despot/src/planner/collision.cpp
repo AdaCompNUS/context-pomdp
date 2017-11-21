@@ -60,7 +60,7 @@ bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double N
 	cout << "M = (" << Mx << ", " << My << ")" << endl;
 	*/
 
-	double HNx = Nx - Hx, // car direction
+/*	double HNx = Nx - Hx, // car direction
 				 HNy = Ny - Hy;
 	double HMx = Mx - Hx,
 				 HMy = My - Hy;
@@ -71,6 +71,20 @@ bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double N
 				 side_margin = car_width / 2.0 + safe_margin,
 				 front_margin = safe_margin,
 				 back_margin = car_length + safe_margin;
+
+	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);*/
+
+	double HNx = Nx - Hx, // car direction
+				 HNy = Ny - Hy;
+	double HMx = Mx - Hx,
+				 HMy = My - Hy;
+
+	double car_width = 0.87,
+				 car_length = 1.544;
+	double safe_margin = 0.23,
+				 side_margin = car_width / 2.0 + safe_margin,
+				 front_margin = car_length/2.0 + safe_margin,
+				 back_margin = car_length/2.0 + safe_margin;
 
 	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
 }

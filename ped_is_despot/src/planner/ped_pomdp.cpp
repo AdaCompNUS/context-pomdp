@@ -21,9 +21,16 @@ public:
 		for (int i=0; i<state->num; i++) {
 			auto& p = state->peds[i];
             // 3.25 is maximum distance to collision boundary from front laser (see collsion.cpp)
+            /*cout<<"carpos: "<<carpos.x<<" "<<carpos.y<<endl;
+            cout<<"p: "<<p.pos.x<<" "<<p.pos.y<<endl;
+            cout<<"carvel: "<<carvel<<endl;
+            cout<<"pedvel: "<<p.vel<<endl;*/
+            double relative_speed = p.vel + carvel;
+            if(relative_speed < 0.2) relative_speed = 0.2;
 			int step = int(ceil(ModelParams::control_freq
-						* max(COORD::EuclideanDistance(carpos, p.pos) - 3.25, 0.0)
-						/ ((p.vel + carvel))));
+						//* max(COORD::EuclideanDistance(carpos, p.pos) - 3.25, 0.0)
+						* max(COORD::EuclideanDistance(carpos, p.pos) - 0.8, 0.0)
+						/ relative_speed));
 			min_step = min(step, min_step);
 		}
 
@@ -46,7 +53,7 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 	world(model_),
 	random_(Random((unsigned) Seeds::Next()))
 {
-	use_rvo = false;
+	use_rvo = true;
 	//particle_lower_bound_ = new PedPomdpParticleLowerBound(this);
 }
 
@@ -347,7 +354,9 @@ bool PedPomdp::ImportanceSamplingStep(State& state_, double rNum, int action, do
 	} else{
 		
 		//world.RVO2PedStep(state.peds,random,state.num);
+	//	cout<<"+++== "<<state.peds[0].pos.x<<" ";
 		world.RVO2PedStep(state.peds,random,state.num,state.car);
+	//	cout<<state.peds[0].pos.x<<endl;
 	}
 	
 

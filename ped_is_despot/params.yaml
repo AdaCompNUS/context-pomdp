@@ -39,7 +39,7 @@ ped_costmap:
     static_map: true
     publish_frequency: 5
     #robot_radius: 1.2
-    robot_radius: 0.65
+    robot_radius: 0.7
     #inflation_radius: 7.0
     inflation_radius: 4.0
     #cost_scaling_factor: 4.0

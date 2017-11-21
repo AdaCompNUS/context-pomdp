@@ -2,7 +2,8 @@
 #include "core/node.h"
 #include "core/solver.h"
 #include "core/globals.h"
-
+#include <csignal>
+using namespace std;
 double marker_colors[20][3] = {
     	{0.0,1.0,0.0},  //green
 		{1.0,0.0,0.0},  //red
@@ -15,8 +16,66 @@ double marker_colors[20][3] = {
 
 int action_map[3]={2,0,1};
 
+struct my_sig_action {
+    typedef void (* handler_type)(int, siginfo_t*, void*);
+
+    explicit my_sig_action(handler_type handler)
+    {
+        memset(&_sa, 0, sizeof(struct sigaction));
+        _sa.sa_sigaction = handler;
+        _sa.sa_flags = SA_SIGINFO;
+    }
+
+    operator struct sigaction const*() const
+    {
+        return &_sa;
+    }
+protected:
+    struct sigaction _sa;
+};
+
+struct div_0_exception {};
+
+void handle_div_0(int sig, siginfo_t* info, void*)
+{
+	switch(info->si_code)
+	{
+		case FPE_INTDIV:
+	        cout<< "Integer divide by zero."<<endl;
+			break;
+		case FPE_INTOVF:
+			cout<< "Integer overflow. "<<endl;
+			break;
+		case FPE_FLTUND:
+			cout<< "Floating-point underflow. "<<endl;	
+			break;
+		case FPE_FLTRES:
+			cout<< "Floating-point inexact result. "<<endl;
+			break;
+		case FPE_FLTINV:
+			cout<< "Floating-point invalid operation. "<<endl;
+			break;
+		case FPE_FLTSUB:
+			cout<< "Subscript out of range. "<<endl;
+			break;
+		case FPE_FLTDIV:
+			cout<< "Floating-point divide by zero. "<<endl;
+			break;
+		case FPE_FLTOVF:
+			cout<< "Floating-point overflow. "<<endl;
+			break;
+	};
+}
+
 Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead)
 {
+
+	my_sig_action sa(handle_div_0);
+    if (0 != sigaction(SIGFPE, sa, NULL)) {
+        std::cerr << "!!!!!!!! fail to setup handler !!!!!!!!" << std::endl;
+        //return 1;
+    }
+
 	cout << "fixed_path = " << fixed_path_ << endl;
 	cout << "pathplan_ahead = " << pathplan_ahead_ << endl;
 	Globals::config.pruning_constant = pruning_constant;
@@ -51,6 +110,7 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 
 	cerr <<"DEBUG: before entering controlloop"<<endl;
     timer_ = nh.createTimer(ros::Duration(1.0/control_freq), &Controller::controlLoop, this);
+    //timer_ = nh.createTimer(ros::Duration(1.0), &Controller::controlLoop, this);
 	timer_speed=nh.createTimer(ros::Duration(0.05), &Controller::publishSpeed, this);
 
 }
@@ -163,6 +223,7 @@ void Controller::initSimulator()
   //Globals::config.n_belief_particles=2000;
   Globals::config.num_scenarios=100;
   Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
+  Globals::config.max_policy_sim_len=30;
   Seeds::root_seed(Globals::config.root_seed);
   cerr << "Random root seed set to " << Globals::config.root_seed << endl;
 
@@ -485,15 +546,18 @@ void Controller::publishPath(const string& frame_id, const Path& path) {
 
 void Controller::controlLoop(const ros::TimerEvent &e)
 {
-        static double starttime=get_time_second();
+        /*static */double starttime=get_time_second();
         cout<<"*********************"<<endl;
-	 //   cout<<"entering control loop"<<endl;
-     //   cout<<"current time "<<get_time_second()-starttime<<endl;
+	    //cout<<"entering control loop"<<endl;
+        //cout<<"current time "<<get_time_second()-starttime<<endl;
         tf::Stamped<tf::Pose> in_pose, out_pose;
 
   
         /****** update world state ******/
         ros::Rate err_retry_rate(10);
+
+        pathplan_ahead_ = target_speed_ / ModelParams::control_freq;
+      //  cout<<"*** path ahead: "<<pathplan_ahead_<<endl;
 
 		// transpose to base link for path planing
 		in_pose.setIdentity();
@@ -505,7 +569,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
             return;
 		}
 
-		sendPathPlanStart(out_pose);
+		//sendPathPlanStart(out_pose);
 		if(worldModel.path.size()==0) return;
 
 		// transpose to laser frame for ped avoidance
@@ -518,6 +582,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
             return;
 		}
 
+		//cout << "after get topics / update world state:" << endl;
+        //cout<<"current time "<<get_time_second()-starttime<<endl;
         worldStateTracker.updateVel(real_speed_);
 
 		COORD coord = poseToCoord(out_pose);
@@ -529,7 +595,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		PomdpState curr_state = worldStateTracker.getPomdpState();
 		publishROSState();
 
-       // cout << "root state:" << endl;
+        //cout << "root state:" << endl;
+        //cout<<"current time "<<get_time_second()-starttime<<endl;
 		//despot->PrintState(curr_state, cout);
 
         /****** check world state *****/
@@ -539,6 +606,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		}
 		if(goal_reached==true) {
 			safeAction=2;
+
+			cout<<"goal reached"<<endl;
 
 			target_speed_=real_speed_;
 		    target_speed_ -= 0.5;
@@ -565,8 +634,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		//cout<<"before belief update"<<endl;
 		worldBeliefTracker.update();
-		//cout<<"after belief update"<<endl;
-
+		//cout<<"after belief tracker update"<<endl;
+		//cout<<"current time "<<get_time_second()-starttime<<endl;
         publishPedsPrediciton();
 
         //cout<<"1"<<endl;
@@ -590,7 +659,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		//cout<<"5"<<endl;
 		
 		solver->belief(pb);
-		//cout<<"6"<<endl;
+		//cout<<"before search"<<endl;
+		//cout<<"current time "<<get_time_second()-starttime<<endl;
 
         /****** random simulation for verification purpose ******/
         /*
@@ -643,24 +713,25 @@ void Controller::controlLoop(const ros::TimerEvent &e)
         /****** solve for safe action ******/
 
 		safeAction=solver->Search().action;
-		cout<<"7"<<endl;
+		//cout<<"after search"<<endl;
+		//cout<<"search time "<<get_time_second()-starttime<<endl;
 		//safeAction = 1;
 
 		//actionPub_.publish(action);
 		publishAction(safeAction);
-		cout<<"8"<<endl;
+		//cout<<"8"<<endl;
 
-		cout<<"safe action = "<<safeAction<<endl;
+		cout<<"action **= "<<safeAction<<endl;
 
 
 		publishBelief();
-		cout<<"9"<<endl;
+		//cout<<"9"<<endl;
 
 
         /****** update target speed ******/
 
 		target_speed_=real_speed_;
-		cout<<"real speed: "<<real_speed_<<endl;
+		//cout<<"real speed: "<<real_speed_<<endl;
         if(safeAction==0) {}
 		else if(safeAction==1) target_speed_ += 0.20*2;
 		else if(safeAction==2) target_speed_ -= 0.25*2;
