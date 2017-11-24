@@ -105,5 +105,5 @@ Path Path::interpolate() {
 void Path::cutjoin(const Path& p) {
 	int i = max(0, nearest(p[0])-1);
 	erase(begin()+i, end());
-	insert(end(), p.begin()+1, p.end());
+	insert(end(), p.begin()/*+1*/, p.end());
 }

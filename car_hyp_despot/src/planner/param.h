@@ -38,7 +38,7 @@ namespace ModelParams {
 	const bool debug=false;
 
 	const double control_freq=3;
-	const double AccSpeed=0.5;
+	const double AccSpeed=1.0;
 
 	extern std::string rosns;
 	extern std::string laser_frame;
@@ -54,7 +54,7 @@ namespace ModelParams {
     }
 
     // deprecated params
-	const double GOAL_REWARD = 1000;
+	const double GOAL_REWARD = 0;
 };
 
 #endif

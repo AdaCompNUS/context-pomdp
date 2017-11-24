@@ -2,15 +2,16 @@
 #include <geometry_msgs/Twist.h>
 #include <csignal>
 #include <iostream>
+#include "param.h"
 
 const double freq = 10;
 //const double acceleration0 = 0.7;
 //const double acceleration1 = 0.9;
-const double acceleration0 = 0.5;
+const double acceleration0 = /*0.5*/ModelParams::AccSpeed;
 //const double acceleration1 = 0.7;
-const double acceleration1 = 1.0;
-const double alpha0 = 1.0;
-const double alpha1 = 1.0;
+const double acceleration1 = /*1.0*/ModelParams::AccSpeed;;
+//const double alpha0 = 1.0;
+//const double alpha1 = 1.0;
 
 sig_atomic_t emergency_break = 0;
 
@@ -51,7 +52,7 @@ public:
     ros::Publisher cmd_pub;
 };
 
-class VelPublisher1 : public VelPublisher {
+/*class VelPublisher1 : public VelPublisher {
 public:
 
     VelPublisher1(): VelPublisher() {}
@@ -67,7 +68,7 @@ public:
     void publishSpeed(const ros::TimerEvent& event) {
         _publishSpeed();
     }
-};
+};*/
 
 class VelPublisher2 : public VelPublisher {
     void velCallBack(geometry_msgs::TwistConstPtr pomdp_vel) {

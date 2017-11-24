@@ -67,7 +67,7 @@ bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double N
 
 	double car_width = 0.82,
 				 car_length = 0.732;
-	double safe_margin = 0.2,
+	double safe_margin = 0.4,
 				 side_margin = car_width / 2.0 + safe_margin,
 				 front_margin = car_length + safe_margin,
 				 back_margin = car_length + safe_margin;
