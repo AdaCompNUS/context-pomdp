@@ -1,5 +1,8 @@
 #include "ped_pomdp.h"
+#include <iostream>
+#include <fstream>
 
+std::ofstream fout;
 class PedPomdpParticleLowerBound : public ParticleLowerBound {
 private:
 	const PedPomdp* ped_pomdp_;
@@ -25,12 +28,17 @@ public:
             cout<<"p: "<<p.pos.x<<" "<<p.pos.y<<endl;
             cout<<"carvel: "<<carvel<<endl;
             cout<<"pedvel: "<<p.vel<<endl;*/
-            double relative_speed = p.vel + carvel;
+           /* double relative_speed = p.vel + carvel;
             if(relative_speed < 0.2) relative_speed = 0.2;
 			int step = int(ceil(ModelParams::control_freq
 						//* max(COORD::EuclideanDistance(carpos, p.pos) - 3.25, 0.0)
 						* max(COORD::EuclideanDistance(carpos, p.pos) - 0.8, 0.0)
-						/ relative_speed));
+						/ relative_speed));*/
+
+			int step = (p.vel + carvel<=1e-5)?min_step:int(ceil(ModelParams::control_freq
+						* max(COORD::EuclideanDistance(carpos, p.pos) - 1.0, 0.0)
+						/ ((p.vel + carvel))));
+
 			min_step = min(step, min_step);
 		}
 
@@ -53,7 +61,8 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 	world(model_),
 	random_(Random((unsigned) Seeds::Next()))
 {
-	use_rvo = true;
+	use_rvo = false;
+	fout.open("/home/yuanfu/rollout.txt", std::ios::trunc);
 	//particle_lower_bound_ = new PedPomdpParticleLowerBound(this);
 }
 
@@ -138,9 +147,34 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	reward = 0.0;
 
 	// CHECK: relative weights of each reward component
+	
+	if(state.scenario_id==0){
+		if(ModelParams::CPUDoPrint){
+			fout<<"(CPU) Before step: action "<< action<<endl;
+			PomdpState* pedpomdp_state=static_cast<PomdpState*>(&state_);
+			fout<<"Before step:"<<endl;
+			fout<<"car pox= "<<pedpomdp_state->car.pos<<endl;
+			fout<<"dist= "<<pedpomdp_state->car.dist_travelled<<endl;
+			fout<<"car vel= "<<pedpomdp_state->car.vel<<endl;
+			for(int i=0;i<pedpomdp_state->num;i++)
+			{
+				fout<<"ped "<<i<<" pox_x= "<<pedpomdp_state->peds[i].pos.x<<
+				" pos_y= "<<pedpomdp_state->peds[i].pos.y<<endl;
+			}
+		}
+	}
 	// Terminate upon reaching goal
 	if (world.isLocalGoal(state)) {
         reward = ModelParams::GOAL_REWARD;
+        if(state.scenario_id==0 && ModelParams::CPUDoPrint){
+			fout<<"Goal!  Goal reward: "<< reward<<endl;
+			fout<<"distance travelled: "<<state.car.dist_travelled<<endl;
+			fout<<"goal distance: "<<ModelParams::GOAL_TRAVELLED<<endl;
+			fout<<"car pos: "<<state.car.pos<<endl;
+			fout<<"path size: "<<world.path.size()<<endl;
+			COORD path_pos=world.path[state.car.pos];
+			fout<<"car pos coord: "<<path_pos.x<<" "<< path_pos.y<<endl;
+        }
 		return true;
 	}
 
@@ -155,6 +189,8 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	//if (closest_front_dist < ModelParams::COLLISION_DISTANCE) {
     if(state.car.vel > 0.001 && world.inCollision(state) ) { /// collision occurs only when car is moving
 		reward = CrashPenalty(state); //, closest_ped, closest_dist);
+		if(state.scenario_id==0 && ModelParams::CPUDoPrint)
+			fout<<"Crash!  Crash penalty: "<< reward<<endl;
 		return true;
 	}
 
@@ -194,9 +230,12 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	// Smoothness control
 	reward += ActionPenalty(action);
-
+	if(state.scenario_id==0 && ModelParams::CPUDoPrint && ActionPenalty(action)>0)
+		fout<<"Action penalty: "<< ActionPenalty(action)<<endl;
 	// Speed control: Encourage higher speed
 	reward += MovementPenalty(state);
+	if(state.scenario_id==0 && ModelParams::CPUDoPrint && MovementPenalty(state)>0)
+		fout<<"Movement penalty: "<< MovementPenalty(state)<<endl;
 
 	// State transition
 	Random random(rNum);
@@ -214,7 +253,22 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		world.RVO2PedStep(state.peds,random,state.num,state.car);
 	}
 
-
+	if(state.scenario_id==0){
+		if(ModelParams::CPUDoPrint){
+			fout<<"(CPU) After step: scenario "<<state_.scenario_id<<endl;
+			PomdpState* pedpomdp_state=static_cast<PomdpState*>(&state_);
+			fout<<"After step:"<<endl;
+			fout<<"car pox= "<<pedpomdp_state->car.pos<<endl;
+			fout<<"dist= "<<pedpomdp_state->car.dist_travelled<<endl;
+			fout<<"car vel= "<<pedpomdp_state->car.vel<<endl;
+			for(int i=0;i<pedpomdp_state->num;i++)
+			{
+				fout<<"ped "<<i<<" pox_x= "<<pedpomdp_state->peds[i].pos.x<<
+				" pos_y= "<<pedpomdp_state->peds[i].pos.y<<endl;
+			}
+		}
+	}
+	fout.flush();
 	// Observation
 	obs = Observe(state);
 

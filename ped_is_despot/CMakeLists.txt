@@ -180,7 +180,7 @@ add_executable(ped_pomdp src/PedPomdpNode.cpp src/controller.cpp)
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_executable(local_frame src/local_frame.cpp src/planner/param.cpp)
-add_executable(vel_publisher src/VelPublisher.cpp)
+add_executable(vel_publisher src/VelPublisher.cpp src/planner/param.cpp)
 
 
 add_dependencies(ped_pomdp ped_is_despot_generate_messages_cpp)

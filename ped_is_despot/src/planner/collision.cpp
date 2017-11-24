@@ -81,7 +81,7 @@ bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double N
 
 	double car_width = 0.87,
 				 car_length = 1.544;
-	double safe_margin = 0.23,
+	double safe_margin = 0.7,
 				 side_margin = car_width / 2.0 + safe_margin,
 				 front_margin = car_length/2.0 + safe_margin,
 				 back_margin = car_length/2.0 + safe_margin;
@@ -92,7 +92,7 @@ bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double N
 //for scooter collision check;
 bool inCollision(double ped_x, double ped_y, double car_x, double car_y) {
 
-	return (ped_x - car_x)*(ped_x - car_x) + (ped_y - car_y)*(ped_y - car_y) < 1.21;//1.44; //(0.7+0.3+0.2)*(0.7+0.3+0.2); 
+	return (ped_x - car_x)*(ped_x - car_x) + (ped_y - car_y)*(ped_y - car_y) < 3;//1.44; //(0.7+0.3+0.2)*(0.7+0.3+0.2); 
 	//0.7 is the scooter size, and 0.3 is pedestrain size, 0.2 is the safe margin
 }
 

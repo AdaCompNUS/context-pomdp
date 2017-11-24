@@ -7,7 +7,7 @@
 namespace ModelParams {
 
 	const double GOAL_TRAVELLED=100.0;
-	const int N_PED_IN=9;
+	const int N_PED_IN=15;
     const int N_PED_WORLD=300;
 
 	extern double VEL_MAX;
@@ -38,7 +38,7 @@ namespace ModelParams {
 	const bool debug=false;
 
 	const double control_freq=3;
-	const double AccSpeed=0.5;
+	const double AccSpeed=1.0;
 
 	extern std::string rosns;
 	extern std::string laser_frame;
@@ -54,7 +54,9 @@ namespace ModelParams {
     }
 
     // deprecated params
-	const double GOAL_REWARD = 1000;
+	const double GOAL_REWARD = 0;
+
+    const bool CPUDoPrint=false;
 };
 
 #endif

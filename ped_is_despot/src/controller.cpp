@@ -506,13 +506,16 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 	}
 
 	if(pathplan_ahead_>0 && worldModel.path.size()>0) {
-        double pd = worldModel.path.mindist(p[0]);
+      /*  double pd = worldModel.path.mindist(p[0]);
         if(pd < 2 * ModelParams::PATH_STEP) {
             // only accept new path if the starting point is close to current path
             worldModel.path.cutjoin(p);
             auto pi = worldModel.path.interpolate();
             worldModel.setPath(pi);
-        }
+        }*/
+        worldModel.path.cutjoin(p);
+        auto pi = worldModel.path.interpolate();
+        worldModel.setPath(pi);
 	} else {
 		worldModel.setPath(p.interpolate());
 	}
@@ -585,14 +588,24 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		//cout << "after get topics / update world state:" << endl;
         //cout<<"current time "<<get_time_second()-starttime<<endl;
         worldStateTracker.updateVel(real_speed_);
+        cout<< "real speed: "<<real_speed_<<endl;
 
 		COORD coord = poseToCoord(out_pose);
-		//cout << "transformed pose = " << coord.x << " " << coord.y << endl;
+
+
+
+
+		cout << "======transformed pose = " << coord.x << " " << coord.y << endl;
+
 		worldStateTracker.updateCar(coord);
 
         worldStateTracker.cleanPed();
 
 		PomdpState curr_state = worldStateTracker.getPomdpState();
+		
+		if(worldModel.inCollision(curr_state)){
+			cout << "ININININININININ in collision"<<endl;
+		}
 		publishROSState();
 
         //cout << "root state:" << endl;
@@ -651,6 +664,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 			sum+=particles[i]->weight;
 		cout<<"particle weight sum "<<sum<<endl;
         */
+        cout<< "particle 0: car pos= "<<samples[0].car.pos<<", coord= "<< worldModel.path[samples[0].car.pos].x<<" "<<worldModel.path[samples[0].car.pos].y<<endl;
 
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
 		//cout<<"4"<<endl;
@@ -731,10 +745,10 @@ void Controller::controlLoop(const ros::TimerEvent &e)
         /****** update target speed ******/
 
 		target_speed_=real_speed_;
-		//cout<<"real speed: "<<real_speed_<<endl;
+		cout<<"real speed: "<<real_speed_<<endl;
         if(safeAction==0) {}
-		else if(safeAction==1) target_speed_ += 0.20*2;
-		else if(safeAction==2) target_speed_ -= 0.25*2;
+		else if(safeAction==1) target_speed_ += ModelParams::AccSpeed / ModelParams::control_freq; //0.2*2;
+		else if(safeAction==2) target_speed_ -= ModelParams::AccSpeed / ModelParams::control_freq;//0.25*2;
 		if(target_speed_<=0.0) target_speed_ = 0.0;
 		if(target_speed_>=ModelParams::VEL_MAX) target_speed_ = ModelParams::VEL_MAX;
 

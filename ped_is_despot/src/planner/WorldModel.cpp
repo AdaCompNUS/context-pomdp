@@ -1,9 +1,11 @@
-#include<limits>
-#include<cmath>
-#include<cstdlib>
-#include"WorldModel.h"
-#include"math_utils.h"
-#include"coord.h"
+#include <limits>
+#include <cmath>
+#include <cstdlib>
+#include "WorldModel.h"
+#include "math_utils.h"
+#include "coord.h"
+#include <iostream>
+#include <fstream>
 using namespace std;
 
 WorldModel::WorldModel(): freq(ModelParams::control_freq),
@@ -85,19 +87,29 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 			mindist = d;
     }
 
-	// cout << "min_dist = " << mindist << endl;
-
+    if(state->scenario_id==0 && ModelParams::CPUDoPrint){
+       std::ofstream fout;fout.open("/home/yuanfu/rollout.txt", std::ios::app);
+	   fout << "min_dist = " << mindist << endl;
+       fout.flush();
+       fout.close();
+    }
     // TODO set as a param
     if (mindist < 2) {
 		return (carvel <= 0.01) ? 0 : 2;
     }
 
-    if (mindist < 4) {
+/*    if (mindist < 4) {
 		if (carvel > 1.0) return 2;	
 		else if (carvel < 0.5) return 1;
 		else return 0;
     }
-    return carvel >= ModelParams::VEL_MAX ? 0 : 1;
+    return carvel >= ModelParams::VEL_MAX ? 0 : 1;*/
+    if (mindist < 4/*5*/) {
+        if (carvel > 1.0+1e-4) return 2;
+        else if (carvel < 0.5-1e-4) return 1;
+        else return 0;
+    }
+    return carvel >= ModelParams::VEL_MAX-1e-4 ? 0 : 1;
 }
 
 bool WorldModel::inFront(COORD ped_pos, int car) const {
@@ -483,7 +495,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 		double angle = acos(cosa);
 		return gaussian_prob(angle, ModelParams::NOISE_GOAL_ANGLE) + K;
 	}
-}
+} 
 
 void WorldModel::RobStep(CarStruct &car, Random& random) {
     double dist = car.vel / freq;
@@ -726,6 +738,14 @@ PomdpState WorldStateTracker::getPomdpState() {
 void WorldBeliefTracker::update() {
     // update car
     car.pos = model.path.nearest(stateTracker.carpos);
+
+    std::ofstream fout; fout.open("/home/yuanfu/updatedplan", std::ios::trunc);
+    fout<< "car coord: " << stateTracker.carpos.x <<" "<<stateTracker.carpos.y <<endl;
+    for(int i=0;i<model.path.size();i++){
+        fout<< "path node "<<i<<": "<< model.path[i].x <<" "<<model.path[i].y <<endl;
+    }
+    fout<<"End path"<<endl;
+    fout.close();
     car.vel = stateTracker.carvel;
 	car.dist_travelled = 0;
 
@@ -860,8 +880,11 @@ vector<PedStruct> WorldBeliefTracker::predictPeds() {
     for(const auto& p: sorted_beliefs) {
         double dist = COORD::EuclideanDistance(p.pos, model.path[car.pos]);
         //cout<<"predicPeds: "<<p.vel<<" "<<car.vel<<endl;
-        double relative_speed = ((p.vel + car.vel < 0.2) ? 0.2 : (p.vel + car.vel));
-        int step = int(dist / relative_speed * ModelParams::control_freq);
+/*        double relative_speed = ((p.vel + car.vel < 0.2) ? 0.2 : (p.vel + car.vel));
+        int step = int(dist / relative_speed * ModelParams::control_freq);*/
+
+        int step = (p.vel + car.vel>1e-5)?int(dist / (p.vel + car.vel) * ModelParams::control_freq):100000;
+
 
         //for(int j=0; j<10; j++) {
             //int goal = p.sample_goal();
@@ -869,7 +892,8 @@ vector<PedStruct> WorldBeliefTracker::predictPeds() {
             int goal = p.maxlikely_goal();
             PedStruct ped0(p.pos, goal, p.id);
 			ped0.vel = p.vel;
-            for(int i=0; i<6; i++) {
+            //for(int i=0; i<6; i++) {
+            for(int i=0; i<ModelParams::N_PED_IN; i++) {
                 PedStruct ped = ped0;
                 model.PedStepDeterministic(ped, step+i*2);
                 prediction.push_back(ped);
