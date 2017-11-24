@@ -55,7 +55,7 @@ public:
 			auto& p = state->peds[i];
 			// 3.25 is maximum distance to collision boundary from front laser (see collsion.cpp)
 			int step = (p.vel + carvel<=1e-5)?min_step: int(ceil(Dvc_ModelParams::control_freq
-						* max(Dvc_COORD::EuclideanDistance(carpos, p.pos) - 3.25, 0.0)
+						* max(Dvc_COORD::EuclideanDistance(carpos, p.pos) - 1.0, 0.0)
 						/ ((p.vel + carvel))));
 			if(step<0) printf("Wrong step, vel_sum=%d %f!!!\n"
 								,step, (p.vel + carvel));

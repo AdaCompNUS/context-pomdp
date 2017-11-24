@@ -23,13 +23,13 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
 		COORD(-1,-1)   //pink     stop intention
     };*/
 
-    goals = {
-	   /*COORD(-200, 7.5),
-	   COORD(10, 150),*/
-	   COORD(/*-2*/-20, 7.5),
-	   COORD(10, /*17*/27),
-	   COORD(-1,-1)
-    };
+   // goals = {
+	  //  /*COORD(-200, 7.5),
+	  //  COORD(10, 150),*/
+	  //  COORD(/*-2*/-20, 7.5),
+	  //  COORD(10, /*17*/27),
+	  //  COORD(-1,-1)
+   //  };
 	/*
     goals = {
         COORD(107, 167),
@@ -39,6 +39,17 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
         COORD(122,114)
     };
 	*/
+
+    goals = { // Unity airport departure
+        COORD(-197.80, -134.80), // phora
+        COORD(-180.15, -137.54), // Nana?
+        COORD(-169.33, -141.1), // gate 1,2,3 
+        COORD(-174.8, -148.53), // Cafe2
+        COORD(-201.55, -148.53), //Cafe1
+        COORD(-216.57, -145), // Gate 4,5,6
+        COORD(-1, -1) // stop
+    };
+
 }
 
 bool WorldModel::isLocalGoal(const PomdpState& state) {
@@ -75,11 +86,11 @@ int WorldModel::defaultPolicy(const std::vector<State*>& particles)  {
    //if(CPUDoPrint && state->scenario_id==CPUPrintPID) printf("mindist, carvel= %f %f\n",mindist,carvel);
 
     // TODO set as a param
-    if (mindist < /*2*/3.5) {
+    if (mindist < 2/*3.5*/) {
 		return (carvel <= 0.01) ? 0 : 2;
     }
 
-    if (mindist < /*4*/5) {
+    if (mindist < 4/*5*/) {
 		if (carvel > 1.0+1e-4) return 2;
 		else if (carvel < 0.5-1e-4) return 1;
 		else return 0;
@@ -137,7 +148,7 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
 	const COORD& forward_pos = path[path.forward(car, 1.0)];
 	double d0 = COORD::EuclideanDistance(car_pos, ped_pos);
 	//if(d0<=0) return true;
-	if(d0 <= /*0.7*/3.5) return true;
+	if(d0 <= 0.7/*3.5*/) return true;
 	double d1 = COORD::EuclideanDistance(car_pos, forward_pos);
 	if(d1<=0) return false;
 	double dot = DotProduct(forward_pos.x - car_pos.x, forward_pos.y - car_pos.y,
@@ -938,7 +949,7 @@ vector<PedStruct> WorldBeliefTracker::predictPeds() {
 
     for(const auto& p: sorted_beliefs) {
         double dist = COORD::EuclideanDistance(p.pos, model.path[car.pos]);
-        int step = int(dist / (p.vel + car.vel) * ModelParams::control_freq);
+        int step = (p.vel + car.vel>1e-5)?int(dist / (p.vel + car.vel) * ModelParams::control_freq):100000;
         //for(int j=0; j<10; j++) {
             //int goal = p.sample_goal();
         for(int j=0; j<1; j++) {

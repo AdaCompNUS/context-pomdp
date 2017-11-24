@@ -45,7 +45,7 @@ DEVICE int Dvc_PedPomdpSmartPolicy::Action(
 			//if(d0<=0) return true;
 			//if(p.vel<1e-5 && d0>1.0)
 			//	infront=false;//don't consider non-moving peds
-			/*else*/ if(d0 <= /*0.7*/3.5)
+			/*else*/ if(d0 <= 0.7/*3.5*/)
 				infront=true;
 			else
 			{
@@ -94,11 +94,11 @@ DEVICE int Dvc_PedPomdpSmartPolicy::Action(
 		printf("mindist, carvel= %f %f\n",dist,carvel);
 	}*/
 	// TODO set as a param
-	if (__int_as_float(mindist[threadIdx.x]) < /*2*/3.5) {
+	if (__int_as_float(mindist[threadIdx.x]) < 2/*3.5*/) {
 		return (carvel <= 0.01) ? 0 : 2;
 	}
 
-	if (__int_as_float(mindist[threadIdx.x]) < /*4*/5) {
+	if (__int_as_float(mindist[threadIdx.x]) < 4/*5*/) {
 		if (carvel > 1.0+1e-4) return 2;
 		else if (carvel < 0.5-1e-4) return 1;
 		else return 0;

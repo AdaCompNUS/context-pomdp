@@ -109,7 +109,8 @@ __global__ void PassModelFuncs(Dvc_PedPomdp* model,
 }
 __global__ void UpdatePathKernel(Dvc_COORD* _path, int pathsize)
 {
-	if(path==NULL) 	path=new Dvc_Path();
+	if(path) {delete path; path=new Dvc_Path();}
+	//if(path==NULL) 	path=new Dvc_Path();
 
 	path->size_=pathsize;
 	path->pos_=0;
@@ -335,12 +336,12 @@ void Simulator::InitializeDefaultParameters() {
     Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
 	Globals::config.num_scenarios=100;
 	Globals::config.discount=/*0.983*/0.95/*0.966*/;
-	//Globals::config.sim_len=1/*180*//*10*/;
+	Globals::config.sim_len=1/*180*//*10*/;
 	Globals::config.pruning_constant=0.001;
 
-	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/10;
+	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/20;
 
-	Globals::config.GPUid=0;//default GPU
+	Globals::config.GPUid=1;//default GPU
 	Globals::config.useGPU=true;
 	Globals::config.use_multi_thread_=true;
 	Globals::config.NUM_THREADS=5;

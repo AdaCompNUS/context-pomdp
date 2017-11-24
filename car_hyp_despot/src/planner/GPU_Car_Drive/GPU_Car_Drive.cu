@@ -866,9 +866,9 @@ DEVICE bool Dvc_PedPomdp::Dvc_Step(Dvc_State& state, float rand_num, int action,
 			float HMx = pedpos.x - car_pos.x,
 						 HMy = pedpos.y - car_pos.y;
 
-			float car_width = 0.71,
-						 car_length = 0.84;
-			float safe_margin = 0.3,
+			float car_width = 0.82,
+						 car_length = 0.732;
+			float safe_margin = 0.2,
 						 side_margin = car_width / 2.0 + safe_margin,
 						 front_margin = car_length + safe_margin,
 						 back_margin = car_length + safe_margin;

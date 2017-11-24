@@ -7,7 +7,7 @@ ped_costmap:
     static_map: true
     publish_frequency: 5
     #robot_radius: 1.2
-    robot_radius: 0.7
+    robot_radius: 0.9
     #inflation_radius: 7.0
     inflation_radius: 2.0
     #cost_scaling_factor: 4.0
@@ -27,7 +27,7 @@ planner:
     # yaw_res_deg: 1.0
     #steering_limit_deg: 48
     #yaw_res_deg: 2.0
-    steering_limit_deg: 48
+    steering_limit_deg: 15
     yaw_res_deg: 2.5
     #cost_steering_deg: 30
     cost_steering_deg: 8

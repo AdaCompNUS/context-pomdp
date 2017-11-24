@@ -509,6 +509,10 @@ void Controller::controlLoop(const ros::TimerEvent &e)
         /****** update world state ******/
         ros::Rate err_retry_rate(10);
 
+        //Planning for next step
+        pathplan_ahead_=target_speed_/ModelParams::control_freq;
+        cout <<"************planning ahead distance (m):"<< pathplan_ahead_<<endl;
+
 		// transpose to base link for path planing
 		in_pose.setIdentity();
 		in_pose.frame_id_ = ModelParams::rosns + "/base_link";
@@ -519,7 +523,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
             return;
 		}
 
-		sendPathPlanStart(out_pose);
+		//sendPathPlanStart(out_pose);
 		if(worldModel.path.size()==0) return;
 
 		// transpose to laser frame for ped avoidance
