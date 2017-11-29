@@ -582,20 +582,19 @@ namespace RVO {
 			}
 		}*/
 
-		std::cout<<"*****: "<<tag_<<std::endl;
-
+		//std::cout<<"*****: "<<tag_<<std::endl;
 		if(vehicle_in_neighbor){
-			float dist_to_veh = abs(position_-vel_pos);
-			if(dist_to_veh < 1.7f){
-				if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-vel_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
-					prefVelocity_ = vel_veh_avoiding.rotate(90.0);
-				} else{
-					prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
+				float dist_to_veh = abs(position_-vel_pos);
+				if(dist_to_veh < 1.95f){
+					if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-vel_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+						prefVelocity_ = vel_veh_avoiding.rotate(90.0);
+					} else{
+						prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
+					}
 				}
+			
 			}
-			
-			
-		}
+
 		if(!use_new_pref_vel_){
 			size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_);
 
@@ -606,6 +605,9 @@ namespace RVO {
 		//		std::cout<<"2 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 			}
 		}else{
+			
+			
+
 			size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, new_pref_vel_, false, newVelocity_);
 
 				std::cout<<"2 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
@@ -616,7 +618,7 @@ namespace RVO {
 				std::cout<<"3 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 			}
 
-			change_dir_iter_ = (change_dir_iter_+1)%3;
+			change_dir_iter_ = (change_dir_iter_+1)%4;
 			if(change_dir_iter_ == 0) {
 				use_new_pref_vel_ = false;
 			}

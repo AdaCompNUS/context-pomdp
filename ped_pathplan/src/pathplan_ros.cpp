@@ -153,6 +153,25 @@ namespace ped_pathplan {
             plan.push_back(pose);
         }
 
+/*        double world_x_start = -205, world_y_start = 0,
+        world_x_end = , world_y_end = 
+
+        for(int i = 0; i < ) {
+            double world_x, world_y;
+
+            geometry_msgs::PoseStamped pose;
+            pose.header.stamp = plan_time;
+            pose.header.frame_id = global_frame;
+            pose.pose.position.x = world_x;
+            pose.pose.position.y = world_y;
+            pose.pose.position.z = 0.0;
+            pose.pose.orientation.x = 0.0;
+            pose.pose.orientation.y = 0.0;
+            pose.pose.orientation.z = 0.0;
+            pose.pose.orientation.w = 1.0;
+            plan.push_back(pose);
+        }*/
+
 		publishPlan(plan);
 
         return !plan.empty();

@@ -65,6 +65,7 @@ void handle_div_0(int sig, siginfo_t* info, void*)
 			cout<< "Floating-point overflow. "<<endl;
 			break;
 	};
+	exit(-1);
 }
 
 Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead)
@@ -75,6 +76,14 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
         std::cerr << "!!!!!!!! fail to setup handler !!!!!!!!" << std::endl;
         //return 1;
     }
+
+    Path p;
+    COORD start = COORD(-205, -142.5);
+    COORD goal = COORD(-189, -142.5);
+    p.push_back(start);
+    p.push_back(goal);
+    worldModel.setPath(p.interpolate());
+    fixed_path_ = true;
 
 	cout << "fixed_path = " << fixed_path_ << endl;
 	cout << "pathplan_ahead = " << pathplan_ahead_ << endl;
@@ -572,8 +581,10 @@ void Controller::controlLoop(const ros::TimerEvent &e)
             return;
 		}
 
-		//sendPathPlanStart(out_pose);
+		sendPathPlanStart(out_pose);
 		if(worldModel.path.size()==0) return;
+
+
 
 		// transpose to laser frame for ped avoidance
 		in_pose.setIdentity();
@@ -585,12 +596,25 @@ void Controller::controlLoop(const ros::TimerEvent &e)
             return;
 		}
 
+		COORD coord;
+
+		ped_pathplan::StartGoal startGoal;
+		if(pathplan_ahead_ > 0 && worldModel.path.size()>0) {
+			startGoal.start = getPoseAhead(out_pose);
+			coord.x = startGoal.start.pose.position.x;
+			coord.y = startGoal.start.pose.position.y;
+		}else{
+			coord = poseToCoord(out_pose);
+		}
+
+		
+
 		//cout << "after get topics / update world state:" << endl;
         //cout<<"current time "<<get_time_second()-starttime<<endl;
         worldStateTracker.updateVel(real_speed_);
         cout<< "real speed: "<<real_speed_<<endl;
 
-		COORD coord = poseToCoord(out_pose);
+		//////////COORD coord = poseToCoord(out_pose);
 
 
 

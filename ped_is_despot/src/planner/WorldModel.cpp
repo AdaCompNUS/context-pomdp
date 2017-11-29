@@ -482,6 +482,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 	double move_dist = Norm(curr.x-prev.x, curr.y-prev.y),
 		   goal_dist = Norm(goal.x-prev.x, goal.y-prev.y);
 	double sensor_noise = 0.1;
+    if(ModelParams::is_simulation) sensor_noise = 0.01;
 
     bool debug=false;
 	// CHECK: beneficial to add back noise?
@@ -499,6 +500,19 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 
 void WorldModel::RobStep(CarStruct &car, Random& random) {
     double dist = car.vel / freq;
+    //double dist_l=max(0.0,dist-ModelParams::AccSpeed/freq);
+    //double dist_r=min(ModelParams::VEL_MAX,dist+ModelParams::AccSpeed/freq);
+    //double sample_dist=random.NextDouble(dist_l,dist_r);
+    //int nxt = path.forward(car.pos, sample_dist);
+    int nxt = path.forward(car.pos, dist);
+    car.pos = nxt;
+    car.dist_travelled += dist;
+}
+
+void WorldModel::RobStep(CarStruct &car, Random& random, double acc) {
+    double end_vel = car.vel + acc / freq;
+    end_vel = max(min(end_vel, ModelParams::VEL_MAX), 0.0);
+    double dist = (car.vel + end_vel)/2.0 / freq;
     //double dist_l=max(0.0,dist-ModelParams::AccSpeed/freq);
     //double dist_r=min(ModelParams::VEL_MAX,dist+ModelParams::AccSpeed/freq);
     //double sample_dist=random.NextDouble(dist_l,dist_r);
@@ -739,13 +753,13 @@ void WorldBeliefTracker::update() {
     // update car
     car.pos = model.path.nearest(stateTracker.carpos);
 
-    std::ofstream fout; fout.open("/home/yuanfu/updatedplan", std::ios::trunc);
+/*    std::ofstream fout; fout.open("/home/yuanfu/updatedplan", std::ios::trunc);
     fout<< "car coord: " << stateTracker.carpos.x <<" "<<stateTracker.carpos.y <<endl;
     for(int i=0;i<model.path.size();i++){
         fout<< "path node "<<i<<": "<< model.path[i].x <<" "<<model.path[i].y <<endl;
     }
     fout<<"End path"<<endl;
-    fout.close();
+    fout.close();*/
     car.vel = stateTracker.carvel;
 	car.dist_travelled = 0;
 
@@ -1009,8 +1023,8 @@ void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarS
             peds[i].pos.y=ped_sim_->getAgentPosition(i).y();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
         } */
 
-        peds[i].pos.x=ped_sim_->getAgentPosition(i).x() + random.NextGaussian() * (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
-        peds[i].pos.y=ped_sim_->getAgentPosition(i).y() + random.NextGaussian() * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+        peds[i].pos.x=ped_sim_->getAgentPosition(i).x();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+        peds[i].pos.y=ped_sim_->getAgentPosition(i).y();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
       
     }
 

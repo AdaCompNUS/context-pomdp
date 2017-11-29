@@ -148,19 +148,17 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	// CHECK: relative weights of each reward component
 	
-	if(state.scenario_id==0){
-		if(ModelParams::CPUDoPrint){
-			fout<<"(CPU) Before step: action "<< action<<endl;
-			PomdpState* pedpomdp_state=static_cast<PomdpState*>(&state_);
-			fout<<"Before step:"<<endl;
-			fout<<"car pox= "<<pedpomdp_state->car.pos<<endl;
-			fout<<"dist= "<<pedpomdp_state->car.dist_travelled<<endl;
-			fout<<"car vel= "<<pedpomdp_state->car.vel<<endl;
-			for(int i=0;i<pedpomdp_state->num;i++)
-			{
-				fout<<"ped "<<i<<" pox_x= "<<pedpomdp_state->peds[i].pos.x<<
-				" pos_y= "<<pedpomdp_state->peds[i].pos.y<<endl;
-			}
+	if(ModelParams::CPUDoPrint && state.scenario_id==0){
+		fout<<"(CPU) Before step: action "<< action<<endl;
+		PomdpState* pedpomdp_state=static_cast<PomdpState*>(&state_);
+		fout<<"Before step:"<<endl;
+		fout<<"car pox= "<<pedpomdp_state->car.pos<<endl;
+		fout<<"dist= "<<pedpomdp_state->car.dist_travelled<<endl;
+		fout<<"car vel= "<<pedpomdp_state->car.vel<<endl;
+		for(int i=0;i<pedpomdp_state->num;i++)
+		{
+			fout<<"ped "<<i<<" pox_x= "<<pedpomdp_state->peds[i].pos.x<<
+			" pos_y= "<<pedpomdp_state->peds[i].pos.y<<endl;
 		}
 	}
 	// Terminate upon reaching goal
@@ -189,6 +187,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	//if (closest_front_dist < ModelParams::COLLISION_DISTANCE) {
     if(state.car.vel > 0.001 && world.inCollision(state) ) { /// collision occurs only when car is moving
 		reward = CrashPenalty(state); //, closest_ped, closest_dist);
+		if(action == ACT_DEC) reward += 0.1;
 		if(state.scenario_id==0 && ModelParams::CPUDoPrint)
 			fout<<"Crash!  Crash penalty: "<< reward<<endl;
 		return true;
@@ -242,7 +241,8 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	double acc = (action == ACT_ACC) ? ModelParams::AccSpeed :
 		((action == ACT_CUR) ?  0 : (-ModelParams::AccSpeed));
-	world.RobStep(state.car, random);
+	///world.RobStep(state.car, random);
+	world.RobStep(state.car, random, acc);
 	world.RobVelStep(state.car, acc, random);
 	if(!use_rvo){
 		for(int i=0;i<state.num;i++)
@@ -253,22 +253,22 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		world.RVO2PedStep(state.peds,random,state.num,state.car);
 	}
 
-	if(state.scenario_id==0){
-		if(ModelParams::CPUDoPrint){
-			fout<<"(CPU) After step: scenario "<<state_.scenario_id<<endl;
-			PomdpState* pedpomdp_state=static_cast<PomdpState*>(&state_);
-			fout<<"After step:"<<endl;
-			fout<<"car pox= "<<pedpomdp_state->car.pos<<endl;
-			fout<<"dist= "<<pedpomdp_state->car.dist_travelled<<endl;
-			fout<<"car vel= "<<pedpomdp_state->car.vel<<endl;
-			for(int i=0;i<pedpomdp_state->num;i++)
-			{
-				fout<<"ped "<<i<<" pox_x= "<<pedpomdp_state->peds[i].pos.x<<
-				" pos_y= "<<pedpomdp_state->peds[i].pos.y<<endl;
-			}
-		}
+	if(ModelParams::CPUDoPrint && state.scenario_id==0){
+		fout<<"(CPU) After step: scenario "<<state_.scenario_id<<endl;
+		PomdpState* pedpomdp_state=static_cast<PomdpState*>(&state_);
+		fout<<"After step:"<<endl;
+		fout<<"car pox= "<<pedpomdp_state->car.pos<<endl;
+		fout<<"dist= "<<pedpomdp_state->car.dist_travelled<<endl;
+		fout<<"car vel= "<<pedpomdp_state->car.vel<<endl;
+		for(int i=0;i<pedpomdp_state->num;i++)
+		{
+			fout<<"ped "<<i<<" pox_x= "<<pedpomdp_state->peds[i].pos.x<<
+			" pos_y= "<<pedpomdp_state->peds[i].pos.y<<endl;
+		}	
+
+		fout.flush();
 	}
-	fout.flush();
+	
 	// Observation
 	obs = Observe(state);
 
@@ -286,6 +286,7 @@ bool PedPomdp::Step(PomdpStateWorld& state, double rNum, int action, double& rew
 
     if(state.car.vel > 0.001 && world.inCollision(state) ) { /// collision occurs only when car is moving
 		reward = CrashPenalty(state); //, closest_ped, closest_dist);
+		if(action == ACT_DEC) reward += 0.1;
 		return true;
 	}
 /*
@@ -314,7 +315,8 @@ bool PedPomdp::Step(PomdpStateWorld& state, double rNum, int action, double& rew
 	Random random(rNum);
 	double acc = (action == ACT_ACC) ? ModelParams::AccSpeed :
 		((action == ACT_CUR) ?  0 : (-ModelParams::AccSpeed));
-	world.RobStep(state.car, random);
+	///world.RobStep(state.car, random);
+	world.RobStep(state.car, random, acc);
 	world.RobVelStep(state.car, acc, random);
 	if(!use_rvo){
 		for(int i=0;i<state.num;i++)
@@ -348,6 +350,7 @@ bool PedPomdp::ImportanceSamplingStep(State& state_, double rNum, int action, do
 	//if (closest_front_dist < ModelParams::COLLISION_DISTANCE) {
     if(state.car.vel > 0.001 && world.inCollision(state) ) { /// collision occurs only when car is moving
 		reward = CrashPenalty(state); //, closest_ped, closest_dist);
+		if(action == ACT_DEC) reward += 0.1;
 		return true;
 	}
 /*
@@ -396,8 +399,10 @@ bool PedPomdp::ImportanceSamplingStep(State& state_, double rNum, int action, do
 	Random random(rNum);
 	double acc = (action == ACT_ACC) ? ModelParams::AccSpeed :
 		((action == ACT_CUR) ?  0 : (-ModelParams::AccSpeed));
-	world.RobStep(state.car, random);
 
+
+	///world.RobStep(state.car, random);
+	world.RobStep(state.car, random, acc);
 	//state.weight *= world.ISRobVelStep(state.car, acc, random);
 	world.RobVelStep(state.car, acc, random);
 	

@@ -100,7 +100,7 @@ Path Path::interpolate() {
 void Path::cutjoin(const Path& p) {
 
 	int i = max(0, nearest(p[0])-1);
-	std::ofstream fout; fout.open("/home/yuanfu/cutjoin", std::ios::trunc);
+/*	std::ofstream fout; fout.open("/home/yuanfu/cutjoin", std::ios::trunc);
 	fout<<"ref point (p[0]) coord: "<<p[0].x<<" "<<p[0].y<<endl;
 
     fout<<"cut point on old path "<<i<<" coord: "<<(*this)[i].x<<" "<<(*this)[i].y<<endl;
@@ -110,24 +110,24 @@ void Path::cutjoin(const Path& p) {
 	{
     	fout<<"node "<<i<<" coord: "<<(*this)[i].x<<" "<<(*this)[i].y<<endl;
 
-	}
+	}*/
 
 	erase(begin()+i, end());
 
-	fout<<"================ after erase ================="<<endl;
+/*	fout<<"================ after erase ================="<<endl;
 	for(int i=0;i<size();i++)
 	{
     	fout<<"node "<<i<<" coord: "<<(*this)[i].x<<" "<<(*this)[i].y<<endl;
 
-	}
+	}*/
 	insert(end(), p.begin()/*+1*/, p.end());
 
-	fout<<"================ new path ================="<<endl;
+/*	fout<<"================ new path ================="<<endl;
 	for(int i=0;i<size();i++)
 	{
     	fout<<"node "<<i<<" coord: "<<(*this)[i].x<<" "<<(*this)[i].y<<endl;
 
 	}
-	fout.close();
+	fout.close();*/
 
 }

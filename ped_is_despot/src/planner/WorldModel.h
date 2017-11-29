@@ -47,6 +47,7 @@ public:
 
     void PedStepDeterministic(PedStruct& ped, int step);
 	void RobStep(CarStruct &car, Random& random);
+    void RobStep(CarStruct &car, Random& random, double acc); ///use ave vel to compute dist
     void RobVelStep(CarStruct &car, double acc, Random& random);
     double ISRobVelStep(CarStruct &car, double acc, Random& random);//importance sampling RobvelStep
 

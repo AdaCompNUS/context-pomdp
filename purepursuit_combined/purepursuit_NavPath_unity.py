@@ -159,6 +159,7 @@ def send_vel_to_unity(sid, data):
         else:
             global car_speed
             global car_steer
+            #car_steer = 0
             print car_speed, car_steer
             sio.emit(
                 "cmd_vel",

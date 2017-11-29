@@ -146,7 +146,7 @@ public:
     }
 
     void RVO2PedStep(){
-/*
+
         ped_sim_->setNotUpdated();
 
         //adding pedestrians
@@ -186,9 +186,9 @@ public:
                 peds[i].pos.x=ped_sim_->getAgentPosition(i).x();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
                 peds[i].pos.y=ped_sim_->getAgentPosition(i).y();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
 
-        }*/
+        }
 
-        ped_sim_->clearAllAgents();
+ /*       ped_sim_->clearAllAgents();
 
         //adding pedestrians
         for(int i=0; i<peds.size(); i++){
@@ -247,7 +247,7 @@ public:
                 peds[i].pos.x=ped_sim_->getAgentPosition(i).x() + GenGaussNum(0, 1) * (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
                 peds[i].pos.y=ped_sim_->getAgentPosition(i).y() + GenGaussNum(0, 1) * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
         //    } 
-        }
+        }*/
     }
 
 
