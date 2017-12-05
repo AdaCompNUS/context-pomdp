@@ -562,8 +562,8 @@ namespace RVO {
 			}
 		}*/
 
-
-		float new_speed = abs(newVelocity_);
+///// for despot ////////////////
+/*		float new_speed = abs(newVelocity_);
 		float pref_speed = abs(prefVelocity_);
 		Vector2 temp_new_vel;
 		if(new_speed < pref_speed/3.0){
@@ -592,7 +592,7 @@ namespace RVO {
 					newVelocity_ = temp_new_vel;
 				}
 			}
-		}
+		}*/
 
 //		std::cout<<"*****: "<<tag_<<std::endl;
 
@@ -803,8 +803,8 @@ namespace RVO {
 				result = lines[lineNo].point + tLeft * lines[lineNo].direction;
 			}
 		}
-		else {
-			/* Optimize closest point. */
+/*		else {
+			//// Optimize closest point.
 			const float t = lines[lineNo].direction * (optVelocity - lines[lineNo].point);
 			/// check this optimal point is on the line segment or not
 			if (t < tLeft) {
@@ -816,9 +816,9 @@ namespace RVO {
 			else {
 				result = lines[lineNo].point + t * lines[lineNo].direction;
 			}
-		}
+		}*/
 
-		/*
+		
 		else {
 			float dist_to_line_seg = std::sqrt( distSqPointLineSegment(lines[lineNo].point + tLeft * lines[lineNo].direction, 
 				lines[lineNo].point + tRight * lines[lineNo].direction, Vector2(0.0, 0.0)) );
@@ -837,7 +837,12 @@ namespace RVO {
 				}
 			} else{
 				float ab = lines[lineNo].direction * lines[lineNo].point;
-				float sqrt_delta = std::sqrt(ab*ab - lines[lineNo].point * lines[lineNo].point + v_pref_len * v_pref_len);
+				float delta=ab*ab - lines[lineNo].point * lines[lineNo].point + v_pref_len * v_pref_len;
+				if(delta<1e-6){				
+					delta=0;
+				}
+				float sqrt_delta = std::sqrt(delta);
+				//float sqrt_delta = std::sqrt(ab*ab - lines[lineNo].point * lines[lineNo].point + v_pref_len * v_pref_len);
 				
 				float t_left = -ab - sqrt_delta; //left intersection point of the line and the circle
 				float t_right = -ab + sqrt_delta; //right intersection point of the line and the circle
@@ -876,7 +881,7 @@ namespace RVO {
 					}
 				}
 			}
-		} */
+		} 
 
 		return true;
 	}

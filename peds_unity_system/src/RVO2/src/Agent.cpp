@@ -431,7 +431,20 @@ namespace RVO {
 			orcaLines_.push_back(line);
 		}
 
-/*		size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_);
+
+		if(vehicle_in_neighbor){
+			float dist_to_veh = abs(position_-vel_pos);
+			if(dist_to_veh < 1.95f){
+				if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-vel_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+					prefVelocity_ = vel_veh_avoiding.rotate(90.0);
+				} else{
+					prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
+				}
+			}
+		
+		}
+
+		size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_);
 		///size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, velocity_, false, newVelocity_);
 	//	std::cout<<"2 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 
@@ -439,7 +452,7 @@ namespace RVO {
 			linearProgram3(orcaLines_, numObstLines, lineFail, maxSpeed_, newVelocity_);
 			std::cout<<"3 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 			///linearProgram3(orcaLines_, numObstLines, lineFail, maxSpeed_, newVelocity_);
-		}*/
+		}
 
 /*		float new_speed = abs(newVelocity_);
 		float pref_speed = abs(prefVelocity_);
@@ -583,7 +596,7 @@ namespace RVO {
 		}*/
 
 		//std::cout<<"*****: "<<tag_<<std::endl;
-		if(vehicle_in_neighbor){
+/*		if(vehicle_in_neighbor){
 				float dist_to_veh = abs(position_-vel_pos);
 				if(dist_to_veh < 1.95f){
 					if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-vel_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
@@ -656,7 +669,7 @@ namespace RVO {
 				}
 			}
 			
-		}		
+		}*/	
 	}
 
 	void Agent::insertAgentNeighbor(const Agent *agent, float &rangeSq)
@@ -793,8 +806,8 @@ namespace RVO {
 				result = lines[lineNo].point + tLeft * lines[lineNo].direction;
 			}
 		}
-		else {
-			/* Optimize closest point. */
+/*		else {
+			/// Optimize closest point.
 			const float t = lines[lineNo].direction * (optVelocity - lines[lineNo].point);
 			/// check this optimal point is on the line segment or not
 			if (t < tLeft) {
@@ -806,9 +819,9 @@ namespace RVO {
 			else {
 				result = lines[lineNo].point + t * lines[lineNo].direction;
 			}
-		}
+		}*/
 
-		/*
+		
 		else {
 			float dist_to_line_seg = std::sqrt( distSqPointLineSegment(lines[lineNo].point + tLeft * lines[lineNo].direction, 
 				lines[lineNo].point + tRight * lines[lineNo].direction, Vector2(0.0, 0.0)) );
@@ -866,7 +879,7 @@ namespace RVO {
 					}
 				}
 			}
-		} */
+		} 
 
 		return true;
 	}

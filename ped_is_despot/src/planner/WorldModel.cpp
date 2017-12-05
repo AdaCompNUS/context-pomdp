@@ -482,7 +482,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 	double move_dist = Norm(curr.x-prev.x, curr.y-prev.y),
 		   goal_dist = Norm(goal.x-prev.x, goal.y-prev.y);
 	double sensor_noise = 0.1;
-    if(ModelParams::is_simulation) sensor_noise = 0.01;
+    if(ModelParams::is_simulation) sensor_noise = 0.02;
 
     bool debug=false;
 	// CHECK: beneficial to add back noise?
@@ -492,7 +492,12 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 	} else {
 		if (move_dist < sensor_noise) return 0;
 
+        if((move_dist * goal_dist) < 1e-5) {
+            std::cout<<"move dist: "<<move_dist<<"  goal_dist: "<<goal_dist<<std::endl;
+        }
 		double cosa = DotProduct(curr.x-prev.x, curr.y-prev.y, goal.x-prev.x, goal.y-prev.y) / (move_dist * goal_dist);
+        if(cosa >1) cosa = 1;
+        else if(cosa < -1) cosa = -1;
 		double angle = acos(cosa);
 		return gaussian_prob(angle, ModelParams::NOISE_GOAL_ANGLE) + K;
 	}
@@ -996,8 +1001,8 @@ void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarS
             RVO::Vector2 goal(goals[goal_id].x, goals[goal_id].y);
             if ( absSq(goal - ped_sim_->getAgentPosition(i)) < ped_sim_->getAgentRadius(i) * ped_sim_->getAgentRadius(i) ) {
                 // Agent is within one radius of its goal, set preferred velocity to zero
-                //ped_sim_->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
-                ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i))*0.6);
+                ped_sim_->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
+                //ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i))*0.6);
             } else {
                 // Agent is far away from its goal, set preferred velocity as unit vector towards agent's goal.
                 //ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i)));
