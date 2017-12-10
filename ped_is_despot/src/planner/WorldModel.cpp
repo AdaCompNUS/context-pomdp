@@ -56,7 +56,8 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
     // Specify default parameters for agents that are subsequently added.
     //ped_sim_->setAgentDefaults(5.0f, 8, 10.0f, 5.0f, 0.5f, 2.0f);
     //ped_sim_->setAgentDefaults(1.5f, 1, 3.0f, 6.0f, 0.15f, 3.0f);
-    ped_sim_->setAgentDefaults(3.0f, 2, 2.0f, 2.0f, 0.25f, 3.0f);
+    //ped_sim_->setAgentDefaults(3.0f, 2, 2.0f, 2.0f, 0.25f, 3.0f);
+    ped_sim_->setAgentDefaults(5.0f, 3, 2.0f, 2.0f, 0.25f, 3.0f);
 }
 
 bool WorldModel::isLocalGoal(const PomdpState& state) {

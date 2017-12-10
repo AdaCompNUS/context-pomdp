@@ -301,7 +301,7 @@ namespace RVO {
 		for (size_t i = 0; i < agentNeighbors_.size(); ++i) {
 			const Agent *const other = agentNeighbors_[i].second;
 			if(other->tag_ == "vehicle") {
-				invTimeHorizon = 1.0f/(timeHorizon_ * 4);
+				invTimeHorizon = 1.0f/(timeHorizon_ * 10);
 			//	std::cout<<agentNeighbors_.size()<<" vehicle in neighbor, distance: "<<abs(other->position_ - position_)<<std::endl;
 				vehicle_in_neighbor = true;
 				vel_veh_avoiding = other->prefVelocity_;
@@ -376,16 +376,17 @@ namespace RVO {
 					//line.point = 0.5f * prefVelocity_ + 0.5f * velocity_ + 0.5f * u;
 				}
 				else{
+					float res_changing_dist = 10.0;
 					float ped_responsibility;
 					float dist_to_collision = std::sqrt(distSq) - combinedRadius;
 					if(dist_to_collision < 0) {//collision.
 						ped_responsibility = 0.95;
 					}
-					else if(dist_to_collision > 5){
+					else if(dist_to_collision > res_changing_dist){
 						ped_responsibility = 0.05;
 					}
 					else{
-						ped_responsibility = 0.05 + (5.0 - dist_to_collision)/5.0 * 0.9;
+						ped_responsibility = 0.05 + (res_changing_dist - dist_to_collision)/res_changing_dist * 0.9;
 						//ped_responsibility = 1.0;
 					}
 					
@@ -398,16 +399,17 @@ namespace RVO {
 			}
 			else{
 				if(other->tag_ == "vehicle"){
+					float res_changing_dist = 10.0;
 					float ped_responsibility;
 					float dist_to_collision = std::sqrt(distSq) - combinedRadius;
 					if(dist_to_collision < 0) {//collision.
 						ped_responsibility = 0.95;
 					}
-					else if(dist_to_collision > 5){
+					else if(dist_to_collision > res_changing_dist){
 						ped_responsibility = 0.05;
 					}
 					else{
-						ped_responsibility = 0.05 + (5.0 - dist_to_collision)/5.0 * 0.9;
+						ped_responsibility = 0.05 + (res_changing_dist - dist_to_collision)/res_changing_dist * 0.9;
 						//ped_responsibility = 3.0;
 					}
 					
@@ -430,7 +432,7 @@ namespace RVO {
 			orcaLines_.push_back(line);
 		}
 
-		if(vehicle_in_neighbor){
+/*		if(vehicle_in_neighbor){
 			float dist_to_veh = abs(position_-vel_pos);
 			if(dist_to_veh < 1.95f){
 				if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-vel_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
@@ -441,7 +443,7 @@ namespace RVO {
 			}
 			
 			
-		}
+		}*/
 		
 		size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_);
 		///size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, velocity_, false, newVelocity_);
@@ -673,7 +675,9 @@ namespace RVO {
 	{
 		if (this != agent) {
 			///const float distSq = absSq(position_ - agent->position_);
-			const float distSq = abs(position_ - agent->position_) - agent->radius_ < 0 ? 0:sqr(abs(position_ - agent->position_) - agent->radius_);
+			float distSq = abs(position_ - agent->position_) - agent->radius_ < 0 ? 0:sqr(abs(position_ - agent->position_) - agent->radius_);
+			if(agent->tag_ =="vehicle") distSq = abs(position_ - agent->position_) - agent->radius_ - 2.0 < 0 ? 0:sqr(abs(position_ - agent->position_) - agent->radius_ -2.0);
+
 			//std::cout<<std::sqrt(distSq)<<std::endl;
 
 			if (distSq < rangeSq) {
