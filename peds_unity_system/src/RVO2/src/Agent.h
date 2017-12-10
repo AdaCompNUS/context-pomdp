@@ -42,7 +42,11 @@
 #include "Definitions.h"
 #include "RVOSimulator.h"
 
+
 namespace RVO {
+
+	typedef std::pair<float, Vector2> CostVelPair;
+
 	/**
 	 * \brief      Defines an agent in the simulation.
 	 */
