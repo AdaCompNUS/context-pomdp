@@ -42,6 +42,7 @@ namespace RVO {
 	Agent::Agent(RVOSimulator *sim) : maxNeighbors_(0), maxSpeed_(0.0f), neighborDist_(0.0f), radius_(0.0f), sim_(sim), timeHorizon_(0.0f), timeHorizonObst_(0.0f), id_(0) { 
 		use_new_pref_vel_ = false;
 		change_dir_iter_ = 0;
+		patience_ = 1.0;
 
 		updated_ = true;
 	}
@@ -446,7 +447,7 @@ namespace RVO {
 		
 		}*/
 
-		size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_);
+		size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_, patience_);
 		///size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, velocity_, false, newVelocity_);
 	//	std::cout<<"2 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 
@@ -1087,8 +1088,12 @@ namespace RVO {
 
 		double pre_vel_len = abs(optVelocity);
 
-		if(pre_vel_len <= 0.05 || abs(result) >= 0.2 * pre_vel_len) return lines.size(); // goal is not_moving or computed vel is not very small
+		if(pre_vel_len <= 0.05 || abs(result) >= 0.2 * pre_vel_len) {
+			return lines.size(); // goal is not_moving or computed vel is not very small
+		}
 		else{// recompute vel using the objective function with increased weight w
+			double w = 4;//weight for the absolute difference between vel and pref_vel
+
 			if (directionOpt) {
 				 //Optimize direction. Note that the optimization velocity is of unit
 				 //length in this case.
@@ -1103,7 +1108,101 @@ namespace RVO {
 				result = optVelocity;
 			}
 
-			double w = 4;//weight for the absolute difference between vel and pref_vel
+			std::vector<CostVelPair> opt_vel_candidates;
+			opt_vel_candidates.push_back(CostVelPair(0, result));
+
+			for (size_t i = 0; i < lines.size(); ++i) {
+				const Vector2 tempResult = opt_vel_candidates.back().second;
+
+				//clear all candidates that does not satisfy the new constraint
+				std::vector<CostVelPair> new_opt_vel_candidates;
+				for(int j = 0; j<opt_vel_candidates.size(); j++){
+					if (det(lines[i].direction, lines[i].point - opt_vel_candidates[j].second) <= 0.0f)
+						new_opt_vel_candidates.push_back(opt_vel_candidates[j]);
+				}
+				opt_vel_candidates.clear();
+				opt_vel_candidates = new_opt_vel_candidates;
+				new_opt_vel_candidates.clear();
+
+
+				if (!linearProgram1(lines, i, radius, optVelocity, directionOpt, w, opt_vel_candidates)) {
+					result = tempResult;
+					return i;
+				}
+				
+			}
+
+			float min_cost = opt_vel_candidates[0].first;
+			int opt_vel_index = 0;
+			for(int j=1; j<opt_vel_candidates.size(); j++){
+				if(opt_vel_candidates[j].first < min_cost) {
+					opt_vel_index = j;
+				}
+			}
+			result = opt_vel_candidates[opt_vel_index].second;
+		}
+
+
+		return lines.size();
+	}
+
+
+	size_t linearProgram2(const std::vector<Line> &lines, float radius, const Vector2 &optVelocity, bool directionOpt, Vector2 &result, double & patience)
+	{
+		if (directionOpt) {
+			/*
+			 * Optimize direction. Note that the optimization velocity is of unit
+			 * length in this case.
+			 */
+			result = optVelocity * radius;
+		}
+		else if (absSq(optVelocity) > sqr(radius)) {
+			/* Optimize closest point and outside circle. radius is the max_speed (see the place linearProgram2 is called), hence this step is just 
+			normalize optVelocity when it exceeds max speed*/
+			result = normalize(optVelocity) * radius;
+		}
+		else {
+			/* Optimize closest point and inside circle. */
+			result = optVelocity;
+		}
+		/// initially result = optVelocity; adding constraints one by one will narrow down the feasible region; the result with fewer 
+		/// constraints must be better than that with more constraints. Hence the following for_loop will look for a best opt_vel under current constraints
+		for (size_t i = 0; i < lines.size(); ++i) {
+			if (det(lines[i].direction, lines[i].point - result) > 0.0f) {/// equivalent to det(lines[i].point - result, lines[i].direction) < 0.0f, which means the result (current opt vel is in the right side of the orca line (which means not satisified the constraints))
+				// Result does not satisfy constraint i. Compute new optimal result.
+				const Vector2 tempResult = result;
+
+				if (!linearProgram1(lines, i, radius, optVelocity, directionOpt, result)) {
+					result = tempResult;
+					return i;
+				}
+			}
+		}
+
+		double pre_vel_len = abs(optVelocity);
+
+		if(pre_vel_len <= 0.05 || abs(result) >= 0.2 * pre_vel_len) {
+			patience = 1.0; //reset agent's patience to 1
+			return lines.size(); // goal is not_moving or computed vel is not very small
+		}
+		else{// recompute vel using the objective function with increased weight w
+			patience *= 0.5;
+			double w;//weight for the absolute difference between vel and pref_vel
+			w = 1.0/patience;
+			
+			if (directionOpt) {
+				 //Optimize direction. Note that the optimization velocity is of unit
+				 //length in this case.
+				result = optVelocity * radius;
+			}
+			else if (absSq(optVelocity) > sqr(radius)) {
+				//Optimize closest point and outside circle.
+				result = normalize(optVelocity) * radius;
+			}
+			else {
+				//Optimize closest point and inside circle.
+				result = optVelocity;
+			}
 
 			std::vector<CostVelPair> opt_vel_candidates;
 			opt_vel_candidates.push_back(CostVelPair(0, result));

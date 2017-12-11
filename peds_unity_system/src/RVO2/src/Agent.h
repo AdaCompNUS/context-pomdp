@@ -116,6 +116,7 @@ namespace RVO {
 		bool use_new_pref_vel_;
 		int change_dir_iter_;
 		Vector2 new_pref_vel_;
+		double patience_;
 
 		//size_t ped_id_; // this is to track whether this pedestrian, for external use, different from id_;
 		int ped_id_;
@@ -166,6 +167,13 @@ namespace RVO {
 	 */
 	void linearProgram3(const std::vector<Line> &lines, size_t numObstLines, size_t beginLine,
 						float radius, Vector2 &result);
+
+	bool linearProgram1(const std::vector<Line> &lines, size_t lineNo, float radius, 
+						const Vector2 &optVelocity, bool directionOpt, 
+						double w, std::vector<CostVelPair> & opt_vel_candidates);
+	size_t linearProgram2(const std::vector<Line> &lines, float radius, 
+						const Vector2 &optVelocity, bool directionOpt, 
+						Vector2 &result, double & patience);
 }
 
 #endif /* RVO_AGENT_H_ */

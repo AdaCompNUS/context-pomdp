@@ -42,6 +42,9 @@
 #include "RVOSimulator.h"
 
 namespace RVO {
+
+	typedef std::pair<float, Vector2> CostVelPair;
+	
 	/**
 	 * \brief      Defines an agent in the simulation.
 	 */
@@ -161,6 +164,11 @@ namespace RVO {
 	 */
 	void linearProgram3(const std::vector<Line> &lines, size_t numObstLines, size_t beginLine,
 						float radius, Vector2 &result);
+
+	bool linearProgram1(const std::vector<Line> &lines, size_t lineNo, float radius, 
+						const Vector2 &optVelocity, bool directionOpt, 
+						double w, std::vector<CostVelPair> & opt_vel_candidates);
+	
 }
 
 #endif /* RVO_AGENT_H_ */

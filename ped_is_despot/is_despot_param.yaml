@@ -2,7 +2,7 @@ goalx: -170.5
 goaly: -146.68
 
 fixed_path: false
-pruning_constant: 0
+pruning_constant: 0 #1000000
 #pruning_constant: 1000000000
 #pathplan_ahead: 3.0
 pathplan_ahead: 1.5
