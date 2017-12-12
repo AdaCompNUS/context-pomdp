@@ -295,7 +295,7 @@ namespace RVO {
 
 		bool vehicle_in_neighbor = false;
 		Vector2 vel_veh_avoiding;
-		Vector2 vel_pos;
+		Vector2 veh_pos;
 
 		/* Create agent ORCA lines. */
 		for (size_t i = 0; i < agentNeighbors_.size(); ++i) {
@@ -305,7 +305,7 @@ namespace RVO {
 			//	std::cout<<agentNeighbors_.size()<<" vehicle in neighbor, distance: "<<abs(other->position_ - position_)<<std::endl;
 				vehicle_in_neighbor = true;
 				vel_veh_avoiding = other->prefVelocity_;
-				vel_pos = other->position_;
+				veh_pos = other->position_;
 			//	std::cout<<"pref: "<<vel_veh_avoiding<<std::endl;
 			}
 
@@ -432,18 +432,16 @@ namespace RVO {
 			orcaLines_.push_back(line);
 		}
 
-/*		if(vehicle_in_neighbor){
-			float dist_to_veh = abs(position_-vel_pos);
-			if(dist_to_veh < 1.95f){
-				if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-vel_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+		if(vehicle_in_neighbor && (abs(velocity_) <= 0.1 || abs(prefVelocity_) <= 0.1)){
+			float dist_to_veh = abs(position_-veh_pos);
+			if(dist_to_veh < 1.96f){
+				if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
 					prefVelocity_ = vel_veh_avoiding.rotate(90.0);
 				} else{
 					prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
 				}
-			}
-			
-			
-		}*/
+			}			
+		}
 		
 		size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_);
 		///size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, velocity_, false, newVelocity_);
@@ -599,9 +597,9 @@ namespace RVO {
 //		std::cout<<"*****: "<<tag_<<std::endl;
 
 /*		if(vehicle_in_neighbor){
-			float dist_to_veh = abs(position_-vel_pos);
+			float dist_to_veh = abs(position_-veh_pos);
 			if(dist_to_veh < 1.5f){
-				if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-vel_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+				if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
 					prefVelocity_ = vel_veh_avoiding.rotate(90.0);
 				} else{
 					prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
@@ -993,7 +991,9 @@ namespace RVO {
 				}
 			} else{
 				float ab = lines[lineNo].direction * lines[lineNo].point;
-				float sqrt_delta = std::sqrt(ab*ab - lines[lineNo].point * lines[lineNo].point + v_pref_len * v_pref_len);
+				float delta = ab*ab - lines[lineNo].point * lines[lineNo].point + v_pref_len * v_pref_len;
+				if(delta<=1e-6) delta = 0;
+				float sqrt_delta = std::sqrt(delta);
 				
 				float t_left = -ab - sqrt_delta; //left intersection point of the line and the circle
 				float t_right = -ab + sqrt_delta; //right intersection point of the line and the circle
