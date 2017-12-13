@@ -238,8 +238,34 @@ namespace RVO {
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
+		/*for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
+			agents_[i]->computeNeighbors();			
+			agents_[i]->computeNewVelocity();
+		}*/
+		int veh_agent_index = -1;
+		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
+			if(agents_[i]->tag_ == "vehicle"){
+				veh_agent_index = i;
+			}
+		}
 		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
 			agents_[i]->computeNeighbors();
+			
+			if(i != veh_agent_index && veh_agent_index != -1){// there exists a vehicle and it is not the current agent	
+				if( abs(agents_[i]->position_ - agents_[veh_agent_index]->position_)<4.0){//only consider to insert veh when it's not far away
+					bool insert_veh = true; // whether to insert vehicle to the neighbor list or not
+					for (int j = 0; j<agents_[i]->agentNeighbors_.size(); j++){
+						if(agents_[i]->agentNeighbors_[j].second->tag_ == "vehicle") { // vehicle already in the neighbor list, do not insert
+							insert_veh = false;
+						}
+					}
+					if(insert_veh) {
+						//std::cout<<"Insert vehicle for agent: "<<agents_[i]->id_<<std::endl;
+						agents_[i]->agentNeighbors_.push_back(std::make_pair(absSq(agents_[i]->position_ - agents_[veh_agent_index]->position_), agents_[veh_agent_index]));
+					}
+				}			
+			}
+			
 			agents_[i]->computeNewVelocity();
 		}
 

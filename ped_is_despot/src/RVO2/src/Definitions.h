@@ -82,6 +82,16 @@ namespace RVO {
 		}
 	}
 
+	inline float distPointLine(const Vector2 &a, const Vector2 &b,
+										const Vector2 &c)
+	{	
+		if(absSq(b - a) < 1e-7) return abs(c-a);
+
+		const float r = ((c - a) * (b - a)) / absSq(b - a);
+		
+		return abs(c - (a + r * (b - a)));
+	}
+
 	/**
 	 * \brief      Computes the signed distance from a line connecting the
 	 *             specified points to a specified point.

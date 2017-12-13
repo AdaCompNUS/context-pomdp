@@ -64,6 +64,41 @@ namespace RVO {
 	/* Search for the best new velocity. */
 	void Agent::computeNewVelocity()
 	{
+		/*if(tag_ == "vehicle" || id_ == 137) {
+			std::cout<<"my id: "<<id_<<std::endl;
+			std::cout<<"**** begin of vehicle neighors"<<std::endl;
+			std::cout<<"veh pos: "<<position_<<std::endl;
+			std::cout<<"veh vel: "<<prefVelocity_<<std::endl;
+
+			for (size_t i = 0; i < agentNeighbors_.size(); ++i) {
+				const Agent *const other = agentNeighbors_[i].second;
+
+				const Vector2 relativePosition = other->position_ - position_;
+				const Vector2 relativeVelocity = velocity_ - other->velocity_;
+				const float dist = abs(relativePosition);
+				const float combinedRadius = radius_ + other->radius_;
+				const float combinedRadiusSq = sqr(combinedRadius);
+				
+				std::cout<<"ped id: "<<other->id_<<std::endl;
+				std::cout<<"pos: "<<other->position_<<std::endl;
+				std::cout<<"relative pos: "<<relativePosition<<std::endl;
+				std::cout<<"dist: "<<dist<<std::endl;
+				std::cout<<"^^tag: "<<other->tag_<<std::endl;
+				
+				float to_line = distPointLine(Vector2(0.0f, 0.0f), prefVelocity_, other->position_ - position_);
+				std::cout<<"to line dist: "<<to_line<<std::endl;
+
+				
+			}
+			newVelocity_ = prefVelocity_;
+			if(tag_ == "vehicle") return;
+		}*/
+
+		if(tag_ == "vehicle") {
+			newVelocity_ = prefVelocity_;
+			return;
+		}
+
 		orcaLines_.clear();
 
 		const float invTimeHorizonObst = 1.0f / timeHorizonObst_;
@@ -303,12 +338,13 @@ namespace RVO {
 		for (size_t i = 0; i < agentNeighbors_.size(); ++i) {
 			const Agent *const other = agentNeighbors_[i].second;
 			if(other->tag_ == "vehicle") {
+				//std::cout<<"in neighbor, ped id: "<<id_<<std::endl;
 				invTimeHorizon = 1.0f/(timeHorizon_ *10);
-				std::cout<<agentNeighbors_.size()<<" vehicle in neighbor, distance: "<<abs(other->position_ - position_)<<std::endl;
+			//	std::cout<<agentNeighbors_.size()<<" vehicle in neighbor, distance: "<<abs(other->position_ - position_)<<std::endl;
 				vehicle_in_neighbor = true;
 				vel_veh_avoiding = other->prefVelocity_;
 				veh_pos = other->position_;
-				std::cout<<"pref: "<<vel_veh_avoiding<<std::endl;
+			//	std::cout<<"pref: "<<vel_veh_avoiding<<std::endl;
 			}
 
 			const Vector2 relativePosition = other->position_ - position_;
@@ -438,7 +474,7 @@ namespace RVO {
 		if(vehicle_in_neighbor && (abs(velocity_) <= 0.1 || abs(prefVelocity_) <= 0.1)){
 			float dist_to_veh = abs(position_-veh_pos);
 			if(dist_to_veh < 1.96f){
-				if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < 1.0f) {// the distance of the ped to the center line of the vehicle
+				if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < 0.93f) {// the distance of the ped to the center line of the vehicle
 					
 					//std::cout<<"fkdlsaf fdsafs: "<<distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)<<std::endl;
 					if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
@@ -446,6 +482,7 @@ namespace RVO {
 					} else{
 						prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
 					}
+					//std::cout<<"fffff new pref vel: "<<prefVelocity_<<std::endl;
 				}
 			}
 		
@@ -457,7 +494,7 @@ namespace RVO {
 
 		if (lineFail < orcaLines_.size()) {
 			linearProgram3(orcaLines_, numObstLines, lineFail, maxSpeed_, newVelocity_);
-			std::cout<<"3 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
+			//std::cout<<tag_ <<" **P3 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 			///linearProgram3(orcaLines_, numObstLines, lineFail, maxSpeed_, newVelocity_);
 		}
 
@@ -680,13 +717,35 @@ namespace RVO {
 	}
 
 	void Agent::insertAgentNeighbor(const Agent *agent, float &rangeSq)
-	{
+	{	
+		/*if(id_== 137){
+				//if(agent->id_ == 150){
+				if(agent->tag_ =="vehicle"){
+					std::cout<<"********** "<<std::endl;
+				}
+			}*/
+
 		if (this != agent) {
 			///const float distSq = absSq(position_ - agent->position_);
 			float distSq = abs(position_ - agent->position_) - agent->radius_ < 0 ? 0:sqr(abs(position_ - agent->position_) - agent->radius_);
-			if(agent->tag_ =="vehicle") distSq = abs(position_ - agent->position_) - agent->radius_ - 2.0 < 0 ? 0:sqr(abs(position_ - agent->position_) - agent->radius_ -2.0);
+			//if(agent->tag_ =="vehicle") distSq = abs(position_ - agent->position_) - agent->radius_ - 2.0 < 0 ? 0:sqr(abs(position_ - agent->position_) - agent->radius_ -2.0);
 			//std::cout<<std::sqrt(distSq)<<std::endl;
 
+			/*if(id_== 137){
+				//if(agent->id_ == 150){
+				if(agent->tag_ =="vehicle"){
+					std::cout<<"^^^ veh: "<<distSq<<std::endl;
+				}
+				if(agent->id_ == 105){
+					std::cout<<"^^^ 105: "<<distSq<<std::endl;
+				}
+				if(agent->id_ == 97){
+					std::cout<<"^^^ 97: "<<distSq<<std::endl;
+				}
+				if(agent->id_ == 128){
+					std::cout<<"^^^ 128: "<<distSq<<std::endl;
+				}
+			}*/
 			if (distSq < rangeSq) {
 				if (agentNeighbors_.size() < maxNeighbors_) {
 					agentNeighbors_.push_back(std::make_pair(distSq, agent));

@@ -230,7 +230,7 @@ void Controller::initSimulator()
 {
   Globals::config.root_seed=1024;
   //Globals::config.n_belief_particles=2000;
-  Globals::config.num_scenarios=20;
+  Globals::config.num_scenarios=50;
   Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
   Globals::config.max_policy_sim_len=30;
   Seeds::root_seed(Globals::config.root_seed);
