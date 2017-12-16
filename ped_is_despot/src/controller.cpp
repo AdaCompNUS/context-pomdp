@@ -232,7 +232,7 @@ void Controller::initSimulator()
   //Globals::config.n_belief_particles=2000;
   Globals::config.num_scenarios=50;
   Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
-  Globals::config.max_policy_sim_len=30;
+  Globals::config.max_policy_sim_len=25;
   Seeds::root_seed(Globals::config.root_seed);
   cerr << "Random root seed set to " << Globals::config.root_seed << endl;
 
@@ -627,8 +627,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		PomdpState curr_state = worldStateTracker.getPomdpState();
 		
-		if(worldModel.inCollision(curr_state)){
-			cout << "ININININININININ in collision"<<endl;
+		if(real_speed_ >= 0.05 && worldModel.inRealCollision(curr_state)){
+			cout << "INININ in collision"<<endl;
 		}
 		publishROSState();
 
@@ -688,8 +688,11 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 			sum+=particles[i]->weight;
 		cout<<"particle weight sum "<<sum<<endl;
         */
-        cout<< "particle 0: car pos= "<<samples[0].car.pos<<", coord= "<< worldModel.path[samples[0].car.pos].x<<" "<<worldModel.path[samples[0].car.pos].y<<endl;
+        //cout<< "particle 0: car pos= "<<samples[0].car.pos<<", coord= "<< worldModel.path[samples[0].car.pos].x<<" "<<worldModel.path[samples[0].car.pos].y<<endl;
 
+		static int run_step = 0;
+		cout<<"run_step: "<<run_step<<endl;
+		run_step ++;
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
 		//cout<<"4"<<endl;
      //   despot->PrintState(*(pb->particles()[0]));

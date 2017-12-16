@@ -31,6 +31,7 @@ public:
 	bool inFront(COORD ped_pos, int car) const;
     
     bool inCollision(const PomdpState& state);
+    bool inRealCollision(const PomdpState& state);
     bool inCollision(const PomdpStateWorld& state);
     
     bool inCollision(const PomdpState& state, int &id);

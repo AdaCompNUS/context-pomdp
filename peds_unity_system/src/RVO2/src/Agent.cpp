@@ -473,14 +473,14 @@ namespace RVO {
 
 		if(vehicle_in_neighbor && (abs(velocity_) <= 0.1 || abs(prefVelocity_) <= 0.1)){
 			float dist_to_veh = abs(position_-veh_pos);
-			if(dist_to_veh < 1.96f){
-				if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < 0.93f) {// the distance of the ped to the center line of the vehicle
+			if(dist_to_veh < 2.05f){
+				if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < 1.0f) {// the distance of the ped to the center line of the vehicle
 					
 					//std::cout<<"fkdlsaf fdsafs: "<<distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)<<std::endl;
 					if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
-						prefVelocity_ = vel_veh_avoiding.rotate(90.0);
+						prefVelocity_ = vel_veh_avoiding.rotate(90.0)*1.15;
 					} else{
-						prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
+						prefVelocity_ = vel_veh_avoiding.rotate(-90.0)*1.15;
 					}
 					//std::cout<<"fffff new pref vel: "<<prefVelocity_<<std::endl;
 				}

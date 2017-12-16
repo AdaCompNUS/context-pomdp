@@ -142,6 +142,7 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
  * Check whether M is in the safety zone
  */
 bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double Ny);
+bool inRealCollision(double Mx, double My, double Hx, double Hy, double Nx, double Ny);
 bool inCollision(double ped_x, double ped_y, double car_x, double car_y);//for scooter collision check;
 
 bool WorldModel::inCollision(const PomdpState& state) {
@@ -152,6 +153,23 @@ bool WorldModel::inCollision(const PomdpState& state) {
     for(int i=0; i<state.num; i++) {
         const COORD& pedpos = state.peds[i].pos;
         if(::inCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y, forward_pos.x, forward_pos.y)) {
+            return true;
+        }
+        /*if(::inCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y)) {
+            return true;
+        }*/
+    }
+    return false;
+}
+
+bool WorldModel::inRealCollision(const PomdpState& state) {
+    const int car = state.car.pos;
+    const COORD& car_pos = path[car];
+    const COORD& forward_pos = path[path.forward(car, 1.0)];
+
+    for(int i=0; i<state.num; i++) {
+        const COORD& pedpos = state.peds[i].pos;
+        if(::inRealCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y, forward_pos.x, forward_pos.y)) {
             return true;
         }
         /*if(::inCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y)) {

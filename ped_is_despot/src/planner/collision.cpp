@@ -81,7 +81,25 @@ bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double N
 
 	double car_width = 0.87,
 				 car_length = 1.544;
-	double safe_margin = 0.82, side_safe_margin = 0.3, back_safe_margin = 0.3,
+	double safe_margin = 0.85, side_safe_margin = 0.31, back_safe_margin = 0.31,
+				 side_margin = car_width / 2.0 + side_safe_margin,
+				 front_margin = car_length/2.0 + safe_margin,
+				 back_margin = car_length/2.0 + back_safe_margin;
+
+	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
+}
+
+
+bool inRealCollision(double Mx, double My, double Hx, double Hy, double Nx, double Ny) {
+
+	double HNx = Nx - Hx, // car direction
+				 HNy = Ny - Hy;
+	double HMx = Mx - Hx,
+				 HMy = My - Hy;
+
+	double car_width = 0.87,
+				 car_length = 1.544;
+	double safe_margin = 0.0, side_safe_margin = 0.0, back_safe_margin = 0.0,
 				 side_margin = car_width / 2.0 + side_safe_margin,
 				 front_margin = car_length/2.0 + safe_margin,
 				 back_margin = car_length/2.0 + back_safe_margin;
