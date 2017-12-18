@@ -27,7 +27,6 @@ DEVICE int Dvc_PedPomdpSmartPolicy::Action(
 	__syncthreads();
 	if (threadIdx.y<state.num) {
 		auto& p = state.peds[threadIdx.y];
-		//const Dvc_COORD& car_pos = path->way_points_[state.car.pos];
 		bool infront=false;
 
 		if(Dvc_ModelParams::IN_FRONT_ANGLE_DEG >= 180.0) {
@@ -39,7 +38,7 @@ DEVICE int Dvc_PedPomdpSmartPolicy::Action(
 			const Dvc_COORD& car_pos = path->way_points_[state.car.pos];
 			const Dvc_COORD& forward_pos = path->way_points_[path->forward(state.car.pos, 1.0)];
 			float d0 = Dvc_COORD::EuclideanDistance(car_pos, p.pos);
-			/*if(d0 <= 0.7)
+			if(d0 <= 0.7)
 				infront=true;
 			else
 			{
@@ -58,18 +57,18 @@ DEVICE int Dvc_PedPomdpSmartPolicy::Action(
 					}
 					infront=cosa > in_front_angle_cos;
 				}
-			}*/
+			}
 		}
 
-		/*if(infront) {
+		if(infront) {
 			float d = Dvc_COORD::EuclideanDistance(carpos, p.pos);
 			atomicMin(mindist+threadIdx.x, __float_as_int(d));
-		}*/
+		}
 	}
 	__syncthreads();
 
 	// TODO set as a param
-	/*if (__int_as_float(mindist[threadIdx.x]) < 2) {
+	if (__int_as_float(mindist[threadIdx.x]) < 2) {
 		return (carvel <= 0.01) ? 0 : 2;
 	}
 
@@ -78,7 +77,7 @@ DEVICE int Dvc_PedPomdpSmartPolicy::Action(
 		else if (carvel < 0.5-1e-4) return 1;
 		else return 0;
 	}
-	return carvel >= Dvc_ModelParams::VEL_MAX-1e-4 ? 0 : 1;*/
+	return carvel >= Dvc_ModelParams::VEL_MAX-1e-4 ? 0 : 1;
 	return 0;
 }
 

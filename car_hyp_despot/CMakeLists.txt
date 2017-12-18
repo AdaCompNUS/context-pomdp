@@ -61,7 +61,7 @@ set(
     CUDA_NVCC_FLAGS
     ${CUDA_NVCC_FLAGS};
     -O3 -gencode arch=compute_30,code=sm_30
-    -g -G
+    #-g -G
     )
 
 find_package(catkin REQUIRED COMPONENTS

@@ -262,6 +262,9 @@ void Controller::initSimulator()
   solver = new DESPOT(despot, lower_bound, upper_bound, NULL, Globals::config.useGPU);
 
   gpu_handler->PrepareGPUData(despot, solver);
+
+  if(worldModel.path.size()>0)
+  	gpu_handler->UpdateGPUPath(despot);
 }
 
 

@@ -105,16 +105,18 @@ __global__ void PassModelFuncs(Dvc_PedPomdp* model,
 	freq=_freq;
 	goals=_goals;
 	if(path == NULL) path=new Dvc_Path();
-	
+	printf("pass model to gpu\n");
+	 
 }
 __global__ void UpdatePathKernel(Dvc_COORD* _path, int pathsize)
 {
 	if(path) {delete path; path=new Dvc_Path();}
-	//if(path==NULL) 	path=new Dvc_Path();
+	if(path==NULL) 	path=new Dvc_Path();
 
 	path->size_=pathsize;
 	path->pos_=0;
 	path->way_points_=_path;
+	printf("pass path to gpu %d\n", path);
 }
 
 __global__ void UpdateGoalKernel(Dvc_COORD* _goals)
@@ -242,7 +244,7 @@ void Simulator::UpdateGPUPath(DSPOMDP* Hst_model)
 
 	UpdatePathKernel<<<1,1,1>>>(tempPath,Hst->world.path.size());
 	HANDLE_ERROR(cudaDeviceSynchronize());
-
+	//exit(-1);
 }
 
 void Simulator::UpdateGPUGoals(DSPOMDP* Hst_model)
@@ -319,6 +321,7 @@ void Simulator::InitializedGPUModel(std::string rollout_type, DSPOMDP* Hst_model
 	UpdateGPUGoals(Hst_model);
 
 	HANDLE_ERROR(cudaDeviceSynchronize());
+	//exit(-1);
 }
 
 

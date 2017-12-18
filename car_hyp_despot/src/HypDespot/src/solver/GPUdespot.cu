@@ -651,7 +651,7 @@ Step_IntObs(int total_num_scenarios, int num_particles, Dvc_State* vnode_particl
 		int Shared_mem_per_particle) {
 
 	//if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
-			printf("line %s\n", __LINE__);
+	//		printf("line %s\n", __LINE__);
 
 	if (blockIdx.y * blockDim.x + threadIdx.x < num_particles) {
 		__shared__ int Intobs[32*60];
@@ -684,8 +684,8 @@ Step_IntObs(int total_num_scenarios, int num_particles, Dvc_State* vnode_particl
 		current_particle = (Dvc_State*) ((int*) localParticles + Shared_mem_per_particle * threadIdx.x);
 		__syncthreads();
 
-		if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
-			printf("line 685\n");
+		//if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+		//	printf("line 685\n");
 
 
 		int terminal = false;
@@ -700,8 +700,8 @@ Step_IntObs(int total_num_scenarios, int num_particles, Dvc_State* vnode_particl
 
 				terminal = DvcModelStepIntObs_(*current_particle, streams->Entry(current_particle->scenario_id, streams->position_-1),
 							parent_action, reward, Intobs+threadIdx.x*num_obs_elements);
-				if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
-				printf("line 701\n");
+			//	if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+			//	printf("line 701\n");
 			}
 			else
 			{
@@ -737,8 +737,8 @@ Step_IntObs(int total_num_scenarios, int num_particles, Dvc_State* vnode_particl
 			terminal = DvcModelStepIntObs_(*current_particle, streams->Entry(current_particle->scenario_id),
 					action, reward, Intobs+threadIdx.x*num_obs_elements);
 
-			if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
-				printf("line %s\n", __LINE__);
+			//if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+			//	printf("line %s\n", __LINE__);
 			/*if(current_particle->scenario_id==0 && blockIdx.x+threadIdx.y==0)
 				printf("\nFinish step with action %d, get reward %f obs\n",action, reward);*/
 
@@ -1008,7 +1008,7 @@ _InitBounds_IntObs(int total_num_scenarios, int num_particles,
 		}
 
 		//Lower bound
-		/*local_streams.position(depth);
+		local_streams.position(depth);
 		Dvc_ValuedAction local_lower = DvcLowerBoundValue_( current_particle, local_streams,
 					local_history);
 		local_lower.value *= Dvc_Globals::Dvc_Discount(Dvc_config, depth);
@@ -1022,7 +1022,7 @@ _InitBounds_IntObs(int total_num_scenarios, int num_particles,
 
 			upper_all_a_p[global_list_pos] = local_upper;
 			default_move_all_a_p[global_list_pos] = local_lower;
-		}*/
+		}
 	}
 }
 void DESPOT::Validate_GPU(int line) {
@@ -1102,16 +1102,16 @@ void DESPOT::UpdateData(VNode* vnode,int ThreadID,const DSPOMDP* model,RandomStr
 
 	const std::vector<State*>& particles = vnode->particles();
 	const std::vector<int>& particleIDs = vnode->particleIDs();
-	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
+	//if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 	model->CopyToGPU(particleIDs, Dvc_particleIDs_long[ThreadID],
 			cuda_streams + ThreadID);
-	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
+	//if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 	if(vnode->parent()!=NULL)
 	{
 		/*Create GPU particles for the new v-node*/
 		Dvc_State* new_particles = model->AllocGPUParticles(
 				particleIDs.size(), 2);
-	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
+	//if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 		//model->CopyToGPU(particleIDs, Dvc_particleIDs_long[ThreadID],
 		//		cuda_streams + ThreadID);
 
@@ -1125,11 +1125,11 @@ void DESPOT::UpdateData(VNode* vnode,int ThreadID,const DSPOMDP* model,RandomStr
 				particleIDs.size(),true,
 				Dvc_streams[ThreadID], streams.position(),
 				cuda_streams + ThreadID);
-		if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
+		//if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 		/*Interleaving with CPU*/
 		vnode->AssignGPUparticles(new_particles,
 				particleIDs.size());
-		if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
+		//if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 		vnode->weight_=particleIDs.size()/((float)Globals::config.num_scenarios);
 	}
 
@@ -1150,7 +1150,7 @@ void DESPOT::MCSimulation(VNode* vnode, int ThreadID,
 #ifdef RECORD_TIME
 	auto start = Time::now();
 #endif
-	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<endl;
+	//if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<endl;
 
 	int thready, blocky;
 	dim3 GridDim;
@@ -1775,7 +1775,7 @@ void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 			|| vnode->depth() == Globals::config.search_depth - 1) {
 		vnode->upper_bound(vnode->lower_bound());
 	}*/
-	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
+	//if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 	int ThreadID = 0;
 	//if (use_multi_thread_)
 	//	ThreadID = MapThread(this_thread::get_id());
@@ -1805,7 +1805,7 @@ void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 	}
 
 	int threadx = 32;
-	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
+	//if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 	if (Obs_parallel_level == OBS_PARALLEL_Y) {
 		blocky =(NumParticles % threadx == 0) ?
 				NumParticles / threadx : NumParticles / threadx + 1;
@@ -1816,7 +1816,7 @@ void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 		if(Obs_type==OBS_INT_ARRAY)
 		{
-			if(true/*FIX_SCENARIO==1*/) {
+			if(false/*FIX_SCENARIO==1*/) {
 				cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 				cout<<__FUNCTION__<<": ThreadID="<<ThreadID<<endl;
 				cout<<__FUNCTION__<<": GridDim="<<GridDim.x<<","<<GridDim.y<<endl;
@@ -1901,8 +1901,8 @@ void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 					Dvc_streams[ThreadID], vnode->depth(),
 					history.Size());
 	}
-	HANDLE_ERROR(cudaDeviceSynchronize());
-	exit(-1);
+	//HANDLE_ERROR(cudaDeviceSynchronize());
+	//exit(-1);
 
 	ReadBackData(ThreadID);
 
