@@ -20,18 +20,15 @@ DEVICE int Dvc_PedPomdpSmartPolicy::Action(
 {
 	const Dvc_PomdpState &state=static_cast<const Dvc_PomdpState&>(particles[0]);
 	__shared__ int mindist[32];
-	//float mindist = numeric_limits<float>::infinity();
 	auto& carpos = path->way_points_[state.car.pos];
 	float carvel = state.car.vel;
-	// Closest pedestrian in front
-	//for (int i=0; i<state.num; i++) {
-	//infront[threadIdx.x]=false;
+
 	mindist[threadIdx.x]=__float_as_int(numeric_limits<float>::infinity());
 	__syncthreads();
 	if (threadIdx.y<state.num) {
 		auto& p = state.peds[threadIdx.y];
+		//const Dvc_COORD& car_pos = path->way_points_[state.car.pos];
 		bool infront=false;
-		//bool is_infront=false;
 
 		if(Dvc_ModelParams::IN_FRONT_ANGLE_DEG >= 180.0) {
 			// inFront check is disabled in this case
@@ -42,10 +39,7 @@ DEVICE int Dvc_PedPomdpSmartPolicy::Action(
 			const Dvc_COORD& car_pos = path->way_points_[state.car.pos];
 			const Dvc_COORD& forward_pos = path->way_points_[path->forward(state.car.pos, 1.0)];
 			float d0 = Dvc_COORD::EuclideanDistance(car_pos, p.pos);
-			//if(d0<=0) return true;
-			//if(p.vel<1e-5 && d0>1.0)
-			//	infront=false;//don't consider non-moving peds
-			/*else*/ if(d0 <= 0.7/*3.5*/)
+			/*if(d0 <= 0.7)
 				infront=true;
 			else
 			{
@@ -59,51 +53,33 @@ DEVICE int Dvc_PedPomdpSmartPolicy::Action(
 					float cosa = dot / (d0 * d1);
 					if(cosa > 1.0 + 1E-6 || cosa < -1.0 - 1E-6)
 					{
-						/*printf("cosa=%f\n", cosa);
-						int pos=state.car.pos;
-						printf("car pox= %d ",pos);
-						printf("dist=%f\n",state.car.dist_travelled);
-						printf("car vel= %f\n",state.car.vel);
-
-						for(int i=0;i<state.num;i++)
-						{
-							printf("ped %d pox_x= %f pos_y=%f\n",i,
-									state.peds[i].pos.x,state.peds[i].pos.y);
-						}*/
-						printf("%s=%f\n", "cosa", cosa);
+						;
+					
 					}
-					//assert(cosa <= 1.0 + 1E-8 && cosa >= -1.0 - 1E-8);
 					infront=cosa > in_front_angle_cos;
 				}
-			}
+			}*/
 		}
 
-		if(infront) {
+		/*if(infront) {
 			float d = Dvc_COORD::EuclideanDistance(carpos, p.pos);
-			// cout << d << " " << carpos.x << " " << carpos.y << " "<< p.pos.x << " " << p.pos.y << endl;
 			atomicMin(mindist+threadIdx.x, __float_as_int(d));
-			//if (d >= 0 && d < mindist)
-			//	mindist = d;
-		}
+		}*/
 	}
 	__syncthreads();
 
-	// cout << "min_dist = " << mindist << endl;
-	/*if(GPUDoPrint && state.scenario_id==GPUPrintPID && blockIdx.x==0 && threadIdx.y==0){
-		float dist=__int_as_float(mindist[threadIdx.x]);
-		printf("mindist, carvel= %f %f\n",dist,carvel);
-	}*/
 	// TODO set as a param
-	if (__int_as_float(mindist[threadIdx.x]) < 2/*3.5*/) {
+	/*if (__int_as_float(mindist[threadIdx.x]) < 2) {
 		return (carvel <= 0.01) ? 0 : 2;
 	}
 
-	if (__int_as_float(mindist[threadIdx.x]) < 4/*5*/) {
+	if (__int_as_float(mindist[threadIdx.x]) < 4) {
 		if (carvel > 1.0+1e-4) return 2;
 		else if (carvel < 0.5-1e-4) return 1;
 		else return 0;
 	}
-	return carvel >= Dvc_ModelParams::VEL_MAX-1e-4 ? 0 : 1;
+	return carvel >= Dvc_ModelParams::VEL_MAX-1e-4 ? 0 : 1;*/
+	return 0;
 }
 
 enum {

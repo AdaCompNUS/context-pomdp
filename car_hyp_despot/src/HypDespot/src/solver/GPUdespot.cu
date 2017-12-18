@@ -967,14 +967,10 @@ _InitBounds_IntObs(int total_num_scenarios, int num_particles,
 		Dvc_ValuedAction* default_move_all_a_p,
 		Dvc_RandomStreams* streams, Dvc_History* history, int depth,
 		int hist_size,int Shared_mem_per_particle) {
-	if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
-		printf("line %s\n", __LINE__);
+
 	int action = blockIdx.x;
 
-	/*if (blockIdx.y * blockDim.x + threadIdx.x < num_particles) {
-		if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
-			printf("line %s\n", __LINE__);
-
+	if (blockIdx.y * blockDim.x + threadIdx.x < num_particles) {
 		int PID = (blockIdx.y * blockDim.x + threadIdx.x) % num_particles;
 		int obs_i = threadIdx.y;
 		int parent_PID = -1;
@@ -993,8 +989,6 @@ _InitBounds_IntObs(int total_num_scenarios, int num_particles,
 				printf("InitBound kernel: DvcModelCopyToShared_ has not been defined!\n");
 		}
 		__syncthreads();
-		if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
-			printf("line %s\n", __LINE__);
 
 		//Do roll-out using the updated particle
 		Dvc_History local_history;
@@ -1012,17 +1006,14 @@ _InitBounds_IntObs(int total_num_scenarios, int num_particles,
 			local_upper = DvcUpperBoundValue_(current_particle, 0, local_history);
 			local_upper *= Dvc_Globals::Dvc_Discount(Dvc_config, depth);
 		}
-		if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
-			printf("line %s\n", __LINE__);
 
 		//Lower bound
-		local_streams.position(depth);
+		/*local_streams.position(depth);
 		Dvc_ValuedAction local_lower = DvcLowerBoundValue_( current_particle, local_streams,
 					local_history);
 		local_lower.value *= Dvc_Globals::Dvc_Discount(Dvc_config, depth);
 		local_streams.position(depth);
-		if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
-			printf("line %s\n", __LINE__);
+
 		if (obs_i == 0 && (blockIdx.y * blockDim.x + threadIdx.x) < num_particles) {
 			global_list_pos=action * total_num_scenarios + PID;
 			local_lower.value = local_lower.value * current_particle->weight;
@@ -1031,10 +1022,8 @@ _InitBounds_IntObs(int total_num_scenarios, int num_particles,
 
 			upper_all_a_p[global_list_pos] = local_upper;
 			default_move_all_a_p[global_list_pos] = local_lower;
-			if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
-				printf("line %s\n", __LINE__);
-		}
-	}*/
+		}*/
+	}
 }
 void DESPOT::Validate_GPU(int line) {
 	if (false) {
@@ -1762,6 +1751,20 @@ int DESPOT::CalSharedMemSize() {
 	return Shared_mem_per_particle;
 }
 
+
+/*__global__ void
+//__launch_bounds__(64, 16)
+_InitBounds_IntObs_test(int total_num_scenarios, int num_particles,
+		Dvc_State* new_particles, const int* vnode_particleIDs,
+		float* upper_all_a_p, float* utility_upper_all_a_p,
+		Dvc_ValuedAction* default_move_all_a_p,
+		Dvc_RandomStreams* streams, Dvc_History* history, int depth,
+		int hist_size,int Shared_mem_per_particle) {
+	// if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+	// 	printf("line %s\n", __LINE__);
+	int action = blockIdx.x;
+}*/
+
 void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 		ScenarioUpperBound* upper_bound,const DSPOMDP* model, RandomStreams& streams,
 		History& history) {
@@ -1853,8 +1856,11 @@ void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 						Dvc_particleIDs_long[ThreadID], Dvc_ub_all_a_p[ThreadID],
 						Dvc_uub_all_a_p[ThreadID], Dvc_lb_all_a_p[ThreadID],
 						Dvc_streams[ThreadID],
-						Dvc_history[ThreadID], vnode->depth(),
+						Dvc_history[ThreadID], 
+						vnode->depth(),
 						history.Size(),Shared_mem_per_particle);
+
+
 		}
 		else
 		{
@@ -1896,6 +1902,7 @@ void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 					history.Size());
 	}
 	HANDLE_ERROR(cudaDeviceSynchronize());
+	exit(-1);
 
 	ReadBackData(ThreadID);
 
