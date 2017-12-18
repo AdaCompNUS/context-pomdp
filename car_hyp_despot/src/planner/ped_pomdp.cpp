@@ -66,6 +66,7 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 	world(model_),
 	random_(Random((unsigned) Seeds::Next()))
 {
+	use_rvo = false;
 	//particle_lower_bound_ = new PedPomdpParticleLowerBound(this);
 }
 
@@ -190,9 +191,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	//if (closest_front_dist < ModelParams::COLLISION_DISTANCE) {
     if(state.car.vel > 0.001 && world.inCollision(state) ) { /// collision occurs only when car is moving
 		reward = CrashPenalty(state); //, closest_ped, closest_dist);
-		/*if(CPUDoPrint && state_.scenario_id==CPUPrintPID){
-			printf("Crash\n");
-		}*/
+		if(action == ACT_DEC) reward += 0.1;
 		return true;
 	}
 
@@ -253,23 +252,17 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	else
 		record[0]=123456;
 
-	//if(action==0 && state_.scenario_id==0)cout<<rNum<<endl;
-	//world.FixGPUVel(state.car);
-	world.RobStep(state.car, rNum/*random*/);
-	//if(action==0 && state_.scenario_id==0)cout<<"1-"<<rNum<<endl;
-	/*if(state.scenario_id==52)
-		printf("start rand=%f\n",rNum);*/
+
+	world.RobStep(state.car, rNum, acc);
 	world.RobVelStep(state.car, acc, rNum/*random*/);
 
-	//if(action==0 && state_.scenario_id==0)cout<<"2-"<<rNum<<endl;
-	for(int i=0;i<state.num;i++)
-	{
-		//assert(state.peds[i].pos.x==state.peds[i].pos.x);//debugging
-		/*if(state.scenario_id==52 && i==8)
-			printf("ped %d rand=%f\n",i, rNum);*/
-		world.PedStep(state.peds[i], rNum/*random*/);
-
-		assert(state.peds[i].pos.x==state.peds[i].pos.x);//debugging
+	if(!use_rvo){
+		for(int i=0;i<state.num;i++)
+			world.PedStep(state.peds[i], rNum);
+	}
+	else{
+		//world.RVO2PedStep(state.peds,random,state.num);
+		world.RVO2PedStep(state.peds,rNum,state.num,state.car);
 	}
 
 
@@ -311,6 +304,7 @@ bool PedPomdp::Step(PomdpStateWorld& state, double rNum, int action, double& rew
 
     if(state.car.vel > 0.001 && world.inCollision(state) ) { /// collision occurs only when car is moving
 		reward = CrashPenalty(state); //, closest_ped, closest_dist);
+		if(action == ACT_DEC) reward += 0.1;
 		return true;
 	}
 /*
@@ -339,10 +333,17 @@ bool PedPomdp::Step(PomdpStateWorld& state, double rNum, int action, double& rew
 	Random random(rNum);
 	double acc = (action == ACT_ACC) ? ModelParams::AccSpeed :
 		((action == ACT_CUR) ?  0 : (-ModelParams::AccSpeed));
-	world.RobStep(state.car, random);
-	world.RobVelStep(state.car, acc, random);
-	for(int i=0;i<state.num;i++)
-		world.PedStep(state.peds[i], random);
+	world.RobStep(state.car, rNum, acc);
+	world.RobVelStep(state.car, acc, rNum/*random*/);
+
+	if(!use_rvo){
+		for(int i=0;i<state.num;i++)
+			world.PedStep(state.peds[i], rNum);
+	}
+	else{
+		//world.RVO2PedStep(state.peds,random,state.num);
+		world.RVO2PedStep(state.peds,rNum,state.num,state.car);
+	}
 
 	return false;
 }
@@ -368,6 +369,7 @@ bool PedPomdp::ImportanceSamplingStep(State& state_, double rNum, int action, do
 	//if (closest_front_dist < ModelParams::COLLISION_DISTANCE) {
     if(state.car.vel > 0.001 && world.inCollision(state) ) { /// collision occurs only when car is moving
 		reward = CrashPenalty(state); //, closest_ped, closest_dist);
+		if(action == ACT_DEC) reward += 0.1;
 		return true;
 	}
 /*
@@ -416,14 +418,23 @@ bool PedPomdp::ImportanceSamplingStep(State& state_, double rNum, int action, do
 	Random random(rNum);
 	double acc = (action == ACT_ACC) ? ModelParams::AccSpeed :
 		((action == ACT_CUR) ?  0 : (-ModelParams::AccSpeed));
-	world.RobStep(state.car, random);
-
-	//state.weight *= world.ISRobVelStep(state.car, acc, random);
-	world.RobVelStep(state.car, acc, random);
 	
-	for(int i=0;i<state.num;i++)
-		world.PedStep(state.peds[i], random);
+	///world.RobStep(state.car, random);
+	world.RobStep(state.car, random, acc);
+	//state.weight *= world.ISRobVelStep(state.car, acc, random);
+	world.RobVelStep(state.car, acc, rNum);
+	
+	if(!use_rvo){
+		for(int i=0;i<state.num;i++)
+			world.PedStep(state.peds[i], rNum);
 		//state.weight *= world.ISPedStep(state.car, state.peds[i], random);
+	} else{
+		
+		//world.RVO2PedStep(state.peds,random,state.num);
+	//	cout<<"+++== "<<state.peds[0].pos.x<<" ";
+		world.RVO2PedStep(state.peds,rNum,state.num,state.car);
+	//	cout<<state.peds[0].pos.x<<endl;
+	}
 
 	// Observation
 	obs = Observe(state);
@@ -447,6 +458,7 @@ Belief* PedPomdp::InitialBelief(const State* start, string type) const {
 
 /// output the probability of the intentions of the pedestrians
 void PedPomdp::Statistics(const std::vector<PomdpState*> particles) const {
+	return;
 	double goal_count[10][10]={{0}};
 	cout << "Current Belief" << endl;
 	if(particles.size() == 0)

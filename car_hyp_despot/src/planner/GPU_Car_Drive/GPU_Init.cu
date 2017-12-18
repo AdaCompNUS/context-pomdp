@@ -343,7 +343,7 @@ void Simulator::InitializeDefaultParameters() {
 
 	Globals::config.GPUid=1;//default GPU
 	Globals::config.useGPU=true;
-	Globals::config.use_multi_thread_=true;
+	Globals::config.use_multi_thread_=false;
 	Globals::config.NUM_THREADS=5;
 
 	Globals::config.exploration_mode=UCT;

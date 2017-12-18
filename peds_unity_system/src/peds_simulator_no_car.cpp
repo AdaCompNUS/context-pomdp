@@ -9,6 +9,10 @@
 #include <RVO.h>
 #include "coord.h"
 
+#include <cstdlib>
+#include <iostream>
+#include <ctime>
+
 struct Car {
     Car(){
         vel = 1.0;
@@ -68,7 +72,9 @@ public:
         ped_sim_->setTimeStep(1.0f/freq);    
 
         // setAgentDefaults (float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, const Vector2 &velocity=Vector2())
-        ped_sim_->setAgentDefaults(3.0f, 2, 2.0f, 2.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
+        //ped_sim_->setAgentDefaults(3.0f, 2, 2.0f, 2.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
+        //ped_sim_->setAgentDefaults(5.0f, 3, 2.0f, 2.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
+        ped_sim_->setAgentDefaults(5.0f, 3, 2.0f, 5.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
 
         addObstacle();
     }
@@ -184,7 +190,7 @@ public:
 
         }
 
-/*        ped_sim_->clearAllAgents();
+ /*       ped_sim_->clearAllAgents();
 
         //adding pedestrians
         for(int i=0; i<peds.size(); i++){
@@ -192,8 +198,8 @@ public:
         }
 
         //addAgent (const Vector2 &position, float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed)
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 3.0f, 1, 1.0f, 2.0f, 0.8f, 3.0f, RVO::Vector2(), "vehicle");
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(car.yaw), car.vel * sin(car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity
+        ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
+        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
 
         // Set the preferred velocity for each agent.
         for (size_t i = 0; i < peds.size(); i++) {
@@ -206,10 +212,10 @@ public:
                 if ( absSq(goal - ped_sim_->getAgentPosition(i)) < ped_sim_->getAgentRadius(i) * ped_sim_->getAgentRadius(i) ) {
                     // Agent is within one radius of its goal, set preferred velocity to zero
                     //ped_sim_->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
-                    ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i)));
+                    ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i))*0.6);
                 } else {
                     // Agent is far away from its goal, set preferred velocity as unit vector towards agent's goal.
-                    ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i))*2);
+                    ped_sim_->setAgentPrefVelocity(i, normalize(goal - ped_sim_->getAgentPosition(i))*1.2);
                 }
             }
             
@@ -240,10 +246,27 @@ public:
 
             // }
         //    else{
-                peds[i].pos.x=ped_sim_->getAgentPosition(i).x();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
-                peds[i].pos.y=ped_sim_->getAgentPosition(i).y();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+                peds[i].pos.x=ped_sim_->getAgentPosition(i).x() + GenGaussNum(0, 1) * (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+                peds[i].pos.y=ped_sim_->getAgentPosition(i).y() + GenGaussNum(0, 1) * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
         //    } 
         }*/
+    }
+
+
+    double GenGaussNum(double mean, double std){
+
+        double u1 = 1.0-(std::rand()%10000)/10000.0; //uniform(0,1] random float
+        double u2 = 1.0-(std::rand()%10000)/10000.0;
+        double rand_std_normal = std::sqrt(-2.0 * std::log(u1)) *
+            sin(2.0 * 3.14159 * u2); //random normal(0,1)
+        double rand_normal =
+            mean + std * rand_std_normal;
+
+        return rand_normal;
+    }
+
+    double AddGaussNoise(double value, double mean, double std){
+        return value + GenGaussNum (mean, std);
     }
 
 
@@ -324,6 +347,7 @@ public:
 int main(int argc,char**argv)
 {
 	ros::init(argc,argv,"peds_unity_system");
+    std::srand(std::time(0));
     PedsSystem peds_system;
     peds_system.spin();
 	return 0;

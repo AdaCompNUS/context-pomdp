@@ -650,6 +650,9 @@ Step_IntObs(int total_num_scenarios, int num_particles, Dvc_State* vnode_particl
 		, int parent_action,
 		int Shared_mem_per_particle) {
 
+	//if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+			printf("line %s\n", __LINE__);
+
 	if (blockIdx.y * blockDim.x + threadIdx.x < num_particles) {
 		__shared__ int Intobs[32*60];
 
@@ -681,6 +684,10 @@ Step_IntObs(int total_num_scenarios, int num_particles, Dvc_State* vnode_particl
 		current_particle = (Dvc_State*) ((int*) localParticles + Shared_mem_per_particle * threadIdx.x);
 		__syncthreads();
 
+		if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+			printf("line 685\n");
+
+
 		int terminal = false;
 		float reward = 0;
 
@@ -693,6 +700,8 @@ Step_IntObs(int total_num_scenarios, int num_particles, Dvc_State* vnode_particl
 
 				terminal = DvcModelStepIntObs_(*current_particle, streams->Entry(current_particle->scenario_id, streams->position_-1),
 							parent_action, reward, Intobs+threadIdx.x*num_obs_elements);
+				if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+				printf("line 701\n");
 			}
 			else
 			{
@@ -728,6 +737,8 @@ Step_IntObs(int total_num_scenarios, int num_particles, Dvc_State* vnode_particl
 			terminal = DvcModelStepIntObs_(*current_particle, streams->Entry(current_particle->scenario_id),
 					action, reward, Intobs+threadIdx.x*num_obs_elements);
 
+			if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+				printf("line %s\n", __LINE__);
 			/*if(current_particle->scenario_id==0 && blockIdx.x+threadIdx.y==0)
 				printf("\nFinish step with action %d, get reward %f obs\n",action, reward);*/
 
@@ -956,12 +967,13 @@ _InitBounds_IntObs(int total_num_scenarios, int num_particles,
 		Dvc_ValuedAction* default_move_all_a_p,
 		Dvc_RandomStreams* streams, Dvc_History* history, int depth,
 		int hist_size,int Shared_mem_per_particle) {
-
+	if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+		printf("line %s\n", __LINE__);
 	int action = blockIdx.x;
 
-	//if(blockIdx.y + blockIdx.x + threadIdx.x +threadIdx.y==0)
-	//	printf("stream pos in _InitBounds_IntObs = %d\n", streams->position_);
-	if (blockIdx.y * blockDim.x + threadIdx.x < num_particles) {
+	/*if (blockIdx.y * blockDim.x + threadIdx.x < num_particles) {
+		if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+			printf("line %s\n", __LINE__);
 
 		int PID = (blockIdx.y * blockDim.x + threadIdx.x) % num_particles;
 		int obs_i = threadIdx.y;
@@ -981,58 +993,48 @@ _InitBounds_IntObs(int total_num_scenarios, int num_particles,
 				printf("InitBound kernel: DvcModelCopyToShared_ has not been defined!\n");
 		}
 		__syncthreads();
+		if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+			printf("line %s\n", __LINE__);
 
-		/*Do roll-out using the updated particle*/
-		//local_history[scenarioID].Add(action, observations[scenarioID]);
+		//Do roll-out using the updated particle
 		Dvc_History local_history;
 		local_history.currentSize_ = hist_size;
 		local_history.actions_ = history->actions_;
 		local_history.observations_ = history->observations_;
-		/*if(hist_size>0)
-		{
-			local_history.actions_[hist_size - 1] = blockIdx.x;
-			local_history.observations_[hist_size - 1] =
-					observations_all_a_p[global_list_pos];
-		}*/
+
 		Dvc_RandomStreams local_streams(streams->num_streams_, streams->length_,
 				streams->streams_,
 				(hist_size>0)?streams->position_+1:streams->position_);
 
 		float local_upper;
 		if (obs_i == 0 && (blockIdx.y * blockDim.x + threadIdx.x) < num_particles) {
-			//local_upper = GPU_InitUpperBound(0/*already at right pos*/,
-			//		current_particle,
-			//		/*local_streams, */local_history, depth);
+
 			local_upper = DvcUpperBoundValue_(current_particle, 0, local_history);
 			local_upper *= Dvc_Globals::Dvc_Discount(Dvc_config, depth);
 		}
-		//Dvc_ValuedAction local_lower = GPU_InitLowerBound(
-		//		 current_particle,
-		//		local_streams, local_history, depth);
-		/*Lower bound*/
+		if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+			printf("line %s\n", __LINE__);
+
+		//Lower bound
 		local_streams.position(depth);
 		Dvc_ValuedAction local_lower = DvcLowerBoundValue_( current_particle, local_streams,
 					local_history);
 		local_lower.value *= Dvc_Globals::Dvc_Discount(Dvc_config, depth);
 		local_streams.position(depth);
+		if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+			printf("line %s\n", __LINE__);
 		if (obs_i == 0 && (blockIdx.y * blockDim.x + threadIdx.x) < num_particles) {
 			global_list_pos=action * total_num_scenarios + PID;
 			local_lower.value = local_lower.value * current_particle->weight;
 			local_upper = local_upper * current_particle->weight;
 			utility_upper_all_a_p[global_list_pos] = local_upper;
 
-			/*local_upper = local_upper
-					- Dvc_config->pruning_constant / num_particles;*/
-			/*if (local_upper < local_lower.value
-			// close gap because no more search can be done on leaf node
-					|| depth == Dvc_config->search_depth - 1) {
-				local_upper = local_lower.value;
-			}*/
 			upper_all_a_p[global_list_pos] = local_upper;
 			default_move_all_a_p[global_list_pos] = local_lower;
-			//local_history[scenarioID].RemoveLast();
+			if(threadIdx.x+threadIdx.y+blockIdx.y+blockIdx.x==0 )
+				printf("line %s\n", __LINE__);
 		}
-	}
+	}*/
 }
 void DESPOT::Validate_GPU(int line) {
 	if (false) {
@@ -1111,16 +1113,16 @@ void DESPOT::UpdateData(VNode* vnode,int ThreadID,const DSPOMDP* model,RandomStr
 
 	const std::vector<State*>& particles = vnode->particles();
 	const std::vector<int>& particleIDs = vnode->particleIDs();
-
+	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 	model->CopyToGPU(particleIDs, Dvc_particleIDs_long[ThreadID],
 			cuda_streams + ThreadID);
-
+	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 	if(vnode->parent()!=NULL)
 	{
 		/*Create GPU particles for the new v-node*/
 		Dvc_State* new_particles = model->AllocGPUParticles(
 				particleIDs.size(), 2);
-
+	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 		//model->CopyToGPU(particleIDs, Dvc_particleIDs_long[ThreadID],
 		//		cuda_streams + ThreadID);
 
@@ -1134,9 +1136,11 @@ void DESPOT::UpdateData(VNode* vnode,int ThreadID,const DSPOMDP* model,RandomStr
 				particleIDs.size(),true,
 				Dvc_streams[ThreadID], streams.position(),
 				cuda_streams + ThreadID);
+		if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 		/*Interleaving with CPU*/
 		vnode->AssignGPUparticles(new_particles,
 				particleIDs.size());
+		if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 		vnode->weight_=particleIDs.size()/((float)Globals::config.num_scenarios);
 	}
 
@@ -1157,7 +1161,7 @@ void DESPOT::MCSimulation(VNode* vnode, int ThreadID,
 #ifdef RECORD_TIME
 	auto start = Time::now();
 #endif
-	//if(FIX_SCENARIO==1) cout<<__FUNCTION__<<endl;
+	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<endl;
 
 	int thready, blocky;
 	dim3 GridDim;
@@ -1211,9 +1215,9 @@ void DESPOT::MCSimulation(VNode* vnode, int ThreadID,
 
 		if(Obs_type==OBS_INT_ARRAY/*false*/)
 		{
-			/*if(GPUDoPrint){
+			if(GPUDoPrint){
 				printf("pre-step particle %d\n", Dvc_particles_long[ThreadID]);
-			}*/
+			}
 
 			int num_Obs_element=num_Obs_element_in_GPU;
 			if (use_multi_thread_)
@@ -1768,7 +1772,7 @@ void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 			|| vnode->depth() == Globals::config.search_depth - 1) {
 		vnode->upper_bound(vnode->lower_bound());
 	}*/
-	//if(FIX_SCENARIO==1) cout<<__FUNCTION__<<endl;
+	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 	int ThreadID = 0;
 	//if (use_multi_thread_)
 	//	ThreadID = MapThread(this_thread::get_id());
@@ -1798,7 +1802,7 @@ void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 	}
 
 	int threadx = 32;
-
+	if(true/*FIX_SCENARIO==1*/) cout<<__FUNCTION__<<": "<<__LINE__<<endl;
 	if (Obs_parallel_level == OBS_PARALLEL_Y) {
 		blocky =(NumParticles % threadx == 0) ?
 				NumParticles / threadx : NumParticles / threadx + 1;
@@ -1809,6 +1813,30 @@ void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 		if(Obs_type==OBS_INT_ARRAY)
 		{
+			if(true/*FIX_SCENARIO==1*/) {
+				cout<<__FUNCTION__<<": "<<__LINE__<<endl;
+				cout<<__FUNCTION__<<": ThreadID="<<ThreadID<<endl;
+				cout<<__FUNCTION__<<": GridDim="<<GridDim.x<<","<<GridDim.y<<endl;
+				cout<<__FUNCTION__<<": ThreadDim="<<ThreadDim.x<<","<<ThreadDim.y<<endl;
+				cout<<__FUNCTION__<<": Globals::config.num_scenarios="<<Globals::config.num_scenarios<<endl;
+				cout<<__FUNCTION__<<": NumParticles="<<NumParticles<<endl;
+				cout<<__FUNCTION__<<": vnode->GetGPUparticles()="<<vnode->GetGPUparticles()<<endl;
+				cout<<__FUNCTION__<<": Dvc_particleIDs_long[ThreadID]="<<Dvc_particleIDs_long[ThreadID]<<endl;
+				cout<<__FUNCTION__<<": Dvc_ub_all_a_p[ThreadID]="<<Dvc_ub_all_a_p[ThreadID]<<endl;
+				cout<<__FUNCTION__<<": Dvc_uub_all_a_p[ThreadID]="<<Dvc_uub_all_a_p[ThreadID]<<endl;
+				cout<<__FUNCTION__<<": Dvc_lb_all_a_p[ThreadID]="<<Dvc_lb_all_a_p[ThreadID]<<endl;
+				cout<<__FUNCTION__<<": Dvc_streams[ThreadID]="<<Dvc_streams[ThreadID]<<endl;
+				cout<<__FUNCTION__<<": Dvc_streams[ThreadID]->position_="<<Dvc_streams[ThreadID]->position_<<endl;
+				cout<<__FUNCTION__<<": Dvc_streams[ThreadID]->streams_="<<Dvc_streams[ThreadID]->streams_<<endl;
+				cout<<__FUNCTION__<<": Dvc_history[ThreadID]="<<Dvc_history[ThreadID]<<endl;
+				cout<<__FUNCTION__<<": Dvc_history[ThreadID]->actions_="<<Dvc_history[ThreadID]->actions_<<endl;
+
+				cout<<__FUNCTION__<<": vnode->depth()="<<vnode->depth()<<endl;
+				cout<<__FUNCTION__<<": history.Size()="<<history.Size()<<endl;
+				cout<<__FUNCTION__<<": Shared_mem_per_particle="<<Shared_mem_per_particle<<endl;
+				cout<<__FUNCTION__<<": use_multi_thread_="<<use_multi_thread_<<endl;
+				
+			}
 			if (use_multi_thread_)
 				_InitBounds_IntObs<<<GridDim, ThreadDim, threadx * Shared_mem_per_particle * sizeof(int),
 						cuda_streams[ThreadID]>>>(Globals::config.num_scenarios,
@@ -1867,6 +1895,7 @@ void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 					Dvc_streams[ThreadID], vnode->depth(),
 					history.Size());
 	}
+	HANDLE_ERROR(cudaDeviceSynchronize());
 
 	ReadBackData(ThreadID);
 

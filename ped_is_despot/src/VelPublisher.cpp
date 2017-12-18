@@ -83,7 +83,7 @@ class VelPublisher2 : public VelPublisher {
             //target_vel = 0.6;
         //}
 		if(target_vel <= 0.01) {
-			target_vel = 0.01;
+			target_vel = 0.0;
 		}
     }
 

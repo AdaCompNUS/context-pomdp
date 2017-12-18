@@ -74,10 +74,13 @@ find_package(catkin REQUIRED COMPONENTS
 
 include_directories(
    ${catkin_INCLUDE_DIRS}
+   src/RVO2/src
    src/HypDespot/include/
    src/planner/
    src/planner/GPU_Car_Drive/
 )
+
+FILE(GLOB LIBRVO_SRCS  src/RVO2/src/*.cpp)
 
 catkin_package(
   INCLUDE_DIRS src/planner/
@@ -86,7 +89,6 @@ catkin_package(
   DEPENDS system_lib
 )
 message("@@@@@@@@@@@@@@ before add lib @@@@@@@@@@@@@@")
-
 
 
 #set_directory_properties( PROPERTIES COMPILE_DEFINITIONS "" )
@@ -155,6 +157,7 @@ add_library(
   src/HypDespot/src/GPUutil/GPUThreadId.cu 
   src/HypDespot/src/GPUrandom_streams.cu
   src/HypDespot/src/solver/GPUdespot.cu
+  ${LIBRVO_SRCS}
   src/planner/Path.cpp
   src/planner/simulator.cu
     src/planner/collision.cpp

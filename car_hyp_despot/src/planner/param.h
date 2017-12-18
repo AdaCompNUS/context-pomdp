@@ -7,7 +7,7 @@
 namespace ModelParams {
  
 	const double GOAL_TRAVELLED=100.0;
-	const int N_PED_IN=9;
+	const int N_PED_IN=15;
     const int N_PED_WORLD=300;
 
 	extern double VEL_MAX;
@@ -54,7 +54,11 @@ namespace ModelParams {
     }
 
     // deprecated params
-	const double GOAL_REWARD = 0;
+    const double GOAL_REWARD = 0;
+
+    const bool CPUDoPrint=false;
+
+    const bool is_simulation=true;
 };
 
 #endif

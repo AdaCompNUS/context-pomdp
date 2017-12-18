@@ -67,7 +67,8 @@ namespace RVO {
 	 */
 	inline float distSqPointLineSegment(const Vector2 &a, const Vector2 &b,
 										const Vector2 &c)
-	{
+	{	
+		if(absSq(b - a) < 1e-7) return absSq(c-a);
 		const float r = ((c - a) * (b - a)) / absSq(b - a);
 
 		if (r < 0.0f) {
@@ -79,6 +80,17 @@ namespace RVO {
 		else {
 			return absSq(c - (a + r * (b - a)));
 		}
+	}
+
+
+	inline float distPointLine(const Vector2 &a, const Vector2 &b,
+										const Vector2 &c)
+	{	
+		if(absSq(b - a) < 1e-7) return abs(c-a);
+
+		const float r = ((c - a) * (b - a)) / absSq(b - a);
+		
+		return abs(c - (a + r * (b - a)));
 	}
 
 	/**

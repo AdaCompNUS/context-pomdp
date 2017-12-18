@@ -173,7 +173,8 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  src/RVO2/src
+  ####src/RVO2/src
+  ../car_hyp_despot/src/RVO2/src/
   ../car_hyp_despot/src/planner/
   ../car_hyp_despot/src/HypDespot/include/
   ../car_hyp_despot/src/HypDespot/include/despot
@@ -181,13 +182,13 @@ include_directories(
 
 
 
-FILE(GLOB LIBRVO_SRCS  src/RVO2/src/*.cpp)
+####FILE(GLOB LIBRVO_SRCS  src/RVO2/src/*.cpp)
 #FILE(GLOB LIBDESPOT_SRCS src/despot/src/*.cpp src/despot/src/core/*.cpp src/despot/src/ippc/*.cpp src/despot/src/pomdpx/*.cpp src/despot/src/pomdpx/parser/*.cpp src/despot/src/solver/*.cpp src/despot/src/test/*.cpp src/despot/src/util/*.cpp src/despot/src/util/tinyxml/*.cpp src/planner/*.cpp)
 
 ## Declare a C++ library
-add_library(rvo
-   ${LIBRVO_SRCS}
-)
+####add_library(rvo
+####   ${LIBRVO_SRCS}
+####)
 
 #add_library(despot
 #   ${LIBDESPOT_SRCS}
@@ -233,7 +234,7 @@ add_dependencies(vel_publisher ped_is_despot_generate_messages_cpp)
 
 target_link_libraries(ped_pomdp
    ${catkin_LIBRARIES}
-   rvo
+   ####rvo
    car_hyp_despot
    #/home/panpan/workspace/catkin_ws/src/ped_is_despot/src/planner/build/libGPUmodel.a
 )

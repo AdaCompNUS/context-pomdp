@@ -1,7 +1,7 @@
 #pragma once
 #include"state.h"
 #include"Path.h"
-
+#include <RVO.h>
 using namespace despot;
 
 struct PedBelief {
@@ -33,6 +33,7 @@ public:
 	bool inFront(COORD ped_pos, int car) const;
     
     bool inCollision(const PomdpState& state);
+    bool inRealCollision(const PomdpState& state);
     bool inCollision(const PomdpStateWorld& state);
     
     bool inCollision(const PomdpState& state, int &id);
@@ -44,10 +45,15 @@ public:
 	void PedStep(PedStruct &ped, double& random);
 
     double ISPedStep(CarStruct &car, PedStruct &ped, Random& random);//importance sampling PedStep
+    void RVO2PedStep(PedStruct peds[], Random& random, int num_ped); //no interaction between car and pedestrian
+    void RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
+    void RVO2PedStep(PedStruct peds[], double& random, int num_ped); //no interaction between car and pedestrian
+    void RVO2PedStep(PedStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
     void PedStepDeterministic(PedStruct& ped, int step);
     void FixGPUVel(CarStruct &car);
 	void RobStep(CarStruct &car, Random& random);
-	void RobStep(CarStruct &car, double& random);
+	void RobStep(CarStruct &car, double& random, double acc);
+    void RobStep(CarStruct &car, Random& random, double acc);
     void RobVelStep(CarStruct &car, double acc, Random& random);
     void RobVelStep(CarStruct &car, double acc, double& random);
     double ISRobVelStep(CarStruct &car, double acc, Random& random);//importance sampling RobvelStep
@@ -62,6 +68,7 @@ public:
     std::vector<COORD> goals;
     double freq;
     const double in_front_angle_cos;
+    RVO::RVOSimulator* ped_sim_;
 };
 
 class WorldStateTracker {

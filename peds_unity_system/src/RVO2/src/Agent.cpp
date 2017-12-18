@@ -30,6 +30,7 @@
  * <http://gamma.cs.unc.edu/RVO2/>
  */
 
+
 #include "Agent.h"
 
 #include "KdTree.h"
@@ -41,6 +42,7 @@ namespace RVO {
 	Agent::Agent(RVOSimulator *sim) : maxNeighbors_(0), maxSpeed_(0.0f), neighborDist_(0.0f), radius_(0.0f), sim_(sim), timeHorizon_(0.0f), timeHorizonObst_(0.0f), id_(0) { 
 		use_new_pref_vel_ = false;
 		change_dir_iter_ = 0;
+		patience_ = 1.0;
 
 		updated_ = true;
 	}
@@ -62,6 +64,41 @@ namespace RVO {
 	/* Search for the best new velocity. */
 	void Agent::computeNewVelocity()
 	{
+		/*if(tag_ == "vehicle" || id_ == 137) {
+			std::cout<<"my id: "<<id_<<std::endl;
+			std::cout<<"**** begin of vehicle neighors"<<std::endl;
+			std::cout<<"veh pos: "<<position_<<std::endl;
+			std::cout<<"veh vel: "<<prefVelocity_<<std::endl;
+
+			for (size_t i = 0; i < agentNeighbors_.size(); ++i) {
+				const Agent *const other = agentNeighbors_[i].second;
+
+				const Vector2 relativePosition = other->position_ - position_;
+				const Vector2 relativeVelocity = velocity_ - other->velocity_;
+				const float dist = abs(relativePosition);
+				const float combinedRadius = radius_ + other->radius_;
+				const float combinedRadiusSq = sqr(combinedRadius);
+				
+				std::cout<<"ped id: "<<other->id_<<std::endl;
+				std::cout<<"pos: "<<other->position_<<std::endl;
+				std::cout<<"relative pos: "<<relativePosition<<std::endl;
+				std::cout<<"dist: "<<dist<<std::endl;
+				std::cout<<"^^tag: "<<other->tag_<<std::endl;
+				
+				float to_line = distPointLine(Vector2(0.0f, 0.0f), prefVelocity_, other->position_ - position_);
+				std::cout<<"to line dist: "<<to_line<<std::endl;
+
+				
+			}
+			newVelocity_ = prefVelocity_;
+			if(tag_ == "vehicle") return;
+		}*/
+
+		if(tag_ == "vehicle") {
+			newVelocity_ = prefVelocity_;
+			return;
+		}
+
 		orcaLines_.clear();
 
 		const float invTimeHorizonObst = 1.0f / timeHorizonObst_;
@@ -295,18 +332,19 @@ namespace RVO {
 
 		bool vehicle_in_neighbor = false;
 		Vector2 vel_veh_avoiding;
-		Vector2 vel_pos;
+		Vector2 veh_pos;
 
 		/* Create agent ORCA lines. */
 		for (size_t i = 0; i < agentNeighbors_.size(); ++i) {
 			const Agent *const other = agentNeighbors_[i].second;
 			if(other->tag_ == "vehicle") {
-				invTimeHorizon = 1.0f/(timeHorizon_ * 4);
-				std::cout<<agentNeighbors_.size()<<" vehicle in neighbor, distance: "<<abs(other->position_ - position_)<<std::endl;
+				//std::cout<<"in neighbor, ped id: "<<id_<<std::endl;
+				invTimeHorizon = 1.0f/(timeHorizon_ *10);
+			//	std::cout<<agentNeighbors_.size()<<" vehicle in neighbor, distance: "<<abs(other->position_ - position_)<<std::endl;
 				vehicle_in_neighbor = true;
 				vel_veh_avoiding = other->prefVelocity_;
-				vel_pos = other->position_;
-				std::cout<<"pref: "<<vel_veh_avoiding<<std::endl;
+				veh_pos = other->position_;
+			//	std::cout<<"pref: "<<vel_veh_avoiding<<std::endl;
 			}
 
 			const Vector2 relativePosition = other->position_ - position_;
@@ -376,16 +414,17 @@ namespace RVO {
 					//line.point = 0.5f * prefVelocity_ + 0.5f * velocity_ + 0.5f * u;
 				}
 				else{
+					float res_changing_dist = 10.0;
 					float ped_responsibility;
 					float dist_to_collision = std::sqrt(distSq) - combinedRadius;
 					if(dist_to_collision < 0) {//collision.
 						ped_responsibility = 0.95;
 					}
-					else if(dist_to_collision > 5){
+					else if(dist_to_collision > res_changing_dist){
 						ped_responsibility = 0.05;
 					}
 					else{
-						ped_responsibility = 0.05 + (5.0 - dist_to_collision)/5.0 * 0.9;
+						ped_responsibility = 0.05 + (res_changing_dist - dist_to_collision)/res_changing_dist * 0.9;
 						//ped_responsibility = 1.0;
 					}
 					
@@ -398,16 +437,17 @@ namespace RVO {
 			}
 			else{
 				if(other->tag_ == "vehicle"){
+					float res_changing_dist = 10.0;
 					float ped_responsibility;
 					float dist_to_collision = std::sqrt(distSq) - combinedRadius;
 					if(dist_to_collision < 0) {//collision.
 						ped_responsibility = 0.95;
 					}
-					else if(dist_to_collision > 5){
+					else if(dist_to_collision > res_changing_dist){
 						ped_responsibility = 0.05;
 					}
 					else{
-						ped_responsibility = 0.05 + (5.0 - dist_to_collision)/5.0 * 0.9;
+						ped_responsibility = 0.05 + (res_changing_dist - dist_to_collision)/res_changing_dist * 0.9;
 						//ped_responsibility = 3.0;
 					}
 					
@@ -430,15 +470,33 @@ namespace RVO {
 			orcaLines_.push_back(line);
 		}
 
-/*		size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_);
+
+		if(vehicle_in_neighbor && (abs(velocity_) <= 0.1 || abs(prefVelocity_) <= 0.1)){
+			float dist_to_veh = abs(position_-veh_pos);
+			if(dist_to_veh < 2.25f){
+				if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < 1.25f) {// the distance of the ped to the center line of the vehicle
+					
+					//std::cout<<"fkdlsaf fdsafs: "<<distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)<<std::endl;
+					if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+						prefVelocity_ = vel_veh_avoiding.rotate(90.0)*1.15;
+					} else{
+						prefVelocity_ = vel_veh_avoiding.rotate(-90.0)*1.15;
+					}
+					//std::cout<<"fffff new pref vel: "<<prefVelocity_<<std::endl;
+				}
+			}
+		
+		}
+
+		size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_, patience_);
 		///size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, velocity_, false, newVelocity_);
 	//	std::cout<<"2 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 
 		if (lineFail < orcaLines_.size()) {
 			linearProgram3(orcaLines_, numObstLines, lineFail, maxSpeed_, newVelocity_);
-			std::cout<<"3 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
+			//std::cout<<tag_ <<" **P3 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 			///linearProgram3(orcaLines_, numObstLines, lineFail, maxSpeed_, newVelocity_);
-		}*/
+		}
 
 /*		float new_speed = abs(newVelocity_);
 		float pref_speed = abs(prefVelocity_);
@@ -581,20 +639,19 @@ namespace RVO {
 			}
 		}*/
 
-		std::cout<<"*****: "<<tag_<<std::endl;
-
-		if(vehicle_in_neighbor){
-			float dist_to_veh = abs(position_-vel_pos);
-			if(dist_to_veh < 1.5f){
-				if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-vel_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
-					prefVelocity_ = vel_veh_avoiding.rotate(90.0);
-				} else{
-					prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
+		//std::cout<<"*****: "<<tag_<<std::endl;
+/*		if(vehicle_in_neighbor){
+				float dist_to_veh = abs(position_-veh_pos);
+				if(dist_to_veh < 1.95f){
+					if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+						prefVelocity_ = vel_veh_avoiding.rotate(90.0);
+					} else{
+						prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
+					}
 				}
+			
 			}
-			
-			
-		}
+
 		if(!use_new_pref_vel_){
 			size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_);
 
@@ -605,6 +662,9 @@ namespace RVO {
 		//		std::cout<<"2 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 			}
 		}else{
+			
+			
+
 			size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, new_pref_vel_, false, newVelocity_);
 
 				std::cout<<"2 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
@@ -615,7 +675,7 @@ namespace RVO {
 				std::cout<<"3 "<<prefVelocity_<<" "<<newVelocity_<<std::endl;
 			}
 
-			change_dir_iter_ = (change_dir_iter_+1)%3;
+			change_dir_iter_ = (change_dir_iter_+1)%4;
 			if(change_dir_iter_ == 0) {
 				use_new_pref_vel_ = false;
 			}
@@ -653,16 +713,39 @@ namespace RVO {
 				}
 			}
 			
-		}		
+		}*/	
 	}
 
 	void Agent::insertAgentNeighbor(const Agent *agent, float &rangeSq)
-	{
+	{	
+		/*if(id_== 137){
+				//if(agent->id_ == 150){
+				if(agent->tag_ =="vehicle"){
+					std::cout<<"********** "<<std::endl;
+				}
+			}*/
+
 		if (this != agent) {
 			///const float distSq = absSq(position_ - agent->position_);
-			const float distSq = abs(position_ - agent->position_) - agent->radius_ < 0 ? 0:sqr(abs(position_ - agent->position_) - agent->radius_);
+			float distSq = abs(position_ - agent->position_) - agent->radius_ < 0 ? 0:sqr(abs(position_ - agent->position_) - agent->radius_);
+			//if(agent->tag_ =="vehicle") distSq = abs(position_ - agent->position_) - agent->radius_ - 2.0 < 0 ? 0:sqr(abs(position_ - agent->position_) - agent->radius_ -2.0);
 			//std::cout<<std::sqrt(distSq)<<std::endl;
 
+			/*if(id_== 137){
+				//if(agent->id_ == 150){
+				if(agent->tag_ =="vehicle"){
+					std::cout<<"^^^ veh: "<<distSq<<std::endl;
+				}
+				if(agent->id_ == 105){
+					std::cout<<"^^^ 105: "<<distSq<<std::endl;
+				}
+				if(agent->id_ == 97){
+					std::cout<<"^^^ 97: "<<distSq<<std::endl;
+				}
+				if(agent->id_ == 128){
+					std::cout<<"^^^ 128: "<<distSq<<std::endl;
+				}
+			}*/
 			if (distSq < rangeSq) {
 				if (agentNeighbors_.size() < maxNeighbors_) {
 					agentNeighbors_.push_back(std::make_pair(distSq, agent));
@@ -716,6 +799,13 @@ namespace RVO {
 		float x_pref = optVelocity.x();
 		float y_pref = optVelocity.y();
 		return (x - x_pref)*(x - x_pref) + (y-y_pref)*(y-y_pref) + std::fabs(x*x + y*y - x_pref*x_pref-y_pref*y_pref);
+	}
+	float objFuncValue(Vector2 v, Vector2 optVelocity, double w){
+		float x = v.x();
+		float y = v.y();
+		float x_pref = optVelocity.x();
+		float y_pref = optVelocity.y();
+		return (x - x_pref)*(x - x_pref) + (y-y_pref)*(y-y_pref) + w * std::fabs(x*x + y*y - x_pref*x_pref-y_pref*y_pref);
 	}
 
 	bool linearProgram1(const std::vector<Line> &lines, size_t lineNo, float radius, const Vector2 &optVelocity, bool directionOpt, Vector2 &result)
@@ -790,8 +880,8 @@ namespace RVO {
 				result = lines[lineNo].point + tLeft * lines[lineNo].direction;
 			}
 		}
-		else {
-			/* Optimize closest point. */
+/*		else {
+			/// Optimize closest point.
 			const float t = lines[lineNo].direction * (optVelocity - lines[lineNo].point);
 			/// check this optimal point is on the line segment or not
 			if (t < tLeft) {
@@ -803,9 +893,9 @@ namespace RVO {
 			else {
 				result = lines[lineNo].point + t * lines[lineNo].direction;
 			}
-		}
+		}*/
 
-		/*
+		
 		else {
 			float dist_to_line_seg = std::sqrt( distSqPointLineSegment(lines[lineNo].point + tLeft * lines[lineNo].direction, 
 				lines[lineNo].point + tRight * lines[lineNo].direction, Vector2(0.0, 0.0)) );
@@ -862,8 +952,171 @@ namespace RVO {
 						}
 					}
 				}
+
 			}
-		} */
+		} 
+
+		return true;
+	}
+
+
+	bool linearProgram1(const std::vector<Line> &lines, size_t lineNo, float radius, const Vector2 &optVelocity, bool directionOpt, double w, std::vector<CostVelPair> & opt_vel_candidates)
+	{
+		const float dotProduct = lines[lineNo].point * lines[lineNo].direction;
+
+		/// note that sqr means square rather than square root. 
+		/// rewrite discriminant as sqr(radius) - (absSq(lines[lineNo].point) - sqr(dotProduct))
+		/// absSq(lines[lineNo].point) - sqr(dotProduct) is the square of the minimum speed that to avoid collision
+		/// radius is the square of the maximum speed
+		const float discriminant = sqr(dotProduct) + sqr(radius) - absSq(lines[lineNo].point);
+
+		if (discriminant < 0.0f) { /// the minmum speed requred to avoid collision is larger than the max speed allowed
+			/* Max speed circle fully invalidates line lineNo. */
+			return false;
+		}
+
+		const float sqrtDiscriminant = std::sqrt(discriminant);
+
+		/// thoese orca lines might or might not(when parellel) intersect with lineNo.
+		/// tLeft is the intersection point on the left of lines[lineNo].point that is closest to lines[lineNo].point; the radius of max_speed also
+		/// intersects with lines[lineNo] and have two intersection points; we also add the left point into the intersection points to be compared.
+		/// tRight is similar.
+		float tLeft = -dotProduct - sqrtDiscriminant; /// initialized to the distance to max_speed intersection point
+		float tRight = -dotProduct + sqrtDiscriminant;
+
+		for (size_t i = 0; i < lineNo; ++i) {
+			const float denominator = det(lines[lineNo].direction, lines[i].direction);
+			const float numerator = det(lines[i].direction, lines[lineNo].point - lines[i].point);
+
+			if (std::fabs(denominator) <= RVO_EPSILON) {
+				/* Lines lineNo and i are (almost) parallel. */
+				if (numerator < 0.0f) {
+					return false;
+				}
+				else {
+					continue;
+				}
+			}
+
+			/// t is the distance from lines[lineNo].point to the intersection point of lines[i] and lines[lineNo] (with direction)
+			const float t = numerator / denominator;
+
+			/// (it is defined that the left side of the orca line is feasible)
+			/// Line i will futher devides the left part of line lineNo into two parts: the left part and the right part
+			/// when denominator >= 0, the right part of the left part of line lineNo is feasible
+			if (denominator >= 0.0f) {
+				/* Line i bounds line lineNo on the right. */
+				tRight = std::min(tRight, t); 
+				/// 
+				/// if there is no dynamic constraint (i.e., v<=max_speed), tRight = t. Previously we already set tRigth
+				/// to max_speed. this min is to choose which point it should use as the boundary, the max_pseed point or the intersection point
+			}
+			else {
+				/* Line i bounds line lineNo on the left. */
+				tLeft = std::max(tLeft, t);
+			}
+
+			if (tLeft > tRight) {
+				return false;
+			}
+		}
+
+		if (directionOpt) {
+			/* Optimize direction. */
+			if (optVelocity * lines[lineNo].direction > 0.0f) {
+				/* Take right extreme. */
+				Vector2 result = lines[lineNo].point + tRight * lines[lineNo].direction;
+				opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+			}
+			else {
+				/* Take left extreme. */
+				Vector2 result = lines[lineNo].point + tLeft * lines[lineNo].direction;
+				opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+			}
+		}		
+		else {
+			float dist_to_line_seg = std::sqrt( distSqPointLineSegment(lines[lineNo].point + tLeft * lines[lineNo].direction, 
+				lines[lineNo].point + tRight * lines[lineNo].direction, Vector2(0.0, 0.0)) );
+			float v_pref_len = abs(optVelocity);
+			if(dist_to_line_seg > v_pref_len){
+				const float t = ( lines[lineNo].direction * (optVelocity - (1+w) * lines[lineNo].point)) / (1+w);
+				/// check this optimal point is on the line segment or not
+				if (t < tLeft) {
+					Vector2 result = lines[lineNo].point + tLeft * lines[lineNo].direction;
+					opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+				}
+				else if (t > tRight) {
+					Vector2 result = lines[lineNo].point + tRight * lines[lineNo].direction;
+					opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+				}
+				else {
+					Vector2 result = lines[lineNo].point + t * lines[lineNo].direction;
+					opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+				}
+			} else{
+				float ab = lines[lineNo].direction * lines[lineNo].point;
+
+				float delta = ab*ab - lines[lineNo].point * lines[lineNo].point + v_pref_len * v_pref_len;
+				if(delta<=1e-6) delta = 0;
+				float sqrt_delta = std::sqrt(delta);
+				//float sqrt_delta = std::sqrt(ab*ab - lines[lineNo].point * lines[lineNo].point + v_pref_len * v_pref_len);
+				
+				float t_left = -ab - sqrt_delta; //left intersection point of the line and the circle
+				float t_right = -ab + sqrt_delta; //right intersection point of the line and the circle
+
+				if(t_left < tLeft){
+					if(t_right > tRight){
+						// if(objFuncValue(lines[lineNo].point + tLeft * lines[lineNo].direction, optVelocity) 
+						// 	< objFuncValue(lines[lineNo].point + tRight * lines[lineNo].direction, optVelocity)){
+						// 	result = lines[lineNo].point + tLeft * lines[lineNo].direction;
+						// } else{
+						// 	result = lines[lineNo].point + tRight * lines[lineNo].direction;
+						// }
+						Vector2 result = lines[lineNo].point + tLeft * lines[lineNo].direction;
+						opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+						result = lines[lineNo].point + tRight * lines[lineNo].direction;
+						opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+
+					}else{
+						// if(objFuncValue(lines[lineNo].point + tLeft * lines[lineNo].direction, optVelocity) 
+						// 	< objFuncValue(lines[lineNo].point + t_right * lines[lineNo].direction, optVelocity)){
+						// 	result = lines[lineNo].point + tLeft * lines[lineNo].direction;
+						// } else{
+						// 	result = lines[lineNo].point + t_right * lines[lineNo].direction;
+						// }
+						Vector2 result = lines[lineNo].point + tLeft * lines[lineNo].direction;
+						opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+						result = lines[lineNo].point + t_right * lines[lineNo].direction;
+						opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+					}
+				}else{
+					if(t_right > tRight){
+						// if(objFuncValue(lines[lineNo].point + t_left * lines[lineNo].direction, optVelocity) 
+						// 	< objFuncValue(lines[lineNo].point + tRight * lines[lineNo].direction, optVelocity)){
+						// 	result = lines[lineNo].point + t_left * lines[lineNo].direction;
+						// } else{
+						// 	result = lines[lineNo].point + tRight * lines[lineNo].direction;
+						// }
+						Vector2 result = lines[lineNo].point + t_left * lines[lineNo].direction;
+						opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+						result = lines[lineNo].point + tRight * lines[lineNo].direction;
+						opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+					}else{
+						// if(objFuncValue(lines[lineNo].point + t_left * lines[lineNo].direction, optVelocity) 
+						// 	< objFuncValue(lines[lineNo].point + t_right * lines[lineNo].direction, optVelocity)){
+						// 	result = lines[lineNo].point + t_left * lines[lineNo].direction;
+						// } else{
+						// 	result = lines[lineNo].point + t_right * lines[lineNo].direction;
+						// }
+						Vector2 result = lines[lineNo].point + t_left * lines[lineNo].direction;
+						opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+						result = lines[lineNo].point + t_right * lines[lineNo].direction;
+						opt_vel_candidates.push_back(CostVelPair(objFuncValue(result, optVelocity, w), result));
+					}
+				}
+
+			}
+		} 
 
 		return true;
 	}
@@ -878,7 +1131,8 @@ namespace RVO {
 			result = optVelocity * radius;
 		}
 		else if (absSq(optVelocity) > sqr(radius)) {
-			/* Optimize closest point and outside circle. */
+			/* Optimize closest point and outside circle. radius is the max_speed (see the place linearProgram2 is called), hence this step is just 
+			normalize optVelocity when it exceeds max speed*/
 			result = normalize(optVelocity) * radius;
 		}
 		else {
@@ -889,7 +1143,7 @@ namespace RVO {
 		/// constraints must be better than that with more constraints. Hence the following for_loop will look for a best opt_vel under current constraints
 		for (size_t i = 0; i < lines.size(); ++i) {
 			if (det(lines[i].direction, lines[i].point - result) > 0.0f) {/// equivalent to det(lines[i].point - result, lines[i].direction) < 0.0f, which means the result (current opt vel is in the right side of the orca line (which means not satisified the constraints))
-				/* Result does not satisfy constraint i. Compute new optimal result. */
+				// Result does not satisfy constraint i. Compute new optimal result.
 				const Vector2 tempResult = result;
 
 				if (!linearProgram1(lines, i, radius, optVelocity, directionOpt, result)) {
@@ -898,6 +1152,159 @@ namespace RVO {
 				}
 			}
 		}
+
+		double pre_vel_len = abs(optVelocity);
+
+		if(pre_vel_len <= 0.05 || abs(result) >= 0.2 * pre_vel_len ) {
+			return lines.size(); // goal is not_moving or computed vel is not very small
+		}
+		else{// recompute vel using the objective function with increased weight w
+			double w = 4;//weight for the absolute difference between vel and pref_vel
+
+			if (directionOpt) {
+				 //Optimize direction. Note that the optimization velocity is of unit
+				 //length in this case.
+				result = optVelocity * radius;
+			}
+			else if (absSq(optVelocity) > sqr(radius)) {
+				//Optimize closest point and outside circle.
+				result = normalize(optVelocity) * radius;
+			}
+			else {
+				//Optimize closest point and inside circle.
+				result = optVelocity;
+			}
+
+			std::vector<CostVelPair> opt_vel_candidates;
+			opt_vel_candidates.push_back(CostVelPair(0, result));
+
+			for (size_t i = 0; i < lines.size(); ++i) {
+				const Vector2 tempResult = opt_vel_candidates.back().second;
+
+				//clear all candidates that does not satisfy the new constraint
+				std::vector<CostVelPair> new_opt_vel_candidates;
+				for(int j = 0; j<opt_vel_candidates.size(); j++){
+					if (det(lines[i].direction, lines[i].point - opt_vel_candidates[j].second) <= 0.0f)
+						new_opt_vel_candidates.push_back(opt_vel_candidates[j]);
+				}
+				opt_vel_candidates.clear();
+				opt_vel_candidates = new_opt_vel_candidates;
+				new_opt_vel_candidates.clear();
+
+
+				if (!linearProgram1(lines, i, radius, optVelocity, directionOpt, w, opt_vel_candidates)) {
+					result = tempResult;
+					return i;
+				}
+				
+			}
+
+			float min_cost = opt_vel_candidates[0].first;
+			int opt_vel_index = 0;
+			for(int j=1; j<opt_vel_candidates.size(); j++){
+				if(opt_vel_candidates[j].first < min_cost) {
+					opt_vel_index = j;
+				}
+			}
+			result = opt_vel_candidates[opt_vel_index].second;
+		}
+
+
+		return lines.size();
+	}
+
+
+	size_t linearProgram2(const std::vector<Line> &lines, float radius, const Vector2 &optVelocity, bool directionOpt, Vector2 &result, double & patience)
+	{
+		if (directionOpt) {
+			/*
+			 * Optimize direction. Note that the optimization velocity is of unit
+			 * length in this case.
+			 */
+			result = optVelocity * radius;
+		}
+		else if (absSq(optVelocity) > sqr(radius)) {
+			/* Optimize closest point and outside circle. radius is the max_speed (see the place linearProgram2 is called), hence this step is just 
+			normalize optVelocity when it exceeds max speed*/
+			result = normalize(optVelocity) * radius;
+		}
+		else {
+			/* Optimize closest point and inside circle. */
+			result = optVelocity;
+		}
+		/// initially result = optVelocity; adding constraints one by one will narrow down the feasible region; the result with fewer 
+		/// constraints must be better than that with more constraints. Hence the following for_loop will look for a best opt_vel under current constraints
+		for (size_t i = 0; i < lines.size(); ++i) {
+			if (det(lines[i].direction, lines[i].point - result) > 0.0f) {/// equivalent to det(lines[i].point - result, lines[i].direction) < 0.0f, which means the result (current opt vel is in the right side of the orca line (which means not satisified the constraints))
+				// Result does not satisfy constraint i. Compute new optimal result.
+				const Vector2 tempResult = result;
+
+				if (!linearProgram1(lines, i, radius, optVelocity, directionOpt, result)) {
+					result = tempResult;
+					return i;
+				}
+			}
+		}
+
+		double pre_vel_len = abs(optVelocity);
+
+		if(pre_vel_len <= 0.05 || abs(result) >= 0.2 * pre_vel_len) {
+			patience = 1.0; //reset agent's patience to 1
+			return lines.size(); // goal is not_moving or computed vel is not very small
+		}
+		else{// recompute vel using the objective function with increased weight w
+			patience *= 0.5;
+			double w;//weight for the absolute difference between vel and pref_vel
+			w = 1.0/patience;
+			
+			if (directionOpt) {
+				 //Optimize direction. Note that the optimization velocity is of unit
+				 //length in this case.
+				result = optVelocity * radius;
+			}
+			else if (absSq(optVelocity) > sqr(radius)) {
+				//Optimize closest point and outside circle.
+				result = normalize(optVelocity) * radius;
+			}
+			else {
+				//Optimize closest point and inside circle.
+				result = optVelocity;
+			}
+
+			std::vector<CostVelPair> opt_vel_candidates;
+			opt_vel_candidates.push_back(CostVelPair(0, result));
+
+			for (size_t i = 0; i < lines.size(); ++i) {
+				const Vector2 tempResult = opt_vel_candidates.back().second;
+
+				//clear all candidates that does not satisfy the new constraint
+				std::vector<CostVelPair> new_opt_vel_candidates;
+				for(int j = 0; j<opt_vel_candidates.size(); j++){
+					if (det(lines[i].direction, lines[i].point - opt_vel_candidates[j].second) <= 0.0f)
+						new_opt_vel_candidates.push_back(opt_vel_candidates[j]);
+				}
+				opt_vel_candidates.clear();
+				opt_vel_candidates = new_opt_vel_candidates;
+				new_opt_vel_candidates.clear();
+
+
+				if (!linearProgram1(lines, i, radius, optVelocity, directionOpt, w, opt_vel_candidates)) {
+					result = tempResult;
+					return i;
+				}
+				
+			}
+
+			float min_cost = opt_vel_candidates[0].first;
+			int opt_vel_index = 0;
+			for(int j=1; j<opt_vel_candidates.size(); j++){
+				if(opt_vel_candidates[j].first < min_cost) {
+					opt_vel_index = j;
+				}
+			}
+			result = opt_vel_candidates[opt_vel_index].second;
+		}
+
 
 		return lines.size();
 	}

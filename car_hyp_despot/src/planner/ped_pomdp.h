@@ -119,6 +119,7 @@ public:
 
 	WorldModel &world;
 
+	bool use_rvo;
  // protected:
 	enum {
 		ACT_CUR,

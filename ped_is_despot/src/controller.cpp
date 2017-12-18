@@ -2,7 +2,8 @@
 #include "core/node.h"
 #include "core/solver.h"
 #include "core/globals.h"
-
+#include <csignal>
+using namespace std;
 double marker_colors[20][3] = {
     	{0.0,1.0,0.0},  //green
 		{1.0,0.0,0.0},  //red
@@ -15,8 +16,73 @@ double marker_colors[20][3] = {
 
 int action_map[3]={2,0,1};
 
+struct my_sig_action {
+    typedef void (* handler_type)(int, siginfo_t*, void*);
+
+    explicit my_sig_action(handler_type handler)
+    {
+        memset(&_sa, 0, sizeof(struct sigaction));
+        _sa.sa_sigaction = handler;
+        _sa.sa_flags = SA_SIGINFO;
+    }
+
+    operator struct sigaction const*() const
+    {
+        return &_sa;
+    }
+protected:
+    struct sigaction _sa;
+};
+
+struct div_0_exception {};
+
+void handle_div_0(int sig, siginfo_t* info, void*)
+{
+	switch(info->si_code)
+	{
+		case FPE_INTDIV:
+	        cout<< "Integer divide by zero."<<endl;
+			break;
+		case FPE_INTOVF:
+			cout<< "Integer overflow. "<<endl;
+			break;
+		case FPE_FLTUND:
+			cout<< "Floating-point underflow. "<<endl;	
+			break;
+		case FPE_FLTRES:
+			cout<< "Floating-point inexact result. "<<endl;
+			break;
+		case FPE_FLTINV:
+			cout<< "Floating-point invalid operation. "<<endl;
+			break;
+		case FPE_FLTSUB:
+			cout<< "Subscript out of range. "<<endl;
+			break;
+		case FPE_FLTDIV:
+			cout<< "Floating-point divide by zero. "<<endl;
+			break;
+		case FPE_FLTOVF:
+			cout<< "Floating-point overflow. "<<endl;
+			break;
+	};
+	exit(-1);
+}
+
 Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead)
 {
+	my_sig_action sa(handle_div_0);
+    if (0 != sigaction(SIGFPE, sa, NULL)) {
+        std::cerr << "!!!!!!!! fail to setup handler !!!!!!!!" << std::endl;
+        //return 1;
+    }
+
+    Path p;
+    COORD start = COORD(-205, -142.5);
+    COORD goal = COORD(-189, -142.5);
+    p.push_back(start);
+    p.push_back(goal);
+    worldModel.setPath(p.interpolate());
+    fixed_path_ = true;
 	cout << "fixed_path = " << fixed_path_ << endl;
 	cout << "pathplan_ahead = " << pathplan_ahead_ << endl;
 	Globals::config.pruning_constant = pruning_constant;
@@ -80,7 +146,7 @@ bool Controller::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_po
 }
 
 void Controller::addObstacle(){
-/*    std::vector<RVO::Vector2> obstacle[12];
+    std::vector<RVO::Vector2> obstacle[12];
 
     obstacle[0].push_back(RVO::Vector2(-222.55,-137.84));
     obstacle[0].push_back(RVO::Vector2(-203.23,-138.35));
@@ -152,8 +218,8 @@ void Controller::addObstacle(){
  	   worldModel.ped_sim_->addObstacle(obstacle[i]);
 	}
 
-    //Process the obstacles so that they are accounted for in the simulation.
-    worldModel.ped_sim_->processObstacles();*/
+    /* Process the obstacles so that they are accounted for in the simulation. */
+    worldModel.ped_sim_->processObstacles();
 }
 
 /*for despot*/
@@ -161,8 +227,9 @@ void Controller::initSimulator()
 {
   Globals::config.root_seed=1024;
   //Globals::config.n_belief_particles=2000;
-  Globals::config.num_scenarios=100;
+  Globals::config.num_scenarios=50;
   Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
+  Globals::config.max_policy_sim_len=25;
   Seeds::root_seed(Globals::config.root_seed);
   cerr << "Random root seed set to " << Globals::config.root_seed << endl;
 
@@ -192,7 +259,7 @@ void Controller::initSimulator()
   ScenarioUpperBound *upper_bound = despot->CreateScenarioUpperBound("SMART", "SMART");
 
   //solver = new DESPOT(despot, NULL, *streams);
-  solver = new DESPOT(despot, lower_bound, upper_bound, NULL, true);
+  solver = new DESPOT(despot, lower_bound, upper_bound, NULL, Globals::config.useGPU);
 
   gpu_handler->PrepareGPUData(despot, solver);
 }
@@ -502,7 +569,7 @@ void Controller::publishPath(const string& frame_id, const Path& path) {
 
 void Controller::controlLoop(const ros::TimerEvent &e)
 {
-        static double starttime=get_time_second();
+        /*static*/ double starttime=get_time_second();
         cout<<"*********************"<<endl;
 	 //   cout<<"entering control loop"<<endl;
      //   cout<<"current time "<<get_time_second()-starttime<<endl;
@@ -514,7 +581,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
         //Planning for next step
         pathplan_ahead_=target_speed_/ModelParams::control_freq;
-        cout <<"************planning ahead distance (m):"<< pathplan_ahead_<<endl;
+      //  cout<<"*** path ahead: "<<pathplan_ahead_<<endl;
 
 		// transpose to base link for path planing
 		in_pose.setIdentity();
@@ -526,7 +593,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
             return;
 		}
 
-		//sendPathPlanStart(out_pose);
+		sendPathPlanStart(out_pose);
 		if(worldModel.path.size()==0) return;
 
 		// transpose to laser frame for ped avoidance
@@ -539,15 +606,36 @@ void Controller::controlLoop(const ros::TimerEvent &e)
             return;
 		}
 
-        worldStateTracker.updateVel(real_speed_);
+		COORD coord;
 
-		COORD coord = poseToCoord(out_pose);
-		//cout << "transformed pose = " << coord.x << " " << coord.y << endl;
+		ped_pathplan::StartGoal startGoal;
+		if(pathplan_ahead_ > 0 && worldModel.path.size()>0) {
+			startGoal.start = getPoseAhead(out_pose);
+			coord.x = startGoal.start.pose.position.x;
+			coord.y = startGoal.start.pose.position.y;
+		}else{
+			coord = poseToCoord(out_pose);
+		}
+
+		
+
+		//cout << "after get topics / update world state:" << endl;
+        //cout<<"current time "<<get_time_second()-starttime<<endl;
+        worldStateTracker.updateVel(real_speed_);
+        cout<< "real speed: "<<real_speed_<<endl;
+
+	//cout << "transformed pose = " << coord.x << " " << coord.y << endl;
+		cout << "======transformed pose = " << coord.x << " " << coord.y << endl;
+
 		worldStateTracker.updateCar(coord);
 
         worldStateTracker.cleanPed();
 
 		PomdpState curr_state = worldStateTracker.getPomdpState();
+		
+		if(real_speed_ >= 0.05 && worldModel.inRealCollision(curr_state)){
+			cout << "INININ in collision"<<endl;
+		}
 		publishROSState();
 
        // cout << "root state:" << endl;
@@ -560,6 +648,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		}
 		if(goal_reached==true) {
 			safeAction=2;
+
+			cout<<"goal reached"<<endl;
 
 			target_speed_=real_speed_;
 		    target_speed_ -= 0.5;
@@ -604,6 +694,9 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		cout<<"particle weight sum "<<sum<<endl;
         */
 
+		static int run_step = 0;
+		cout<<"run_step: "<<run_step<<endl;
+		run_step ++;
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
 		//cout<<"4"<<endl;
      //   despot->PrintState(*(pb->particles()[0]));
@@ -671,7 +764,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		publishAction(safeAction);
 		//cout<<"8"<<endl;
 
-		cout<<"safe action = "<<safeAction<<endl;
+		cout<<"action **= "<<safeAction<<endl;
 
 
 		publishBelief();
