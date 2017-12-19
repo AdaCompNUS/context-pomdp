@@ -337,12 +337,12 @@ void Simulator::InitializeDefaultParameters() {
 	//Globals::config.time_per_move=0.1;
     //Globals::config.time_per_move = 10;//(1.0/ModelParams::control_freq) * 0.9;
     Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
-	Globals::config.num_scenarios=100;
+	Globals::config.num_scenarios=50;
 	Globals::config.discount=/*0.983*/0.95/*0.966*/;
 	Globals::config.sim_len=1/*180*//*10*/;
 	Globals::config.pruning_constant=0.001;
 
-	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/20;
+	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/25;
 
 	Globals::config.GPUid=1;//default GPU
 	Globals::config.useGPU=true;

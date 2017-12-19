@@ -554,6 +554,7 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 			cout<<"Root bounds: ("<<statistics->initial_lb<<","<<statistics->initial_ub<<")"<<endl;
 	}
 
+	//start_time = Time::now();
 
 	/*InitBoundTime=0;
 	 BlockerCheckTime=0;
@@ -567,8 +568,9 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 
 	int num_trials = 0;
 
-	ns prep_d = std::chrono::duration_cast < ns > (Time::now() - start_time);
-	used_time=prep_d.count() / 1000000000.0f;
+	//ns prep_d = std::chrono::duration_cast < ns > (Time::now() - start_time);
+	//used_time=prep_d.count() / 1000000000.0f;
+	used_time=0;
 	//cout <<std::setprecision(5)<< "Root preperation in "/*"Expanded " << Expansion_Count << " nodes in "*/
 	//		<< used_time << " s" << endl;
 	if (use_multi_thread_) {
