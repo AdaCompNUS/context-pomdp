@@ -66,7 +66,7 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 	world(model_),
 	random_(Random((unsigned) Seeds::Next()))
 {
-	use_rvo = true;
+	use_rvo = false;
 	//particle_lower_bound_ = new PedPomdpParticleLowerBound(this);
 }
 
@@ -84,11 +84,11 @@ const std::vector<int>& PedPomdp::ObserveVector(const State& state_) const {
 		obs_vec[i++] = int(state.peds[j].pos.y / ModelParams::pos_rln);
 	}
 
-	if(CPUDoPrint){
+	/*if(CPUDoPrint){
 		for (int j=0;j<i;j++)
 			cout<<obs_vec[j]<<" ";
 		cout<<endl;
-	}
+	}*/
 	return obs_vec;
 }
 

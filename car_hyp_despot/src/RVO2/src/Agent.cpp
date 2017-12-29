@@ -153,8 +153,7 @@ namespace RVO {
 				}
 
 				obstacle2 = obstacle1;
-
-				const float leg1 = std::sqrt(distSq1 - radiusSq);
+				const float leg1 = std::sqrt((distSq1 - radiusSq)>0 ? distSq1 - radiusSq:0);
 				leftLegDirection = Vector2(relativePosition1.x() * leg1 - relativePosition1.y() * radius_, relativePosition1.x() * radius_ + relativePosition1.y() * leg1) / distSq1;
 				rightLegDirection = Vector2(relativePosition1.x() * leg1 + relativePosition1.y() * radius_, -relativePosition1.x() * radius_ + relativePosition1.y() * leg1) / distSq1;
 			}
@@ -170,14 +169,14 @@ namespace RVO {
 
 				obstacle1 = obstacle2;
 
-				const float leg2 = std::sqrt(distSq2 - radiusSq);
+				const float leg2 = std::sqrt((distSq2 - radiusSq)>0 ? distSq2 - radiusSq:0);
 				leftLegDirection = Vector2(relativePosition2.x() * leg2 - relativePosition2.y() * radius_, relativePosition2.x() * radius_ + relativePosition2.y() * leg2) / distSq2;
 				rightLegDirection = Vector2(relativePosition2.x() * leg2 + relativePosition2.y() * radius_, -relativePosition2.x() * radius_ + relativePosition2.y() * leg2) / distSq2;
 			}
 			else {
 				/* Usual situation. */
 				if (obstacle1->isConvex_) {
-					const float leg1 = std::sqrt(distSq1 - radiusSq);
+					const float leg1 = std::sqrt((distSq1 - radiusSq)>0 ? distSq1 - radiusSq:0);
 					leftLegDirection = Vector2(relativePosition1.x() * leg1 - relativePosition1.y() * radius_, relativePosition1.x() * radius_ + relativePosition1.y() * leg1) / distSq1;
 				}
 				else {
@@ -186,7 +185,7 @@ namespace RVO {
 				}
 
 				if (obstacle2->isConvex_) {
-					const float leg2 = std::sqrt(distSq2 - radiusSq);
+					const float leg2 = std::sqrt((distSq2 - radiusSq)>0 ? distSq2 - radiusSq:0);
 					rightLegDirection = Vector2(relativePosition2.x() * leg2 + relativePosition2.y() * radius_, -relativePosition2.x() * radius_ + relativePosition2.y() * leg2) / distSq2;
 				}
 				else {
@@ -328,7 +327,7 @@ namespace RVO {
 
 				if (dotProduct1 < 0.0f && sqr(dotProduct1) > combinedRadiusSq * wLengthSq) {
 					/* Project on cut-off circle. */
-					const float wLength = std::sqrt(wLengthSq);
+					const float wLength = std::sqrt(wLengthSq>0? wLengthSq:0.0001);
 					const Vector2 unitW = w / wLength;
 
 					/// direction is the vector that unityW rotate 90 in clockwise. Hence its left side is the feasible region of this line
@@ -337,7 +336,7 @@ namespace RVO {
 				}
 				else {
 					/* Project on legs. */
-					const float leg = std::sqrt(distSq - combinedRadiusSq);
+					const float leg = std::sqrt((distSq - combinedRadiusSq) > 0 ? distSq - combinedRadiusSq:0);
 
 					if (det(relativePosition, w) > 0.0f) {
 						/* Project on left leg. */

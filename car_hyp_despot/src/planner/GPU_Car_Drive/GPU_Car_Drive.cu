@@ -640,12 +640,24 @@ DEVICE bool Dvc_inCollision(float Mx, float My, float Hx, float Hy, float Nx, fl
 	float HMx = Mx - Hx,
 				 HMy = My - Hy;
 
-	float car_width = 1.2,
+	/*float car_width = 1.2,
 				 car_length = 2.2;
 	float safe_margin = 0.3,
 				 side_margin = car_width / 2.0 + safe_margin,
 				 front_margin = safe_margin,
 				 back_margin = car_length + safe_margin;
+*/
+	double car_width = 0.87,
+			car_length = 1.544;
+	/*		double safe_margin = 0.85, side_safe_margin = 0.31, back_safe_margin = 0.31,
+				 side_margin = car_width / 2.0 + side_safe_margin,
+				 front_margin = car_length/2.0 + safe_margin,
+				 back_margin = car_length/2.0 + back_safe_margin;*/
+
+	double safe_margin = 0.92, side_safe_margin = 0.4, back_safe_margin = 0.33,
+				 side_margin = car_width / 2.0 + side_safe_margin,
+				 front_margin = car_length/2.0 + safe_margin,
+				 back_margin = car_length/2.0 + back_safe_margin;
 
 	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
 }
@@ -866,12 +878,29 @@ DEVICE bool Dvc_PedPomdp::Dvc_Step(Dvc_State& state, float rand_num, int action,
 			float HMx = pedpos.x - car_pos.x,
 						 HMy = pedpos.y - car_pos.y;
 
-			float car_width = 0.82,
+			/*float car_width = 0.82,
 						 car_length = 0.732;
 			float safe_margin = 0.4,
 						 side_margin = car_width / 2.0 + safe_margin,
 						 front_margin = car_length + safe_margin,
-						 back_margin = car_length + safe_margin;
+						 back_margin = car_length + safe_margin;*/
+
+			double car_width = 0.87,
+			car_length = 1.544;
+			/*double safe_margin = 0.85, side_safe_margin = 0.31, back_safe_margin = 0.31,
+				 side_margin = car_width / 2.0 + side_safe_margin,
+				 front_margin = car_length/2.0 + safe_margin,
+				 back_margin = car_length/2.0 + back_safe_margin;*/
+
+			double safe_margin = 0.92, side_safe_margin = 0.4, back_safe_margin = 0.33,
+				 side_margin = car_width / 2.0 + side_safe_margin,
+				 front_margin = car_length/2.0 + safe_margin,
+				 back_margin = car_length/2.0 + back_safe_margin;
+
+/*			double safe_margin = 0.95, side_safe_margin = 0.4, back_safe_margin = 0.3,
+				 side_margin = car_width / 2.0 + side_safe_margin,
+				 front_margin = car_length/2.0 + safe_margin,
+				 back_margin = car_length/2.0 + back_safe_margin;*/
 
 			//return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
 			float HLx = - HNy, // direction after 90 degree anticlockwise rotation
@@ -900,6 +929,8 @@ DEVICE bool Dvc_PedPomdp::Dvc_Step(Dvc_State& state, float rand_num, int action,
 		    reward= Dvc_ModelParams::CRASH_PENALTY *
 		    		(pedpomdp_state.car.vel * pedpomdp_state.car.vel +
 		    				Dvc_ModelParams::REWARD_BASE_CRASH_VEL);
+
+		    if(action == ACT_DEC) reward += 0.1;
 		    /*if(threadIdx.x+blockIdx.y+blockIdx.x==0)
 		    printf("action,reward,iscollision=%d %f %d\n"
 		    					,action,reward,1);*/

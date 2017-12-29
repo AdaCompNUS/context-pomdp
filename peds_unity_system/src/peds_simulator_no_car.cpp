@@ -46,7 +46,7 @@ public:
     RVO::RVOSimulator* ped_sim_;
 
     ros::Subscriber peds_car_info_sub;
-    ros::Subscriber action_sub;
+    ros::Subscriber vel_sub;
     ros::Publisher peds_info_pub;
     std::vector<COORD> goals;
     bool initialized;
@@ -55,6 +55,7 @@ public:
 
     PedsSystem(){
         initialized = false;
+        car.vel = 0.4;
         freq = 10.0;
         goals = { // Unity airport departure
             COORD(-197.80, -134.80), // phora
@@ -74,7 +75,7 @@ public:
         // setAgentDefaults (float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, const Vector2 &velocity=Vector2())
         //ped_sim_->setAgentDefaults(3.0f, 2, 2.0f, 2.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
         //ped_sim_->setAgentDefaults(5.0f, 3, 2.0f, 2.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
-        ped_sim_->setAgentDefaults(5.0f, 3, 2.0f, 5.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
+        ped_sim_->setAgentDefaults(5.0f, 5, 2.0f, 5.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
 
         addObstacle();
     }
@@ -83,6 +84,7 @@ public:
         ros::NodeHandle nh;
         peds_car_info_sub = nh.subscribe("peds_car_info", 1, &PedsSystem::pedsCarCallBack, this);
         ros::Timer timer = nh.createTimer(ros::Duration(1 / freq), &PedsSystem::actionCallBack, this);
+        vel_sub = nh.subscribe("cmd_vel_pomdp", 1, &PedsSystem::velCallBack, this);
         peds_info_pub = nh.advertise<peds_unity_system::peds_info>("peds_info",1);
         ros::spin();
     }
@@ -121,7 +123,7 @@ public:
     void actionCallBack(const ros::TimerEvent& event) {
         if (initialized == false) return;
 
-        car.vel = 1.0;
+        std::cout<<car.vel<<std::endl;
         
         RVO2PedStep();
 
@@ -129,6 +131,13 @@ public:
         getPedsInfoMsg(peds_info_msg);
         peds_info_pub.publish(peds_info_msg);
         peds.clear();
+    }
+
+    void velCallBack(geometry_msgs::TwistConstPtr action) {
+        if (initialized == false) return;
+        //if(action->linear.x==-1) car.vel = 0;
+        car.vel = ( (action->linear.x <= 0.4) ? 0.4 : action->linear.x );
+        //car.vel = 1.5;
     }
 
     void getPedsInfoMsg(peds_unity_system::peds_info & peds_info_msg){
@@ -176,7 +185,8 @@ public:
         ped_sim_->deleteOldAgents();
 
         //addAgent (const Vector2 &position, float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed)
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
+        //ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
+        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.45 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 0.45 * sin(3.1415 / 180.0 * car.yaw)), 3.0f, 2, 1.0f, 2.0f, 1.22f, 3.0f, RVO::Vector2(), "vehicle");
         ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
         ped_sim_->setAgentPedID(peds.size(),-1);
         

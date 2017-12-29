@@ -232,34 +232,39 @@ __global__ void PassModelParameters(
 
 void Simulator::UpdateGPUPath(DSPOMDP* Hst_model)
 {
-	PedPomdp* Hst =static_cast<PedPomdp*>(Hst_model);
 
-	if(tempPath)HANDLE_ERROR(cudaFree(tempPath));
-	HANDLE_ERROR(cudaMallocManaged((void**)&tempPath, Hst->world.path.size()*sizeof(Dvc_COORD)));
+	if(Globals::config.useGPU){
+		PedPomdp* Hst =static_cast<PedPomdp*>(Hst_model);
 
-	for(int i=0;i<Hst->world.path.size();i++){
-		tempPath[i].x=Hst->world.path[i].x;
-		tempPath[i].y=Hst->world.path[i].y;
+		if(tempPath)HANDLE_ERROR(cudaFree(tempPath));
+		HANDLE_ERROR(cudaMallocManaged((void**)&tempPath, Hst->world.path.size()*sizeof(Dvc_COORD)));
+
+		for(int i=0;i<Hst->world.path.size();i++){
+			tempPath[i].x=Hst->world.path[i].x;
+			tempPath[i].y=Hst->world.path[i].y;
+		}
+
+		UpdatePathKernel<<<1,1,1>>>(tempPath,Hst->world.path.size());
+		HANDLE_ERROR(cudaDeviceSynchronize());
 	}
-
-	UpdatePathKernel<<<1,1,1>>>(tempPath,Hst->world.path.size());
-	HANDLE_ERROR(cudaDeviceSynchronize());
 	//exit(-1);
 }
 
 void Simulator::UpdateGPUGoals(DSPOMDP* Hst_model)
 {
-	PedPomdp* Hst =static_cast<PedPomdp*>(Hst_model);
-	if(tempGoals)HANDLE_ERROR(cudaFree(tempGoals));
-	HANDLE_ERROR(cudaMallocManaged((void**)&tempGoals,  Hst->world.goals.size()*sizeof(Dvc_COORD)));
+	if(Globals::config.useGPU){
+		PedPomdp* Hst =static_cast<PedPomdp*>(Hst_model);
+		if(tempGoals)HANDLE_ERROR(cudaFree(tempGoals));
+		HANDLE_ERROR(cudaMallocManaged((void**)&tempGoals,  Hst->world.goals.size()*sizeof(Dvc_COORD)));
 
 
-	for(int i=0;i<Hst->world.goals.size();i++){
-		tempGoals[i].x=Hst->world.goals[i].x;
-		tempGoals[i].y=Hst->world.goals[i].y;
+		for(int i=0;i<Hst->world.goals.size();i++){
+			tempGoals[i].x=Hst->world.goals[i].x;
+			tempGoals[i].y=Hst->world.goals[i].y;
+		}
+		UpdateGoalKernel<<<1,1,1>>>(tempGoals);
+		HANDLE_ERROR(cudaDeviceSynchronize());
 	}
-	UpdateGoalKernel<<<1,1,1>>>(tempGoals);
-	HANDLE_ERROR(cudaDeviceSynchronize());
 
 }
 
@@ -337,20 +342,22 @@ void Simulator::InitializeDefaultParameters() {
 	//Globals::config.time_per_move=0.1;
     //Globals::config.time_per_move = 10;//(1.0/ModelParams::control_freq) * 0.9;
     Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
-	Globals::config.num_scenarios=50;
+	Globals::config.num_scenarios=100;
 	Globals::config.discount=/*0.983*/0.95/*0.966*/;
 	Globals::config.sim_len=1/*180*//*10*/;
-	Globals::config.pruning_constant=0.001;
+	Globals::config.pruning_constant= 1000000;//0.001
 
 	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/25;
 
 	Globals::config.GPUid=1;//default GPU
-	Globals::config.useGPU=true;
-	Globals::config.use_multi_thread_=false;
+	Globals::config.useGPU=true	;
+	Globals::config.disableGPU=false;
+	Globals::config.use_multi_thread_=true;
+	
 	Globals::config.NUM_THREADS=5;
 
 	Globals::config.exploration_mode=UCT;
-	Globals::config.exploration_constant=/*0.095*//*0.1*/0.1;
+	Globals::config.exploration_constant=/*0.095*//*0.1*/0.3;
 
 	Globals::config.silence=true;
 	Obs_parallel_level=OBS_PARALLEL_Y;

@@ -17,6 +17,7 @@ class WorldModel {
 public:
 
     WorldModel();
+    ~WorldModel();
 
 	bool isMovingAway(const PomdpState& state, int ped);
 	void getClosestPed(const PomdpState& state, int& closest_front_ped, double& closest_front_dist,
@@ -63,12 +64,15 @@ public:
     void updatePedBelief(PedBelief& b, const PedStruct& curr_ped);
     PedBelief initPedBelief(const PedStruct& ped);
 
+    inline int GetThreadID(){return MapThread(this_thread::get_id());}
+    void InitRVO();
+
 
 	Path path;
     std::vector<COORD> goals;
     double freq;
     const double in_front_angle_cos;
-    RVO::RVOSimulator* ped_sim_;
+    std::vector<RVO::RVOSimulator*> ped_sim_;
 };
 
 class WorldStateTracker {

@@ -473,20 +473,82 @@ namespace RVO {
 
 		if(vehicle_in_neighbor && (abs(velocity_) <= 0.1 || abs(prefVelocity_) <= 0.1)){
 			float dist_to_veh = abs(position_-veh_pos);
-			if(dist_to_veh < 2.25f){
-				if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < 1.25f) {// the distance of the ped to the center line of the vehicle
+			float no_collision_dist = abs(vel_veh_avoiding) * 2.0f + 0.8 + 0.3; // no collision within 4 seconds, 0.3 second is for delay; 0.8 is the distance from car center to car front; 0.3 is safety margin
+			if(dist_to_veh < /*1.96f*/no_collision_dist){
+				if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < /*0.95*/1.05f) {// the distance of the ped to the center line of the vehicle
 					
 					//std::cout<<"fkdlsaf fdsafs: "<<distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)<<std::endl;
 					if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
-						prefVelocity_ = vel_veh_avoiding.rotate(90.0)*1.15;
+						//prefVelocity_ = (normalize(vel_veh_avoiding) /** ((no_collision_dist-dist_to_veh)/no_collision_dist)*/  + vel_veh_avoiding).rotate(90.0);
+						prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(90.0);
 					} else{
-						prefVelocity_ = vel_veh_avoiding.rotate(-90.0)*1.15;
+						//prefVelocity_ = (normalize(vel_veh_avoiding) /** ((no_collision_dist-dist_to_veh)/no_collision_dist)*/ + vel_veh_avoiding).rotate(-90.0)*1.15;
+						prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(-90.0);
 					}
 					//std::cout<<"fffff new pref vel: "<<prefVelocity_<<std::endl;
 				}
 			}
 		
 		}
+
+		
+
+		/*if(vehicle_in_neighbor){
+			
+			// is robot in front of the vehicle (in front of the horizontal center line)
+			bool in_front = (leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding.rotate(-90.0), position_-veh_pos)>0);
+
+			if(in_front){
+				// the distance to the vehicle that pedestrian starts to react to it. Pedestrian wants to make sure there is no collision
+				// within 4.3 seconds (4+0.3, 0.3 is for delay); 1.1 = 0.8 + 0.3, in which 0.8 meters is the distance from the vehicle center to the vehicle front.
+				// and 0.3 meters is the pedestrian size.
+				float reactive_dist = abs(vel_veh_avoiding) * 4.3f + 1.1; 
+
+				// the distance to the vehicle that pedestrian starts to run away from vehicle because they are too close to each other. 
+				// 1.3 = 0.5 + 0.8; 0.5 is the distance to the vehicle front, 0.8 is the distance from vehicle front to the vehicle center
+				// It means if pedestrian is with 0.6 meters from the vehicle front, it will starts to go away from it
+				float emergency_run_dist = 1.3; 
+				float dist_to_veh = abs(position_-veh_pos);
+
+				// the distance of the ped to the center line of the vehicle
+				float dist_to_veh_center_line = distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos);
+				float reactive_dist_side = 1.0;
+
+				if(dist_to_veh < reactive_dist &&  dist_to_veh_center_line < reactive_dist_side){
+
+					//float dist_to_veh_horizontal_center_line = distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding.rotate(-90.0), position_-veh_pos);
+					
+					if(dist_to_veh < emergency_run_dist) {					
+						if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+							//prefVelocity_ = (normalize(vel_veh_avoiding)  + vel_veh_avoiding).rotate(90.0);
+							prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(90.0);
+						} else{
+							//prefVelocity_ = (normalize(vel_veh_avoiding) + vel_veh_avoiding).rotate(-90.0)*1.15;
+							prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(-90.0);
+						}
+						//std::cout<<"fffff new pref vel: "<<prefVelocity_<<std::endl;
+					} else{
+						//preferred vel is at the left lower direction to the car vel
+						if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, prefVelocity_)>0 && leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding.rotate(-90.0), prefVelocity_)<0){
+							if(abs(prefVelocity_) < 0.5) {
+								prefVelocity_ = (normalize(vel_veh_avoiding)).rotate(90.0);
+							}else{
+								prefVelocity_ = (normalize(vel_veh_avoiding)*abs(prefVelocity_)).rotate(90.0);
+							}
+						} else if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, prefVelocity_)<0 && leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding.rotate(-90.0), prefVelocity_)<0){
+							//preferred vel is at the right lower direction to the car vel
+							if(abs(prefVelocity_) < 0.5) {
+								prefVelocity_ = (normalize(vel_veh_avoiding)).rotate(-90.0);
+							}else{
+								prefVelocity_ = (normalize(vel_veh_avoiding)*abs(prefVelocity_)).rotate(-90.0);
+							}
+						}
+					}
+
+				}
+			
+			}		
+		}*/
 
 		size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_, patience_);
 		///size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, velocity_, false, newVelocity_);

@@ -64,9 +64,9 @@ VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
 			statistics->longest_trial_length = cur->depth();
 		}
 
-		double start1 = clock();
+		//double start1 = clock();
 		ExploitBlockers(cur);
-		BlockerCheckTime += double(clock() - start1) / CLOCKS_PER_SEC;
+		//BlockerCheckTime += double(clock() - start1) / CLOCKS_PER_SEC;
 
 		if (Gap(cur) == 0) {
 			break;
@@ -83,7 +83,7 @@ VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
 				statistics->num_tree_particles += cur->particles().size();
 			}
 
-			TreeExpansionTime += double(clock() - start) / CLOCKS_PER_SEC;
+			//TreeExpansionTime += double(clock() - start) / CLOCKS_PER_SEC;
 		}
 
 		double start = clock();
@@ -120,7 +120,7 @@ VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
 		if (statistics != NULL) {
 			statistics->time_path += (clock() - start) / CLOCKS_PER_SEC;
 		}
-		PathTrackTime += double(clock() - start) / CLOCKS_PER_SEC;
+		//PathTrackTime += double(clock() - start) / CLOCKS_PER_SEC;
 
 		if (next == NULL) {
 			break;
@@ -149,27 +149,27 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 	int hist_size = history.Size();
 	thread_barrier->AttachThread(__FUNCTION__);
 	do {
-		Validate_GPU(__LINE__); //debugging
+		//Validate_GPU(__LINE__); //debugging
 		if (statistics != NULL
 				&& cur->depth() > statistics->Get_longest_trial_len()) {
 			statistics->Update_longest_trial_len(cur->depth());
 		}
-		Validate_GPU(__LINE__); //debugging
-		auto start1 = Time::now();
+		//Validate_GPU(__LINE__); //debugging
+		//auto start1 = Time::now();
 		ExploitBlockers(cur);
-		ns duration = std::chrono::duration_cast < ns > (Time::now() - start1);
-		BlockerCheckTime += duration.count() / 1000000000.0f;
+		//ns duration = std::chrono::duration_cast < ns > (Time::now() - start1);
+		//BlockerCheckTime += duration.count() / 1000000000.0f;
 
-		Validate_GPU(__LINE__); //debugging
+		//Validate_GPU(__LINE__); //debugging
 		if (Gap(cur) == 0) {
 			break;
 		}
-		Validate_GPU(__LINE__); //debugging
+		//Validate_GPU(__LINE__); //debugging
 		try {
 			lock_guard < mutex > lck(cur->GetMutex());
 			if (((VNode*) cur)->IsLeaf()) {
 				auto start = Time::now();
-				Validate_GPU(__LINE__); //debugging
+				//Validate_GPU(__LINE__); //debugging
 				Expand(((VNode*) cur), lower_bound, upper_bound, model, streams,
 						history);
 				//Global_print_expand(this_thread::get_id(), cur, ((VNode*)cur)->depth());
@@ -183,11 +183,11 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 					statistics->Add_num_tree_particles(
 							((VNode*) cur)->particles().size());
 				}
-				Validate_GPU(__LINE__); //debugging
-				duration = std::chrono::duration_cast < ns
-						> (Time::now() - start);
+				//Validate_GPU(__LINE__); //debugging
+				//duration = std::chrono::duration_cast < ns
+				//		> (Time::now() - start);
 
-				TreeExpansionTime += duration.count() / 1000000000.0f;
+				//TreeExpansionTime += duration.count() / 1000000000.0f;
 				Expansion_done=true;
 				/*if (MapThread(this_thread::get_id()) == 0)
 					cout<<"Expanded node in depth "<< cur->depth()<<endl;*/
@@ -215,7 +215,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 							((QNode*) qstar)->edge(),
 							-1000,
 							"trace down to QNode");
-				Validate_GPU(__LINE__); //debugging
+				//Validate_GPU(__LINE__); //debugging
 			}
 		} catch (exception &e) {
 			cout << "Locking error: " << e.what() << endl;
@@ -239,18 +239,18 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 				//Global_print_value(this_thread::get_id(), WEU((VNode*) next),
 				//		"weu");
 			}
-			Validate_GPU(__LINE__); //debugging
+			//Validate_GPU(__LINE__); //debugging
 			//cout<<next->edge()<<endl;
 		} catch (exception &e) {
 			cout << "Locking error: " << e.what() << endl;
 		}
 
 		if (statistics != NULL) {
-			duration = std::chrono::duration_cast < ns > (Time::now() - start);
+			auto duration = std::chrono::duration_cast < ns > (Time::now() - start);
 			statistics->Add_time_path(duration.count() / 1000000000.0f);
 		}
-		duration = std::chrono::duration_cast < ns > (Time::now() - start);
-		PathTrackTime += duration.count() / 1000000000.0f;
+		//duration = std::chrono::duration_cast < ns > (Time::now() - start);
+		//PathTrackTime += duration.count() / 1000000000.0f;
 
 		if (next == NULL) {
 			//if (MapThread(this_thread::get_id()) == 0)
@@ -276,9 +276,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		history.Add(qstar->edge(), cur->edge());
 		if (use_GPU_)
 			GPUHistoryAdd(qstar->edge(), cur->edge());
-		Validate_GPU(__LINE__);			//debugging
-
-
+		//Validate_GPU(__LINE__);			//debugging
 
 	} while (cur->depth() < Globals::config.search_depth
 			&& WEU((VNode*) cur) > 0 &&
@@ -554,7 +552,7 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 			cout<<"Root bounds: ("<<statistics->initial_lb<<","<<statistics->initial_ub<<")"<<endl;
 	}
 
-	//start_time = Time::now();
+	start_time = Time::now();
 
 	/*InitBoundTime=0;
 	 BlockerCheckTime=0;
@@ -1277,7 +1275,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 				<<"("<<vnode->default_move().value<<")"<< endl;		//Debug
 	}
 
-	if (vnode->lower_bound()<-200/*false*/) {
+	if (/*vnode->lower_bound()<-200*/false) {
 		cout.precision(3);
 		cout << "Root depth: " << vnode->depth() << "  weight: "
 				<< vnode->Weight() << " #particle:  "
@@ -1785,7 +1783,7 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 	if(use_GPU_ && !vnode->PassGPUThreshold())
 	{
 		const vector<State*>& particles = vnode->particles();
-		if(particles[0]==NULL)// switching point
+		if(particles[0]==NULL && !Globals::config.disableGPU)// switching point
 		{
 			//cout<<"Vnode depth "<<vnode->depth()<<": Particle num too small ("
 			//		<< max(vnode->particleIDs().size(), vnode->particles().size())
@@ -1802,7 +1800,7 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 		AddExpanded();
 	}
-	Validate_GPU(__LINE__);	//debugging
+	//Validate_GPU(__LINE__);	//debugging
 	for (int action = 0; action < model->NumActions(); action++) {
 		logd << " Action " << action << endl;
 		//Create new Q-nodes for each action
@@ -1812,7 +1810,7 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 		else
 			qnode = new QNode(vnode, action);
 		children.push_back(qnode);
-		Validate_GPU(__LINE__);	//debugging
+		//Validate_GPU(__LINE__);	//debugging
 		if (use_GPU_ && vnode->PassGPUThreshold())
 			;//cout<<"Vnode depth "<<vnode->depth()<<": using GPU expansion"<<endl;
 		//GPU_Expand1(qnode, lower_bound, upper_bound, model, streams, history);
@@ -1823,12 +1821,12 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 			Expand(qnode, lower_bound, upper_bound, model, streams, history);
 		}
 	}
-	Validate_GPU(__LINE__);	//debugging
+	//Validate_GPU(__LINE__);	//debugging
 	if (use_GPU_ && vnode->PassGPUThreshold())
 		GPU_Expand_Action(vnode, lower_bound, upper_bound, model, streams,
 				history);
 	else{
-		Global_print_expand(this_thread::get_id(), vnode, vnode->depth(), vnode->edge());
+		//Global_print_expand(this_thread::get_id(), vnode, vnode->depth(), vnode->edge());
 
 		HitCount++;
 	}
@@ -1872,7 +1870,7 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 	VNode* parent = qnode->parent();
 	streams.position(parent->depth());
 	map<OBS_TYPE, VNode*>& children = qnode->children();
-	auto totalstart = Time::now();
+	//auto totalstart = Time::now();
 
 	//sec duration = std::chrono::duration_cast<sec>(Time::now() - totalstart);
 
@@ -1884,7 +1882,7 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 	map<OBS_TYPE, vector<State*> > partitions;
 	OBS_TYPE obs;
 	double reward;
-	auto start = Time::now();
+	//auto start = Time::now();
 	int NumParticles = particles.size();
 	/*Debug lb*/
 	//cout<<"NumParticles="<<NumParticles<<endl;
@@ -1935,9 +1933,9 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 				<< " " << reward << " " << copy->weight << endl;
 
 		/*Debug lb*/
-		if(false){
-			if(i</*NumParticles-*/20) cout<<"("<<i<<","<<obs<<") ";;
-		}
+		//if(false){
+		//	if(i</*NumParticles-*/20) cout<<"("<<i<<","<<obs<<") ";;
+		//}
 		/*Debug lb*/
 
 		if (!terminal) {
@@ -1993,13 +1991,13 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 	//delete [] Temp_obs_list;//Debugging purpose
 	/*Panpan*/
 
-	AveRewardTime += chrono::duration_cast < ns
-			> (Time::now() - start).count()/1000000000.0f;
+	//AveRewardTime += chrono::duration_cast < ns
+	//		> (Time::now() - start).count()/1000000000.0f;
 
 	//if(abs(AveRewardTime-ObsCountTime)>0.2)
 	//	cout<<"Big gap!!"<<endl;
 
-	start = Time::now();
+	//start = Time::now();
 	// Create new belief nodes
 	for (map<OBS_TYPE, vector<State*> >::iterator it = partitions.begin();
 			it != partitions.end(); it++) {
@@ -2020,7 +2018,7 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 					parent->depth() + 1, qnode, obs);
 		logd << " New node created!" << endl;
 		children[obs] = vnode;
-		auto start1 = Time::now();
+		//auto start1 = Time::now();
 
 		history.Add(qnode->edge(), obs);
 
@@ -2056,12 +2054,12 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 		 cout<<endl;*/
 		lower_bound += vnode->lower_bound();
 		upper_bound += vnode->upper_bound();
-		InitBoundTime += chrono::duration_cast < ns
-				> (Time::now() - start1).count()/1000000000.0f;
+		//InitBoundTime += chrono::duration_cast < ns
+		//		> (Time::now() - start1).count()/1000000000.0f;
 	}
 
-	MakeObsNodeTime += chrono::duration_cast < ns
-			> (Time::now() - start).count()/1000000000.0f;
+	//MakeObsNodeTime += chrono::duration_cast < ns
+	//		> (Time::now() - start).count()/1000000000.0f;
 
 	qnode->step_reward = step_reward;
 	qnode->lower_bound(lower_bound);
@@ -2079,8 +2077,8 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 				<< " ,weight= " << qnode->Weight() << " )" << endl;
 	}
 
-	TotalExpansionTime += chrono::duration_cast < ns
-			> (Time::now() - totalstart).count()/1000000000.0f;
+	//TotalExpansionTime += chrono::duration_cast < ns
+	//		> (Time::now() - totalstart).count()/1000000000.0f;
 }
 void DESPOT::PrintCPUTime(int num_searches) {
 	cout.precision(5);

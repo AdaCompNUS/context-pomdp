@@ -7,7 +7,7 @@
 namespace ModelParams {
  
 	const double GOAL_TRAVELLED=100.0;
-	const int N_PED_IN=15;
+	const int N_PED_IN=20;
     const int N_PED_WORLD=300;
 
 	extern double VEL_MAX;
@@ -31,7 +31,7 @@ namespace ModelParams {
 
     const double PATH_STEP = 0.05;
 
-    const double GOAL_TOLERANCE = 0.8;
+    const double GOAL_TOLERANCE = 1.3;
 
     const double PED_SPEED = 1.5;
 

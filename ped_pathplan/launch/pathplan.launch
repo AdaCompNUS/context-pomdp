@@ -11,8 +11,8 @@
 		 <param name="ped_costmap/robot_base_frame" value="/base_link"/>
      </node>
 
-     <node name="send_start_goal" pkg="ped_pathplan" type="send_start_goal" output="screen" >
+<!--      <node name="send_start_goal" pkg="ped_pathplan" type="send_start_goal" output="screen" >
          <rosparam file="$(find ped_pathplan)/launch/params.yaml" command="load" />
          <remap from="navgoal" to="/move_base_simple/goal"/>
-     </node>
+     </node> -->
 </launch>

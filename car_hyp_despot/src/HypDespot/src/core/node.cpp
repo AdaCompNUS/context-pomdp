@@ -106,6 +106,8 @@ double VNode::Weight() {
 		return GPUWeight();
 }
 bool VNode::PassGPUThreshold(){
+	if(Globals::config.disableGPU)
+		return false;
 	return (particleIDs().size()>2 || depth()<1);
 }
 const vector<QNode*>& VNode::children() const {

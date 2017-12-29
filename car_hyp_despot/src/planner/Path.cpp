@@ -34,7 +34,7 @@ int Path::forward(int i, double len) const {
         //len -= d;
 		//i++;
     //}
-    float step=/*int*/(len / ModelParams::PATH_STEP);
+    float step=(len / ModelParams::PATH_STEP);
 
     if(step-(int)step>1.0-1e-5)
     {
@@ -42,6 +42,8 @@ int Path::forward(int i, double len) const {
     	step++;
     }
     i += (int)(step);
+//    i += int(len / ModelParams::PATH_STEP);
+
     if(i > path.size()-1) {
         i = path.size()-1;
     }

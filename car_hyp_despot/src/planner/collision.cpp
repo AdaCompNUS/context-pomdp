@@ -85,7 +85,12 @@ bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double N
 				 side_margin = car_width / 2.0 + side_safe_margin,
 				 front_margin = car_length/2.0 + safe_margin,
 				 back_margin = car_length/2.0 + back_safe_margin;*/
-	double safe_margin = 0.95, side_safe_margin = 0.4, back_safe_margin = 0.3,
+/*	double safe_margin = 0.95, side_safe_margin = 0.4, back_safe_margin = 0.3,
+				 side_margin = car_width / 2.0 + side_safe_margin,
+				 front_margin = car_length/2.0 + safe_margin,
+				 back_margin = car_length/2.0 + back_safe_margin;*/
+
+				 double safe_margin = 0.92, side_safe_margin = 0.45, back_safe_margin = 0.15,
 				 side_margin = car_width / 2.0 + side_safe_margin,
 				 front_margin = car_length/2.0 + safe_margin,
 				 back_margin = car_length/2.0 + back_safe_margin;
@@ -93,6 +98,22 @@ bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double N
 	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
 }
 
+
+bool InFrontRectangle(double HNx, double HNy, double HMx, double HMy, double front_margin, double back_margin, double side_margin) {
+	double HLx = - HNy, // direction after 90 degree anticlockwise rotation
+				 HLy = HNx;
+
+	double HM_HN = HMx * HNx + HMy * HNy, // HM . HN
+				 HN_HN = HNx * HNx + HNy * HNy; // HN . HN
+
+	if (HM_HN <= 0) return false;
+	if (HM_HN >= 0 && HM_HN * HM_HN > HN_HN * front_margin * front_margin)
+		return false;
+
+	double HM_HL = HMx * HLx + HMy * HLy, // HM . HL
+				 HL_HL = HLx * HLx + HLy * HLy; // HL . HL
+	return HM_HL * HM_HL <= HL_HL * side_margin * side_margin;
+}
 
 bool inRealCollision(double Mx, double My, double Hx, double Hy, double Nx, double Ny) {
 
@@ -107,8 +128,9 @@ bool inRealCollision(double Mx, double My, double Hx, double Hy, double Nx, doub
 				 side_margin = car_width / 2.0 + side_safe_margin,
 				 front_margin = car_length/2.0 + safe_margin,
 				 back_margin = car_length/2.0 + back_safe_margin;
+	cout<<"whole body: "<<InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin)<<endl;
 
-	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
+	return InFrontRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
 }
 
 void testInCollision() {

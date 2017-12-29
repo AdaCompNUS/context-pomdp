@@ -25,6 +25,7 @@ struct Config {
 	int NUM_THREADS;
 	int exploration_mode;
 	double exploration_constant;
+	bool disableGPU;
 
 	Config() :
 		search_depth(90),
@@ -45,7 +46,8 @@ struct Config {
 	    use_multi_thread_(false),
 	    NUM_THREADS(0),
 	    exploration_mode(0),
-	    exploration_constant(0.95)
+	    exploration_constant(0.95),
+	    disableGPU(false)
 	{
 	}
 };

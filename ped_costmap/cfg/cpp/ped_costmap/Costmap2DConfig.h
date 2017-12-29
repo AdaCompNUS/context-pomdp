@@ -709,9 +709,9 @@ Costmap2DConfig::GroupDescription<Costmap2DConfig::DEFAULT, Costmap2DConfig> Def
 //#line 273 "/opt/ros/kinetic/lib/python2.7/dist-packages/dynamic_reconfigure/parameter_generator.py"
       __default__.map_type = "costmap";
 //#line 273 "/opt/ros/kinetic/lib/python2.7/dist-packages/dynamic_reconfigure/parameter_generator.py"
-      Default.abstract_parameters.push_back(Costmap2DConfig::AbstractParamDescriptionConstPtr(new Costmap2DConfig::ParamDescription<std::string>("map_type", "str", 0, "What map type to use. voxel or costmap are the supported types", "{'enum_description': 'An enum to set the map type', 'enum': [{'srcline': 13, 'description': 'Use VoxelCostmap2D', 'srcfile': '/home/panpan/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg', 'cconsttype': 'const char * const', 'value': 'voxel', 'ctype': 'std::string', 'type': 'str', 'name': 'voxel_const'}, {'srcline': 13, 'description': 'Use Costmap2D', 'srcfile': '/home/panpan/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg', 'cconsttype': 'const char * const', 'value': 'costmap', 'ctype': 'std::string', 'type': 'str', 'name': 'costmap_const'}]}", &Costmap2DConfig::map_type)));
+      Default.abstract_parameters.push_back(Costmap2DConfig::AbstractParamDescriptionConstPtr(new Costmap2DConfig::ParamDescription<std::string>("map_type", "str", 0, "What map type to use. voxel or costmap are the supported types", "{'enum_description': 'An enum to set the map type', 'enum': [{'srcline': 13, 'description': 'Use VoxelCostmap2D', 'srcfile': '/home/yuanfu/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg', 'cconsttype': 'const char * const', 'value': 'voxel', 'ctype': 'std::string', 'type': 'str', 'name': 'voxel_const'}, {'srcline': 13, 'description': 'Use Costmap2D', 'srcfile': '/home/yuanfu/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg', 'cconsttype': 'const char * const', 'value': 'costmap', 'ctype': 'std::string', 'type': 'str', 'name': 'costmap_const'}]}", &Costmap2DConfig::map_type)));
 //#line 273 "/opt/ros/kinetic/lib/python2.7/dist-packages/dynamic_reconfigure/parameter_generator.py"
-      __param_descriptions__.push_back(Costmap2DConfig::AbstractParamDescriptionConstPtr(new Costmap2DConfig::ParamDescription<std::string>("map_type", "str", 0, "What map type to use. voxel or costmap are the supported types", "{'enum_description': 'An enum to set the map type', 'enum': [{'srcline': 13, 'description': 'Use VoxelCostmap2D', 'srcfile': '/home/panpan/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg', 'cconsttype': 'const char * const', 'value': 'voxel', 'ctype': 'std::string', 'type': 'str', 'name': 'voxel_const'}, {'srcline': 13, 'description': 'Use Costmap2D', 'srcfile': '/home/panpan/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg', 'cconsttype': 'const char * const', 'value': 'costmap', 'ctype': 'std::string', 'type': 'str', 'name': 'costmap_const'}]}", &Costmap2DConfig::map_type)));
+      __param_descriptions__.push_back(Costmap2DConfig::AbstractParamDescriptionConstPtr(new Costmap2DConfig::ParamDescription<std::string>("map_type", "str", 0, "What map type to use. voxel or costmap are the supported types", "{'enum_description': 'An enum to set the map type', 'enum': [{'srcline': 13, 'description': 'Use VoxelCostmap2D', 'srcfile': '/home/yuanfu/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg', 'cconsttype': 'const char * const', 'value': 'voxel', 'ctype': 'std::string', 'type': 'str', 'name': 'voxel_const'}, {'srcline': 13, 'description': 'Use Costmap2D', 'srcfile': '/home/yuanfu/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg', 'cconsttype': 'const char * const', 'value': 'costmap', 'ctype': 'std::string', 'type': 'str', 'name': 'costmap_const'}]}", &Costmap2DConfig::map_type)));
 //#line 273 "/opt/ros/kinetic/lib/python2.7/dist-packages/dynamic_reconfigure/parameter_generator.py"
       __min__.origin_z = 0.0;
 //#line 273 "/opt/ros/kinetic/lib/python2.7/dist-packages/dynamic_reconfigure/parameter_generator.py"
@@ -861,9 +861,9 @@ Costmap2DConfig::GroupDescription<Costmap2DConfig::DEFAULT, Costmap2DConfig> Def
     return statics;
   }
 
-//#line 13 "/home/panpan/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg"
+//#line 13 "/home/yuanfu/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg"
       const char * const Costmap2D_voxel_const = "voxel";
-//#line 13 "/home/panpan/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg"
+//#line 13 "/home/yuanfu/workspace/catkin_ws/src/ped_costmap/cfg/Costmap2D.cfg"
       const char * const Costmap2D_costmap_const = "costmap";
 }
 

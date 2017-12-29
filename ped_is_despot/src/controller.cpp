@@ -75,14 +75,15 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
         std::cerr << "!!!!!!!! fail to setup handler !!!!!!!!" << std::endl;
         //return 1;
     }
-
+/*
     Path p;
     COORD start = COORD(-205, -142.5);
     COORD goal = COORD(-189, -142.5);
     p.push_back(start);
     p.push_back(goal);
     worldModel.setPath(p.interpolate());
-    fixed_path_ = true;
+    fixed_path_ = true;*/
+
 	cout << "fixed_path = " << fixed_path_ << endl;
 	cout << "pathplan_ahead = " << pathplan_ahead_ << endl;
 	Globals::config.pruning_constant = pruning_constant;
@@ -112,7 +113,7 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 	cerr << "DEBUG: Init simulator" << endl;
 	initSimulator();
     //RetrievePaths();
-
+	worldModel.InitRVO();
     addObstacle();
 
 	cerr <<"DEBUG: before entering controlloop"<<endl;
@@ -213,13 +214,16 @@ void Controller::addObstacle(){
     // obstacle[0].push_back(RVO::Vector2(,));
     // obstacle[0].push_back(RVO::Vector2(,));
 
+	int NumThreads=Globals::config.NUM_THREADS;
 
-    for (int i=0; i<12; i++){
- 	   worldModel.ped_sim_->addObstacle(obstacle[i]);
+    for(int tid=0; tid<NumThreads;tid++){
+	    for (int i=0; i<12; i++){
+	 	   worldModel.ped_sim_[tid]->addObstacle(obstacle[i]);
+		}
+
+	    /* Process the obstacles so that they are accounted for in the simulation. */
+	    worldModel.ped_sim_[tid]->processObstacles();
 	}
-
-    /* Process the obstacles so that they are accounted for in the simulation. */
-    worldModel.ped_sim_->processObstacles();
 }
 
 /*for despot*/
@@ -471,6 +475,8 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 	geometry_msgs::PoseStamped pose;
 	tf::poseStampedTFToMsg(carpose, pose);
 
+	//cout.precision(8);
+
 	// set start
 	if(pathplan_ahead_ > 0 && worldModel.path.size()>0) {
 		startGoal.start = getPoseAhead(carpose);
@@ -571,7 +577,8 @@ void Controller::publishPath(const string& frame_id, const Path& path) {
 }
 
 void Controller::controlLoop(const ros::TimerEvent &e)
-{
+{		
+		cout.precision(8);
         /*static*/ double starttime=get_time_second();
         cout<<"*********************"<<endl;
 	 //   cout<<"entering control loop"<<endl;
@@ -583,7 +590,9 @@ void Controller::controlLoop(const ros::TimerEvent &e)
         ros::Rate err_retry_rate(10);
 
         //Planning for next step
-        pathplan_ahead_=target_speed_/ModelParams::control_freq;
+       pathplan_ahead_=target_speed_/ModelParams::control_freq;
+       // pathplan_ahead_ = 0;
+
       //  cout<<"*** path ahead: "<<pathplan_ahead_<<endl;
 
 		// transpose to base link for path planing
@@ -609,6 +618,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
             return;
 		}
 
+
 		COORD coord;
 
 		ped_pathplan::StartGoal startGoal;
@@ -625,10 +635,10 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		//cout << "after get topics / update world state:" << endl;
         //cout<<"current time "<<get_time_second()-starttime<<endl;
         worldStateTracker.updateVel(real_speed_);
-        cout<< "real speed: "<<real_speed_<<endl;
+        //cout<< "real speed: "<<real_speed_<<endl;
 
 	//cout << "transformed pose = " << coord.x << " " << coord.y << endl;
-		cout << "======transformed pose = " << coord.x << " " << coord.y << endl;
+		cout << "======transformed pose = "<< coord.x << " " <<coord.y << endl;
 
 		worldStateTracker.updateCar(coord);
 
