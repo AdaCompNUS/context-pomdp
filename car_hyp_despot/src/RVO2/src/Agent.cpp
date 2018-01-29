@@ -442,21 +442,21 @@ namespace RVO {
 			}			
 		}*/
 
-		if(vehicle_in_neighbor && (abs(velocity_) <= 0.1 || abs(prefVelocity_) <= 0.1)){
-			float dist_to_veh = abs(position_-veh_pos);
-			if(dist_to_veh < 1.96f){
-				if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < 0.93f) {// the distance of the ped to the center line of the vehicle
+		// if(vehicle_in_neighbor && (abs(velocity_) <= 0.1 || abs(prefVelocity_) <= 0.1)){
+		// 	float dist_to_veh = abs(position_-veh_pos);
+		// 	if(dist_to_veh < 1.96f){
+		// 		if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < 0.93f) {// the distance of the ped to the center line of the vehicle
 					
-					//std::cout<<"fkdlsaf fdsafs: "<<distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)<<std::endl;
-					if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
-						prefVelocity_ = vel_veh_avoiding.rotate(90.0);
-					} else{
-						prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
-					}
-				}
-			}
+		// 			//std::cout<<"fkdlsaf fdsafs: "<<distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)<<std::endl;
+		// 			if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+		// 				prefVelocity_ = vel_veh_avoiding.rotate(90.0);
+		// 			} else{
+		// 				prefVelocity_ = vel_veh_avoiding.rotate(-90.0);
+		// 			}
+		// 		}
+		// 	}
 		
-		}
+		// }
 		
 		size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, prefVelocity_, false, newVelocity_);
 		///size_t lineFail = linearProgram2(orcaLines_, maxSpeed_, velocity_, false, newVelocity_);

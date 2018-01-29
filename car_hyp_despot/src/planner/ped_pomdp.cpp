@@ -66,7 +66,7 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 	world(model_),
 	random_(Random((unsigned) Seeds::Next()))
 {
-	use_rvo = false;
+	use_rvo = true;
 	//particle_lower_bound_ = new PedPomdpParticleLowerBound(this);
 }
 
@@ -1076,13 +1076,15 @@ std::vector<double> PedPomdp::ImportanceWeight(std::vector<State*> particles) co
 
 	std::vector <double> importance_weight;
 
-	bool use_is_despot = false;
+	bool use_is_despot = true;
 	if(use_is_despot == false){
 		for(int i=0; i<particles_num;i++){
 			importance_weight.push_back(particles[i]->weight);
 		}
 		return importance_weight;
 	}
+
+	cout<<"use importance sampling ***** "<<endl;
 
 	for(int i=0; i<particles_num;i++){
 		pomdp_state_particles.push_back(static_cast<PomdpState*>(particles[i]));

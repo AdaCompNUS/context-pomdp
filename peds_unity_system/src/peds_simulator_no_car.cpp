@@ -74,8 +74,8 @@ public:
 
         // setAgentDefaults (float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, const Vector2 &velocity=Vector2())
         //ped_sim_->setAgentDefaults(3.0f, 2, 2.0f, 2.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
-        //ped_sim_->setAgentDefaults(5.0f, 3, 2.0f, 2.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
-        ped_sim_->setAgentDefaults(5.0f, 5, 2.0f, 5.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
+        //ped_sim_->setAgentDefaults(5.0f, 5, 2.0f, 2.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
+        ped_sim_->setAgentDefaults(5.0f, 2, 1.5f, 1.5f, 0.25f, 2.5f); // we can let timeHorizon = c * 1/maxNeighbors
 
         addObstacle();
     }

@@ -75,14 +75,14 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
         std::cerr << "!!!!!!!! fail to setup handler !!!!!!!!" << std::endl;
         //return 1;
     }
-/*
+
     Path p;
     COORD start = COORD(-205, -142.5);
     COORD goal = COORD(-189, -142.5);
     p.push_back(start);
     p.push_back(goal);
     worldModel.setPath(p.interpolate());
-    fixed_path_ = true;*/
+    fixed_path_ = true;
 
 	cout << "fixed_path = " << fixed_path_ << endl;
 	cout << "pathplan_ahead = " << pathplan_ahead_ << endl;

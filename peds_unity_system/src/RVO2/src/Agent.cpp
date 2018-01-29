@@ -99,6 +99,9 @@ namespace RVO {
 			return;
 		}
 
+		//Vector2 temp_velocity = velocity_;
+		//velocity_ = prefVelocity_;
+
 		orcaLines_.clear();
 
 		const float invTimeHorizonObst = 1.0f / timeHorizonObst_;
@@ -325,6 +328,30 @@ namespace RVO {
 			}
 		}
 
+		/////
+//		velocity_ = temp_velocity;
+		//static bool first_time = true;
+		if((abs(prefVelocity_) <= 0.05 || abs(velocity_) >= 0.35 * abs(prefVelocity_))) {
+			patience_ = 1.0; //reset agent's patience to 1
+			//return lines.size(); // goal is not_moving or computed vel is not very small
+		}
+		else{
+			patience_ *= 0.5;
+		}
+
+		if(abs(velocity_)<0.11){
+			std::cout<<"agent: "<<id_<<" p="<<patience_<<" v="<<abs(velocity_)<<" pv="<<abs(prefVelocity_)<<std::endl;
+		}
+		if(patience_ > 0.3){
+		//if(true){
+			Line line1;
+			line1.point = Vector2(0.0f, 0.0f);
+			//line1.direction = normalize(velocity_.rotate(-90.0));
+			line1.direction = normalize(prefVelocity_.rotate(-90.0));
+			orcaLines_.push_back(line1);
+		}
+		
+
 		const size_t numObstLines = orcaLines_.size();
 
 		//const float invTimeHorizon = 1.0f / timeHorizon_;
@@ -471,25 +498,27 @@ namespace RVO {
 		}
 
 
-		if(vehicle_in_neighbor && (abs(velocity_) <= 0.1 || abs(prefVelocity_) <= 0.1)){
-			float dist_to_veh = abs(position_-veh_pos);
-			float no_collision_dist = abs(vel_veh_avoiding) * 2.0f + 0.8 + 0.3; // no collision within 4 seconds, 0.3 second is for delay; 0.8 is the distance from car center to car front; 0.3 is safety margin
-			if(dist_to_veh < /*1.96f*/no_collision_dist){
-				if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < /*0.95*/1.05f) {// the distance of the ped to the center line of the vehicle
+
+
+		// if(vehicle_in_neighbor && (abs(velocity_) <= 0.1 || abs(prefVelocity_) <= 0.1)){
+		// 	float dist_to_veh = abs(position_-veh_pos);
+		// 	float no_collision_dist = abs(vel_veh_avoiding) * 2.0f + 0.8 + 0.3; // no collision within 4 seconds, 0.3 second is for delay; 0.8 is the distance from car center to car front; 0.3 is safety margin
+		// 	if(dist_to_veh < /*1.96f*/no_collision_dist){
+		// 		if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < /*0.95*/1.05f) {// the distance of the ped to the center line of the vehicle
 					
-					//std::cout<<"fkdlsaf fdsafs: "<<distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)<<std::endl;
-					if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
-						//prefVelocity_ = (normalize(vel_veh_avoiding) /** ((no_collision_dist-dist_to_veh)/no_collision_dist)*/  + vel_veh_avoiding).rotate(90.0);
-						prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(90.0);
-					} else{
-						//prefVelocity_ = (normalize(vel_veh_avoiding) /** ((no_collision_dist-dist_to_veh)/no_collision_dist)*/ + vel_veh_avoiding).rotate(-90.0)*1.15;
-						prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(-90.0);
-					}
-					//std::cout<<"fffff new pref vel: "<<prefVelocity_<<std::endl;
-				}
-			}
+		// 			//std::cout<<"fkdlsaf fdsafs: "<<distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)<<std::endl;
+		// 			if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+		// 				//prefVelocity_ = (normalize(vel_veh_avoiding) /** ((no_collision_dist-dist_to_veh)/no_collision_dist)*/  + vel_veh_avoiding).rotate(90.0);
+		// 				prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(90.0);
+		// 			} else{
+		// 				//prefVelocity_ = (normalize(vel_veh_avoiding) /** ((no_collision_dist-dist_to_veh)/no_collision_dist)*/ + vel_veh_avoiding).rotate(-90.0)*1.15;
+		// 				prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(-90.0);
+		// 			}
+		// 			//std::cout<<"fffff new pref vel: "<<prefVelocity_<<std::endl;
+		// 		}
+		// 	}
 		
-		}
+		// }
 
 		
 
@@ -1311,13 +1340,19 @@ namespace RVO {
 		double pre_vel_len = abs(optVelocity);
 
 		if(pre_vel_len <= 0.05 || abs(result) >= 0.2 * pre_vel_len) {
-			patience = 1.0; //reset agent's patience to 1
+			//patience = 1.0; //reset agent's patience to 1
 			return lines.size(); // goal is not_moving or computed vel is not very small
 		}
 		else{// recompute vel using the objective function with increased weight w
-			patience *= 0.5;
+			//patience *= 0.5;
+			/*if(patience <= 0.2)
+				patience = 0.2;*/
+
+
 			double w;//weight for the absolute difference between vel and pref_vel
 			w = 1.0/patience;
+
+						//w = 1.0;
 			
 			if (directionOpt) {
 				 //Optimize direction. Note that the optimization velocity is of unit

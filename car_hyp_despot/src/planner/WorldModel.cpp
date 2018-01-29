@@ -72,7 +72,10 @@ void WorldModel::InitRVO(){
         //ped_sim_[threadID]->setAgentDefaults(5.0f, 8, 10.0f, 5.0f, 0.5f, 2.0f);
         //ped_sim_[threadID]->setAgentDefaults(1.5f, 1, 3.0f, 6.0f, 0.15f, 3.0f);
         //ped_sim_[threadID]->setAgentDefaults(3.0f, 2, 2.0f, 2.0f, 0.25f, 3.0f);
-        ped_sim_[tid]->setAgentDefaults(5.0f, 4, 2.0f, 2.0f, 0.25f, 3.0f);
+        //ped_sim_[tid]->setAgentDefaults(5.0f, 4, 2.0f, 2.0f, 0.25f, 3.0f);
+        
+        //ped_sim_[tid]->setAgentDefaults(5.0f, 2, 1.5, 1.5f, 0.25f, 2.0f);
+        ped_sim_[tid]->setAgentDefaults(5.0f, 4, 2.0f, 2.0f, 0.25f, 2.0f);
     }
     
 }
