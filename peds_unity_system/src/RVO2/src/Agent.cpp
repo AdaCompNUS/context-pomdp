@@ -520,6 +520,29 @@ namespace RVO {
 		
 		// }
 
+
+		if(vehicle_in_neighbor && abs(prefVelocity_) <= 0.1){
+			float dist_to_veh = abs(position_-veh_pos);
+			float no_collision_dist = abs(vel_veh_avoiding) * 2.0f + 0.8 + 0.3; // no collision within 4 seconds, 0.3 second is for delay; 0.8 is the distance from car center to car front; 0.3 is safety margin
+			if(dist_to_veh < /*1.96f*/no_collision_dist){
+				if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < /*0.95*/1.05f) {// the distance of the ped to the center line of the vehicle
+					
+					//std::cout<<"fkdlsaf fdsafs: "<<distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)<<std::endl;
+					if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+						//prefVelocity_ = (normalize(vel_veh_avoiding) /** ((no_collision_dist-dist_to_veh)/no_collision_dist)*/  + vel_veh_avoiding).rotate(90.0);
+						prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(90.0);
+					} else{
+						//prefVelocity_ = (normalize(vel_veh_avoiding) /** ((no_collision_dist-dist_to_veh)/no_collision_dist)*/ + vel_veh_avoiding).rotate(-90.0)*1.15;
+						prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(-90.0);
+					}
+					//std::cout<<"fffff new pref vel: "<<prefVelocity_<<std::endl;
+				}
+			}
+		
+		}
+
+
+
 		
 
 		/*if(vehicle_in_neighbor){

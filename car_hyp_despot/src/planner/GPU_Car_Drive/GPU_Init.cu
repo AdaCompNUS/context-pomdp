@@ -345,7 +345,7 @@ void Simulator::InitializeDefaultParameters() {
 	Globals::config.num_scenarios=100;
 	Globals::config.discount=/*0.983*/0.95/*0.966*/;
 	Globals::config.sim_len=1/*180*//*10*/;
-	Globals::config.pruning_constant= 0.001;//1000000;//0.001
+	Globals::config.pruning_constant= 1000000;//0.001
 
 	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/25;
 
