@@ -66,7 +66,7 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 	world(model_),
 	random_(Random((unsigned) Seeds::Next()))
 {
-	use_rvo = false;
+	use_rvo = true;
 	//particle_lower_bound_ = new PedPomdpParticleLowerBound(this);
 }
 

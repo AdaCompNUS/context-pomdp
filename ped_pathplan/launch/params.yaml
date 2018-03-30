@@ -30,11 +30,15 @@ planner:
     steering_limit_deg: 15
     yaw_res_deg: 2.5
     #cost_steering_deg: 30
-    cost_steering_deg: 8
+    #cost_steering_deg: 8
+    cost_steering_deg: 20
     step: 6
+    planning_step_len: 2.0
+    planning_step_len_res: 1.5
     num_search: 800000
     #discretize_ratio: 0.3
     discretize_ratio: 0.5
-    discount: 0.98
-    car_len: 0.25
+    discount: 0.99
+#    car_len: 1.0
+    car_len: 1.0
 

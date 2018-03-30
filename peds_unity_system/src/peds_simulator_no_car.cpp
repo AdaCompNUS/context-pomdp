@@ -64,6 +64,7 @@ public:
             COORD(-174.8, -148.53), // Cafe2
             COORD(-201.55, -148.53), //Cafe1
             COORD(-216.57, -145), // Gate 4,5,6
+//COORD(-200, -152.5), // Gate 4,5,6
             COORD(-1, -1) // stop
         };
 

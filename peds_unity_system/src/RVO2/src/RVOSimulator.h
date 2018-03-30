@@ -583,6 +583,7 @@ namespace RVO {
 		size_t addAgent(const Vector2 &position, const Vector2 &pref_vel, int ped_id);
 		void updateAgent(int ped_id, RVO::Vector2 pos, RVO::Vector2 pref_vel);
 		void setAgentPedID(size_t agentNo, int ped_id);
+		int getAgentPedID(size_t agentNo);
 
 	private:
 		std::vector<Agent *> agents_;

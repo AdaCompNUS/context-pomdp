@@ -20,6 +20,8 @@ namespace ped_pathplan {
             int step;
 			int num_search;
 			double carlen;
+            double planning_step_len;
+            double planning_step_len_res;
 
             private_nh.param("steering_limit_deg", steering_limit_deg, 5.0);
             private_nh.param("yaw_res_deg", yaw_res_deg, 2.5);
@@ -29,13 +31,15 @@ namespace ped_pathplan {
             private_nh.param("discretize_ratio", discretize_ratio, 0.3);
             private_nh.param("discount", discount, 1.0);
             private_nh.param("car_len", carlen, 1.0);
+            private_nh.param("planning_step_len", planning_step_len, 0.8);
+            private_nh.param("planning_step_len_res", planning_step_len_res, 0.1);
 
             costmap_ros = cmros;
 
             int nx = cmros->getSizeInCellsX();
             int ny = cmros->getSizeInCellsY();
             float map_res = cmros->getResolution(); //map resolution 
-            planner = boost::shared_ptr<PathPlan>(new PathPlan(nx, ny, steering_limit_deg, yaw_res_deg, cost_steering_deg, step, num_search, discretize_ratio, discount, map_res, carlen));
+            planner = boost::shared_ptr<PathPlan>(new PathPlan(nx, ny, steering_limit_deg, yaw_res_deg, cost_steering_deg, step, num_search, discretize_ratio, discount, map_res, carlen, planning_step_len, planning_step_len_res));
 
             updateCostmap();
 

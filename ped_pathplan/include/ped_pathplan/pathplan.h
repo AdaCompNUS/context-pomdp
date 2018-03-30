@@ -41,7 +41,7 @@ namespace ped_pathplan {
 
     class PathPlan {
         public:
-            PathPlan(int nx, int ny, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int step, int num_search, float discretize_ratio, float discount, float map_res, float carlen);	// size of map
+            PathPlan(int nx, int ny, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int step, int num_search, float discretize_ratio, float discount, float map_res, float carlen, float planning_step_len, float planning_step_len_res);	// size of map
 
 
             float cost_steering, yaw_rln;
@@ -52,6 +52,8 @@ namespace ped_pathplan {
             float map_res;
             float steplen;
             float carlen;
+            float planning_step_len;
+            float planning_step_len_res;
             int nx, ny, ns;		/**< size of grid, in pixels */
             COSTTYPE *costarr;		/**< cost array in 2D configuration space */
             std::vector<float> steerings;

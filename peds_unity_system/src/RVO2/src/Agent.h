@@ -119,8 +119,10 @@ namespace RVO {
 		double patience_;
 
 		//size_t ped_id_; // this is to track whether this pedestrian, for external use, different from id_;
-		int ped_id_;
+		//int ped_id_;
 		bool updated_;
+		bool use_old_orca_;
+	public: int ped_id_;
 	};
 
 	/**

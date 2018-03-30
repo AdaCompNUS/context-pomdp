@@ -1032,9 +1032,11 @@ vector<PedStruct> WorldBeliefTracker::predictPeds() {
             PedStruct ped0(p.pos, goal, p.id);
 			ped0.vel = p.vel;
             //for(int i=0; i<6; i++) {
-            for(int i=0; i<ModelParams::N_PED_IN; i++) {
+            //for(int i=0; i<ModelParams::N_PED_IN; i++) {
+            for(int i=0; i<4; i++) {
                 PedStruct ped = ped0;
-                model.PedStepDeterministic(ped, step+i*2);
+                //model.PedStepDeterministic(ped, step + i*2);
+                model.PedStepDeterministic(ped, step + i);
                 prediction.push_back(ped);
             }
         }

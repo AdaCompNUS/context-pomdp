@@ -197,6 +197,10 @@ namespace RVO {
 		agents_[agentNo] -> ped_id_ = ped_id;
 	}
 
+	int RVOSimulator::getAgentPedID(size_t agentNo){
+		return agents_[agentNo] -> ped_id_;
+	}
+
 	void RVOSimulator::updateAgent(int ped_id, RVO::Vector2 pos, RVO::Vector2 pref_vel){
 		int i;
 		for (i = 0; i < static_cast<int>(agents_.size()); ++i) {

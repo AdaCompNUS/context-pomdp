@@ -7,6 +7,8 @@
 #include <utility>
 #include <iostream>
 
+#define USE_OLD_ALGO true
+
 namespace ped_pathplan {
 
     using namespace std;
@@ -26,8 +28,10 @@ namespace ped_pathplan {
 
 
 
-    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int step, int num_search, float discretize_ratio, float discount, float map_res, float carlen)
-        : nx(xs), ny(ys), step(step), cost_steering(cost_steering_deg / M_PI * 180), num_search(num_search), discretize_ratio(discretize_ratio), discount(discount), map_res(map_res), carlen(carlen)
+    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int step, int num_search, float discretize_ratio, float discount, float map_res, 
+        float carlen, float planning_step_len, float planning_step_len_res)
+        : nx(xs), ny(ys), step(step), cost_steering(cost_steering_deg / M_PI * 180), num_search(num_search), discretize_ratio(discretize_ratio), discount(discount), map_res(map_res), 
+        carlen(carlen), planning_step_len(planning_step_len), planning_step_len_res(planning_step_len_res)
     {
         float steering_limit = steering_limit_deg / 180 * M_PI;
         yaw_rln = yaw_res_deg / 180 * M_PI;
@@ -41,7 +45,8 @@ namespace ped_pathplan {
             steerings.push_back(f);
         }
 
-        steplen = step*map_res;
+        steplen = step * map_res;
+
    //     cout << "steplen ******: "<<steplen<<endl;
    //     cout << "map resolution *****: "<<map_res<<endl;
         /*
@@ -192,8 +197,8 @@ namespace ped_pathplan {
 				}
                 auto dp1 = discretize(p1.state);
                 if (visited.count(dp1)) {
-                    break;
-                    ////continue;
+                    ////break;
+                    continue;
                 }
 
                 p1.index = items.size();
@@ -218,53 +223,117 @@ namespace ped_pathplan {
     }
 
     PathItem PathPlan::next(const PathItem& p, float t, bool& success) {
-        const State& s0 = p.state;
-        // note that t is steering angle; steplen is the distance it moves at each time step;
-        // and carlen is the distance from the front wheel to the back wheel
-        float turn = tan(t) * steplen / carlen;
-        PathItem p1;
 
-        if(fabs(turn) < 0.001){ // approximate by straight line motion
-            float dx = step * cos(s0[2]);
-            float dy = step * sin(s0[2]);
+        if(USE_OLD_ALGO){
+            const State& s0 = p.state;
+            // note that t is steering angle; steplen is the distance it moves at each time step;
+            // and carlen is the distance from the front wheel to the back wheel
+            float turn = tan(t) * steplen / carlen;
+            PathItem p1;
+
+            if(fabs(turn) < 0.001){ // approximate by straight line motion
+                float dx = step * cos(s0[2]);
+                float dy = step * sin(s0[2]);
+                p1.state.resize(3);
+                p1.state[0] = s0[0] + dx;
+                p1.state[1] = s0[1] + dy;
+                float a = s0[2] + turn;
+                p1.state[2] = normAngle(a); //heading direction
+            } else{ // approximate bicycle model for motion
+                //float radius = steplen / turn;
+                float radius = step / turn;
+                float cx = s0[0] - sin(s0[2]) * radius;
+                float cy = s0[1] + cos(s0[2]) * radius;
+
+                p1.state.resize(3);
+                float a = s0[2] + turn;
+                p1.state[2] = normAngle(a); //heading direction
+                p1.state[0] = cx + sin(p1.state[2]) * radius;
+                p1.state[1] = cy - cos(p1.state[2]) * radius;
+            }       
+
+            DiscreteState ds1 = discretize(p1.state);
+            int mx = int(s0[0]);
+            int my = int(s0[1]);
+            float cost = costarr[my*nx + mx];
+            //float steer_cost = sqr(t) * cost_steering;
+            float steer_cost = fabs(t) * cost_steering; //t is steering angle in radian
+
+            success = (cost < COST_OBS * 0.999999);
+            // if(angleDist(angleToGoal(p1.state), p1.state[2]) > M_PI / 180.0 * 60.0) {
+            //     success = false;
+            // }
+
+
+            p1.d = p.d * discount;
+            p1.g = p.g + (cost + steer_cost) * p1.d;
+            p1.h = heuristic(p1.state) * p1.d;
+
+            p1.prev_index = p.index;
+
+            return p1;
+        } else{
+            const State& s0 = p.state;
+            // note that t is steering angle; steplen is the distance it moves at each time step;
+            // and carlen is the distance from the front wheel to the back wheel
+            int step_num = 1;//planning_step_len / planning_step_len_res; // step*map_res
+            float turn = tan(t) * planning_step_len_res / carlen;
+
+            float cost_total = 0.0;
+            float steering_cost_total = 0.0;
+            PathItem p1;
             p1.state.resize(3);
-            p1.state[0] = s0[0] + dx;
-            p1.state[1] = s0[1] + dy;
-            float a = s0[2] + turn;
-            p1.state[2] = normAngle(a); //heading direction
-        } else{ // approximate bicycle model for motion
-            //float radius = steplen / turn;
-            float radius = step / turn;
-            float cx = s0[0] - sin(s0[2]) * radius;
-            float cy = s0[1] + cos(s0[2]) * radius;
+            p1.state[0] = s0[0];
+            p1.state[1] = s0[1];
+            p1.state[2] = s0[2];
+            int iter_total = 0;
 
-            p1.state.resize(3);
-            float a = s0[2] + turn;
-            p1.state[2] = normAngle(a); //heading direction
-            p1.state[0] = cx + sin(p1.state[2]) * radius;
-            p1.state[1] = cy - cos(p1.state[2]) * radius;
-        }       
+            for (int i=0; i< step_num; i++){
 
-        DiscreteState ds1 = discretize(p1.state);
-        int mx = int(s0[0]);
-        int my = int(s0[1]);
-        float cost = costarr[my*nx + mx];
-        //float steer_cost = sqr(t) * cost_steering;
-        float steer_cost = fabs(t) * cost_steering; //t is steering angle in radian
+                if(fabs(turn) < 0.001){ // approximate by straight line motion
+                    float dx = planning_step_len_res * cos(p1.state[2]);
+                    float dy = planning_step_len_res * sin(p1.state[2]);
+                    
+                    p1.state[0] = p1.state[0] + dx;
+                    p1.state[1] = p1.state[1] + dy;
+                    float a = p1.state[2] + turn;
+                    p1.state[2] = normAngle(a); //heading direction
+                } else{ // approximate bicycle model for motion
+                    //float radius = steplen / turn;
+                    float radius = planning_step_len_res / turn;
+                    float cx = p1.state[0] - sin(p1.state[2]) * radius;
+                    float cy = p1.state[1] + cos(p1.state[2]) * radius;
 
-        success = (cost < COST_OBS * 0.999999);
-/*        if(angleDist(angleToGoal(p1.state), p1.state[2]) > M_PI / 180.0 * 60.0) {
-            success = false;
-        }*/
+                    float a = p1.state[2] + turn;
+                    p1.state[2] = normAngle(a); //heading direction
+                    p1.state[0] = cx + sin(p1.state[2]) * radius;
+                    p1.state[1] = cy - cos(p1.state[2]) * radius;
+                }       
 
+                int mx = int(p1.state[0]);
+                int my = int(p1.state[1]);
+                float cost = costarr[my*nx + mx];
+                //float steer_cost = sqr(t) * cost_steering;
+                float steer_cost = fabs(t) * cost_steering; //t is steering angle in radian
 
-        p1.d = p.d * discount;
-        p1.g = p.g + (cost + steer_cost) * p1.d;
-        p1.h = heuristic(p1.state) * p1.d;
+                cost_total += cost;
+                steering_cost_total += steer_cost;
 
-        p1.prev_index = p.index;
+                success = (cost < COST_OBS * 0.999999);
 
-        return p1;
+                iter_total ++;
+
+               if(!success) break;
+            }
+
+            p1.d = p.d * discount;
+            p1.g = p.g + (cost_total / iter_total + steering_cost_total / iter_total) * p1.d;
+            p1.h = heuristic(p1.state) * p1.d;
+
+            p1.prev_index = p.index;
+
+            return p1;
+        }
 
         // Approximate only by the straight line motion model
 /*      const State& s0 = p.state;
@@ -316,18 +385,25 @@ namespace ped_pathplan {
         return dist;
     }
 
+    // float PathPlan::heuristic(const State& s) {
+    //     float d = distToGoal(s);
+    //     float nstep = d / float(step);
+    //     float h_dist = (1 - pow(discount, nstep)) / (1 - discount) * COST_NEUTRAL;
+    //     return h_dist;
+    // }
+
     float PathPlan::heuristic(const State& s) {
-        float d = distToGoal(s);
-        float nstep = d / float(step);
-        //float nstep = d / float(step) * 1.2;
-        float h_dist = (1 - pow(discount, nstep)) / (1 - discount) * COST_NEUTRAL;
-/*        float turn_per_step = normAngle(angleDist(angleToGoal(s), s[2])) / nstep;
-        float steer_per_step = fabs(atan(turn_per_step*carlen/steplen));
-        cout << (1 - pow(discount, nstep)) / (1 - discount) * steer_per_step*cost_steering << endl;
-        h_dist += (1 - pow(discount, nstep)) / (1 - discount) * steer_per_step*cost_steering;*/
-        //h_dist += fabs(angleDist(angleToGoal(s), s[2])) * cost_steering;
-        //h_dist += pow(discount, nstep)*fabs(angleDist(angleToGoal(s), s[2])) * cost_steering;
-        return h_dist;
+        if(USE_OLD_ALGO){
+            float d = distToGoal(s);
+            float nstep = d / float(step);
+            float h_dist = (1 - pow(discount, nstep)) / (1 - discount) * COST_NEUTRAL;
+            return h_dist;
+        } else{
+            float d = distToGoal(s);
+            float nstep = d / planning_step_len;
+            float h_dist = (1 - pow(discount, nstep)) / (1 - discount) * COST_NEUTRAL;
+            return h_dist;
+        }
     }
 
     bool PathPlan::isGoalReached(const State& s) {
@@ -335,9 +411,25 @@ namespace ped_pathplan {
         return (d < TOLERANCE);
     }
 
-    DiscreteState PathPlan::discretize(const State& s) {
+/*    DiscreteState PathPlan::discretize(const State& s) {
         DiscreteState ds(3);
 		float dd = step * discretize_ratio;
+        ds[0] = int((s[0] / dd));
+        ds[1] = int((s[1] / dd));
+        ds[2] = int(((s[2] + M_PI) / yaw_rln));
+        return ds;
+    }*/
+
+    DiscreteState PathPlan::discretize(const State& s) {
+        DiscreteState ds(3);
+        //float dd = step * discretize_ratio;
+        float dd;
+        if(USE_OLD_ALGO) {
+            dd = step * discretize_ratio;
+        }
+        else {
+           dd  = planning_step_len;
+        }
         ds[0] = int((s[0] / dd));
         ds[1] = int((s[1] / dd));
         ds[2] = int(((s[2] + M_PI) / yaw_rln));
