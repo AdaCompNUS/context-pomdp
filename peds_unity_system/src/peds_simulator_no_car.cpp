@@ -57,14 +57,24 @@ public:
         initialized = false;
         car.vel = 0.4;
         freq = 10.0;
-        goals = { // Unity airport departure
+
+  
+/*        goals = { // Unity airport departure
             COORD(-197.80, -134.80), // phora
             COORD(-180.15, -137.54), // Nana?
             COORD(-169.33, -141.1), // gate 1,2,3 
             COORD(-174.8, -148.53), // Cafe2
             COORD(-201.55, -148.53), //Cafe1
             COORD(-216.57, -145), // Gate 4,5,6
-//COORD(-200, -152.5), // Gate 4,5,6
+			//COORD(-200, -152.5), // Gate 4,5,6
+            COORD(-1, -1) // stop
+        };*/
+
+        goals = { // INDIAN CORSS
+            COORD(-30.0, 0.0),
+            COORD(0.0, 30.0), 
+            COORD(30.0, 0.0),  
+            COORD(0.0, -30.0), 
             COORD(-1, -1) // stop
         };
 
@@ -187,7 +197,14 @@ public:
 
         //addAgent (const Vector2 &position, float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed)
         //ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.45 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 0.45 * sin(3.1415 / 180.0 * car.yaw)), 3.0f, 2, 1.0f, 2.0f, 1.22f, 3.0f, RVO::Vector2(), "vehicle");
+
+        ///// for golfcart:
+        //ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.45 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 0.45 * sin(3.1415 / 180.0 * car.yaw)), 3.0f, 2, 1.0f, 2.0f, 1.22f, 3.0f, RVO::Vector2(), "vehicle");
+
+        ///// for audi r8:
+        //ped_sim_->addAgent(RVO::Vector2(car.pos.x + 2.2 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.2 * sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 3.2f, 3.0f, RVO::Vector2(), "vehicle");
+        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 1.5 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 1.5* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 2.5f, 3.0f, RVO::Vector2(), "vehicle");
+
         ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
         ped_sim_->setAgentPedID(peds.size(),-1);
         
@@ -282,7 +299,9 @@ public:
 
 
     void addObstacle(){
-        std::vector<RVO::Vector2> obstacle[12];
+
+    	//// airport terminal
+        /*std::vector<RVO::Vector2> obstacle[12];
 
         obstacle[0].push_back(RVO::Vector2(-222.55,-137.84));
         obstacle[0].push_back(RVO::Vector2(-203.23,-138.35));
@@ -349,7 +368,35 @@ public:
            ped_sim_->addObstacle(obstacle[i]);
         }
 
-        /* Process the obstacles so that they are accounted for in the simulation. */
+        ped_sim_->processObstacles();*/
+
+
+        std::vector<RVO::Vector2> obstacle[4];
+
+        obstacle[0].push_back(RVO::Vector2(-4,-4));
+        obstacle[0].push_back(RVO::Vector2(-30,-4));
+        obstacle[0].push_back(RVO::Vector2(-30,-30));
+        obstacle[0].push_back(RVO::Vector2(-4,-30));
+
+        obstacle[1].push_back(RVO::Vector2(4,-4));
+        obstacle[1].push_back(RVO::Vector2(4,-30));
+        obstacle[1].push_back(RVO::Vector2(30,-30));
+        obstacle[1].push_back(RVO::Vector2(30,-4));
+
+		obstacle[2].push_back(RVO::Vector2(4,4));
+        obstacle[2].push_back(RVO::Vector2(30,4));
+        obstacle[2].push_back(RVO::Vector2(30,30));
+        obstacle[2].push_back(RVO::Vector2(4,30));
+
+		obstacle[3].push_back(RVO::Vector2(-4,4));
+        obstacle[3].push_back(RVO::Vector2(-4,30));
+        obstacle[3].push_back(RVO::Vector2(-30,30));
+        obstacle[3].push_back(RVO::Vector2(-30,4));
+
+        for (int i=0; i<4; i++){
+           ped_sim_->addObstacle(obstacle[i]);
+        }
+
         ped_sim_->processObstacles();
     }
 
