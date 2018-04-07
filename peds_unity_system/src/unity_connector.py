@@ -86,6 +86,12 @@ def car_info(sid, data):
         car_yaw = data["car_yaw"]
         car_yaw = float(car_yaw)
 
+        car_speed = data["car_speed"]
+        car_speed = float(car_speed)
+
+        car_steer = data["car_steer"]
+        car_steer = float(car_steer)
+
         peds_car_info_msg = PedsCarInfo()
 
         peds_array_msg = PedestrainArray()

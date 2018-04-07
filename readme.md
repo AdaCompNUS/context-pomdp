@@ -1,9 +1,22 @@
 ### run the whole system
 ```
 roscore
-rosrun tf static_transform_publisher -205 -142.5 0.0 0.0 0.0 0.0 /map /odom 10 # -207.26 -143.595
+
+## for airport:
+#rosrun tf static_transform_publisher -205 -142.5 0.0 0.0 0.0 0.0 /map /odom 10 # -207.26 -143.595
+
+## for indian cross:
+#rosrun tf static_transform_publisher 0 -8.0 0.0 1.57 0.0 0.0 /map /odom 10
+rosrun tf static_transform_publisher -8.0 0 0.0 0.0 0.0 0.0 /map /odom 10
+
 rosrun tf static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 /base_link /laser_frame 10
-cd ~ && rosrun map_server map_server airport_departure.yaml
+
+## for airport:
+#cd ~ && rosrun map_server map_server airport_departure.yaml
+
+## for indian cross:
+cd ~ && rosrun map_server map_server indian_cross.yaml
+
 cd ~/Unity/DESPOT-Unity/Assets/Sensors/Scripts/ROS/ && python OdometryROS.py
 # cd ~/Unity/DESPOT-Unity/Assets/Sensors/Scripts/ROS/ && python LidarROS.py
 # run unity

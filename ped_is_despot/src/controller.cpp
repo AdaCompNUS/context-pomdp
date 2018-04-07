@@ -916,6 +916,7 @@ void Controller::publishBelief()
 		PedBelief belief = kv.second;
 		pb.ped_x=belief.pos.x;
 		pb.ped_y=belief.pos.y;
+		pb.ped_id=belief.id;
 		for(auto & v : belief.prob_goals)
 			pb.belief_value.push_back(v);
 		pbs.believes.push_back(pb);

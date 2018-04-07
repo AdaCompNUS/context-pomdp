@@ -1,5 +1,9 @@
-goalx: -175.5
-goaly: -146.68
+### for scooter
+# goalx: -175.5
+# goaly: -146.68
+
+goalx: 0.0
+goaly: 8.0
 
 fixed_path: false
 pruning_constant: 0 #100000000

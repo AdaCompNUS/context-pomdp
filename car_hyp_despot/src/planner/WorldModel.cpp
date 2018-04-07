@@ -41,13 +41,22 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
     };
 	*/
 
-    goals = { // Unity airport departure
+/*    goals = { // Unity airport departure
         COORD(-197.80, -134.80), // phora
         COORD(-180.15, -137.54), // Nana?
         COORD(-169.33, -141.1), // gate 1,2,3 
         COORD(-174.8, -148.53), // Cafe2
         COORD(-201.55, -148.53), //Cafe1
         COORD(-216.57, -145), // Gate 4,5,6
+        COORD(-1, -1) // stop
+    };*/
+
+
+    goals = { // indian cross
+        COORD(-30.0, 0.0),
+        COORD(0.0, 30.0), 
+        COORD(30.0, 0.0), 
+        COORD(0.0, -30.0),
         COORD(-1, -1) // stop
     };
 

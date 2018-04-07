@@ -15,7 +15,7 @@ from nav_msgs.msg import Path as NavPath
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 
-PURSUIT_DIST = 1.5
+PURSUIT_DIST = 2.5 ##1.5 for golfcart
 RATIO_ANGULAR = 0.3
 #MAX_ANGULAR = 0.20
 MAX_ANGULAR = 0.8
@@ -87,7 +87,7 @@ class Path(object):
 class Pursuit(object):
     def __init__(self):
         self.path = Path()
-        self.tm = rospy.Timer(rospy.Duration(0.2), self.cb_pose_timer)
+        self.tm = rospy.Timer(rospy.Duration(0.05), self.cb_pose_timer)  ##0.2 for golfcart
         rospy.Subscriber("cmd_vel", Twist, self.cb_speed, queue_size=1)
         self.pub_line = rospy.Publisher("pursuit_line", Marker, queue_size=1)
 
