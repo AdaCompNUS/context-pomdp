@@ -15,10 +15,13 @@ from nav_msgs.msg import Path as NavPath
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 
-PURSUIT_DIST = 2.5 ##1.5 for golfcart
+PURSUIT_DIST = 1.0 ##1.5 for golfcart
 RATIO_ANGULAR = 0.3
+WHEEL_DIST = 2.66
 #MAX_ANGULAR = 0.20
 MAX_ANGULAR = 0.8
+
+MAX_STEERING = 0.66
 
 MAP_FRAME = 'map'
 
@@ -84,34 +87,90 @@ class Path(object):
             goal_reached = 1
         return self.path[j] if j<len(self.path) else None
 
+    def pursuit_tan(self, p, d=PURSUIT_DIST):
+        if self.path == []:
+            return None
+        if len(self.path) == 1:
+            return None
+        ni, np = self.nearest(p)
+        j = self.ahead(ni, d)
+        if j>=len(self.path):
+            return None
+        if j==len(self.path)-1:
+            return math.atan2(self.path[j][1]-self.path[j-1][1], self.path[j][0]-self.path[j-1][0])
+        else:
+            return math.atan2(self.path[j+1][1]-self.path[j][1], self.path[j+1][0]-self.path[j][0])
+
 class Pursuit(object):
     def __init__(self):
         self.path = Path()
         self.tm = rospy.Timer(rospy.Duration(0.05), self.cb_pose_timer)  ##0.2 for golfcart
         rospy.Subscriber("cmd_vel", Twist, self.cb_speed, queue_size=1)
         self.pub_line = rospy.Publisher("pursuit_line", Marker, queue_size=1)
+        self.pub_cmd_vel = rospy.Publisher("cmd_vel_to_unity", Twist, queue_size=1)
 
     def cb_speed(self, msg):
         global car_speed
         car_speed = msg.linear.x
+
+    # def cb_pose_timer(self, event):
+    #     global car_position_x
+    #     global car_position_y
+    #     if not initialized:
+    #         return
+
+    #     position = (car_position_x, car_position_y)
+    #     pursuit_point = self.path.pursuit(position)
+
+    #     if pursuit_point is None:
+    #         return
+
+
+    #     global car_steer
+    #     global car_yaw
+    #     car_steer = self.calc_angular(position, pursuit_point, car_yaw)
+    #     self.publish_pursuit_line(position, pursuit_point, MAP_FRAME)
 
     def cb_pose_timer(self, event):
         global car_position_x
         global car_position_y
         if not initialized:
             return
+
         position = (car_position_x, car_position_y)
+        pursuit_angle = self.path.pursuit_tan(position)
         pursuit_point = self.path.pursuit(position)
 
-        if pursuit_point is None:
+        if pursuit_angle is None:
             return
+
 
         global car_steer
         global car_yaw
-        car_steer = self.calc_angular(position, pursuit_point, car_yaw)
+        car_steer = self.calc_angular(position, pursuit_angle, car_yaw)
+        angular_diff = self.calc_angular_diff(position, pursuit_point, car_yaw)
+
+        car_steer = 0.6*car_steer + 0.4*angular_diff
         self.publish_pursuit_line(position, pursuit_point, MAP_FRAME)
 
-    def calc_angular(self, position, pursuit_point, car_yaw):
+    def calc_angular(self, position, pursuit_angle, car_yaw):
+        target = pursuit_angle
+        r = angle_diff(target, car_yaw)# * RATIO_ANGULAR
+        if r > MAX_ANGULAR:
+            r = MAX_ANGULAR
+        if r < -MAX_ANGULAR:
+            r = -MAX_ANGULAR
+        print "angle diff: ", r
+
+        steering = math.atan2(WHEEL_DIST*r,PURSUIT_DIST)
+        if steering < -MAX_STEERING:
+            steering = -MAX_STEERING
+        if steering > MAX_STEERING:
+            steering = MAX_STEERING
+        print "steering: ", steering
+        return steering
+
+    def calc_angular_diff(self, position, pursuit_point, car_yaw):
         target = math.atan2(pursuit_point[1] - position[1], pursuit_point[0] - position[0])
         r = angle_diff(target, car_yaw)# * RATIO_ANGULAR
         if r > MAX_ANGULAR:
@@ -137,6 +196,10 @@ class Pursuit(object):
         line.points.append(Point(p[0], p[1], 0))
         line.points.append(Point(a[0], a[1], 0))
         self.pub_line.publish(line)
+        cmd_vel_to_pub = Twist()
+        cmd_vel_to_pub.linear.x = car_speed
+        cmd_vel_to_pub.angular.x = car_steer
+        self.pub_cmd_vel.publish(cmd_vel_to_pub)
 
 @sio.on('car_info')
 def car_info(sid, data):

@@ -686,6 +686,7 @@ namespace costmap_2d {
       std::priority_queue<CellData> inflation_queue_;
 
       double ped_cost_ratio_;
+      const std::vector<unsigned char> static_data_;
 
       //functors for raytracing actions
       class ClearCell {

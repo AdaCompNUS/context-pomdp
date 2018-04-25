@@ -320,11 +320,13 @@ namespace costmap_2d {
 
       inscribed_radius = min_dist;
       circumscribed_radius = max_dist;
+
+      ///cout<<"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~inscribed_radius="<<inscribed_radius<<endl;
     }
 
     double ped_cost_ratio;
     private_nh.param("ped_cost_ratio", ped_cost_ratio, 0.5);
-    cout << "param ped_cost_ratio = " << ped_cost_ratio << endl;
+    ///cout << "param ped_cost_ratio = " << ped_cost_ratio << endl;
 
     double max_obstacle_height;
     private_nh.param("max_obstacle_height", max_obstacle_height, 2.0);

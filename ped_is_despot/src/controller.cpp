@@ -147,7 +147,7 @@ bool Controller::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_po
 }
 
 void Controller::addObstacle(){
-    std::vector<RVO::Vector2> obstacle[12];
+/*    std::vector<RVO::Vector2> obstacle[12];
 
     obstacle[0].push_back(RVO::Vector2(-222.55,-137.84));
     obstacle[0].push_back(RVO::Vector2(-203.23,-138.35));
@@ -209,11 +209,6 @@ void Controller::addObstacle(){
     obstacle[11].push_back(RVO::Vector2(-174.43,-142));
     obstacle[11].push_back(RVO::Vector2(-176,-142));
 
-    // obstacle[0].push_back(RVO::Vector2(,));
-    // obstacle[0].push_back(RVO::Vector2(,));
-    // obstacle[0].push_back(RVO::Vector2(,));
-    // obstacle[0].push_back(RVO::Vector2(,));
-
 	int NumThreads=Globals::config.NUM_THREADS;
 
     for(int tid=0; tid<NumThreads;tid++){
@@ -221,9 +216,46 @@ void Controller::addObstacle(){
 	 	   worldModel.ped_sim_[tid]->addObstacle(obstacle[i]);
 		}
 
+	    //Process the obstacles so that they are accounted for in the simulation.
+	    worldModel.ped_sim_[tid]->processObstacles();
+	}*/
+
+
+	/// for indian_cross
+	std::vector<RVO::Vector2> obstacle[4];
+
+    obstacle[0].push_back(RVO::Vector2(-4,-4));
+    obstacle[0].push_back(RVO::Vector2(-30,-4));
+    obstacle[0].push_back(RVO::Vector2(-30,-30));
+    obstacle[0].push_back(RVO::Vector2(-4,-30));
+
+    obstacle[1].push_back(RVO::Vector2(4,-4));
+    obstacle[1].push_back(RVO::Vector2(4,-30));
+    obstacle[1].push_back(RVO::Vector2(30,-30));
+    obstacle[1].push_back(RVO::Vector2(30,-4));
+
+	obstacle[2].push_back(RVO::Vector2(4,4));
+    obstacle[2].push_back(RVO::Vector2(30,4));
+    obstacle[2].push_back(RVO::Vector2(30,30));
+    obstacle[2].push_back(RVO::Vector2(4,30));
+
+	obstacle[3].push_back(RVO::Vector2(-4,4));
+    obstacle[3].push_back(RVO::Vector2(-4,30));
+    obstacle[3].push_back(RVO::Vector2(-30,30));
+    obstacle[3].push_back(RVO::Vector2(-30,4));
+
+
+    int NumThreads=Globals::config.NUM_THREADS;
+
+    for(int tid=0; tid<NumThreads;tid++){
+	    for (int i=0; i<4; i++){
+	 	   worldModel.ped_sim_[tid]->addObstacle(obstacle[i]);
+		}
+
 	    /* Process the obstacles so that they are accounted for in the simulation. */
 	    worldModel.ped_sim_[tid]->processObstacles();
 	}
+
 }
 
 /*for despot*/
@@ -386,7 +418,7 @@ void Controller::publishPlannerPeds(const State &s)
 	}
 	plannerPedsPub_.publish(pc);	
 }
-void Controller::publishAction(int action)
+void Controller::publishAction(int action, double reward)
 {
 		uint32_t shape = visualization_msgs::Marker::CUBE;
 		visualization_msgs::Marker marker;
@@ -425,6 +457,7 @@ void Controller::publishAction(int action)
 		actionPub_.publish(marker);
         geometry_msgs::Twist action_cmd;
         action_cmd.linear.x=safeAction;
+        action_cmd.linear.y=reward;
         actionPubPlot_.publish(action_cmd);
 }
 
@@ -576,6 +609,7 @@ void Controller::publishPath(const string& frame_id, const Path& path) {
 	pathPub_.publish(navpath);
 }
 
+
 void Controller::controlLoop(const ros::TimerEvent &e)
 {		
 		cout.precision(8);
@@ -649,7 +683,11 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		if(real_speed_ >= 0.05 && worldModel.inRealCollision(curr_state)){
 			cout << "INININ in collision"<<endl;
 		}
+		if(real_speed_ >= 0.05 && worldModel.inCollision(curr_state)){
+			cout << "near collision"<<endl;
+		}
 		publishROSState();
+
 
        // cout << "root state:" << endl;
 		//despot->PrintState(curr_state, cout);
@@ -774,10 +812,14 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		//safeAction = 1;
 
 		//actionPub_.publish(action);
-		publishAction(safeAction);
+		double step_reward=StepReward(curr_state,safeAction);
+
+		publishAction(safeAction, step_reward);
 		//cout<<"8"<<endl;
 
 		cout<<"action **= "<<safeAction<<endl;
+
+		cout<<"reward **= "<<step_reward<<endl;
 
 
 		publishBelief();
@@ -796,6 +838,31 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		cout<<"target_speed = "<<target_speed_<<endl;
 		delete pb;
+
+		worldModel.ped_sim_[0] -> OutputTime();
+}
+
+double Controller::StepReward(PomdpState& state, int action){
+	double reward=0;
+	if (worldModel.isLocalGoal(state)) {
+        reward = ModelParams::GOAL_REWARD;
+		return reward;
+	}
+
+
+ 	// Safety control: collision; Terminate upon collision
+    if(state.car.vel > 0.001 && worldModel.inRealCollision(state) ) { /// collision occurs only when car is moving
+		reward = ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);  //, closest_ped, closest_dist);
+		if(action == PedPomdp::ACT_DEC) reward += 0.1;
+		return reward;
+	}
+
+	// Smoothness control
+	reward +=  (action == PedPomdp::ACT_DEC || action == PedPomdp::ACT_ACC) ? -0.1 : 0.0;
+
+	// Speed control: Encourage higher speed
+	reward += ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
+
 }
 
 void Controller::publishPedsPrediciton() {

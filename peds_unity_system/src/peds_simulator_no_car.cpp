@@ -70,11 +70,35 @@ public:
             COORD(-1, -1) // stop
         };*/
 
-        goals = { // INDIAN CORSS
+        /*goals = { // INDIAN CORSS
             COORD(-30.0, 0.0),
             COORD(0.0, 30.0), 
             COORD(30.0, 0.0),  
             COORD(0.0, -30.0), 
+            COORD(-1, -1) // stop
+        };*/
+
+        /*goals = { // indian cross 2
+            COORD(3.5, 10.0),
+            COORD(-3.5, 10.0), 
+            COORD(3.5, -10.0), 
+            COORD(-3.5, -10.0),
+            COORD(10.0  , 3.5),
+            COORD( 10.0 , -3.5), 
+            COORD(-10.0 , 3.5), 
+            COORD( -10.0, -3.5),
+            COORD(-1, -1) // stop
+        };*/
+
+        goals = { // indian cross 2 larger map
+            COORD(3.5, 20.0),
+            COORD(-3.5, 20.0), 
+            COORD(3.5, -20.0), 
+            COORD(-3.5, -20.0),
+            COORD(20.0  , 3.5),
+            COORD( 20.0 , -3.5), 
+            COORD(-20.0 , 3.5), 
+            COORD( -20.0, -3.5),
             COORD(-1, -1) // stop
         };
 
@@ -265,27 +289,27 @@ public:
 
 
 
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, 1.05f, 3.0f, RVO::Vector2(), "vehicle");
+        ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, 1.15f, 3.0f, RVO::Vector2(), "vehicle");
 
         ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
         ped_sim_->setAgentPedID(peds.size(),-1);
 
 
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56 * 2.33 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 1.4* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.05f, 3.0f, RVO::Vector2(), "vehicle");
+        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56 * 2.33 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 1.4* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.15f, 3.0f, RVO::Vector2(), "vehicle");
 
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
+        ped_sim_->setAgentPrefVelocity(peds.size()+1, RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
         ped_sim_->setAgentPedID(peds.size()+1,-2);
 
 
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56*3.66 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.8* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.05f, 3.0f, RVO::Vector2(), "vehicle");
+        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56*3.66 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.8* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.15f, 3.0f, RVO::Vector2(), "vehicle");
 
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
+        ped_sim_->setAgentPrefVelocity(peds.size()+2, RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
         ped_sim_->setAgentPedID(peds.size()+2,-3);
 
 
-         ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56*5 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.8* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.05f, 3.0f, RVO::Vector2(), "vehicle");
+         ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56*5 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.8* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.6f, 3.0f, RVO::Vector2(), "vehicle");
 
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
+        ped_sim_->setAgentPrefVelocity(peds.size()+3, RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
         ped_sim_->setAgentPedID(peds.size()+3,-4);
 
         

@@ -54,46 +54,34 @@ bool InRectangle(double HNx, double HNy, double HMx, double HMy, double front_ma
  * Check whether M is in the safety zone
  */
 bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double Ny) {
-	/*
-	cout << "N = (" << Nx << ", " << Ny << ")" << "; "
-		<< "H = (" << Hx << ", " << Hy << ")" << endl;
-	cout << "M = (" << Mx << ", " << My << ")" << endl;
-	*/
 
+	/// for golfcart
 /*	double HNx = Nx - Hx, // car direction
-				 HNy = Ny - Hy;
-	double HMx = Mx - Hx,
-				 HMy = My - Hy;
-
-	double car_width = 1.2,
-				 car_length = 2.2;
-	double safe_margin = 0.3,
-				 side_margin = car_width / 2.0 + safe_margin,
-				 front_margin = safe_margin,
-				 back_margin = car_length + safe_margin;
-
-	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);*/
-
-	double HNx = Nx - Hx, // car direction
 				 HNy = Ny - Hy;
 	double HMx = Mx - Hx,
 				 HMy = My - Hy;
 
 	double car_width = 0.87,
 				 car_length = 1.544;
-/*	double safe_margin = 0.85, side_safe_margin = 0.31, back_safe_margin = 0.31,
-				 side_margin = car_width / 2.0 + side_safe_margin,
-				 front_margin = car_length/2.0 + safe_margin,
-				 back_margin = car_length/2.0 + back_safe_margin;*/
-/*	double safe_margin = 0.95, side_safe_margin = 0.4, back_safe_margin = 0.3,
-				 side_margin = car_width / 2.0 + side_safe_margin,
-				 front_margin = car_length/2.0 + safe_margin,
-				 back_margin = car_length/2.0 + back_safe_margin;*/
 
 				 double safe_margin = 0.92, side_safe_margin = 0.45, back_safe_margin = 0.15,
 				 side_margin = car_width / 2.0 + side_safe_margin,
 				 front_margin = car_length/2.0 + safe_margin,
-				 back_margin = car_length/2.0 + back_safe_margin;
+				 back_margin = car_length/2.0 + back_safe_margin;*/
+
+	/// for audi r8
+	double HNx = Nx - Hx, // car direction
+				 HNy = Ny - Hy;
+	double HMx = Mx - Hx,
+				 HMy = My - Hy;
+
+	double car_width = 2.0,
+				 car_length = 4.4;
+
+				 double safe_margin = 0.8, side_safe_margin = 0.1, back_safe_margin = 0.1,
+				 side_margin = car_width / 2.0 + side_safe_margin,
+				 front_margin = 3.6 + safe_margin,
+				 back_margin = 0.8 + back_safe_margin;
 
 	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
 }
@@ -117,7 +105,8 @@ bool InFrontRectangle(double HNx, double HNy, double HMx, double HMy, double fro
 
 bool inRealCollision(double Mx, double My, double Hx, double Hy, double Nx, double Ny) {
 
-	double HNx = Nx - Hx, // car direction
+	/// for golfcart
+/*	double HNx = Nx - Hx, // car direction
 				 HNy = Ny - Hy;
 	double HMx = Mx - Hx,
 				 HMy = My - Hy;
@@ -130,7 +119,25 @@ bool inRealCollision(double Mx, double My, double Hx, double Hy, double Nx, doub
 				 back_margin = car_length/2.0 + back_safe_margin;
 	cout<<"whole body: "<<InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin)<<endl;
 
-	return InFrontRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
+	return InFrontRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);*/
+
+
+	/// for audi r8
+	/// for audi r8
+	double HNx = Nx - Hx, // car direction
+				 HNy = Ny - Hy;
+	double HMx = Mx - Hx,
+				 HMy = My - Hy;
+
+	double car_width = 1.9,
+				 car_length = 4.4;
+
+				 double safe_margin = 0.0, side_safe_margin = 0.0, back_safe_margin = 0.0,
+				 side_margin = car_width / 2.0 + side_safe_margin,
+				 front_margin = 3.6 + safe_margin,
+				 back_margin = 0.8 + back_safe_margin;
+
+	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
 }
 
 void testInCollision() {

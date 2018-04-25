@@ -1,3 +1,27 @@
+### change goal of the car
+change goal_x, goal_y in /home/yuanfu/workspace/catkin_ws/src/ped_is_despot/is_despot_param.yaml
+
+### change ped goals
+In Unity project, file PedsSystem.cs:  change goals_ in InitPed function; 
+Rebuild executable after change to /home/yuanfu/Unity/DESPOT-Unity/;
+Modify the executable name in /home/yuanfu/Unity/DESPOT-Unity/run_despot_and_unity_and_record.sh
+In /home/yuanfu/workspace/catkin_ws/src/car_hyp_despot/src/planner/WorldModel.cpp, change goals in WorldModel().
+In /home/yuanfu/workspace/catkin_ws/src/peds_unity_system/src/peds_simulator_no_car.cpp, change goals in PedsSystem()
+
+
+### change initial position of the car
+Translate the car in Unity and rebuild the exe. Update this line below: rosrun tf static_transform_publisher -16.0 0 0.0 0.0 0.0 0.0 /map /odom 10
+
+
+### change initial position of new pedestrians
+In Unity project, file PedsSystem.cs:  change the parameters of GenOneRandPed in InitPed() and Update() function; 
+
+### change map
+Generate a map and its .yaml file in ~
+update line: cd ~ && rosrun map_server map_server <map_name>.yaml
+
+
+
 ### run the whole system
 ```
 roscore
@@ -7,7 +31,7 @@ roscore
 
 ## for indian cross:
 #rosrun tf static_transform_publisher 0 -8.0 0.0 1.57 0.0 0.0 /map /odom 10
-rosrun tf static_transform_publisher -8.0 0 0.0 0.0 0.0 0.0 /map /odom 10
+rosrun tf static_transform_publisher -16.0 0 0.0 0.0 0.0 0.0 /map /odom 10
 
 rosrun tf static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 /base_link /laser_frame 10
 
@@ -15,7 +39,7 @@ rosrun tf static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 /base_link /laser_f
 #cd ~ && rosrun map_server map_server airport_departure.yaml
 
 ## for indian cross:
-cd ~ && rosrun map_server map_server indian_cross.yaml
+cd ~ && rosrun map_server map_server indian_cross2.yaml
 
 cd ~/Unity/DESPOT-Unity/Assets/Sensors/Scripts/ROS/ && python OdometryROS.py
 # cd ~/Unity/DESPOT-Unity/Assets/Sensors/Scripts/ROS/ && python LidarROS.py
@@ -23,9 +47,14 @@ cd ~/Unity/DESPOT-Unity/Assets/Sensors/Scripts/ROS/ && python OdometryROS.py
 roslaunch ped_pathplan pathplan.launch
 rosrun peds_unity_system peds_simulator_no_car ## seems that peds_simulator_no_car performs better than peds_simulator
 roscd peds_unity_system/src && python unity_connector.py
-roslaunch ped_is_despot is_despot.launch
 cd ~/workspace/catkin_ws/src/purepursuit_combined/ && python purepursuit_NavPath_unity.py
-rviz
+#rviz
+
+## to run with unity open
+roslaunch ped_is_despot is_despot.launch
+
+## to run data collection
+cd /home/yuanfu/Unity/DESPOT-Unity && ./run_despot_and_unity_and_record.sh
 ```
 
 

@@ -65,7 +65,7 @@ public:
 	void publishSpeed(const ros::TimerEvent &e);
 	//void simLoop();
 	void publishROSState();
-	void publishAction(int);
+	void publishAction(int, double);
 	void publishBelief();
 	void publishMarker(int , PedBelief & ped);
 	void publishPath(const string& frame_id, const Path& path);
@@ -121,6 +121,7 @@ private:
     ros::Publisher pedPredictionPub_ ;
 
     void controlLoop(const ros::TimerEvent &e);
+    double StepReward(PomdpState& state, int action);
 
 	void publishPlannerPeds(const State &);
 

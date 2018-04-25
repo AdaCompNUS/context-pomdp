@@ -584,6 +584,9 @@ namespace RVO {
 		void updateAgent(int ped_id, RVO::Vector2 pos, RVO::Vector2 pref_vel);
 		void setAgentPedID(size_t agentNo, int ped_id);
 
+	public:
+		void OutputTime();
+
 	private:
 		std::vector<Agent *> agents_;
 		Agent *defaultAgent_;

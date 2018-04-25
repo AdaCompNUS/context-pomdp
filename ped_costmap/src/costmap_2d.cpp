@@ -51,7 +51,7 @@ namespace costmap_2d{
   costmap_(NULL), markers_(NULL), max_obstacle_range_(max_obstacle_range), 
   max_obstacle_height_(max_obstacle_height), max_raytrace_range_(max_raytrace_range), cached_costs_(NULL), cached_distances_(NULL), 
   inscribed_radius_(inscribed_radius), circumscribed_radius_(circumscribed_radius), inflation_radius_(inflation_radius),
-  weight_(weight), lethal_threshold_(lethal_threshold), track_unknown_space_(track_unknown_space), unknown_cost_value_(unknown_cost_value), inflation_queue_(), ped_cost_ratio_(ped_cost_ratio){
+  weight_(weight), lethal_threshold_(lethal_threshold), track_unknown_space_(track_unknown_space), unknown_cost_value_(unknown_cost_value), inflation_queue_(), ped_cost_ratio_(ped_cost_ratio), static_data_(static_data){
       cout << "ped_cost_ratio = " << ped_cost_ratio_ << endl;
     //create the costmap, static_map, and markers
     costmap_ = new unsigned char[size_x_ * size_y_];
@@ -91,6 +91,7 @@ namespace costmap_2d{
             *costmap_index = FREE_SPACE;
 
           if(*costmap_index == LETHAL_OBSTACLE){
+            //cout<<"====== lethal "<<index<<" +++++=="<<endl;
             unsigned int mx, my;
             indexToCells(index, mx, my);
             enqueue(index, mx, my, mx, my, inflation_queue_);
@@ -103,6 +104,9 @@ namespace costmap_2d{
       }
 
       //now... let's inflate the obstacles
+      /*if (inflation_queue_.empty())
+        cout<<"Empty inflation queue~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"<<endl;
+      else cout <<"~~~~~ not empty"<<endl;*/
       inflateObstacles(inflation_queue_);
 
       //we also want to keep a copy of the current costmap as the static map
@@ -547,21 +551,55 @@ namespace costmap_2d{
     ROS_ASSERT_MSG(inflation_queue_.empty(), "The inflation queue must be empty at the beginning of inflation");
 
     //raytrace freespace
-    //raytraceFreespace(clearing_observations);
+    //raytraceFreespace(clearing_observations); //// haoyu block
 
     //if we raytrace X meters out... we must re-inflate obstacles within the containing square of that circle
     double inflation_window_size = 2 * (max_raytrace_range_ + inflation_radius_);
 
     //clear all non-lethal obstacles in preparation for re-inflation
-    //clearNonLethal(robot_x, robot_y, inflation_window_size, inflation_window_size);
-	memcpy(costmap_, static_map_, size_x_ * size_y_ * sizeof(unsigned char));
+    //clearNonLethal(robot_x, robot_y, inflation_window_size, inflation_window_size); //// haoyu block
+	  
+    memcpy(costmap_, static_map_, size_x_ * size_y_ * sizeof(unsigned char)); //// haoyu
 
     //reset the inflation window
-    //resetInflationWindow(robot_x, robot_y, inflation_window_size + 2 * inflation_radius_, inflation_window_size + 2 * inflation_radius_, inflation_queue_, false);
+    //resetInflationWindow(robot_x, robot_y, inflation_window_size + 2 * inflation_radius_, inflation_window_size + 2 * inflation_radius_, inflation_queue_, false); //// haoyu block
 
     //now we also want to add the new obstacles we've received to the cost map
     updateObstacles(observations, inflation_queue_);
 
+    /*Panpan*/
+    /*unsigned int index = 0;
+    unsigned char* costmap_index = costmap_;
+    std::vector<unsigned char>::const_iterator static_data_index =  static_data_.begin();
+
+    //initialize the costmap with static data
+    for(unsigned int i = 0; i < size_y_; ++i){
+      for(unsigned int j = 0; j < size_x_; ++j){
+        //check if the static value is above the unknown or lethal thresholds
+        if(track_unknown_space_ && unknown_cost_value_ > 0 && *static_data_index == unknown_cost_value_)
+          *costmap_index = NO_INFORMATION;
+        else if(*static_data_index >= lethal_threshold_)
+          *costmap_index = LETHAL_OBSTACLE;
+        else
+          *costmap_index = FREE_SPACE;
+
+        if(*costmap_index == LETHAL_OBSTACLE){
+          unsigned int mx, my;
+          indexToCells(index, mx, my);
+          enqueue(index, mx, my, mx, my, inflation_queue_);
+        }
+
+        ++costmap_index;
+        ++static_data_index;
+        ++index;
+      }
+    }*/
+
+    /*Panpan*/
+
+    /*if (inflation_queue_.empty())
+        cout<<"Empty inflation queue in updateWorld~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"<<endl;
+      else cout <<"~~~~~ not empty in updateWorld"<<endl;*/
     inflateObstacles(inflation_queue_);
   }
   
@@ -614,7 +652,12 @@ namespace costmap_2d{
   }
 
   void Costmap2D::inflateObstacles(priority_queue<CellData>& inflation_queue){
+
+    // if (inflation_queue.empty())
+    //   cout<<"Empty inflation queue~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"<<endl;
+
     while(!inflation_queue.empty()){
+      //cout<<"~~~~~~ Not Empty inflation queue"<<endl;
       //get the highest priority cell and pop it off the priority queue
       const CellData& current_cell = inflation_queue.top();
 
@@ -624,6 +667,8 @@ namespace costmap_2d{
       unsigned int sx = current_cell.src_x_;
       unsigned int sy = current_cell.src_y_;
 	  float cost_ratio = current_cell.cost_ratio_;
+
+    //cout<< "~~~~~~~~~~~~~~~~~~~~~~cost_ratio: "<<cost_ratio<<endl;
 
       //attempt to put the neighbors of the current cell onto the queue
       if(mx > 0)

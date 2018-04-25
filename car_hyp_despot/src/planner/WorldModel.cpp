@@ -8,6 +8,7 @@
 
 #include"math_utils.h"
 #include"coord.h"
+
 using namespace std;
 
 
@@ -52,13 +53,38 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
     };*/
 
 
-    goals = { // indian cross
+/*    goals = { // indian cross
         COORD(-30.0, 0.0),
         COORD(0.0, 30.0), 
         COORD(30.0, 0.0), 
         COORD(0.0, -30.0),
         COORD(-1, -1) // stop
-    };
+    };*/
+
+
+    /*goals = { // indian cross 2
+        COORD(3.5, 10.0),
+        COORD(-3.5, 10.0), 
+        COORD(3.5, -10.0), 
+        COORD(-3.5, -10.0),
+        COORD(10.0  , 3.5),
+        COORD( 10.0 , -3.5), 
+        COORD(-10.0 , 3.5), 
+        COORD( -10.0, -3.5),
+        COORD(-1, -1) // stop
+    };*/
+
+    goals = { // indian cross 2 larger map
+            COORD(3.5, 20.0),
+            COORD(-3.5, 20.0), 
+            COORD(3.5, -20.0), 
+            COORD(-3.5, -20.0),
+            COORD(20.0  , 3.5),
+            COORD( 20.0 , -3.5), 
+            COORD(-20.0 , 3.5), 
+            COORD( -20.0, -3.5),
+            COORD(-1, -1) // stop
+        };
 
 }
 
@@ -84,7 +110,13 @@ void WorldModel::InitRVO(){
         //ped_sim_[tid]->setAgentDefaults(5.0f, 4, 2.0f, 2.0f, 0.25f, 3.0f);
         
         //ped_sim_[tid]->setAgentDefaults(5.0f, 2, 1.5, 1.5f, 0.25f, 2.0f);
-        ped_sim_[tid]->setAgentDefaults(5.0f, 4, 2.0f, 2.0f, 0.25f, 2.0f);
+
+        /// for golfcart
+        //ped_sim_[tid]->setAgentDefaults(5.0f, 4, 2.0f, 2.0f, 0.25f, 2.0f);
+
+        /// for audi_r8
+        //ped_sim_[tid]->setAgentDefaults(5.0f, 5, 1.5f, 1.5f, 0.25f, 2.5f); 
+        ped_sim_[tid]->setAgentDefaults(5.0f, 5, 1.5f, 1.5f, 0.25f, 2.5f); 
     }
     
 }
@@ -1120,8 +1152,24 @@ void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarS
     car_yaw = path.getYaw(car.pos);
   //  ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 1, 3.0f, 5.0f, 0.8f, 3.0f);
   //  ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity
-    ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
+
+    /// for golfcart
+/*    ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
+    ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));*/
+
+    /// for audi r8
+
+    ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 4.0f, 2, 1.0f, 2.0f, 1.15f, 3.0f, RVO::Vector2(), "vehicle");
     ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
+
+    ped_sim_[threadID]->addAgent(RVO::Vector2(car_x + 0.56 * 2.33 * cos(car_yaw), car_y + 1.4* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, 1.15f, 3.0f, RVO::Vector2(), "vehicle");
+    ped_sim_[threadID]->setAgentPrefVelocity(num_ped+1, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
+
+    ped_sim_[threadID]->addAgent(RVO::Vector2(car_x + 0.56*3.66 * cos(car_yaw), car_y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, 1.15f, 3.0f, RVO::Vector2(), "vehicle");
+    ped_sim_[threadID]->setAgentPrefVelocity(num_ped+2, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); 
+
+    ped_sim_[threadID]->addAgent(RVO::Vector2(car_x + 0.56*5 * cos(car_yaw), car_y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, 1.6f, 3.0f, RVO::Vector2(), "vehicle");
+    ped_sim_[threadID]->setAgentPrefVelocity(num_ped+3, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); 
 
     // Set the preferred velocity for each agent.
     for (size_t i = 0; i < num_ped; ++i) {

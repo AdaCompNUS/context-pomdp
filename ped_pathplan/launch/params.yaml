@@ -6,15 +6,22 @@ ped_costmap:
     map_topic: /map
     static_map: true
     publish_frequency: 5
-    #robot_radius: 1.2
+    #robot_radius: 1.5
     #robot_radius: 0.9 #### for golfcart
-    footprint: [[-1, -0.8], [1, -0.8], [1, 3.6], [-1, 3.6]] #### for audi r8
+    #!!! obstacle inflation is calculated with the minimum number in footprint !!!
+    #footprint: [[-1, -0.8], [1, -0.8], [1, 3.6], [-1, 3.6]] #### for audi r8
+    #footprint: [[-0.8, -1], [-0.8, 1], [3.6, 1], [3.6, -1]] #### for audi r8
+    #footprint: [[-0.8, -1.5], [-0.8, 1.5], [3.6, 1.5], [3.6, -1.5]] #### for audi r8
+    #footprint: [[-1.5, -1.5], [-1.5, 1.5], [3.6, 1.5], [3.6, -1.5]] #### for audi r8
+    footprint: [[-2.5, -2.5], [-2.5, 2.5], [3.6, 2.5], [3.6, -2.5]] #### for audi r8
+    #footprint: [[-1.5, -0.8], [1.5, -0.8], [1.5, 3.6], [-1.5, 3.6]] #### for audi r8
     #inflation_radius: 7.0
-    inflation_radius: 6.0 #### 4 for golfcart
+    inflation_radius: 2.5 #### 4 for golfcart
     #cost_scaling_factor: 4.0
     cost_scaling_factor: 4.0
     update_frequency: 2
     observation_sources: peds
+    lethal_cost_threshold: 40
     peds:
         #topic: ped_prediction
         topic: nothing
@@ -51,8 +58,8 @@ planner:
     steering_limit_deg: 35
     yaw_res_deg: 2.5
     #cost_steering_deg: 30
-    #cost_steering_deg: 8
     cost_steering_deg: 20
+    #cost_steering_deg: 20
     step: 24
     planning_step_len: 2.0
     planning_step_len_res: 1.5
