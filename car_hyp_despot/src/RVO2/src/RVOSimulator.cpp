@@ -37,13 +37,13 @@
 #include "Obstacle.h"
 
 #include <iostream>
-#define _OPENMP
+//#define _OPENMP
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
-#define RECORD_TIME
+//#define RECORD_TIME
 
 #ifdef RECORD_TIME
 using namespace std;

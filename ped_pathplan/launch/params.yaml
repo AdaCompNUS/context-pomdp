@@ -23,8 +23,8 @@ ped_costmap:
     observation_sources: peds
     lethal_cost_threshold: 40
     peds:
-        #topic: ped_prediction
-        topic: nothing
+        topic: ped_prediction
+        #topic: nothing
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000

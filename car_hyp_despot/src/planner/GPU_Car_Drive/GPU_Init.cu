@@ -355,7 +355,7 @@ void Simulator::InitializeDefaultParameters() {
 	Globals::config.use_multi_thread_=true;
 	
 	//Globals::config.NUM_THREADS=5;
-	Globals::config.NUM_THREADS=1;
+	Globals::config.NUM_THREADS=5;
 
 	Globals::config.exploration_mode=UCT;
 	Globals::config.exploration_constant=/*0.095*//*0.1*/0.3;

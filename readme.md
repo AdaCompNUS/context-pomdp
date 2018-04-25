@@ -20,6 +20,9 @@ In Unity project, file PedsSystem.cs:  change the parameters of GenOneRandPed in
 Generate a map and its .yaml file in ~
 update line: cd ~ && rosrun map_server map_server <map_name>.yaml
 
+### to change cost map option
+In /home/yuanfu/workspace/catkin_ws/src/ped_pathplan/launch/params.yaml, change peds: topic:
+
 
 
 ### run the whole system
