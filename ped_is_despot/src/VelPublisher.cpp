@@ -4,7 +4,7 @@
 #include <iostream>
 #include "param.h"
 
-const double freq = 10;
+const double freq = 10; //10;
 //const double acceleration0 = 0.7;
 //const double acceleration1 = 0.9;
 const double acceleration0 = /*0.5*/ModelParams::AccSpeed;
@@ -47,7 +47,7 @@ public:
 		//std::cout<<"vel publisher cmd "<<cmd.linear.x<<std::endl;
     }
 
-    double curr_vel, target_vel;
+    double curr_vel, target_vel, init_curr_vel;
     ros::Subscriber vel_sub;
     ros::Publisher cmd_pub;
 };
@@ -77,12 +77,15 @@ class VelPublisher2 : public VelPublisher {
 			target_vel=0.0;
 			return;
 		}
+
         target_vel = pomdp_vel->linear.x;
+        curr_vel = pomdp_vel->linear.y;
 
         //if(0.11<target_vel && target_vel < 0.59) {
             //target_vel = 0.6;
         //}
 		if(target_vel <= 0.01) {
+
 			target_vel = 0.0;
 		}
     }

@@ -74,7 +74,23 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
         COORD(-1, -1) // stop
     };*/
 
-    goals = { // indian cross 2 larger map
+    /*goals = { // indian cross 2 larger map
+        COORD(3.5, 20.0),
+        COORD(-3.5, 20.0), 
+        COORD(3.5, -20.0), 
+        COORD(-3.5, -20.0),
+        COORD(20.0  , 3.5),
+        COORD( 20.0 , -3.5), 
+        COORD(-20.0 , 3.5), 
+        COORD( -20.0, -3.5),
+        COORD(-1, -1) // stop
+    };*/
+}
+
+void WorldModel::InitPedGoals(){
+
+     if(goal_file_name_ == "null"){
+        goals = { // indian cross 2 larger map
             COORD(3.5, 20.0),
             COORD(-3.5, 20.0), 
             COORD(3.5, -20.0), 
@@ -85,6 +101,37 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
             COORD( -20.0, -3.5),
             COORD(-1, -1) // stop
         };
+    }
+    else{
+        goals.resize(0);
+
+        std::ifstream file;
+        file.open(goal_file_name_, std::ifstream::in);
+
+        if(file.fail()){
+            std::cout<<"open goal file failed !!!!!!"<<std::endl;
+            return;
+        }
+
+        std::string line;
+        int goal_num = 0;
+        while (std::getline(file, line))
+        {
+            std::istringstream iss(line);
+            
+            double x;
+            double y;
+            while (iss >> x >>y){
+                std::cout << x <<" "<< y<<std::endl;
+                goals.push_back(COORD(x, y));
+            }
+
+            goal_num++;
+            if(goal_num > 99) break;
+        }
+
+        file.close();
+    }
 
 }
 
@@ -1154,11 +1201,10 @@ void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarS
   //  ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity
 
     /// for golfcart
-/*    ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
-    ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));*/
-
+    /*ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
+    ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
+*/
     /// for audi r8
-
     ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 4.0f, 2, 1.0f, 2.0f, 1.15f, 3.0f, RVO::Vector2(), "vehicle");
     ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
 

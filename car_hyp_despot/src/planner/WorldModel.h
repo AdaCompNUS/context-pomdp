@@ -73,6 +73,10 @@ public:
     double freq;
     const double in_front_angle_cos;
     std::vector<RVO::RVOSimulator*> ped_sim_;
+
+public:
+    std::string goal_file_name_;
+    void InitPedGoals();
 };
 
 class WorldStateTracker {

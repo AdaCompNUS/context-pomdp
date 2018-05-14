@@ -68,7 +68,7 @@ void handle_div_0(int sig, siginfo_t* info, void*)
 	exit(-1);
 }
 
-Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead)
+Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead, string obstacle_file_name):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file_name_(obstacle_file_name)
 {
 	my_sig_action sa(handle_div_0);
     if (0 != sigaction(SIGFPE, sa, NULL)) {
@@ -76,13 +76,20 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
         //return 1;
     }
 
-/*    Path p;
+/// for golfcart
+ /*   Path p;
     COORD start = COORD(-205, -142.5);
     COORD goal = COORD(-189, -142.5);
     p.push_back(start);
     p.push_back(goal);
     worldModel.setPath(p.interpolate());
-    fixed_path_ = true;*/
+    fixed_path_ = true;
+*/
+
+/// for audi r8
+    fixed_path_=false;
+
+    
 
 	cout << "fixed_path = " << fixed_path_ << endl;
 	cout << "pathplan_ahead = " << pathplan_ahead_ << endl;
@@ -107,9 +114,15 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 	markers_pub=nh.advertise<visualization_msgs::MarkerArray>("pomdp_belief",1);
     pedStatePub_=nh.advertise<sensor_msgs::PointCloud>("ped_state", 1);
     pedPredictionPub_ = nh.advertise<sensor_msgs::PointCloud>("ped_prediction", 1);
+
+
+    ros::NodeHandle n("~");
+    n.param<std::string>("goal_file_name", worldModel.goal_file_name_, "null");
+
 	safeAction=2;
 	target_speed_=0.0;
 	goal_reached=false;
+	worldModel.InitPedGoals();
 	cerr << "DEBUG: Init simulator" << endl;
 	initSimulator();
     //RetrievePaths();
@@ -120,6 +133,7 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
     timer_ = nh.createTimer(ros::Duration(1.0/control_freq), &Controller::controlLoop, this);
 	timer_speed=nh.createTimer(ros::Duration(0.05), &Controller::publishSpeed, this);
 
+	last_acc_=0;
 }
 
 
@@ -147,113 +161,156 @@ bool Controller::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_po
 }
 
 void Controller::addObstacle(){
-/*    std::vector<RVO::Vector2> obstacle[12];
 
-    obstacle[0].push_back(RVO::Vector2(-222.55,-137.84));
-    obstacle[0].push_back(RVO::Vector2(-203.23,-138.35));
-    obstacle[0].push_back(RVO::Vector2(-202.49,-127));
-    obstacle[0].push_back(RVO::Vector2(-222.33,-127));
+	if(obstacle_file_name_ == "null"){
+	/*    std::vector<RVO::Vector2> obstacle[12];
 
-    obstacle[1].push_back(RVO::Vector2(-194.3,-137.87));
-    obstacle[1].push_back(RVO::Vector2(-181.8,-138));
-    obstacle[1].push_back(RVO::Vector2(-181.5,-127));
-    obstacle[1].push_back(RVO::Vector2(-194.3,-127));
+	    obstacle[0].push_back(RVO::Vector2(-222.55,-137.84));
+	    obstacle[0].push_back(RVO::Vector2(-203.23,-138.35));
+	    obstacle[0].push_back(RVO::Vector2(-202.49,-127));
+	    obstacle[0].push_back(RVO::Vector2(-222.33,-127));
 
-    obstacle[2].push_back(RVO::Vector2(-178.5,-137.66));
-    obstacle[2].push_back(RVO::Vector2(-164.95,-137.66));
-    obstacle[2].push_back(RVO::Vector2(-164.95,-127));
-    obstacle[2].push_back(RVO::Vector2(-178.5,-127));
+	    obstacle[1].push_back(RVO::Vector2(-194.3,-137.87));
+	    obstacle[1].push_back(RVO::Vector2(-181.8,-138));
+	    obstacle[1].push_back(RVO::Vector2(-181.5,-127));
+	    obstacle[1].push_back(RVO::Vector2(-194.3,-127));
 
-    obstacle[3].push_back(RVO::Vector2(-166.65,-148.05));
-    obstacle[3].push_back(RVO::Vector2(-164,-148.05));
-    obstacle[3].push_back(RVO::Vector2(-164,-138));
-    obstacle[3].push_back(RVO::Vector2(-166.65,-138));
+	    obstacle[2].push_back(RVO::Vector2(-178.5,-137.66));
+	    obstacle[2].push_back(RVO::Vector2(-164.95,-137.66));
+	    obstacle[2].push_back(RVO::Vector2(-164.95,-127));
+	    obstacle[2].push_back(RVO::Vector2(-178.5,-127));
 
-    obstacle[4].push_back(RVO::Vector2(-172.06,-156));
-    obstacle[4].push_back(RVO::Vector2(-166,-156));
-    obstacle[4].push_back(RVO::Vector2(-166,-148.25));
-    obstacle[4].push_back(RVO::Vector2(-172.06,-148.25));
+	    obstacle[3].push_back(RVO::Vector2(-166.65,-148.05));
+	    obstacle[3].push_back(RVO::Vector2(-164,-148.05));
+	    obstacle[3].push_back(RVO::Vector2(-164,-138));
+	    obstacle[3].push_back(RVO::Vector2(-166.65,-138));
 
-    obstacle[5].push_back(RVO::Vector2(-197.13,-156));
-    obstacle[5].push_back(RVO::Vector2(-181.14,-156));
-    obstacle[5].push_back(RVO::Vector2(-181.14,-148.65));
-    obstacle[5].push_back(RVO::Vector2(-197.13,-148.65));
+	    obstacle[4].push_back(RVO::Vector2(-172.06,-156));
+	    obstacle[4].push_back(RVO::Vector2(-166,-156));
+	    obstacle[4].push_back(RVO::Vector2(-166,-148.25));
+	    obstacle[4].push_back(RVO::Vector2(-172.06,-148.25));
 
-    obstacle[6].push_back(RVO::Vector2(-222.33,-156));
-    obstacle[6].push_back(RVO::Vector2(-204.66,-156));
-    obstacle[6].push_back(RVO::Vector2(-204.66,-148.28));
-    obstacle[6].push_back(RVO::Vector2(-222.33,-148.28));
+	    obstacle[5].push_back(RVO::Vector2(-197.13,-156));
+	    obstacle[5].push_back(RVO::Vector2(-181.14,-156));
+	    obstacle[5].push_back(RVO::Vector2(-181.14,-148.65));
+	    obstacle[5].push_back(RVO::Vector2(-197.13,-148.65));
 
-    obstacle[7].push_back(RVO::Vector2(-214.4,-143.25));
-    obstacle[7].push_back(RVO::Vector2(-213.5,-143.25));
-    obstacle[7].push_back(RVO::Vector2(-213.5,-142.4));
-    obstacle[7].push_back(RVO::Vector2(-214.4,-142.4));
+	    obstacle[6].push_back(RVO::Vector2(-222.33,-156));
+	    obstacle[6].push_back(RVO::Vector2(-204.66,-156));
+	    obstacle[6].push_back(RVO::Vector2(-204.66,-148.28));
+	    obstacle[6].push_back(RVO::Vector2(-222.33,-148.28));
 
-    obstacle[8].push_back(RVO::Vector2(-209.66,-144.35));
-    obstacle[8].push_back(RVO::Vector2(-208.11,-144.35));
-    obstacle[8].push_back(RVO::Vector2(-208.11,-142.8));
-    obstacle[8].push_back(RVO::Vector2(-209.66,-142.8));
+	    obstacle[7].push_back(RVO::Vector2(-214.4,-143.25));
+	    obstacle[7].push_back(RVO::Vector2(-213.5,-143.25));
+	    obstacle[7].push_back(RVO::Vector2(-213.5,-142.4));
+	    obstacle[7].push_back(RVO::Vector2(-214.4,-142.4));
 
-    obstacle[9].push_back(RVO::Vector2(-198.58,-144.2));
-    obstacle[9].push_back(RVO::Vector2(-197.2,-144.2));
-    obstacle[9].push_back(RVO::Vector2(-197.2,-142.92));
-    obstacle[9].push_back(RVO::Vector2(-198.58,-142.92));
+	    obstacle[8].push_back(RVO::Vector2(-209.66,-144.35));
+	    obstacle[8].push_back(RVO::Vector2(-208.11,-144.35));
+	    obstacle[8].push_back(RVO::Vector2(-208.11,-142.8));
+	    obstacle[8].push_back(RVO::Vector2(-209.66,-142.8));
 
-    obstacle[10].push_back(RVO::Vector2(-184.19,-143.88));
-    obstacle[10].push_back(RVO::Vector2(-183.01,-143.87));
-    obstacle[10].push_back(RVO::Vector2(-181.5,-141.9));
-    obstacle[10].push_back(RVO::Vector2(-184.19,-142.53));
+	    obstacle[9].push_back(RVO::Vector2(-198.58,-144.2));
+	    obstacle[9].push_back(RVO::Vector2(-197.2,-144.2));
+	    obstacle[9].push_back(RVO::Vector2(-197.2,-142.92));
+	    obstacle[9].push_back(RVO::Vector2(-198.58,-142.92));
 
-    obstacle[11].push_back(RVO::Vector2(-176,-143.69));
-    obstacle[11].push_back(RVO::Vector2(-174.43,-143.69));
-    obstacle[11].push_back(RVO::Vector2(-174.43,-142));
-    obstacle[11].push_back(RVO::Vector2(-176,-142));
+	    obstacle[10].push_back(RVO::Vector2(-184.19,-143.88));
+	    obstacle[10].push_back(RVO::Vector2(-183.01,-143.87));
+	    obstacle[10].push_back(RVO::Vector2(-181.5,-141.9));
+	    obstacle[10].push_back(RVO::Vector2(-184.19,-142.53));
 
-	int NumThreads=Globals::config.NUM_THREADS;
+	    obstacle[11].push_back(RVO::Vector2(-176,-143.69));
+	    obstacle[11].push_back(RVO::Vector2(-174.43,-143.69));
+	    obstacle[11].push_back(RVO::Vector2(-174.43,-142));
+	    obstacle[11].push_back(RVO::Vector2(-176,-142));
 
-    for(int tid=0; tid<NumThreads;tid++){
-	    for (int i=0; i<12; i++){
-	 	   worldModel.ped_sim_[tid]->addObstacle(obstacle[i]);
+		int NumThreads=Globals::config.NUM_THREADS;
+
+	    for(int tid=0; tid<NumThreads;tid++){
+		    for (int i=0; i<12; i++){
+		 	   worldModel.ped_sim_[tid]->addObstacle(obstacle[i]);
+			}
+
+		    //Process the obstacles so that they are accounted for in the simulation.
+		    worldModel.ped_sim_[tid]->processObstacles();
+		}*/
+
+
+		/// for indian_cross
+		std::vector<RVO::Vector2> obstacle[4];
+
+	    obstacle[0].push_back(RVO::Vector2(-4,-4));
+	    obstacle[0].push_back(RVO::Vector2(-30,-4));
+	    obstacle[0].push_back(RVO::Vector2(-30,-30));
+	    obstacle[0].push_back(RVO::Vector2(-4,-30));
+
+	    obstacle[1].push_back(RVO::Vector2(4,-4));
+	    obstacle[1].push_back(RVO::Vector2(4,-30));
+	    obstacle[1].push_back(RVO::Vector2(30,-30));
+	    obstacle[1].push_back(RVO::Vector2(30,-4));
+
+		obstacle[2].push_back(RVO::Vector2(4,4));
+	    obstacle[2].push_back(RVO::Vector2(30,4));
+	    obstacle[2].push_back(RVO::Vector2(30,30));
+	    obstacle[2].push_back(RVO::Vector2(4,30));
+
+		obstacle[3].push_back(RVO::Vector2(-4,4));
+	    obstacle[3].push_back(RVO::Vector2(-4,30));
+	    obstacle[3].push_back(RVO::Vector2(-30,30));
+	    obstacle[3].push_back(RVO::Vector2(-30,4));
+
+
+	    int NumThreads=Globals::config.NUM_THREADS;
+
+	    for(int tid=0; tid<NumThreads;tid++){
+		    for (int i=0; i<4; i++){
+		 	   worldModel.ped_sim_[tid]->addObstacle(obstacle[i]);
+			}
+
+		    /* Process the obstacles so that they are accounted for in the simulation. */
+		    worldModel.ped_sim_[tid]->processObstacles();
 		}
+	} else{
 
-	    //Process the obstacles so that they are accounted for in the simulation.
-	    worldModel.ped_sim_[tid]->processObstacles();
-	}*/
+		int NumThreads=Globals::config.NUM_THREADS;
 
+		ifstream file;
+	    file.open(obstacle_file_name_, std::ifstream::in);
 
-	/// for indian_cross
-	std::vector<RVO::Vector2> obstacle[4];
+	    if(file.fail()){
+	        cout<<"open obstacle file failed !!!!!!"<<endl;
+	        return;
+	    }
 
-    obstacle[0].push_back(RVO::Vector2(-4,-4));
-    obstacle[0].push_back(RVO::Vector2(-30,-4));
-    obstacle[0].push_back(RVO::Vector2(-30,-30));
-    obstacle[0].push_back(RVO::Vector2(-4,-30));
+	    std::vector<RVO::Vector2> obstacles[100];
 
-    obstacle[1].push_back(RVO::Vector2(4,-4));
-    obstacle[1].push_back(RVO::Vector2(4,-30));
-    obstacle[1].push_back(RVO::Vector2(30,-30));
-    obstacle[1].push_back(RVO::Vector2(30,-4));
+	    std::string line;
+	    int obst_num = 0;
+	    while (std::getline(file, line))
+	    {
+	        std::istringstream iss(line);
+	        
+	        double x;
+	        double y;
+	        while (iss >> x >>y){
+	            cout << x <<" "<< y<<endl;
+	            obstacles[obst_num].push_back(RVO::Vector2(x, y));
+	        }
 
-	obstacle[2].push_back(RVO::Vector2(4,4));
-    obstacle[2].push_back(RVO::Vector2(30,4));
-    obstacle[2].push_back(RVO::Vector2(30,30));
-    obstacle[2].push_back(RVO::Vector2(4,30));
+	        for(int tid=0; tid<NumThreads;tid++){
+			 	worldModel.ped_sim_[tid]->addObstacle(obstacles[obst_num]);			
+			}
 
-	obstacle[3].push_back(RVO::Vector2(-4,4));
-    obstacle[3].push_back(RVO::Vector2(-4,30));
-    obstacle[3].push_back(RVO::Vector2(-30,30));
-    obstacle[3].push_back(RVO::Vector2(-30,4));
+	        obst_num++;
+	        if(obst_num > 99) break;
+	    }
 
-
-    int NumThreads=Globals::config.NUM_THREADS;
-
-    for(int tid=0; tid<NumThreads;tid++){
-	    for (int i=0; i<4; i++){
-	 	   worldModel.ped_sim_[tid]->addObstacle(obstacle[i]);
+	    for(int tid=0; tid<NumThreads;tid++){
+			worldModel.ped_sim_[tid]->processObstacles();			    
 		}
-
-	    /* Process the obstacles so that they are accounted for in the simulation. */
-	    worldModel.ped_sim_[tid]->processObstacles();
+	    
+	    file.close();
 	}
 
 }
@@ -327,6 +384,7 @@ void Controller::publishSpeed(const ros::TimerEvent &e)
 	geometry_msgs::Twist cmd;
 	cmd.angular.z = 0;
 	cmd.linear.x = target_speed_;
+	cmd.linear.y = real_speed_;
 	//cout<<"publishing cmd speed "<<target_speed_<<endl;
 	cmdPub_.publish(cmd);
 }
@@ -612,6 +670,8 @@ void Controller::publishPath(const string& frame_id, const Path& path) {
 
 void Controller::controlLoop(const ros::TimerEvent &e)
 {		
+		static int run_step = 0;
+
 		cout.precision(8);
         /*static*/ double starttime=get_time_second();
         cout<<"*********************"<<endl;
@@ -640,7 +700,10 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		}
 
 		sendPathPlanStart(out_pose);
-		if(worldModel.path.size()==0) return;
+		if(worldModel.path.size()==0) {
+			cout<<"Empty path."<<endl;
+			return;
+		}
 
 		// transpose to laser frame for ped avoidance
 		in_pose.setIdentity();
@@ -668,7 +731,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		//cout << "after get topics / update world state:" << endl;
         //cout<<"current time "<<get_time_second()-starttime<<endl;
-        worldStateTracker.updateVel(real_speed_);
+        worldStateTracker.updateVel(real_speed_/*+last_acc_*/);
         //cout<< "real speed: "<<real_speed_<<endl;
 
 	//cout << "transformed pose = " << coord.x << " " << coord.y << endl;
@@ -681,10 +744,16 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		PomdpState curr_state = worldStateTracker.getPomdpState();
 		
 		if(real_speed_ >= 0.05 && worldModel.inRealCollision(curr_state)){
-			cout << "INININ in collision"<<endl;
+			if(goal_reached==true)
+				cout << "after reach goal: in collision"<<endl;
+			else
+				cout << "INININ in collision at step "<<run_step<<endl;
 		}
 		if(real_speed_ >= 0.05 && worldModel.inCollision(curr_state)){
-			cout << "near collision"<<endl;
+			if(goal_reached==true)
+				cout << "after reach goal: near collision"<<endl;
+			else
+				cout << "near collision at step "<< run_step<<endl;
 		}
 		publishROSState();
 
@@ -700,7 +769,9 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		if(goal_reached==true) {
 			safeAction=2;
 
-			cout<<"goal reached"<<endl;
+			cout<<"goal reached at step "<<run_step<<endl;
+
+			ros::shutdown();
 
 			target_speed_=real_speed_;
 		    target_speed_ -= 0.5;
@@ -745,7 +816,6 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		cout<<"particle weight sum "<<sum<<endl;
         */
 
-		static int run_step = 0;
 		cout<<"run_step: "<<run_step<<endl;
 		run_step ++;
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
@@ -813,6 +883,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		//actionPub_.publish(action);
 		double step_reward=StepReward(curr_state,safeAction);
+		//printf("%.5f", step_reward);
+		//cout<< "step reward **="<< step_reward<<endl;
 
 		publishAction(safeAction, step_reward);
 		//cout<<"8"<<endl;
@@ -828,13 +900,29 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
         /****** update target speed ******/
 
-		target_speed_=real_speed_;
+		target_speed_=real_speed_+last_acc_;
+		double last_speed=real_speed_+last_acc_;
 		cout<<"real speed: "<<real_speed_<<endl;
-        if(safeAction==0) {}
-		else if(safeAction==1) target_speed_ += /*0.20*2*/ ModelParams::AccSpeed/ModelParams::control_freq;
-		else if(safeAction==2) target_speed_ -= /*0.25*2*/ ModelParams::AccSpeed/ModelParams::control_freq;
-		if(target_speed_<=0.0) target_speed_ = 0.0;
-		if(target_speed_>=ModelParams::VEL_MAX) target_speed_ = ModelParams::VEL_MAX;
+		cout<<"predicted real speed: "<<real_speed_+last_acc_<<endl;
+        if(safeAction==0) {
+        	last_acc_=0;
+        }
+		else if(safeAction==1) {
+			last_acc_= ModelParams::AccSpeed/ModelParams::control_freq;
+			target_speed_+=last_acc_;
+		}
+		else if(safeAction==2) {
+			last_acc_=- ModelParams::AccSpeed/ModelParams::control_freq;
+			target_speed_+=last_acc_;
+		}
+		if(target_speed_<=0.0) {
+			target_speed_ = 0.0;
+			last_acc_=target_speed_-last_speed;
+		}
+		if(target_speed_>=ModelParams::VEL_MAX) {
+			target_speed_ = ModelParams::VEL_MAX;
+			last_acc_=target_speed_-last_speed;
+		}
 
 		cout<<"target_speed = "<<target_speed_<<endl;
 		delete pb;
@@ -849,20 +937,22 @@ double Controller::StepReward(PomdpState& state, int action){
 		return reward;
 	}
 
-
+	//cout<< "   + goal reward:"<< reward << endl;
  	// Safety control: collision; Terminate upon collision
     if(state.car.vel > 0.001 && worldModel.inRealCollision(state) ) { /// collision occurs only when car is moving
 		reward = ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);  //, closest_ped, closest_dist);
 		if(action == PedPomdp::ACT_DEC) reward += 0.1;
 		return reward;
 	}
-
+	//cout<< "   + collision and ACT_DEC reward:"<< reward << endl;
 	// Smoothness control
 	reward +=  (action == PedPomdp::ACT_DEC || action == PedPomdp::ACT_ACC) ? -0.1 : 0.0;
-
+	//cout<< "   + action reward:"<< reward << endl;
 	// Speed control: Encourage higher speed
 	reward += ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
+	//cout<< "   + vel reward:"<< reward << " REWARD_FACTOR_VEL, car vel, VEL_MAX:" <<ModelParams::REWARD_FACTOR_VEL<<","<< state.car.vel <<","<<ModelParams::VEL_MAX<< endl;
 
+	return reward;
 }
 
 void Controller::publishPedsPrediciton() {

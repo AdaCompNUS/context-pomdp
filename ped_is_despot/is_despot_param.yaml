@@ -2,8 +2,8 @@
 # goalx: -175.5
 # goaly: -146.68
 
-goalx: 0.0
-goaly: -18.0
+# goalx: 18.0
+# goaly: 0.0
 
 fixed_path: false
 pruning_constant: 0 #100000000

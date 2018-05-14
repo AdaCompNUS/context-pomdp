@@ -57,7 +57,7 @@ public:
 	void addObstacle();
 	PomdpStateWorld world_state;
 
-    Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead);
+    Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead, string obstacle_file_name);
 
     ~Controller();
 
@@ -103,6 +103,7 @@ public:
 	visualization_msgs::MarkerArray markers;
 
     double goalx_, goaly_;
+    std::string obstacle_file_name_;
 
 private:
     bool fixed_path_;
@@ -119,6 +120,7 @@ private:
     ros::Publisher believesPub_, cmdPub_,actionPub_, actionPubPlot_, plannerPedsPub_;
     ros::Publisher pedStatePub_;
     ros::Publisher pedPredictionPub_ ;
+    double last_acc_;
 
     void controlLoop(const ros::TimerEvent &e);
     double StepReward(PomdpState& state, int action);

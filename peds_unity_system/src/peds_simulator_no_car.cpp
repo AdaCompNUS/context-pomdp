@@ -12,6 +12,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <ctime>
+#include <fstream>
+#include <sstream>
 
 struct Car {
     Car(){
@@ -36,6 +38,8 @@ struct Ped {
     int goal;  //goal
     int id;   //id
     double vel;
+    double vel_x;
+    double vel_y;
 };
 
 class PedsSystem {
@@ -52,6 +56,9 @@ public:
     bool initialized;
 
     float freq;
+
+    std::string obstacle_file_name_;
+    std::string goal_file_name_;
 
     PedsSystem(){
         initialized = false;
@@ -90,17 +97,52 @@ public:
             COORD(-1, -1) // stop
         };*/
 
-        goals = { // indian cross 2 larger map
-            COORD(3.5, 20.0),
-            COORD(-3.5, 20.0), 
-            COORD(3.5, -20.0), 
-            COORD(-3.5, -20.0),
-            COORD(20.0  , 3.5),
-            COORD( 20.0 , -3.5), 
-            COORD(-20.0 , 3.5), 
-            COORD( -20.0, -3.5),
-            COORD(-1, -1) // stop
-        };
+        ros::NodeHandle n("~");
+        n.param<std::string>("goal_file_name", goal_file_name_, "null");
+
+        if (goal_file_name_=="null"){
+            goals = { // indian cross 2 larger map
+                COORD(3.5, 20.0),
+                COORD(-3.5, 20.0), 
+                COORD(3.5, -20.0), 
+                COORD(-3.5, -20.0),
+                COORD(20.0  , 3.5),
+                COORD( 20.0 , -3.5), 
+                COORD(-20.0 , 3.5), 
+                COORD( -20.0, -3.5),
+                COORD(-1, -1) // stop
+            };
+        }
+        else{
+            goals.resize(0);
+
+            std::ifstream file;
+            file.open(goal_file_name_, std::ifstream::in);
+
+            if(file.fail()){
+                std::cout<<"open goal file failed !!!!!!"<<std::endl;
+                return;
+            }
+
+            std::string line;
+            int goal_num = 0;
+            while (std::getline(file, line))
+            {
+                std::istringstream iss(line);
+                
+                double x;
+                double y;
+                while (iss >> x >>y){
+                    std::cout << x <<" "<< y<<std::endl;
+                    goals.push_back(COORD(x, y));
+                }
+
+                goal_num++;
+                if(goal_num > 99) break;
+            }
+
+            file.close();
+        }
 
         ped_sim_ = new RVO::RVOSimulator();
     
@@ -191,6 +233,10 @@ public:
             tmp_single_ped.ped_goal_id = peds[i].goal;
             tmp_single_ped.ped_id = peds[i].id;
             tmp_single_ped.ped_speed = peds[i].vel;
+
+            tmp_single_ped.ped_vel.x = peds[i].vel_x;
+            tmp_single_ped.ped_vel.y = peds[i].vel_y;
+
             peds_info_msg.peds.push_back(tmp_single_ped);
         }
 
@@ -228,67 +274,10 @@ public:
         //ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 3.0f, 2, 1.0f, 2.0f, 1.0f, 3.0f, RVO::Vector2(), "vehicle");
 
         ///// for golfcart:
-        //ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.45 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 0.45 * sin(3.1415 / 180.0 * car.yaw)), 3.0f, 2, 1.0f, 2.0f, 1.22f, 3.0f, RVO::Vector2(), "vehicle");
-
-        ///// for audi r8:
-        //ped_sim_->addAgent(RVO::Vector2(car.pos.x + 2.2 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.2 * sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 3.2f, 3.0f, RVO::Vector2(), "vehicle");
-        //ped_sim_->addAgent(RVO::Vector2(car.pos.x + 1.5 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 1.5* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 2.5f, 3.0f, RVO::Vector2(), "vehicle");
-
-/*        ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, 0.9f, 3.0f, RVO::Vector2(), "vehicle");
-
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
-        ped_sim_->setAgentPedID(peds.size(),-1);
-
-
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 1.4 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 1.4* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 0.9f, 3.0f, RVO::Vector2(), "vehicle");
-
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
-        ped_sim_->setAgentPedID(peds.size()+1,-2);
-
-
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 2.8 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.8* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 0.9f, 3.0f, RVO::Vector2(), "vehicle");
-
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
-        ped_sim_->setAgentPedID(peds.size()+2,-3);*/
-
-
-        /*ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, 1.05f, 3.0f, RVO::Vector2(), "vehicle");
-
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
-        ped_sim_->setAgentPedID(peds.size(),-1);
-
-
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 1.4* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.05f, 3.0f, RVO::Vector2(), "vehicle");
-
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
-        ped_sim_->setAgentPedID(peds.size()+1,-2);
-
-
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56*2 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.8* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.05f, 3.0f, RVO::Vector2(), "vehicle");
-
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
-        ped_sim_->setAgentPedID(peds.size()+2,-3);
-
-
-         ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56*3 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.8* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.05f, 3.0f, RVO::Vector2(), "vehicle");
-
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
-        ped_sim_->setAgentPedID(peds.size()+3,-4);
-
+        /*ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.45 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 0.45 * sin(3.1415 / 180.0 * car.yaw)), 3.0f, 2, 1.0f, 2.0f, 1.22f, 3.0f, RVO::Vector2(), "vehicle");
+        ped_sim_->setAgentPedID(peds.size(),-1);*/
         
-        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56*4 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.8* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.05f, 3.0f, RVO::Vector2(), "vehicle");
-
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
-        ped_sim_->setAgentPedID(peds.size()+4,-5);
-
-
-         ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56*5 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.8* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.05f, 3.0f, RVO::Vector2(), "vehicle");
-
-        ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
-        ped_sim_->setAgentPedID(peds.size()+5,-6);*/
-
-
-
+        ///// for audi r8:
         ped_sim_->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, 1.15f, 3.0f, RVO::Vector2(), "vehicle");
 
         ped_sim_->setAgentPrefVelocity(peds.size(), RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
@@ -307,7 +296,7 @@ public:
         ped_sim_->setAgentPedID(peds.size()+2,-3);
 
 
-         ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56*5 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.8* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.6f, 3.0f, RVO::Vector2(), "vehicle");
+        ped_sim_->addAgent(RVO::Vector2(car.pos.x + 0.56*5 * cos(3.1415 / 180.0 * car.yaw), car.pos.y + 2.8* sin(3.1415 / 180.0 * car.yaw)), 4.0f, 2, 1.0f, 2.0f, 1.6f, 3.0f, RVO::Vector2(), "vehicle");
 
         ped_sim_->setAgentPrefVelocity(peds.size()+3, RVO::Vector2(car.vel * cos(3.1415 / 180.0 * car.yaw), car.vel * sin(3.1415 / 180.0 * car.yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity 
         ped_sim_->setAgentPedID(peds.size()+3,-4);
@@ -318,6 +307,10 @@ public:
         for(int i=0; i<peds.size(); i++){
             peds[i].vel = freq*sqrt((ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)*(ped_sim_->getAgentPosition(i).x()-peds[i].pos.x)
                 +(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y)*(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y));
+
+            peds[i].vel_x = freq*(ped_sim_->getAgentPosition(i).x()-peds[i].pos.x);
+            peds[i].vel_y = freq*(ped_sim_->getAgentPosition(i).y()-peds[i].pos.y);
+
                 peds[i].pos.x=ped_sim_->getAgentPosition(i).x();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
                 peds[i].pos.y=ped_sim_->getAgentPosition(i).y();// + random.NextGaussian() * (ped_sim_->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
 
@@ -405,105 +398,147 @@ public:
 
     void addObstacle(){
 
-    	//// airport terminal
-        /*std::vector<RVO::Vector2> obstacle[12];
+        ros::NodeHandle n("~");
+        n.param<std::string>("obstacle_file_name", obstacle_file_name_, "null");
 
-        obstacle[0].push_back(RVO::Vector2(-222.55,-137.84));
-        obstacle[0].push_back(RVO::Vector2(-203.23,-138.35));
-        obstacle[0].push_back(RVO::Vector2(-202.49,-127));
-        obstacle[0].push_back(RVO::Vector2(-222.33,-127));
+        if(obstacle_file_name_=="null") {
 
-        obstacle[1].push_back(RVO::Vector2(-194.3,-137.87));
-        obstacle[1].push_back(RVO::Vector2(-181.8,-138));
-        obstacle[1].push_back(RVO::Vector2(-181.5,-127));
-        obstacle[1].push_back(RVO::Vector2(-194.3,-127));
+        	//// airport terminal
+            /*std::vector<RVO::Vector2> obstacle[12];
 
-        obstacle[2].push_back(RVO::Vector2(-178.5,-137.66));
-        obstacle[2].push_back(RVO::Vector2(-164.95,-137.66));
-        obstacle[2].push_back(RVO::Vector2(-164.95,-127));
-        obstacle[2].push_back(RVO::Vector2(-178.5,-127));
+            obstacle[0].push_back(RVO::Vector2(-222.55,-137.84));
+            obstacle[0].push_back(RVO::Vector2(-203.23,-138.35));
+            obstacle[0].push_back(RVO::Vector2(-202.49,-127));
+            obstacle[0].push_back(RVO::Vector2(-222.33,-127));
 
-        obstacle[3].push_back(RVO::Vector2(-166.65,-148.05));
-        obstacle[3].push_back(RVO::Vector2(-164,-148.05));
-        obstacle[3].push_back(RVO::Vector2(-164,-138));
-        obstacle[3].push_back(RVO::Vector2(-166.65,-138));
+            obstacle[1].push_back(RVO::Vector2(-194.3,-137.87));
+            obstacle[1].push_back(RVO::Vector2(-181.8,-138));
+            obstacle[1].push_back(RVO::Vector2(-181.5,-127));
+            obstacle[1].push_back(RVO::Vector2(-194.3,-127));
 
-        obstacle[4].push_back(RVO::Vector2(-172.06,-156));
-        obstacle[4].push_back(RVO::Vector2(-166,-156));
-        obstacle[4].push_back(RVO::Vector2(-166,-148.25));
-        obstacle[4].push_back(RVO::Vector2(-172.06,-148.25));
+            obstacle[2].push_back(RVO::Vector2(-178.5,-137.66));
+            obstacle[2].push_back(RVO::Vector2(-164.95,-137.66));
+            obstacle[2].push_back(RVO::Vector2(-164.95,-127));
+            obstacle[2].push_back(RVO::Vector2(-178.5,-127));
 
-        obstacle[5].push_back(RVO::Vector2(-197.13,-156));
-        obstacle[5].push_back(RVO::Vector2(-181.14,-156));
-        obstacle[5].push_back(RVO::Vector2(-181.14,-148.65));
-        obstacle[5].push_back(RVO::Vector2(-197.13,-148.65));
+            obstacle[3].push_back(RVO::Vector2(-166.65,-148.05));
+            obstacle[3].push_back(RVO::Vector2(-164,-148.05));
+            obstacle[3].push_back(RVO::Vector2(-164,-138));
+            obstacle[3].push_back(RVO::Vector2(-166.65,-138));
 
-        obstacle[6].push_back(RVO::Vector2(-222.33,-156));
-        obstacle[6].push_back(RVO::Vector2(-204.66,-156));
-        obstacle[6].push_back(RVO::Vector2(-204.66,-148.28));
-        obstacle[6].push_back(RVO::Vector2(-222.33,-148.28));
+            obstacle[4].push_back(RVO::Vector2(-172.06,-156));
+            obstacle[4].push_back(RVO::Vector2(-166,-156));
+            obstacle[4].push_back(RVO::Vector2(-166,-148.25));
+            obstacle[4].push_back(RVO::Vector2(-172.06,-148.25));
 
-        obstacle[7].push_back(RVO::Vector2(-214.4,-143.25));
-        obstacle[7].push_back(RVO::Vector2(-213.5,-143.25));
-        obstacle[7].push_back(RVO::Vector2(-213.5,-142.4));
-        obstacle[7].push_back(RVO::Vector2(-214.4,-142.4));
+            obstacle[5].push_back(RVO::Vector2(-197.13,-156));
+            obstacle[5].push_back(RVO::Vector2(-181.14,-156));
+            obstacle[5].push_back(RVO::Vector2(-181.14,-148.65));
+            obstacle[5].push_back(RVO::Vector2(-197.13,-148.65));
 
-        obstacle[8].push_back(RVO::Vector2(-209.66,-144.35));
-        obstacle[8].push_back(RVO::Vector2(-208.11,-144.35));
-        obstacle[8].push_back(RVO::Vector2(-208.11,-142.8));
-        obstacle[8].push_back(RVO::Vector2(-209.66,-142.8));
+            obstacle[6].push_back(RVO::Vector2(-222.33,-156));
+            obstacle[6].push_back(RVO::Vector2(-204.66,-156));
+            obstacle[6].push_back(RVO::Vector2(-204.66,-148.28));
+            obstacle[6].push_back(RVO::Vector2(-222.33,-148.28));
 
-        obstacle[9].push_back(RVO::Vector2(-198.58,-144.2));
-        obstacle[9].push_back(RVO::Vector2(-197.2,-144.2));
-        obstacle[9].push_back(RVO::Vector2(-197.2,-142.92));
-        obstacle[9].push_back(RVO::Vector2(-198.58,-142.92));
+            obstacle[7].push_back(RVO::Vector2(-214.4,-143.25));
+            obstacle[7].push_back(RVO::Vector2(-213.5,-143.25));
+            obstacle[7].push_back(RVO::Vector2(-213.5,-142.4));
+            obstacle[7].push_back(RVO::Vector2(-214.4,-142.4));
 
-        obstacle[10].push_back(RVO::Vector2(-184.19,-143.88));
-        obstacle[10].push_back(RVO::Vector2(-183.01,-143.87));
-        obstacle[10].push_back(RVO::Vector2(-181.5,-141.9));
-        obstacle[10].push_back(RVO::Vector2(-184.19,-142.53));
+            obstacle[8].push_back(RVO::Vector2(-209.66,-144.35));
+            obstacle[8].push_back(RVO::Vector2(-208.11,-144.35));
+            obstacle[8].push_back(RVO::Vector2(-208.11,-142.8));
+            obstacle[8].push_back(RVO::Vector2(-209.66,-142.8));
 
-        obstacle[11].push_back(RVO::Vector2(-176,-143.69));
-        obstacle[11].push_back(RVO::Vector2(-174.43,-143.69));
-        obstacle[11].push_back(RVO::Vector2(-174.43,-142));
-        obstacle[11].push_back(RVO::Vector2(-176,-142));
+            obstacle[9].push_back(RVO::Vector2(-198.58,-144.2));
+            obstacle[9].push_back(RVO::Vector2(-197.2,-144.2));
+            obstacle[9].push_back(RVO::Vector2(-197.2,-142.92));
+            obstacle[9].push_back(RVO::Vector2(-198.58,-142.92));
+
+            obstacle[10].push_back(RVO::Vector2(-184.19,-143.88));
+            obstacle[10].push_back(RVO::Vector2(-183.01,-143.87));
+            obstacle[10].push_back(RVO::Vector2(-181.5,-141.9));
+            obstacle[10].push_back(RVO::Vector2(-184.19,-142.53));
+
+            obstacle[11].push_back(RVO::Vector2(-176,-143.69));
+            obstacle[11].push_back(RVO::Vector2(-174.43,-143.69));
+            obstacle[11].push_back(RVO::Vector2(-174.43,-142));
+            obstacle[11].push_back(RVO::Vector2(-176,-142));
 
 
-        for (int i=0; i<12; i++){
-           ped_sim_->addObstacle(obstacle[i]);
+            for (int i=0; i<12; i++){
+               ped_sim_->addObstacle(obstacle[i]);
+            }
+
+            ped_sim_->processObstacles();*/
+
+
+            std::vector<RVO::Vector2> obstacle[4];
+
+            obstacle[0].push_back(RVO::Vector2(-4,-4));
+            obstacle[0].push_back(RVO::Vector2(-30,-4));
+            obstacle[0].push_back(RVO::Vector2(-30,-30));
+            obstacle[0].push_back(RVO::Vector2(-4,-30));
+
+            obstacle[1].push_back(RVO::Vector2(4,-4));
+            obstacle[1].push_back(RVO::Vector2(4,-30));
+            obstacle[1].push_back(RVO::Vector2(30,-30));
+            obstacle[1].push_back(RVO::Vector2(30,-4));
+
+    		obstacle[2].push_back(RVO::Vector2(4,4));
+            obstacle[2].push_back(RVO::Vector2(30,4));
+            obstacle[2].push_back(RVO::Vector2(30,30));
+            obstacle[2].push_back(RVO::Vector2(4,30));
+
+    		obstacle[3].push_back(RVO::Vector2(-4,4));
+            obstacle[3].push_back(RVO::Vector2(-4,30));
+            obstacle[3].push_back(RVO::Vector2(-30,30));
+            obstacle[3].push_back(RVO::Vector2(-30,4));
+
+            for (int i=0; i<4; i++){
+               ped_sim_->addObstacle(obstacle[i]);
+            }
+
+            ped_sim_->processObstacles();
+
+        } else {
+
+            std::ifstream file;
+            file.open(obstacle_file_name_, std::ifstream::in);
+
+            if(file.fail()){
+                std::cout<<"open "<<obstacle_file_name_<<" failed !!!!!!"<<std::endl;
+                return;
+            }
+
+            std::vector<RVO::Vector2> obstacles[100];
+
+            std::string line;
+            int obst_num = 0;
+            while (std::getline(file, line))
+            {
+                std::istringstream iss(line);
+                
+                double x;
+                double y;
+                while (iss >> x >>y){
+                    std::cout << x <<" "<< y<<std::endl;
+                    obstacles[obst_num].push_back(RVO::Vector2(x, y));
+                }
+
+                ped_sim_->addObstacle(obstacles[obst_num]);         
+                
+
+                obst_num++;
+                if(obst_num > 99) break;
+            }
+
+            ped_sim_->processObstacles();               
+                
+            file.close();
         }
-
-        ped_sim_->processObstacles();*/
-
-
-        std::vector<RVO::Vector2> obstacle[4];
-
-        obstacle[0].push_back(RVO::Vector2(-4,-4));
-        obstacle[0].push_back(RVO::Vector2(-30,-4));
-        obstacle[0].push_back(RVO::Vector2(-30,-30));
-        obstacle[0].push_back(RVO::Vector2(-4,-30));
-
-        obstacle[1].push_back(RVO::Vector2(4,-4));
-        obstacle[1].push_back(RVO::Vector2(4,-30));
-        obstacle[1].push_back(RVO::Vector2(30,-30));
-        obstacle[1].push_back(RVO::Vector2(30,-4));
-
-		obstacle[2].push_back(RVO::Vector2(4,4));
-        obstacle[2].push_back(RVO::Vector2(30,4));
-        obstacle[2].push_back(RVO::Vector2(30,30));
-        obstacle[2].push_back(RVO::Vector2(4,30));
-
-		obstacle[3].push_back(RVO::Vector2(-4,4));
-        obstacle[3].push_back(RVO::Vector2(-4,30));
-        obstacle[3].push_back(RVO::Vector2(-30,30));
-        obstacle[3].push_back(RVO::Vector2(-30,4));
-
-        for (int i=0; i<4; i++){
-           ped_sim_->addObstacle(obstacle[i]);
-        }
-
-        ped_sim_->processObstacles();
-    }
+    } 
 
 };
 

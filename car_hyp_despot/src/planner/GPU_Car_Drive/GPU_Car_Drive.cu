@@ -655,8 +655,8 @@ DEVICE bool Dvc_inCollision(float Mx, float My, float Hx, float Hy, float Nx, fl
 	double safe_margin = 0.92, side_safe_margin = 0.4, back_safe_margin = 0.33,
 				 side_margin = car_width / 2.0 + side_safe_margin,
 				 front_margin = car_length/2.0 + safe_margin,
-				 back_margin = car_length/2.0 + back_safe_margin;*/
-
+				 back_margin = car_length/2.0 + back_safe_margin;
+*/
 /// for audi r8
 	double car_width = 2.0,
 				 car_length = 4.4;
@@ -904,18 +904,15 @@ DEVICE bool Dvc_PedPomdp::Dvc_Step(Dvc_State& state, float rand_num, int action,
 
 
 /// for audi r8
-	double car_width = 2.0,
-				 car_length = 4.4;
+			double car_width = 2.0,
+			 car_length = 4.4;
 
-				 double safe_margin = 0.8, side_safe_margin = 0.35, back_safe_margin = 0.2,
-				 side_margin = car_width / 2.0 + side_safe_margin,
-				 front_margin = 3.6 + safe_margin,
-				 back_margin = 0.8 + back_safe_margin;
+			 double safe_margin = 0.8, side_safe_margin = 0.35, back_safe_margin = 0.2,
+			 side_margin = car_width / 2.0 + side_safe_margin,
+			 front_margin = 3.6 + safe_margin,
+			 back_margin = 0.8 + back_safe_margin;
 
-/*			double safe_margin = 0.95, side_safe_margin = 0.4, back_safe_margin = 0.3,
-				 side_margin = car_width / 2.0 + side_safe_margin,
-				 front_margin = car_length/2.0 + safe_margin,
-				 back_margin = car_length/2.0 + back_safe_margin;*/
+
 
 			//return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
 			float HLx = - HNy, // direction after 90 degree anticlockwise rotation

@@ -16,6 +16,7 @@
 //#include <pomdp_path_planner/GetPomdpPath.h>
 //#include <pomdp_path_planner/PomdpPath.h>
 //#include <ped_navfn/MakeNavPlan.h>
+bool b_load_goal=true; // !!!set to false only for data collection purpose!!! 
 
 PedPomdpNode::PedPomdpNode()
 {
@@ -55,6 +56,11 @@ PedPomdpNode::PedPomdpNode()
     n.param("infront_angle_deg", ModelParams::IN_FRONT_ANGLE_DEG, 90.0);
     n.param("driving_place", ModelParams::DRIVING_PLACE, 0);
 
+    string obstacle_file_name;
+    std::cout<<"before obstacle"<<std::endl;
+    n.param<std::string>("obstacle_file_name", obstacle_file_name, "null");
+    std::cout<<"before obstacle"<<std::endl;
+    std::cout<<obstacle_file_name<<std::endl;
 
     double noise_goal_angle_deg;
     n.param("noise_goal_angle_deg", noise_goal_angle_deg, 45.0);
@@ -66,11 +72,24 @@ PedPomdpNode::PedPomdpNode()
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
-	controller = new Controller(nh, fixed_path, pruning_constant, pathplan_ahead);
+	controller = new Controller(nh, fixed_path, pruning_constant, pathplan_ahead, obstacle_file_name);
+
+
 
     // default goal: after create door
-    n.param("goalx", controller->goalx_, 19.5);
-    n.param("goaly", controller->goaly_, 55.5);
+    if(b_load_goal){// load goal from ped_is_despot.yaml file
+	    n.param("goalx", controller->goalx_, 19.5);
+	    n.param("goaly", controller->goaly_, 55.5);
+	}
+	else{// to use a list of possible goals
+		srand (time(NULL));
+		int which_goal =rand() % 3;
+		switch(which_goal){
+			case 0: controller->goalx_=0.0; controller->goaly_=18.0; break;
+			case 1: controller->goalx_=18.0; controller->goaly_=0.0; break;
+			case 2: controller->goalx_=0.0; controller->goaly_=-18.0; break;
+		}
+	}
 
 	controller->window_pub=nh.advertise<geometry_msgs::PolygonStamped>("/my_window",1000);
 	controller->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);

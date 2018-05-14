@@ -59,8 +59,7 @@ def car_info(sid, data):
         ped_ids = ped_ids.split(' ')[0:-1]
         ped_ids = [ int(i) for i in ped_ids]
 
-        #print ped_ids
-
+        
         ped_goal_ids = data["ped_goal_ids"]
         ped_goal_ids = ped_goal_ids.split(' ')[0:-1]
         ped_goal_ids = [ int(i) for i in ped_goal_ids]
@@ -86,11 +85,11 @@ def car_info(sid, data):
         car_yaw = data["car_yaw"]
         car_yaw = float(car_yaw)
 
-        car_speed = data["car_speed"]
-        car_speed = float(car_speed)
+        #car_speed = data["car_speed"]
+        car_speed = 1.0
 
-        car_steer = data["car_steer"]
-        car_steer = float(car_steer)
+        #car_steer = data["car_steer"]
+        car_steer = 0.0 #float(car_steer)
 
         peds_car_info_msg = PedsCarInfo()
 

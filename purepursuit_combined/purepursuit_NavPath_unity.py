@@ -27,6 +27,7 @@ MAP_FRAME = 'map'
 
 car_speed = 0.0
 car_steer = 0.0
+const_speed = 0.47
 
 car_position_x = 0.0
 car_position_y = 0.0
@@ -104,7 +105,7 @@ class Path(object):
 class Pursuit(object):
     def __init__(self):
         self.path = Path()
-        self.tm = rospy.Timer(rospy.Duration(0.05), self.cb_pose_timer)  ##0.2 for golfcart
+        self.tm = rospy.Timer(rospy.Duration(0.05), self.cb_pose_timer)  ##0.2 for golfcart; 0.05
         rospy.Subscriber("cmd_vel", Twist, self.cb_speed, queue_size=1)
         self.pub_line = rospy.Publisher("pursuit_line", Marker, queue_size=1)
         self.pub_cmd_vel = rospy.Publisher("cmd_vel_to_unity", Twist, queue_size=1)
@@ -160,7 +161,7 @@ class Pursuit(object):
             r = MAX_ANGULAR
         if r < -MAX_ANGULAR:
             r = -MAX_ANGULAR
-        print "angle diff: ", r
+        #print "angle diff: ", r
 
         steering = math.atan2(WHEEL_DIST*r,PURSUIT_DIST)
         if steering < -MAX_STEERING:
@@ -223,6 +224,7 @@ def send_vel_to_unity(sid, data):
             global car_speed
             global car_steer
             print car_speed, car_steer
+            global const_speed
             sio.emit(
                 "cmd_vel",
                 data={
