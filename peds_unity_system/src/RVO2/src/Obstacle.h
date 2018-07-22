@@ -59,6 +59,28 @@ namespace RVO {
 
 		size_t id_;
 
+	public:
+		enum NearTypeEnum {
+				FIRST,
+				MIDDLE,
+				LAST
+			};
+
+		/*!
+			 *	@brief		Computes the squared distance from the obstacle to the given point.
+			 *				Also sets the value of the point in the provided Vector2
+			 *
+			 *	@param		pt			The point whose distance is to be evaluated
+			 *	@param		nearPt		The position on the obstacle which is nearest to the
+			 *							test point will be set here.
+			 *	@param		distSq		The squared distance to the line (i.e. ||pt - nearPt||^2)
+			 *							is placed inside this parameter.
+			 *	@returns	The classificaiton of what the nearest point is - first, middle, or
+			 *				last.
+			 */
+		NearTypeEnum distanceSqToPoint( const Vector2 & pt, Vector2 & nearPt,
+											float & distSq ) const;
+
 		friend class Agent;
 		friend class KdTree;
 		friend class RVOSimulator;

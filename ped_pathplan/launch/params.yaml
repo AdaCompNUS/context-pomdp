@@ -24,8 +24,8 @@ ped_costmap:
     observation_sources: peds
     lethal_cost_threshold: 40
     peds:
-        topic: ped_prediction
-        #topic: nothing
+        #topic: ped_prediction
+        topic: nothing
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000
@@ -59,8 +59,8 @@ planner:
     steering_limit_deg: 35
     yaw_res_deg: 2.5
     #cost_steering_deg: 30
-    cost_steering_deg: 5
-    #cost_steering_deg: 20
+    #cost_steering_deg: 5
+    cost_steering_deg: 30
     step: 24
     planning_step_len: 2.0
     planning_step_len_res: 1.5

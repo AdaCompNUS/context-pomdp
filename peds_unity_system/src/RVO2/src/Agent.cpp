@@ -39,6 +39,15 @@
 #include <iostream>
 
 #define USE_OLD_ORCA false
+#define DENSE_AWARE false
+
+#define STRIDE_FACTOR 1.57f
+#define STRIDE_BUFFER 0.5f
+
+#define TIME_STEP_TAU 2.5f
+#define PI 3.1415926
+#define THETA_TOTAL 90.f
+#define THETA_INTERVAL 15.f
 
 namespace RVO {
 	Agent::Agent(RVOSimulator *sim) : maxNeighbors_(0), maxSpeed_(0.0f), neighborDist_(0.0f), radius_(0.0f), sim_(sim), timeHorizon_(0.0f), timeHorizonObst_(0.0f), id_(0) { 
@@ -47,6 +56,8 @@ namespace RVO {
 		patience_ = 1.0;
 
 		updated_ = true;
+
+		setStrideParameters( STRIDE_FACTOR, STRIDE_BUFFER );
 	}
 
 	void Agent::computeNeighbors()
@@ -63,14 +74,7 @@ namespace RVO {
 		}
 	}
 
-	/* Search for the best new velocity. */
-	void Agent::computeNewVelocity()
-	{
-		if(tag_ == "vehicle") {
-			newVelocity_ = prefVelocity_;
-			return;
-		}
-
+	size_t Agent::computeObstORCALines(){
 		orcaLines_.clear();
 
 		const float invTimeHorizonObst = 1.0f / timeHorizonObst_;
@@ -297,38 +301,16 @@ namespace RVO {
 			}
 		}
 
+		return orcaLines_.size();
 
-		if(!USE_OLD_ORCA){
-			if((abs(prefVelocity_) <= 0.05 || abs(velocity_) >= 0.35 * abs(prefVelocity_))) {
-				patience_ = 1.0; //reset agent's patience to 1
-			}
-			else{
-				patience_ *= 0.5;
-			}
+	}
 
-			if(abs(velocity_)<0.11){
-				//std::cout<<"agent: "<<id_<<" p="<<patience_<<" v="<<abs(velocity_)<<" pv="<<abs(prefVelocity_)<<std::endl;
-			}
-			if(patience_ > 0.3){
-			//if(true){
-				Line line1;
-				line1.point = Vector2(0.0f, 0.0f);
-				//line1.direction = normalize(velocity_.rotate(-90.0));
-				line1.direction = normalize(prefVelocity_.rotate(-90.0));
-				orcaLines_.push_back(line1);
-			}
-		}
-		
-		
-
-		const size_t numObstLines = orcaLines_.size();
+	void Agent::computeAgentORCALines(){
 
 		//const float invTimeHorizon = 1.0f / timeHorizon_;
 		float invTimeHorizon = 1.0f / timeHorizon_;
 
-		bool vehicle_in_neighbor = false;
-		Vector2 vel_veh_avoiding;
-		Vector2 veh_pos;
+		veh_in_neighbor_ = false;
 
 		/* Create agent ORCA lines. */
 		for (size_t i = 0; i < agentNeighbors_.size(); ++i) {
@@ -340,9 +322,9 @@ namespace RVO {
 					invTimeHorizon = 1.0f/(timeHorizon_ *10);
 				}
 				
-				vehicle_in_neighbor = true;
-				vel_veh_avoiding = other->prefVelocity_;
-				veh_pos = other->position_;
+				veh_in_neighbor_ = true;
+				veh_vel_avoiding_ = other->prefVelocity_;
+				veh_pos_ = other->position_;
 			}
 
 			const Vector2 relativePosition = other->position_ - position_;
@@ -449,22 +431,169 @@ namespace RVO {
 			} else{
 				line.point = velocity_ + 0.5f * u;
 			}
-			
-			
+
 			orcaLines_.push_back(line);
 		}
+	}
 
+	void Agent::adaptPatience(){
 		if(!USE_OLD_ORCA){
-			if(vehicle_in_neighbor && abs(prefVelocity_) <= 0.1){
-				float dist_to_veh = abs(position_-veh_pos);
-				float no_collision_dist = abs(vel_veh_avoiding) * 2.0f + 0.8 + 0.3; // no collision within 4 seconds, 0.3 second is for delay; 0.8 is the distance from car center to car front; 0.3 is safety margin
+			if((abs(prefVelocity_) <= 0.05 || abs(velocity_) >= 0.35 * abs(prefVelocity_))) {
+				patience_ = 1.0; //reset agent's patience to 1
+			}
+			else{
+				patience_ *= 0.5;
+			}
+
+			if(abs(velocity_)<0.11){
+				//std::cout<<"agent: "<<id_<<" p="<<patience_<<" v="<<abs(velocity_)<<" pv="<<abs(prefVelocity_)<<std::endl;
+			}
+			if(patience_ > 0.3){
+				Line line1;
+				line1.point = Vector2(0.0f, 0.0f);
+				//line1.direction = normalize(velocity_.rotate(-90.0));
+				line1.direction = normalize(prefVelocity_.rotate(-90.0));
+				orcaLines_.push_back(line1);
+			}
+		}
+	}
+
+	float Agent::getSpeed(Vector2 prefDir, float prefSpeed){
+		
+		float availSpace = 1e6f;	
+
+		// Not the speed-dependent stride length, but rather the mid-point of the
+		float strideLen = 1.f;	
+		// elliptical personal space.
+		Vector2 critPt = position_ + strideLen * prefDir;
+		float density = 0.f;
+		// For now, assume some constants
+		const float area = 1.5f;
+		const float areaSq2Inv = 1.f / ( 2 * area * area );
+		const float sqrt2Pi = sqrtf( 6.283182 ); // 6.283185 = 2*Pi
+		const float norm = 1.f / ( area * sqrt2Pi );
+
+		// AGENTS
+		for ( size_t i = 0; i < agentNeighbors_.size(); ++i ) {
+			const Agent* const other = agentNeighbors_[i].second;
+			Vector2 critDisp = other->position_ - critPt;
+			// dot project gets projection, in the preferred direction
+			Vector2 yComp = ( critDisp * prefDir ) * prefDir;
+			// penalize displacement perpindicular to the preferred direction
+			Vector2 xComp = ( critDisp - yComp ) * 2.5f;		
+			critDisp.set( xComp + yComp );
+			float distSq = absSq( critDisp );
+			density += norm * expf( -distSq * areaSq2Inv );	
+		}
+		//// OBSTACLES
+		const float OBST_AREA = 0.75f;
+		const float OBST_AREA_SQ_INV = 1.f / ( 2 * OBST_AREA * OBST_AREA );
+		const float OBST_SCALE = norm;// * 6.25f;	// what is the "density" of an obstacle?
+		for ( size_t i = 0; i < obstacleNeighbors_.size(); ++i ) {
+			const Obstacle* const obst = obstacleNeighbors_[i].second;
+			Vector2 nearPt;
+			float distSq;	// set by distanceSqToPoint
+			if ( obst->distanceSqToPoint( critPt, nearPt, distSq ) == 
+				 RVO::Obstacle::LAST ) continue;
+
+			if ( ( nearPt - position_ ) * prefDir < 0.f ) continue; //// the obstacle is behind
+			density += OBST_SCALE * expf( -distSq * OBST_AREA_SQ_INV );
+		}
+
+		const float	AGENT_WIDTH = 0.48f;
+		if ( density < 0.001f ) {
+			availSpace = 100.f;
+		} else {
+			availSpace = AGENT_WIDTH / density ;
+		}
+
+		// Compute the maximum speed I could take for the available space
+		/*float maxSpeed = _speedConst * availSpace * availSpace;
+		if ( maxSpeed < prefSpeed ) prefVelocity_.set( prefDir * maxSpeed );*/
+
+		float maxSpeed = _speedConst * availSpace * availSpace;
+		if ( maxSpeed < prefSpeed ) return maxSpeed;
+		else return prefSpeed;
+	}
+
+	Vector2 Agent::getTarget(){
+		return position_ + prefVelocity_ * 5.f;
+	}
+
+	float Agent::costToGoal(Vector2 velocity, Vector2 goal){
+		return abs((position_ + (velocity * TIME_STEP_TAU) ) - goal);
+	}
+
+	void Agent::adaptPreferredVelocity() {
+		if ( DENSE_AWARE ) {
+			
+			float prefSpeed = abs(prefVelocity_);
+			if(prefSpeed < 0.01) return;
+
+			Vector2 goal = getTarget();
+
+			Vector2 prefDir( normalize(prefVelocity_) );
+			float maxFDSpeed = getSpeed(prefDir, prefSpeed);
+			Vector2 bestVelocity = prefDir * maxFDSpeed;
+
+			float bestCost = costToGoal(bestVelocity, goal);
+
+			for (float angle = THETA_INTERVAL; angle < THETA_TOTAL; angle += THETA_INTERVAL){
+				Vector2 currDir = prefDir.rotate(angle);
+				float currFDSpeed = getSpeed(currDir, prefSpeed);
+				Vector2 currVel = currDir * currFDSpeed;
+				float currCost = costToGoal(currVel, goal);
+				if(currCost < bestCost){
+					bestCost = currCost;
+					bestVelocity = currVel;
+				}
+
+				currDir = prefDir.rotate(-angle);
+				currFDSpeed = getSpeed(currDir, prefSpeed);
+				currVel = currDir * currFDSpeed;
+				currCost = costToGoal(currVel, goal);
+				if(currCost < bestCost){
+					bestCost = currCost;
+					bestVelocity = currVel;
+				}
+			}
+
+			prefVelocity_ = bestVelocity;		
+		}
+	}
+
+	void Agent::setStrideParameters( float factor, float buffer ) {
+				_strideConst = 0.5f * ( 1.f + buffer ) / factor ;
+				_speedConst = 1.f / ( _strideConst * _strideConst );
+	}
+
+	/* Search for the best new velocity. */
+	void Agent::computeNewVelocity()
+	{
+		if(tag_ == "vehicle") {
+			newVelocity_ = prefVelocity_;
+			return;
+		}
+
+		adaptPreferredVelocity();
+
+		const size_t numObstLines = computeObstORCALines();
+
+		adaptPatience();
+
+		computeAgentORCALines();
+				
+		if(!USE_OLD_ORCA){
+			if(veh_in_neighbor_ && abs(prefVelocity_) <= 0.1){
+				float dist_to_veh = abs(position_-veh_pos_);
+				float no_collision_dist = abs(veh_vel_avoiding_) * 2.0f + 0.8 + 0.3; // no collision within 4 seconds, 0.3 second is for delay; 0.8 is the distance from car center to car front; 0.3 is safety margin
 				if(dist_to_veh < no_collision_dist){
-					if(distPointLine(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos) < /*0.95*/1.05f) {// the distance of the ped to the center line of the vehicle
+					if(distPointLine(Vector2(0.0f, 0.0f), veh_vel_avoiding_, position_-veh_pos_) < /*0.95*/1.05f) {// the distance of the ped to the center line of the vehicle
 						
-						if(leftOf(Vector2(0.0f, 0.0f), vel_veh_avoiding, position_-veh_pos)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
-							prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(90.0);
+						if(leftOf(Vector2(0.0f, 0.0f), veh_vel_avoiding_, position_-veh_pos_)>0){ // agent at the left side of the vehicle; rotate counter-colckwise
+							prefVelocity_ = (normalize(veh_vel_avoiding_) * 1.5).rotate(90.0);
 						} else{
-							prefVelocity_ = (normalize(vel_veh_avoiding) * 1.5).rotate(-90.0);
+							prefVelocity_ = (normalize(veh_vel_avoiding_) * 1.5).rotate(-90.0);
 						}
 					}
 				}
@@ -482,8 +611,6 @@ namespace RVO {
 				linearProgram3(orcaLines_, numObstLines, lineFail, maxSpeed_, newVelocity_);
 			}
 		}
-		
-
 	}
 
 	void Agent::insertAgentNeighbor(const Agent *agent, float &rangeSq)

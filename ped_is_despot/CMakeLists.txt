@@ -44,6 +44,7 @@ find_package(catkin REQUIRED COMPONENTS
   cluster_assoc
   pnc_msgs
   car_hyp_despot
+  peds_unity_system
 )
 
 #add_subdirectory(src/HypDespot/)
@@ -89,12 +90,15 @@ add_message_files(
     ped_local_frame.msg
     ped_local_frame_vector.msg
     peds_believes.msg
+    imitation_data.msg
 )
 
 generate_messages(
     DEPENDENCIES
         std_msgs
         geometry_msgs
+        nav_msgs
+        peds_unity_system
 )
 
 ## Generate messages in the 'msg' folder

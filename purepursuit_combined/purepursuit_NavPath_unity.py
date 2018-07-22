@@ -37,6 +37,9 @@ initialized = False
 
 goal_reached = 0
 
+use_steer_from_path = True # False, if True, steering will be calculated from path
+use_steer_from_pomdp = False # True, if True, steering will come from 'cmd_vel' topic
+
 sio = socketio.Server()
 app = Flask(__name__)
 
@@ -109,10 +112,16 @@ class Pursuit(object):
         rospy.Subscriber("cmd_vel", Twist, self.cb_speed, queue_size=1)
         self.pub_line = rospy.Publisher("pursuit_line", Marker, queue_size=1)
         self.pub_cmd_vel = rospy.Publisher("cmd_vel_to_unity", Twist, queue_size=1)
+        self.pub_cmd_steer = rospy.Publisher("IL_steer_cmd", Float32, queue_size=1)
 
     def cb_speed(self, msg):
         global car_speed
         car_speed = msg.linear.x
+        if use_steer_from_pomdp:
+            global car_steer
+            car_steer =msg.angular.z
+        elif use_steer_from_path:
+            pass #do nothing , code in cb_pose_timer
 
     # def cb_pose_timer(self, event):
     #     global car_position_x
@@ -145,13 +154,16 @@ class Pursuit(object):
         if pursuit_angle is None:
             return
 
+        if use_steer_from_path:
+            global car_steer
+            global car_yaw
+            car_steer = self.calc_angular(position, pursuit_angle, car_yaw)
+            angular_diff = self.calc_angular_diff(position, pursuit_point, car_yaw)
+            car_steer = 0.6*car_steer + 0.4*angular_diff
+        elif use_steer_from_pomdp:
+            pass #do nothing , code in cb_speed
 
-        global car_steer
-        global car_yaw
-        car_steer = self.calc_angular(position, pursuit_angle, car_yaw)
-        angular_diff = self.calc_angular_diff(position, pursuit_point, car_yaw)
 
-        car_steer = 0.6*car_steer + 0.4*angular_diff
         self.publish_pursuit_line(position, pursuit_point, MAP_FRAME)
 
     def calc_angular(self, position, pursuit_angle, car_yaw):
@@ -201,6 +213,11 @@ class Pursuit(object):
         cmd_vel_to_pub.linear.x = car_speed
         cmd_vel_to_pub.angular.x = car_steer
         self.pub_cmd_vel.publish(cmd_vel_to_pub)
+
+        # for imitation learning
+        steer_to_pub = Float32()
+        steer_to_pub.data = car_steer
+        self.pub_cmd_steer.publish(steer_to_pub)
 
 @sio.on('car_info')
 def car_info(sid, data):

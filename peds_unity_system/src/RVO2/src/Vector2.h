@@ -253,6 +253,15 @@ namespace RVO {
 			return Vector2(px, py);
 		}
 
+		/**
+		* \brief	rotate angele_deg counter-clockwise
+		*/
+		inline void set(const Vector2 &vector)
+		{
+			x_ = vector.x();
+			y_ = vector.y();
+		}
+
 	private:
 		float x_;
 		float y_;

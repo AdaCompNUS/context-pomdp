@@ -1,4 +1,5 @@
 from peds_unity_system.msg import peds_car_info as PedsCarInfo
+from peds_unity_system.msg import car_info as CarInfo # panpan
 from peds_unity_system.msg import peds_info as PedsInfo
 from peds_unity_system.msg import ped_info as PedInfo
 from cluster_assoc.msg import pedestrian_array as PedestrainArray
@@ -25,6 +26,8 @@ from tf.transformations import euler_from_quaternion
 
 rospy.init_node('unity_connector')
 peds_car_info_pub = rospy.Publisher('peds_car_info', PedsCarInfo, queue_size=10)
+car_info_pub = rospy.Publisher('IL_car_info', CarInfo, queue_size=1) # panpan, for imitation learning data collection
+
 
 peds_info = PedsInfo()
 
@@ -120,6 +123,9 @@ def car_info(sid, data):
         peds_car_info_msg.car.car_pos.z = 0
         peds_car_info_msg.car.car_yaw = car_yaw
         peds_car_info_pub.publish(peds_car_info_msg)
+
+        
+        car_info_pub.publish(peds_car_info_msg.car)
 
         peds_array_msg.header.frame_id = "map"
         peds_array_msg.header.stamp = current_time

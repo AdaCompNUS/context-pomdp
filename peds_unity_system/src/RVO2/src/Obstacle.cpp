@@ -35,4 +35,26 @@
 
 namespace RVO {
 	Obstacle::Obstacle() : isConvex_(false), nextObstacle_(NULL), prevObstacle_(NULL), id_(0) { }
+
+	Obstacle::NearTypeEnum Obstacle::distanceSqToPoint( const Vector2 & pt, Vector2 & nearPt,
+															float & distSq ) const {
+			Vector2 P1 = nextObstacle_ -> point_;
+			Vector2 ba( P1 - point_ );
+			Vector2 ca( pt - point_ );
+			float r = ( ca * ba ) / absSq( ba );
+
+			if (r < 0) { // point a is closest to c
+				nearPt.set( point_ );
+				distSq = absSq( ca ); 
+				return FIRST;
+			} else if (r > 1) { // point b is closest to c
+				nearPt.set( P1 );
+				distSq = absSq( nearPt - pt );
+				return LAST;
+			} else { // some point in between a and b is closest to c
+				nearPt.set( point_ + ba*r );
+				distSq = absSq( nearPt - pt ); 
+				return MIDDLE;
+			}
+		}
 }

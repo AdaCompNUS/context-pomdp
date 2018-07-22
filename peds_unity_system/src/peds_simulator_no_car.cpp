@@ -157,7 +157,8 @@ public:
         //ped_sim_->setAgentDefaults(5.0f, 2, 1.5f, 1.5f, 0.25f, 2.5f); // we can let timeHorizon = c * 1/maxNeighbors 
 
         //// for audi r8
-        ped_sim_->setAgentDefaults(5.0f, 5, 1.5f, 1.5f, 0.25f, 2.5f); // we can let timeHorizon = c * 1/maxNeighbors 
+        //ped_sim_->setAgentDefaults(5.0f, 5, 1.5f, 1.5f, 0.25f, 2.5f); // we can let timeHorizon = c * 1/maxNeighbors 
+        ped_sim_->setAgentDefaults(5.0f, 5, 2.5f, 2.5f, 0.25f, 2.5f); // densesense
 
         addObstacle();
     }

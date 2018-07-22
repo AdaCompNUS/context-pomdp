@@ -23,6 +23,8 @@ void sig_break(int param) {
 class VelPublisher {
 public:
     VelPublisher(): curr_vel(0), target_vel(0) {
+        ros::NodeHandle n("~");
+        n.param("use_drivenet", b_use_drive_net_, false);
     }
 
     void spin() {
@@ -42,12 +44,15 @@ public:
 
         geometry_msgs::Twist cmd;
         cmd.angular.z = 0;
+        if(b_use_drive_net_)
+            cmd.angular.z = steering; //0;
         cmd.linear.x = emergency_break? 0 : curr_vel;
         cmd_pub.publish(cmd);
 		//std::cout<<"vel publisher cmd "<<cmd.linear.x<<std::endl;
     }
 
-    double curr_vel, target_vel, init_curr_vel;
+    double curr_vel, target_vel, init_curr_vel, steering;
+    bool b_use_drive_net_;
     ros::Subscriber vel_sub;
     ros::Publisher cmd_pub;
 };
@@ -75,11 +80,13 @@ class VelPublisher2 : public VelPublisher {
 		if(pomdp_vel->linear.x==-1)  {
 			curr_vel=0.0;
 			target_vel=0.0;
+            steering = 0.0;
 			return;
 		}
 
         target_vel = pomdp_vel->linear.x;
         curr_vel = pomdp_vel->linear.y;
+        steering = pomdp_vel->angular.z;
 
         //if(0.11<target_vel && target_vel < 0.59) {
             //target_vel = 0.6;

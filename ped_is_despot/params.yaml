@@ -59,8 +59,8 @@ planner:
     # yaw_res_deg: 1.0
     steering_limit_deg: 48
     yaw_res_deg: 2.0
-    #cost_steering_deg: 30
-    cost_steering_deg: 8
+    cost_steering_deg: 30
+    #cost_steering_deg: 8
     steplen: 6
     num_search: 800000
     discretize_ratio: 0.3

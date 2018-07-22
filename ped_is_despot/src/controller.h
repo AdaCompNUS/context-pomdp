@@ -24,6 +24,9 @@
 #include <ped_is_despot/peds_believes.h>
 #include <ped_is_despot/ped_local_frame.h>
 #include <ped_is_despot/ped_local_frame_vector.h>
+#include <ped_is_despot/imitation_data.h>
+//#include <peds_unity_system/steering.h>
+#include <std_msgs/Float32.h>
 #include <pnc_msgs/speed_contribute.h>
 //#include "executer.h"
 #include <geometry_msgs/PoseStamped.h>
@@ -91,6 +94,16 @@ public:
 	ros::Publisher markers_pub;
 	ros::ServiceClient path_client;
 
+	// for imitation learning
+	ros::Subscriber carSub_;
+	ros::Subscriber steerSub_;
+	ros::Publisher IL_pub; 
+	bool b_update_il;
+	//float steering_cmd_;
+	void update_il_car(const peds_unity_system::car_info::ConstPtr car);
+	void update_il_steering(const std_msgs::Float32::ConstPtr steer);
+
+
     tf::TransformListener tf_;
     WorldStateTracker worldStateTracker;
     WorldModel worldModel;
@@ -126,6 +139,10 @@ private:
     double StepReward(PomdpState& state, int action);
 
 	void publishPlannerPeds(const State &);
+	void publishImitationData(PomdpState& planning_state, int safeAction, float reward, float vel);
+
+public:
+	bool b_use_drive_net_;
 
 
 };

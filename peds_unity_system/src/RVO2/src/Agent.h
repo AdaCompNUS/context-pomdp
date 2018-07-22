@@ -68,6 +68,14 @@ namespace RVO {
 		 */
 		void computeNewVelocity();
 
+		void computeAgentORCALines();
+
+		void adaptPatience();
+
+		size_t computeObstORCALines();
+
+		void adaptPreferredVelocity();
+
 		/**
 		 * \brief      Inserts an agent neighbor into the set of neighbors of
 		 *             this agent.
@@ -90,6 +98,10 @@ namespace RVO {
 		 *             velocity of this agent.
 		 */
 		void update();
+
+		float getSpeed(Vector2 prefDir, float prefSpeed);
+		Vector2 getTarget();
+		float costToGoal(Vector2 velocity, Vector2 goal);
 
 		std::vector<std::pair<float, const Agent *> > agentNeighbors_;
 		size_t maxNeighbors_;
@@ -122,6 +134,16 @@ namespace RVO {
 		//int ped_id_;
 		bool updated_;
 		bool use_old_orca_;
+		
+		bool veh_in_neighbor_;
+		Vector2 veh_vel_avoiding_;
+		Vector2 veh_pos_;
+
+		float _strideConst;
+		float _speedConst;
+
+		void setStrideParameters( float factor, float buffer );
+
 	public: int ped_id_;
 	};
 

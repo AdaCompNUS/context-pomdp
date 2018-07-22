@@ -4,6 +4,10 @@
 #include "core/globals.h"
 #include <csignal>
 using namespace std;
+static ped_is_despot::imitation_data p_IL_data; //for imitation learning
+
+
+
 double marker_colors[20][3] = {
     	{0.0,1.0,0.0},  //green
 		{1.0,0.0,0.0},  //red
@@ -115,6 +119,10 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
     pedStatePub_=nh.advertise<sensor_msgs::PointCloud>("ped_state", 1);
     pedPredictionPub_ = nh.advertise<sensor_msgs::PointCloud>("ped_prediction", 1);
 
+   	// for imitation learning
+   	carSub_ = nh.subscribe("IL_car_info", 1, &Controller::update_il_car, this);
+   	steerSub_ = nh.subscribe("IL_steer_cmd", 1, &Controller::update_il_steering, this);
+    IL_pub = nh.advertise<ped_is_despot::imitation_data>("il_data", 1);
 
     ros::NodeHandle n("~");
     n.param<std::string>("goal_file_name", worldModel.goal_file_name_, "null");
@@ -131,9 +139,15 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 
 	cerr <<"DEBUG: before entering controlloop"<<endl;
     timer_ = nh.createTimer(ros::Duration(1.0/control_freq), &Controller::controlLoop, this);
-	timer_speed=nh.createTimer(ros::Duration(0.05), &Controller::publishSpeed, this);
 
 	last_acc_=0;
+	b_update_il = true;
+	b_use_drive_net_ = false;
+	if(!b_use_drive_net_)
+		timer_speed=nh.createTimer(ros::Duration(0.05), &Controller::publishSpeed, this);
+	else
+		cout << "Node not publishing cmd_vel_pomdp: drive_net is used instead."<< endl;
+
 }
 
 
@@ -610,12 +624,15 @@ void Controller::setGoal(const geometry_msgs::PoseStamped::ConstPtr goal) {
     gpu_handler->UpdateGPUGoals(despot);
 
 }
-
 void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 //	cout<<"receive path from navfn "<<path->poses.size()<<endl;
 	if(fixed_path_ && worldModel.path.size()>0) return;
 
 	if(path->poses.size()==0) return;
+
+	if (b_update_il == true)
+		p_IL_data.plan = *path; // record to be further published for imitation learning
+
 	Path p;
 	for(int i=0;i<path->poses.size();i++) {
         COORD coord;
@@ -641,6 +658,20 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 	gpu_handler->UpdateGPUPath(despot);
 
 	publishPath(path->header.frame_id, worldModel.path);
+}
+
+void Controller::update_il_car(const peds_unity_system::car_info::ConstPtr car) {
+    if (b_update_il == true){
+    	p_IL_data.past_car = p_IL_data.cur_car;
+    	p_IL_data.cur_car = *car;
+    }
+}
+
+void Controller::update_il_steering(const std_msgs::Float32::ConstPtr steer){
+	if (b_update_il == true){
+    	p_IL_data.action_reward.angular.x = float(steer->data);
+    	cout<< "receive steer "<<steer->data <<endl;
+    }
 }
 
 void Controller::publishPath(const string& frame_id, const Path& path) {
@@ -742,6 +773,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
         worldStateTracker.cleanPed();
 
 		PomdpState curr_state = worldStateTracker.getPomdpState();
+
+		b_update_il = false ; // imitation learning: pause update of car info and path info for imitation data
 		
 		if(real_speed_ >= 0.05 && worldModel.inRealCollision(curr_state)){
 			if(goal_reached==true)
@@ -886,7 +919,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		//printf("%.5f", step_reward);
 		//cout<< "step reward **="<< step_reward<<endl;
 
-		publishAction(safeAction, step_reward);
+		//publishAction(safeAction, step_reward); // replaced by publishImitationData
 		//cout<<"8"<<endl;
 
 		cout<<"action **= "<<safeAction<<endl;
@@ -894,7 +927,9 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		cout<<"reward **= "<<step_reward<<endl;
 
 
-		publishBelief();
+		//publishBelief(); // replaced by publishImitationData
+
+		
 		//cout<<"9"<<endl;
 
 
@@ -925,6 +960,11 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		}
 
 		cout<<"target_speed = "<<target_speed_<<endl;
+
+		publishImitationData(curr_state, safeAction, step_reward, target_speed_);
+
+		b_update_il = true; // imitation learning: renable data update for imitation data
+
 		delete pb;
 
 		worldModel.ped_sim_[0] -> OutputTime();
@@ -1060,6 +1100,7 @@ void Controller::publishMarker(int id,PedBelief & ped)
         //markers.markers.push_back(marker_text);
 	}
 }
+
 void Controller::publishBelief()
 {
 	//vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->root_->particles());	
@@ -1084,4 +1125,70 @@ void Controller::publishBelief()
 	believesPub_.publish(pbs);
 	markers_pub.publish(markers);
 	markers.markers.clear();
+}
+
+
+void Controller::publishImitationData(PomdpState& planning_state, int safeAction, float reward, float cmd_vel)
+{
+	// car for publish
+	/*peds_unity_system::car_info p_car;
+	p_car.car_pos.x = car_pos_x
+	p_car.car_pos.y = car_pos_y
+	p_car.car_pos.z = 0
+	p_car.car_yaw = car_yaw
+
+	p_IL_data.past_car = p_IL_data.cur_car;
+    p_IL_data.cur_car = p_car;
+*/
+	// ped_for publish
+	peds_unity_system::peds_info p_ped;
+	for (int i = 0; i < planning_state.num; i++){
+		peds_unity_system::ped_info ped;
+        ped.ped_id = planning_state.peds[i].id;
+        ped.ped_goal_id = planning_state.peds[i].goal;
+        ped.ped_speed = 1.2;
+        ped.ped_pos.x = planning_state.peds[i].pos.x;
+        ped.ped_pos.y = planning_state.peds[i].pos.y;
+        ped.ped_pos.z = 0;
+        p_ped.peds.push_back(ped);
+    }
+
+    p_IL_data.past_peds = p_IL_data.cur_peds;
+    p_IL_data.cur_peds = p_ped;
+
+	// belief for pushlish
+	int i=0;
+	ped_is_despot::peds_believes pbs;	
+	for(auto & kv: worldBeliefTracker.peds)
+	{
+		publishMarker(i++,kv.second);
+		ped_is_despot::ped_belief pb;
+		PedBelief belief = kv.second;
+		pb.ped_x=belief.pos.x;
+		pb.ped_y=belief.pos.y;
+		pb.ped_id=belief.id;
+		for(auto & v : belief.prob_goals)
+			pb.belief_value.push_back(v);
+		pbs.believes.push_back(pb);
+	}
+	pbs.cmd_vel=worldStateTracker.carvel;
+	pbs.robotx=worldStateTracker.carpos.x;
+	pbs.roboty=worldStateTracker.carpos.y;
+
+	p_IL_data.believes = pbs.believes;
+
+	// path for publish
+	//p_path is recorded in the path callback function
+
+	// action for publish
+	geometry_msgs::Twist p_action_reward;
+
+    p_IL_data.action_reward.linear.x=safeAction;
+    p_IL_data.action_reward.linear.y=reward;
+    p_IL_data.action_reward.linear.z=cmd_vel;
+    //p_action_reward.angular.x = steering_cmd_;
+
+
+    IL_pub.publish(p_IL_data);
+
 }

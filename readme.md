@@ -39,6 +39,10 @@ update Maps/indian_cross_obs_*.txt, and modify the obstacle_file_name parameter 
 ### to change cost map option
 In /home/yuanfu/workspace/catkin_ws/src/ped_pathplan/launch/params.yaml, change peds: topic:
 
+### change to use drive_net
+In ~/workspace/catkin_ws/src/ped_is_despot/is_despot.launch, change use_drivenet parameter for both node ped_is_despot and vel_publisher to true
+In ~/workspace/catkin_ws/src/purepursuit_combined/purepursuit_NavPath_unity.py, change use_steer_from_pomdp to True and use_steer_from_path to False
+
 
 
 ### run the whole system
@@ -82,6 +86,21 @@ cd /home/yuanfu/Unity/DESPOT-Unity && ./run_despot_and_unity_and_record.sh
 roscore
 rosrun peds_unity_system peds_simulator_no_car
 roscd peds_unity_system/src && python unity_connector.py
+# run unity with use_ped_model set to true
+```
+
+### new test pedestrian system:
+```
+roscore
+
+problem_flag="16_8_16"
+obstacle_file="/home/yuanfu/Maps/indian_cross_obs_"$problem_flag".txt"
+goal_file="/home/yuanfu/Maps/indian_cross_goals_"$problem_flag".txt"
+roslaunch peds_unity_system ped_sim.launch obstacle_file_name:=$obstacle_file goal_file_name:=$goal_file
+
+roscd peds_unity_system/src && python unity_connector.py
+
+~/Unity/DESPOT-Unity/cross.x86_64
 # run unity with use_ped_model set to true
 ```
 
