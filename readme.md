@@ -45,6 +45,7 @@ In ~/workspace/catkin_ws/src/purepursuit_combined/purepursuit_NavPath_unity.py, 
 
 
 
+
 ### run the whole system
 ```
 roscore
