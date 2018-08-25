@@ -142,7 +142,7 @@ private:
 	void publishImitationData(PomdpState& planning_state, int safeAction, float reward, float vel);
 
 public:
-	bool b_use_drive_net_;
+	static bool b_use_drive_net_;
 
 
 };

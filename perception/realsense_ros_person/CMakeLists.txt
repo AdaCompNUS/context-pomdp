@@ -18,6 +18,8 @@ find_package(catkin REQUIRED COMPONENTS
     image_transport
   )
 
+find_package(OpenCV REQUIRED)
+
 include(FindPkgConfig)
 pkg_check_modules(PERSONTRACKING REQUIRED realsense_persontracking)
 

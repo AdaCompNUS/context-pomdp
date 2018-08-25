@@ -6,6 +6,7 @@
 using namespace std;
 static ped_is_despot::imitation_data p_IL_data; //for imitation learning
 
+bool Controller::b_use_drive_net_=false;
 
 
 double marker_colors[20][3] = {
@@ -142,7 +143,7 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 
 	last_acc_=0;
 	b_update_il = true;
-	b_use_drive_net_ = false;
+	//b_use_drive_net_ = false;
 	if(!b_use_drive_net_)
 		timer_speed=nh.createTimer(ros::Duration(0.05), &Controller::publishSpeed, this);
 	else
@@ -399,7 +400,7 @@ void Controller::publishSpeed(const ros::TimerEvent &e)
 	cmd.angular.z = 0;
 	cmd.linear.x = target_speed_;
 	cmd.linear.y = real_speed_;
-	//cout<<"publishing cmd speed "<<target_speed_<<endl;
+	cout<<"publishing cmd_vel_pomdp topic"<<endl;
 	cmdPub_.publish(cmd);
 }
 
@@ -909,22 +910,54 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 
         /****** solve for safe action ******/
+		double step_reward;
+		if (!b_use_drive_net_){
+			safeAction=solver->Search().action;
 
-		safeAction=solver->Search().action;
+			step_reward=StepReward(curr_state,safeAction);
+
+			cout<<"action **= "<<safeAction<<endl;
+
+			cout<<"reward **= "<<step_reward<<endl;
+
+			target_speed_=real_speed_+last_acc_;
+			double last_speed=real_speed_+last_acc_;
+			cout<<"real speed: "<<real_speed_<<endl;
+			cout<<"predicted real speed: "<<real_speed_+last_acc_<<endl;
+	        if(safeAction==0) {
+	        	last_acc_=0;
+	        }
+			else if(safeAction==1) {
+				last_acc_= ModelParams::AccSpeed/ModelParams::control_freq;
+				target_speed_+=last_acc_;
+			}
+			else if(safeAction==2) {
+				last_acc_=- ModelParams::AccSpeed/ModelParams::control_freq;
+				target_speed_+=last_acc_;
+			}
+			if(target_speed_<=0.0) {
+				target_speed_ = 0.0;
+				last_acc_=target_speed_-last_speed;
+			}
+			if(target_speed_>=ModelParams::VEL_MAX) {
+				target_speed_ = ModelParams::VEL_MAX;
+				last_acc_=target_speed_-last_speed;
+			}
+
+			cout<<"target_speed = "<<target_speed_<<endl;
+		}
+
 		//cout<<"7"<<endl;
 		//safeAction = 1;
 
 		//actionPub_.publish(action);
-		double step_reward=StepReward(curr_state,safeAction);
 		//printf("%.5f", step_reward);
 		//cout<< "step reward **="<< step_reward<<endl;
 
 		//publishAction(safeAction, step_reward); // replaced by publishImitationData
 		//cout<<"8"<<endl;
 
-		cout<<"action **= "<<safeAction<<endl;
-
-		cout<<"reward **= "<<step_reward<<endl;
+		
 
 
 		//publishBelief(); // replaced by publishImitationData
@@ -935,31 +968,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
         /****** update target speed ******/
 
-		target_speed_=real_speed_+last_acc_;
-		double last_speed=real_speed_+last_acc_;
-		cout<<"real speed: "<<real_speed_<<endl;
-		cout<<"predicted real speed: "<<real_speed_+last_acc_<<endl;
-        if(safeAction==0) {
-        	last_acc_=0;
-        }
-		else if(safeAction==1) {
-			last_acc_= ModelParams::AccSpeed/ModelParams::control_freq;
-			target_speed_+=last_acc_;
-		}
-		else if(safeAction==2) {
-			last_acc_=- ModelParams::AccSpeed/ModelParams::control_freq;
-			target_speed_+=last_acc_;
-		}
-		if(target_speed_<=0.0) {
-			target_speed_ = 0.0;
-			last_acc_=target_speed_-last_speed;
-		}
-		if(target_speed_>=ModelParams::VEL_MAX) {
-			target_speed_ = ModelParams::VEL_MAX;
-			last_acc_=target_speed_-last_speed;
-		}
-
-		cout<<"target_speed = "<<target_speed_<<endl;
+		
 
 		publishImitationData(curr_state, safeAction, step_reward, target_speed_);
 
@@ -1161,7 +1170,7 @@ void Controller::publishImitationData(PomdpState& planning_state, int safeAction
 	ped_is_despot::peds_believes pbs;	
 	for(auto & kv: worldBeliefTracker.peds)
 	{
-		publishMarker(i++,kv.second);
+		//publishMarker(i++,kv.second);
 		ped_is_despot::ped_belief pb;
 		PedBelief belief = kv.second;
 		pb.ped_x=belief.pos.x;

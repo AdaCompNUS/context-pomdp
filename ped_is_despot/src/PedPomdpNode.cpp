@@ -71,9 +71,11 @@ PedPomdpNode::PedPomdpNode()
     move_base_speed_=nh.subscribe("momdp_speed_dummy",1, &PedPomdpNode::moveSpeedCallback, this);
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 
+	n.param("use_drivenet", Controller::b_use_drive_net_, false);
+
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
+
 	controller = new Controller(nh, fixed_path, pruning_constant, pathplan_ahead, obstacle_file_name);
-	n.param("use_drivenet", controller->b_use_drive_net_, false);
 
 
     // default goal: after create door

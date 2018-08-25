@@ -37,8 +37,8 @@ initialized = False
 
 goal_reached = 0
 
-use_steer_from_path = True # False, if True, steering will be calculated from path
-use_steer_from_pomdp = False # True, if True, steering will come from 'cmd_vel' topic
+use_steer_from_path = False # False, if True, steering will be calculated from path
+use_steer_from_pomdp = True # True, if True, steering will come from 'cmd_vel' topic
 
 sio = socketio.Server()
 app = Flask(__name__)
