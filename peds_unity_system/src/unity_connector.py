@@ -164,7 +164,7 @@ def send_vel_to_unity(sid, data):
         else:
             sio.emit("empty",data={},skip_sid=True)
     else:
-        print "no data received"
+        print ("no data received")
         sio.emit('empty', data={}, skip_sid=True)
     peds_updated = False
 

@@ -373,6 +373,9 @@ void Controller::initSimulator()
 
   if(worldModel.path.size()>0)
   	gpu_handler->UpdateGPUPath(despot);
+
+  cout<<"LASER_RANGE= "<<ModelParams::LASER_RANGE<<endl;
+
 }
 
 
@@ -699,6 +702,7 @@ void Controller::publishPath(const string& frame_id, const Path& path) {
 	pathPub_.publish(navpath);
 }
 
+bool final_print_done = false;
 
 void Controller::controlLoop(const ros::TimerEvent &e)
 {		
@@ -767,7 +771,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
         //cout<< "real speed: "<<real_speed_<<endl;
 
 	//cout << "transformed pose = " << coord.x << " " << coord.y << endl;
-		cout << "======transformed pose = "<< coord.x << " " <<coord.y << endl;
+		cout << "======transformed pose = "<< coord.x << " " <<coord.y << " at step "<< run_step << endl;
 
 		worldStateTracker.updateCar(coord);
 
@@ -792,8 +796,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		publishROSState();
 
 
-       // cout << "root state:" << endl;
-		//despot->PrintState(curr_state, cout);
+        cout << "planning state:" << endl;
+		despot->PrintState(curr_state, cout);
 
         /****** check world state *****/
 
@@ -817,6 +821,13 @@ void Controller::controlLoop(const ros::TimerEvent &e)
             	cout<<"real_spead rrrr"<<endl;
                 ros::shutdown();
             }
+
+            if (!final_print_done){
+				cout << "final_state=[[" << endl;
+				despot->PrintState(curr_state, cout);
+				cout << "]]" << endl;
+				final_print_done = true;
+			}
 			return;
 		}
 

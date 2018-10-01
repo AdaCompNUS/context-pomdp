@@ -442,7 +442,7 @@ namespace RVO {
 				patience_ = 1.0; //reset agent's patience to 1
 			}
 			else{
-				patience_ *= 0.5;
+				patience_ *= 0.9; //0.5;
 			}
 
 			if(abs(velocity_)<0.11){

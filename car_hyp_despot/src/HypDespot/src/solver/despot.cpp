@@ -533,6 +533,10 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		PrepareGPUMemory_root(model, particleIDs, particles, root);
 	}
 
+	ns thread_d = std::chrono::duration_cast < ns > (Time::now() - start_time);
+	used_time = thread_d.count() / 1000000000.0f;
+	cout << std::setprecision(5) << "Root preperation in " << used_time << " s" << endl;
+
 	logd
 			<< "[DESPOT::ConstructTree] START - Initializing lower and upper bounds at the root node.";
 	if(use_GPU_)
