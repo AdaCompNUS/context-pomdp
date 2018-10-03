@@ -1,0 +1,7 @@
+<launch>
+	 <!-- <node name="peds_simulator_no_car" pkg="peds_unity_system" type="peds_simulator_no_car" launch-prefix="gdb -ex run - -args"  respawn="false" output="screen" required="true"> -->
+	 <node name="peds_simulator_no_car" pkg="peds_unity_system" type="peds_simulator_no_car" respawn="false" output="screen" required="true">
+	    <param name = "obstacle_file_name" value="$(arg obstacle_file_name)" />
+	    <param name = "goal_file_name" value="$(arg goal_file_name)" />
+	 </node>
+</launch>
