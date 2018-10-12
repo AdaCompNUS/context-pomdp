@@ -864,13 +864,13 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		cout<<"run_step: "<<run_step<<endl;
 		run_step ++;
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
-		//cout<<"4"<<endl;
+		cout<<"4"<<endl;
      //   despot->PrintState(*(pb->particles()[0]));
 		publishPlannerPeds(*(pb->particles()[0]));
-		//cout<<"5"<<endl;
+		cout<<"5"<<endl;
 		
 		solver->belief(pb);
-		//cout<<"6"<<endl;
+		cout<<"6"<<endl;
 
         /****** random simulation for verification purpose ******/
         /*
@@ -982,6 +982,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		
 
 		publishImitationData(curr_state, safeAction, step_reward, target_speed_);
+		cout<<"7"<<endl;
 
 		b_update_il = true; // imitation learning: renable data update for imitation data
 
@@ -1162,6 +1163,8 @@ void Controller::publishImitationData(PomdpState& planning_state, int safeAction
 */
 	// ped_for publish
 	peds_unity_system::peds_info p_ped;
+	cout<<"6.0"<<endl;
+
 	for (int i = 0; i < planning_state.num; i++){
 		peds_unity_system::ped_info ped;
         ped.ped_id = planning_state.peds[i].id;
@@ -1172,9 +1175,13 @@ void Controller::publishImitationData(PomdpState& planning_state, int safeAction
         ped.ped_pos.z = 0;
         p_ped.peds.push_back(ped);
     }
+   	cout<<"6.1.0"<<endl;
+
 
     p_IL_data.past_peds = p_IL_data.cur_peds;
     p_IL_data.cur_peds = p_ped;
+
+	cout<<"6.1"<<endl;
 
 	// belief for pushlish
 	int i=0;
@@ -1195,6 +1202,8 @@ void Controller::publishImitationData(PomdpState& planning_state, int safeAction
 	pbs.robotx=worldStateTracker.carpos.x;
 	pbs.roboty=worldStateTracker.carpos.y;
 
+	cout<<"6.2"<<endl;
+
 	p_IL_data.believes = pbs.believes;
 
 	// path for publish
@@ -1208,7 +1217,12 @@ void Controller::publishImitationData(PomdpState& planning_state, int safeAction
     p_IL_data.action_reward.linear.z=cmd_vel;
     //p_action_reward.angular.x = steering_cmd_;
 
+	cout<<"6.3"<<endl;
+
 
     IL_pub.publish(p_IL_data);
+
+  	cout<<"6.4"<<endl;
+
 
 }

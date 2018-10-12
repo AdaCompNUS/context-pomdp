@@ -1,5 +1,7 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
+#include <nav_msgs/Odometry.h>
+
 #include <csignal>
 #include <iostream>
 #include "param.h"
@@ -25,15 +27,35 @@ public:
     VelPublisher(): curr_vel(0), target_vel(0) {
         ros::NodeHandle n("~");
         n.param("use_drivenet", b_use_drive_net_, false);
+        n.param<std::string>("drivenet_mode", drive_net_mode, "action");
+        steering = 0;
     }
 
     void spin() {
         ros::NodeHandle nh;
-        vel_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::velCallBack, this);
+
+        if (b_use_drive_net_ & drive_net_mode == "action"){
+            action_sub = nh.subscribe("cmd_vel_drive_net", 1, &VelPublisher::actionCallBack, this);
+        }
+        else if (b_use_drive_net_ & drive_net_mode == "vel"){
+            vel_sub = nh.subscribe("cmd_vel_drive_net", 1, &VelPublisher::velCallBack, this);
+            // pomdp offers no steering signal
+        }
+        else if (b_use_drive_net_ & drive_net_mode == "steer"){
+            steer_sub = nh.subscribe("cmd_vel_drive_net", 1, &VelPublisher::steerCallBack, this);
+            vel_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::velCallBack, this);
+        }
+        else if (!b_use_drive_net_)
+            action_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::actionCallBack, this);
+
         ros::Timer timer = nh.createTimer(ros::Duration(1 / freq), &VelPublisher::publishSpeed, this);
         cmd_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel",1);
         ros::spin();
     }
+
+    virtual void actionCallBack(geometry_msgs::TwistConstPtr pomdp_vel) = 0;
+
+    virtual void steerCallBack(geometry_msgs::TwistConstPtr pomdp_vel) = 0;
 
     virtual void velCallBack(geometry_msgs::TwistConstPtr pomdp_vel) = 0;
 
@@ -43,17 +65,18 @@ public:
     {
 
         geometry_msgs::Twist cmd;
-        cmd.angular.z = 0;
-        if(b_use_drive_net_)
-            cmd.angular.z = steering; //0;
+
+        cmd.angular.z = steering; //0;
         cmd.linear.x = emergency_break? 0 : curr_vel;
+
         cmd_pub.publish(cmd);
 		//std::cout<<"vel publisher cmd "<<cmd.linear.x<<std::endl;
     }
 
     double curr_vel, target_vel, init_curr_vel, steering;
     bool b_use_drive_net_;
-    ros::Subscriber vel_sub;
+    std::string drive_net_mode;
+    ros::Subscriber vel_sub, steer_sub, action_sub, odom_sub;
     ros::Publisher cmd_pub;
 };
 
@@ -76,7 +99,7 @@ public:
 };*/
 
 class VelPublisher2 : public VelPublisher {
-    void velCallBack(geometry_msgs::TwistConstPtr pomdp_vel) {
+    void actionCallBack(geometry_msgs::TwistConstPtr pomdp_vel) {
 		if(pomdp_vel->linear.x==-1)  {
 			curr_vel=0.0;
 			target_vel=0.0;
@@ -88,13 +111,35 @@ class VelPublisher2 : public VelPublisher {
         curr_vel = pomdp_vel->linear.y;
         steering = pomdp_vel->angular.z;
 
-        //if(0.11<target_vel && target_vel < 0.59) {
-            //target_vel = 0.6;
-        //}
 		if(target_vel <= 0.01) {
 
 			target_vel = 0.0;
 		}
+    }
+
+    void velCallBack(geometry_msgs::TwistConstPtr pomdp_vel) {
+        if(pomdp_vel->linear.x==-1)  {
+            curr_vel=0.0;
+            target_vel=0.0;
+            return;
+        }
+
+        target_vel = pomdp_vel->linear.x;
+        curr_vel = pomdp_vel->linear.y;
+
+        if(target_vel <= 0.01) {
+
+            target_vel = 0.0;
+        }
+    }
+
+    void steerCallBack(geometry_msgs::TwistConstPtr pomdp_vel) {
+        if(pomdp_vel->linear.x==-1)  {
+            steering = 0.0;
+            return;
+        }
+
+        steering = pomdp_vel->angular.z;
     }
 
     void publishSpeed(const ros::TimerEvent& event) {

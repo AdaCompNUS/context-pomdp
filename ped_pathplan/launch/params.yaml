@@ -16,8 +16,8 @@ ped_costmap:
     footprint: [[-2.5, -2.5], [-2.5, 2.5], [3.6, 2.5], [3.6, -2.5]] #### for audi r8 #### the one we used
     #footprint: [[-1.5, -0.8], [1.5, -0.8], [1.5, 3.6], [-1.5, 3.6]] #### for audi r8
     #inflation_radius: 7.0
-    inflation_radius: 2.5 #### 4 for golfcart
-    inflation_radius: 4.0 #### 4 for golfcart
+    #inflation_radius: 2.5 #### 4 for golfcart
+    # inflation_radius: 4.0 #### 4 for golfcart ##### the one we used
     #cost_scaling_factor: 4.0
     cost_scaling_factor: 4.0
     update_frequency: 2
@@ -60,7 +60,7 @@ planner:
     yaw_res_deg: 2.5
     #cost_steering_deg: 30
     #cost_steering_deg: 5
-    cost_steering_deg: 30
+    # cost_steering_deg: 30 ###### current setting
     step: 24
     planning_step_len: 2.0
     planning_step_len_res: 1.5

@@ -28,6 +28,7 @@
 	 <node name="vel_publisher" pkg="ped_is_despot" type="vel_publisher" output="screen" >
 	    <!--<remap from="cmd_vel" to="cmd_vel"/>-->
 	    <param name = "use_drivenet" value="false" />
+   	    <param name = "drivenet_mode" value="action" />
 	 </node>
          
         <!-- <node name="record" pkg="rosbag" type="record" args="-a"/> -->
