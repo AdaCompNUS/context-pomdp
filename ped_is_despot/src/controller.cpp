@@ -7,6 +7,7 @@ using namespace std;
 static ped_is_despot::imitation_data p_IL_data; //for imitation learning
 
 bool Controller::b_use_drive_net_=false;
+int Controller::gpu_id_=0;
 
 
 double marker_colors[20][3] = {
@@ -143,6 +144,7 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 
 	last_acc_=0;
 	b_update_il = true;
+	gpu_id_ = 0;
 	//b_use_drive_net_ = false;
 	if(!b_use_drive_net_)
 		timer_speed=nh.createTimer(ros::Duration(0.05), &Controller::publishSpeed, this);
@@ -348,7 +350,9 @@ void Controller::initSimulator()
 
   gpu_handler=new Simulator(/*NULL, NULL*/);
 
-  gpu_handler->InitializeDefaultParameters() ;
+  gpu_handler->InitializeDefaultParameters();
+
+  Globals::config.GPUid= gpu_id_; // passed from rospackage param
 
   gpu_handler->PrepareGPU();
 

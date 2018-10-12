@@ -11,6 +11,7 @@
 	    <rosparam file="$(find ped_is_despot)/is_despot_param.yaml" command="load" />
 	    <param name = "goalx" value="$(arg goal_x)" />
 	    <param name = "goaly" value="$(arg goal_y)" />
+        <param name = "gpu_id" value="$(gpu_id)" />
 	    <param name = "obstacle_file_name" value="$(arg obstacle_file_name)" />
 	    <param name = "goal_file_name" value="$(arg goal_file_name)" />
 		<remap from="pomdp_path_repub" to="new_global_plan"/>

@@ -72,6 +72,7 @@ PedPomdpNode::PedPomdpNode()
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 
 	n.param("use_drivenet", Controller::b_use_drive_net_, false);
+	n.param("gpu_id", Controller::gpu_id_, 0);
 
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
 

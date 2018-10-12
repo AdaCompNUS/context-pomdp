@@ -143,7 +143,7 @@ private:
 
 public:
 	static bool b_use_drive_net_;
-
+	static int gpu_id_;
 
 };
 #endif /* MOMDP_H_ */
