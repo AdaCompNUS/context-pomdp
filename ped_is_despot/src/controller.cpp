@@ -9,6 +9,7 @@ static ped_is_despot::imitation_data p_IL_data; //for imitation learning
 bool Controller::b_use_drive_net_=false;
 int Controller::gpu_id_=0;
 
+int path_empty_counter=0;
 
 double marker_colors[20][3] = {
     	{0.0,1.0,0.0},  //green
@@ -742,6 +743,12 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		sendPathPlanStart(out_pose);
 		if(worldModel.path.size()==0) {
 			cout<<"Empty path."<<endl;
+			path_empty_counter++;
+			if (path_empty_counter >= 10){
+				ros::shutdown();
+				sleep(2);
+				exit(2);
+			}
 			return;
 		}
 
@@ -808,6 +815,10 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		if(worldModel.isGlobalGoal(curr_state.car)) {
 			goal_reached=true;
 		}
+		else{
+			cout << "dist to goal: " << worldModel.getDistToGoal(curr_state.car) << endl;
+			cout << "goal threshold: " << ModelParams::GOAL_TOLERANCE << endl;
+		}
 		if(goal_reached==true) {
 			safeAction=2;
 
@@ -868,13 +879,10 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		cout<<"run_step: "<<run_step<<endl;
 		run_step ++;
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
-		cout<<"4"<<endl;
      //   despot->PrintState(*(pb->particles()[0]));
 		publishPlannerPeds(*(pb->particles()[0]));
-		cout<<"5"<<endl;
 		
 		solver->belief(pb);
-		cout<<"6"<<endl;
 
         /****** random simulation for verification purpose ******/
         /*
@@ -925,7 +933,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 
         /****** solve for safe action ******/
-		double step_reward;
+		double step_reward = 0;
 		if (!b_use_drive_net_){
 			safeAction=solver->Search().action;
 
@@ -962,6 +970,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 			cout<<"target_speed = "<<target_speed_<<endl;
 		}
 
+
+
 		//cout<<"7"<<endl;
 		//safeAction = 1;
 
@@ -983,10 +993,19 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
         /****** update target speed ******/
 
-		
+		try {
 
-		publishImitationData(curr_state, safeAction, step_reward, target_speed_);
-		cout<<"7"<<endl;
+			despot->PrintState(curr_state);
+			cout << step_reward << endl;
+			cout << target_speed_ << endl;
+			cout << safeAction << endl; 
+
+		 	publishImitationData(curr_state, safeAction, step_reward, target_speed_);
+		} catch (const std::exception& e) { 
+			cout << "exception caught" << endl;
+			
+		}
+
 
 		b_update_il = true; // imitation learning: renable data update for imitation data
 
@@ -1166,8 +1185,8 @@ void Controller::publishImitationData(PomdpState& planning_state, int safeAction
     p_IL_data.cur_car = p_car;
 */
 	// ped_for publish
+
 	peds_unity_system::peds_info p_ped;
-	cout<<"6.0"<<endl;
 
 	for (int i = 0; i < planning_state.num; i++){
 		peds_unity_system::ped_info ped;
@@ -1179,13 +1198,11 @@ void Controller::publishImitationData(PomdpState& planning_state, int safeAction
         ped.ped_pos.z = 0;
         p_ped.peds.push_back(ped);
     }
-   	cout<<"6.1.0"<<endl;
 
 
     p_IL_data.past_peds = p_IL_data.cur_peds;
     p_IL_data.cur_peds = p_ped;
 
-	cout<<"6.1"<<endl;
 
 	// belief for pushlish
 	int i=0;
@@ -1206,7 +1223,6 @@ void Controller::publishImitationData(PomdpState& planning_state, int safeAction
 	pbs.robotx=worldStateTracker.carpos.x;
 	pbs.roboty=worldStateTracker.carpos.y;
 
-	cout<<"6.2"<<endl;
 
 	p_IL_data.believes = pbs.believes;
 
@@ -1221,12 +1237,9 @@ void Controller::publishImitationData(PomdpState& planning_state, int safeAction
     p_IL_data.action_reward.linear.z=cmd_vel;
     //p_action_reward.angular.x = steering_cmd_;
 
-	cout<<"6.3"<<endl;
 
 
     IL_pub.publish(p_IL_data);
-
-  	cout<<"6.4"<<endl;
 
 
 }

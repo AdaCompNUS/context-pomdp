@@ -83,6 +83,8 @@ PedPomdpNode::PedPomdpNode()
     if(b_load_goal){// load goal from ped_is_despot.yaml file
 	    n.param("goalx", controller->goalx_, 19.5);
 	    n.param("goaly", controller->goaly_, 55.5);
+
+	    cout << "car goal: " << controller->goalx_ << " " << controller->goaly_ << endl;
 	}
 	else{// to use a list of possible goals
 		srand (time(NULL));

@@ -31,6 +31,8 @@ public:
     bool isLocalGoal(const PomdpStateWorld& state);
 
     bool isGlobalGoal(const CarStruct& car);
+
+    double getDistToGoal(const CarStruct& car);
 	bool inFront(COORD ped_pos, int car) const;
     
     bool inCollision(const PomdpState& state);

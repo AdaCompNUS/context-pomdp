@@ -186,6 +186,10 @@ bool WorldModel::isGlobalGoal(const CarStruct& car) {
     return (d<ModelParams::GOAL_TOLERANCE);
 }
 
+double WorldModel::getDistToGoal(const CarStruct& car) {
+    return COORD::EuclideanDistance(path[car.pos], path[path.size()-1]);
+}
+
 int WorldModel::defaultPolicy(const std::vector<State*>& particles)  {
 	const PomdpState *state=static_cast<const PomdpState*>(particles[0]);
     double mindist = numeric_limits<double>::infinity();

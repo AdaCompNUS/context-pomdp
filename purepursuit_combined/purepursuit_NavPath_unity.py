@@ -120,6 +120,8 @@ class Pursuit(object):
         if use_steer_from_pomdp:
             global car_steer
             car_steer =msg.angular.z
+            print('Steer from pomdp / drivenet:', car_steer)
+
         elif use_steer_from_path:
             pass #do nothing , code in cb_pose_timer
 
@@ -160,6 +162,9 @@ class Pursuit(object):
             car_steer = self.calc_angular(position, pursuit_angle, car_yaw)
             angular_diff = self.calc_angular_diff(position, pursuit_point, car_yaw)
             car_steer = 0.6*car_steer + 0.4*angular_diff
+
+            print('Steer from path:', car_steer)
+
         elif use_steer_from_pomdp:
             pass #do nothing , code in cb_speed
 
@@ -180,7 +185,7 @@ class Pursuit(object):
             steering = -MAX_STEERING
         if steering > MAX_STEERING:
             steering = MAX_STEERING
-        print "steering: ", steering
+        # print "steering: ", steering
         return steering
 
     def calc_angular_diff(self, position, pursuit_point, car_yaw):
@@ -214,9 +219,26 @@ class Pursuit(object):
         cmd_vel_to_pub.angular.x = car_steer
         self.pub_cmd_vel.publish(cmd_vel_to_pub)
 
-        # for imitation learning
+        # ground-truth for imitation learning and let's drive
         steer_to_pub = Float32()
-        steer_to_pub.data = car_steer
+
+        if use_steer_from_pomdp:
+            position = (car_position_x, car_position_y)
+            pursuit_angle = self.path.pursuit_tan(position)
+            pursuit_point = self.path.pursuit(position)
+
+            if pursuit_angle is not None:
+                car_steer_path = self.calc_angular(position, pursuit_angle, car_yaw)
+                angular_diff = self.calc_angular_diff(position, pursuit_point, car_yaw)
+                car_steer_path = 0.6*car_steer_path + 0.4*angular_diff
+                steer_to_pub.data = car_steer_path
+
+                print('Publishing IL_steer_cmd:', car_steer_path)
+
+        elif use_steer_from_path:
+            steer_to_pub.data = car_steer
+            print('Publishing IL_steer_cmd:', car_steer)
+        
         self.pub_cmd_steer.publish(steer_to_pub)
 
 @sio.on('car_info')
@@ -227,6 +249,8 @@ def car_info(sid, data):
         global car_yaw
         global initialized
         initialized = True
+
+        # print('Initialized')
         car_position_x = float(data["car_position_x"])
         car_position_y = float(data["car_position_y"])
         car_yaw = float(data["car_yaw"])
