@@ -995,10 +995,10 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		try {
 
-			despot->PrintState(curr_state);
-			cout << step_reward << endl;
-			cout << target_speed_ << endl;
-			cout << safeAction << endl; 
+			// despot->PrintState(curr_state);
+			// cout << step_reward << endl;
+			// cout << target_speed_ << endl;
+			// cout << safeAction << endl; 
 
 		 	publishImitationData(curr_state, safeAction, step_reward, target_speed_);
 		} catch (const std::exception& e) { 

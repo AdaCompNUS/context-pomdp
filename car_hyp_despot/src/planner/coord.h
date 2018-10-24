@@ -38,6 +38,10 @@ struct COORD
   COORD operator+(COORD rhs) const {
     return COORD(x + rhs.x, y + rhs.y);
   }
+
+  COORD operator-(COORD rhs) const {
+    return COORD(x - rhs.x, y - rhs.y);
+  }
   
   COORD operator*(int mul) const
   {

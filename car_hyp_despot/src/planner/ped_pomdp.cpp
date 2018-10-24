@@ -888,7 +888,14 @@ ScenarioUpperBound* PedPomdp::CreateScenarioUpperBound(string name,
 void PedPomdp::PrintState(const State& s, ostream& out) const {
 	const PomdpState & state=static_cast<const PomdpState&> (s);
     COORD& carpos = world.path[state.car.pos];
+    double car_angle = 0.0;
+    if (state.car.pos < world.path.size()-1){
+	    COORD cardir = world.path[state.car.pos + 1] - world.path[state.car.pos];
+	    if (cardir.x* cardir.x + cardir.y *cardir.y > 1e-5)
+	    	car_angle = atan2(cardir.y, cardir.x) + 3.1415926;
+	}
 
+	out << "car angle = " << car_angle << endl;
 	out << "car pos / dist_trav / vel = " << "(" << carpos.x<< ", " <<carpos.y << ") / " 
         << state.car.dist_travelled << " / "
         << state.car.vel << endl;

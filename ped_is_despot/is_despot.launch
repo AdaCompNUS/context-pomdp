@@ -18,7 +18,7 @@
 		<remap from="navgoal" to="/move_base_simple/goal"/>
         <!-- <remap from="odom" to="odom"/> -->
         <param name="simulation" value="false"/>
-        <param name = "use_drivenet" value="false" />
+        <param name = "use_drivenet" value="true" />
 	 </node>
 
 	 <node name="ped_momdp_local_transform" pkg="ped_is_despot" type="local_frame"  >
@@ -28,7 +28,7 @@
 
 	 <node name="vel_publisher" pkg="ped_is_despot" type="vel_publisher" output="screen" >
 	    <!--<remap from="cmd_vel" to="cmd_vel"/>-->
-	    <param name = "use_drivenet" value="false" />
+	    <param name = "use_drivenet" value="true" />
    	    <param name = "drivenet_mode" value="action" />
 	 </node>
          
