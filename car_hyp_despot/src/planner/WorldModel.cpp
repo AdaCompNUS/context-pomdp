@@ -8,6 +8,7 @@
 
 #include"math_utils.h"
 #include"coord.h"
+#include <numeric>
 
 using namespace std;
 

@@ -88,11 +88,11 @@ bool ClusterAssoc::transformPointToGlobal(std_msgs::Header header, geometry_msgs
     return true;
 }
 
-void ClusterAssoc::pedCallback(cluster_extraction::clustersConstPtr cluster_vector_ptr, realsense_ros_person::FrameConstPtr ped_image_ptr)
+void ClusterAssoc::pedCallback(cluster_extraction::clustersConstPtr cluster_vector_ptr, cluster_assoc::FrameConstPtr ped_image_ptr)
 {
     ROS_INFO("entering pedestrian callback");
     cluster_extraction::clusters cluster_vector = *cluster_vector_ptr;
-    realsense_ros_person::Frame frame = *ped_image_ptr;
+    cluster_assoc::Frame frame = *ped_image_ptr;
 
 
     /*     ped_array.header = cluster_vector.header; */
@@ -244,7 +244,7 @@ void ClusterAssoc::pedCallback(cluster_extraction::clustersConstPtr cluster_vect
 /*     ROS_DEBUG_STREAM("cleanup end"); */
 /* } */
 
-void ClusterAssoc::transformCameraCoordinate(realsense_ros_person::Frame& frame)
+void ClusterAssoc::transformCameraCoordinate(cluster_assoc::Frame& frame)
 {
     //change from camera coordinate system to ros coordinate system
     for(int i=0; i<frame.numberOfUsers; i++)
@@ -257,7 +257,7 @@ void ClusterAssoc::transformCameraCoordinate(realsense_ros_person::Frame& frame)
     }
 }
 
-void ClusterAssoc::filterCluster(cluster_extraction::clusters& cluster_vector, realsense_ros_person::Frame& frame, cluster_assoc::pedestrian_array& ped_array)
+void ClusterAssoc::filterCluster(cluster_extraction::clusters& cluster_vector, cluster_assoc::Frame& frame, cluster_assoc::pedestrian_array& ped_array)
 {
     for(int i=0; i<frame.numberOfUsers; i++)
     {

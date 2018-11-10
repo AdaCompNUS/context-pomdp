@@ -12,7 +12,7 @@
 #include <sensor_msgs/PointCloud.h>
 #include <cluster_assoc/pedestrian_array.h>
 #include <cluster_extraction/clusters.h>
-#include <realsense_ros_person/Frame.h>
+#include <cluster_assoc/Frame.h>
 #include <geometry_msgs/Point.h>
 #include <tf/transform_listener.h>
 #include <tf/message_filter.h>
@@ -42,8 +42,8 @@ private:
     ros::NodeHandle nh_private_;
     
     message_filters::Subscriber<cluster_extraction::clusters> pedClusterSub_;
-    message_filters::Subscriber<realsense_ros_person::Frame> pedImageSub_;
-    typedef message_filters::sync_policies::ApproximateTime<cluster_extraction::clusters, realsense_ros_person::Frame> ApproxPolicy;
+    message_filters::Subscriber<cluster_assoc::Frame> pedImageSub_;
+    typedef message_filters::sync_policies::ApproximateTime<cluster_extraction::clusters, cluster_assoc::Frame> ApproxPolicy;
     message_filters::Synchronizer<ApproxPolicy> sync;
 
     ros::Publisher pedVisualizerPub_;
@@ -62,12 +62,12 @@ private:
     double time_out_;
     bool first_cluster;    
     
-    void pedCallback(cluster_extraction::clustersConstPtr cluster_vector, realsense_ros_person::FrameConstPtr ped_image_ptr);
+    void pedCallback(cluster_extraction::clustersConstPtr cluster_vector, cluster_assoc::FrameConstPtr ped_image_ptr);
     void publishPed(cluster_assoc::pedestrian_array& ped_array);
     bool transformPointToGlobal(std_msgs::Header header, geometry_msgs::Point32 input_point, geometry_msgs::Point32& output_point);
     bool transformGlobalToLocal(geometry_msgs::PointStamped& global_point, geometry_msgs::PointStamped& local_point);
-    void transformCameraCoordinate(realsense_ros_person::Frame& frame);
-    void filterCluster(cluster_extraction::clusters& cluster_vector, realsense_ros_person::Frame& frame, cluster_assoc::pedestrian_array& ped_array);
+    void transformCameraCoordinate(cluster_assoc::Frame& frame);
+    void filterCluster(cluster_extraction::clusters& cluster_vector, cluster_assoc::Frame& frame, cluster_assoc::pedestrian_array& ped_array);
     void cleanUp();
     void updatePedArrayWithNewCluster(cluster_extraction::clusters& cluster_vector);
     void dynamicReconfigureCallback(cluster_assoc::ClusterAssocConfig &config, uint32_t level); 

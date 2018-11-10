@@ -18,6 +18,21 @@ include_directories(
 
 add_message_files(
   FILES
+  Landmark.msg
+  LandmarksInfo.msg
+  SkeletonJoint.msg
+  User.msg
+  UserInfo.msg
+  Gesture.msg
+  Gestures.msg
+  Pointing.msg
+  Wave.msg
+  Frame.msg
+  FrameTest.msg
+  RectWithConfidence.msg
+  EulerAngles.msg
+  EulerAnglesWithConfidence.msg
+  PersonModuleState.msg
   pedestrian.msg
   pedestrian_array.msg
 )
@@ -25,6 +40,7 @@ add_message_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
+  sensor_msgs
   geometry_msgs
   cluster_extraction
 )
