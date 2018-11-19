@@ -10,7 +10,7 @@
 
 #include <despot/GPUcore/thread_globals.h>
 #include <despot/core/node.h>
-#include <despot/core/pomdp.h>
+#include <despot/interface/pomdp.h>
 #include <despot/util/util.h>
 #include <despot/random_streams.h>
 #include <despot/util/logging.h>
@@ -26,12 +26,11 @@ class Shared_QNode;
  * =============================================================================*/
 
 /**
- * A belief/value/AND node in the search tree.
+ * A belief/value/AND node in the search tree. Protected by mutex for sharing among multiple CPU threads
  */
 class Shared_VNode:public VNode {
 protected:
 	mutable std::mutex _mutex;
-	//mutable bool waiting_change;
 public:
 	float exploration_bonus;
 	std::atomic<int> visit_count_;
@@ -59,10 +58,8 @@ public:
 
 	double Weight();
 
-	//const std::vector<Shared_QNode*>& children() const;
-	//std::vector<Shared_QNode*>& children();
-	const Shared_QNode* Child(int action) const;
-	Shared_QNode* Child(int action);
+	const Shared_QNode* Child(ACT_TYPE action) const;
+	Shared_QNode* Child(ACT_TYPE action);
 	int Size() const;
 	int PolicyTreeSize() const;
 
@@ -83,12 +80,9 @@ public:
 	void value(double v);
 	double value() const;
 
-	//void PrintTree(int depth = -1, std::ostream& os = std::cout);
 	void PrintPolicyTree(int depth = -1, std::ostream& os = std::cout);
 
 	void Free(const DSPOMDP& model);
-
-	//double GPUWeight();
 
 	void AddVirtualLoss(float v);
 	void RemoveVirtualLoss(float v);
@@ -96,6 +90,8 @@ public:
 
 	void ResizeParticles(int i);
 	void ReconstructCPUParticles(const DSPOMDP* model, RandomStreams& streams, History& history);
+
+	bool check_despot_thread();
 };
 
 /* =============================================================================
@@ -103,7 +99,7 @@ public:
  * =============================================================================*/
 
 /**
- * A Q-node/AND-node (child of a belief node) of the search tree.
+ * A Q-node/AND-node (child of a belief node) of the search tree. Protected by mutex for sharing among multiple CPU threads
  */
 class Shared_QNode:public QNode  {
 protected:
@@ -115,19 +111,18 @@ public:
 
 	void lock(){_mutex.lock();}
 	void unlock(){_mutex.unlock();}
-	Shared_QNode(Shared_VNode* parent, int edge);
+	Shared_QNode(Shared_VNode* parent, ACT_TYPE edge);
 	Shared_QNode(int count, double value);
 	~Shared_QNode();
 
 	void parent(Shared_VNode* parent);
 	Shared_VNode* parent();
-	int edge() const;
-	//std::map<OBS_TYPE, Shared_VNode*>& children();
+	ACT_TYPE edge() const;
 	Shared_VNode* Child(OBS_TYPE obs);
 	int Size() const;
 	int PolicyTreeSize() const;
 
-	double Weight() /*const*/;
+	double Weight();
 
 	void lower_bound(double value);
 	double lower_bound() const;

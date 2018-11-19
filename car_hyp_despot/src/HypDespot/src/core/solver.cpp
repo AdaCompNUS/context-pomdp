@@ -1,7 +1,8 @@
 #include <despot/core/solver.h>
 #include <despot/util/logging.h>
-#include <despot/core/pomdp.h>
-#include <despot/core/belief.h>
+#include <despot/interface/pomdp.h>
+#include <despot/interface/belief.h>
+#include <iomanip>      // std::setprecision
 
 using namespace std;
 
@@ -31,11 +32,11 @@ SearchStatistics::SearchStatistics() :
 }
 
 ostream& operator<<(ostream& os, const SearchStatistics& statistics) {
-	os << "Initial bounds: ( " << statistics.initial_lb << " , "
-		<< statistics.initial_ub << " )" << endl;
-	os << "Final bounds: ( " << statistics.final_lb << " , "
-		<< statistics.final_ub << " )" << endl;
-	os << "Time (CPU s): path / expansion / backup / total = "
+	os << "Initial bounds: (" << statistics.initial_lb << ", "
+		<< statistics.initial_ub << ")" << endl;
+	os << "Final bounds: (" << statistics.final_lb << ", "
+		<< statistics.final_ub << ")" << endl;
+	os << std::setprecision(5) << "Time (CPU s): path / expansion / backup / total = "
 		<< statistics.time_path << " / " << statistics.time_node_expansion
 		<< " / " << statistics.time_backup << " / " << statistics.time_search
 		<< endl;
@@ -64,15 +65,17 @@ Solver::Solver(const DSPOMDP* model, Belief* belief) :
 Solver::~Solver() {
 }
 
-void Solver::Update(int action, OBS_TYPE obs) {
+void Solver::BeliefUpdate(ACT_TYPE action, OBS_TYPE obs) {
 	double start = get_time_second();
 
-	belief_->Update(action, obs);
-	history_.Add(action, obs);
+	if (action != (ACT_TYPE)(-1) && obs != (OBS_TYPE)(-1)){
+		belief_->Update(action, obs);
+		history_.Add(action, obs);
 
-	logi << "[Solver::Update] Updated belief, history and root with action "
-		<< action << ", observation " << obs
-		<< " in " << (get_time_second() - start) << "s" << endl;
+		logi << "[Solver::Update] Updated belief, history and root with action "
+			<< action << ", observation " << obs
+			<< " in " << (get_time_second() - start) << "s" << endl;
+	}
 }
 
 void Solver::belief(Belief* b) {

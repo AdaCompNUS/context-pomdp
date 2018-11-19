@@ -9,6 +9,7 @@ namespace despot {
  * VNode class
  * =============================================================================*/
 
+
 VNode::VNode(vector<State*>& particles,std::vector<int> particleIDs, int depth, QNode* parent,
 	OBS_TYPE edge) :
 	particles_(particles),
@@ -26,6 +27,21 @@ VNode::VNode(vector<State*>& particles,std::vector<int> particleIDs, int depth, 
 	for (int i = 0; i < particles_.size(); i++) {
 		logd << " " << i << " = " <<"("<< particleIDs_[i]<<")"<< *particles_[i] << endl;
 	}
+	weight_=0;
+}
+
+void VNode::Initialize(vector<State*>& particles,std::vector<int> particleIDs, int depth, QNode* parent,
+	OBS_TYPE edge){
+	particles_=particles;
+	particleIDs_=particleIDs;
+	GPU_particles_=NULL;
+	num_GPU_particles_=0;
+	belief_=NULL;
+	depth_=depth;
+	parent_=parent;
+	edge_=edge;
+	vstar=this;
+	likelihood=1;
 	weight_=0;
 }
 
@@ -53,11 +69,15 @@ VNode::VNode(int count, double value, int depth, QNode* parent, OBS_TYPE edge) :
 	weight_=0;
 }
 
+
 VNode::~VNode() {
 	for (int a = 0; a < children_.size(); a++) {
 		QNode* child = children_[a];
 		assert(child != NULL);
-		delete child;
+		if(child->IsAllocated())//allocated by memory pool
+			DESPOT::qnode_pool_.Free(child);
+		else
+			delete child;
 	}
 	children_.clear();
 
@@ -106,9 +126,7 @@ double VNode::Weight() {
 		return GPUWeight();
 }
 bool VNode::PassGPUThreshold(){
-	if(Globals::config.disableGPU)
-		return false;
-	return (particleIDs().size()>2 || depth()<1);
+	return (particleIDs().size()>Globals::config.expanstion_switch_thresh || depth()<1);
 }
 const vector<QNode*>& VNode::children() const {
 	return children_;
@@ -296,23 +314,30 @@ void VNode::PrintTree(int depth, ostream& os) {
 	}
 }
 
-
-
 /* =============================================================================
  * QNode class
  * =============================================================================*/
-
-QNode::QNode(VNode* parent, int edge) :
-	parent_(parent),
-	edge_(edge),
-	vstar(NULL) {
+QNode::QNode() :
+	parent_(NULL),
+	edge_(-1),
+	vstar(NULL),
+	prior_probability_(-1){
 	weight_=0;
 	//lower_bound_=0;upper_bound_=0;
 }
 
+QNode::QNode(VNode* parent, int edge) :
+	parent_(parent),
+	edge_(edge),
+	vstar(NULL),
+	prior_probability_(-1) {
+	weight_=0;
+}
+
 QNode::QNode(int count, double value) :
 	count_(count),
-	value_(value) {
+	value_(value),
+	prior_probability_(-1) {
 	weight_=0;
 }
 
@@ -320,7 +345,10 @@ QNode::~QNode() {
 	for (map<OBS_TYPE, VNode*>::iterator it = children_.begin();
 		it != children_.end(); it++) {
 		assert(it->second != NULL);
-		delete it->second;
+		if(it->second->IsAllocated())//allocated by memory pool
+			DESPOT::vnode_pool_.Free(it->second);
+		else
+			delete it->second;
 	}
 	children_.clear();
 }
@@ -364,8 +392,6 @@ int QNode::PolicyTreeSize() const {
 }
 
 double QNode::Weight() /*const*/ {
-	/*if(parent()->depth()==0)
-		cout<<__FUNCTION__<<endl;*/
 	if(weight_>1e-5){
 		//assert((parent()->depth()==0 && weight_>1-1e-5) ||
 		//		parent()->depth()!=0 && weight_<1+1e-5);
@@ -435,5 +461,16 @@ void QNode::value(double v) {
 double QNode::value() const {
 	return value_;
 }
+
+//Let's drive
+
+void QNode::prior_probability(double p) {
+	prior_probability_ = p;
+}
+
+double QNode::prior_probability() const {
+	return prior_probability_;
+}
+//
 
 } // namespace despot

@@ -3,163 +3,47 @@
 #include <despot/GPUconfig.h>
 #include <despot/GPUcore/CudaInclude.h>
 #include <despot/GPUcore/GPUglobals.h>
-#include <despot/GPUcore/GPUpolicy_graph.h>
+#include <despot/GPUcore/GPUbuiltin_lower_bound.h>
+#include <despot/GPUcore/GPUbuiltin_policy.h>
+
 
 #include "GPU_Car_Drive.h"
 #include "GPU_CarUpperBound.h"
 #include "GPU_LowerBoundPolicy.h"
 
-#include <despot/solver/GPUdespot.h>
+#include <despot/solver/Hyp_despot.h>
 
 #include <ped_pomdp.h>
 #include <vector>
-#include <simulator_hyp.h>
+#include <simulator.h>
 using namespace despot;
 using namespace std;
 
-static Dvc_PedPomdp* Dvc=NULL;
-static Dvc_Policy* inde_lowerbound=NULL;
-static Dvc_PedPomdpSmartPolicyGraph* graph_lowerbound=NULL;
-static Dvc_TrivialParticleLowerBound* b_lowerbound=NULL;
+static Dvc_PedPomdp* Dvc_pomdpmodel=NULL;
 static Dvc_PedPomdpParticleLowerBound* b_smart_lowerbound=NULL;
 static Dvc_PedPomdpParticleUpperBound1* upperbound=NULL;
 static Dvc_PedPomdpSmartPolicy* smart_lowerbound=NULL;
 
 static Dvc_COORD* tempGoals=NULL;
-static Dvc_COORD* tempPath=NULL;
-
-__global__ void PassPolicyGraph(int graph_size, int num_edges_per_node, int* action_nodes, int* obs_edges)
-{
-	graph_size_=graph_size;
-	num_edges_per_node_=num_edges_per_node;
-	action_nodes_=action_nodes;
-	obs_edges_=obs_edges;
-}
-
-void Simulator::InitializeGPUPolicyGraph(PolicyGraph* hostGraph)
-{
-	  int* tmp_node_list; int* tmp_edge_list;
-	  HANDLE_ERROR(cudaMalloc((void**)&tmp_node_list, hostGraph->graph_size_*sizeof(int)));
-	  HANDLE_ERROR(cudaMalloc((void**)&tmp_edge_list, hostGraph->graph_size_*hostGraph->num_edges_per_node_*sizeof(int)));
-
-	  HANDLE_ERROR(cudaMemcpy(tmp_node_list, hostGraph->action_nodes_.data(), hostGraph->graph_size_*sizeof(int), cudaMemcpyHostToDevice));
-
-	  for (int i = 0; i < hostGraph->num_edges_per_node_; i++)
-	  {
-		  HANDLE_ERROR(cudaMemcpy(tmp_edge_list+i*hostGraph->graph_size_, hostGraph->obs_edges_[(OBS_TYPE)i].data(), hostGraph->graph_size_*sizeof(int), cudaMemcpyHostToDevice));
-	  }
-
-	  PassPolicyGraph<<<1,1,1>>>(hostGraph->graph_size_,hostGraph->num_edges_per_node_,
-			  tmp_node_list,tmp_edge_list );
-	  HANDLE_ERROR(cudaDeviceSynchronize());
-}
-
-void Simulator::InitializeGPUGlobals()
-{
-	  HANDLE_ERROR(cudaMallocManaged((void**)&Dvc_Globals::config, sizeof(Dvc_Config)));
-	  Dvc_Globals::config->search_depth=Globals::config.search_depth;
-	  Dvc_Globals::config->discount=Globals::config.discount;
-	  Dvc_Globals::config->root_seed=Globals::config.root_seed;
-	  Dvc_Globals::config->time_per_move=Globals::config.time_per_move;  // CPU time available to construct the search tree
-	  Dvc_Globals::config->num_scenarios=Globals::config.num_scenarios;
-	  Dvc_Globals::config->pruning_constant=Globals::config.pruning_constant;
-	  Dvc_Globals::config->xi=Globals::config.xi; // xi * gap(root) is the target uncertainty at the root.
-	  Dvc_Globals::config->sim_len=Globals::config.sim_len; // Number of steps to run the simulation for.
-	  Dvc_Globals::config->max_policy_sim_len=Globals::config.max_policy_sim_len; // Maximum number of steps for simulating the default policy
-	  Dvc_Globals::config->noise=Globals::config.noise;
-	  Dvc_Globals::config->silence=Globals::config.silence;
-
-}
+static Dvc_COORD* tempCarGoal=NULL;
 
 
-void Simulator::DeleteGPUModel()
-{
-	  HANDLE_ERROR(cudaFree(Dvc));
-	  if(inde_lowerbound)HANDLE_ERROR(cudaFree(inde_lowerbound));
-	  if(graph_lowerbound)HANDLE_ERROR(cudaFree(graph_lowerbound));
-	  if(smart_lowerbound)HANDLE_ERROR(cudaFree(smart_lowerbound));
+void UpdateGPUGoals(DSPOMDP* Hst_model);
+void UpdateGPUCarGoal(DSPOMDP* Hst_model);
 
-	  if(b_lowerbound)HANDLE_ERROR(cudaFree(b_lowerbound));
-	  if(b_smart_lowerbound)HANDLE_ERROR(cudaFree(b_smart_lowerbound));
-	  HANDLE_ERROR(cudaFree(upperbound));
-	  if(tempGoals)HANDLE_ERROR(cudaFree(tempGoals));
-	  if(tempPath)HANDLE_ERROR(cudaFree(tempPath));
-}
-
-void Simulator::DeleteGPUGlobals()
-{
-    HANDLE_ERROR(cudaFree(Dvc_Globals::config));
-}
-
-
-__global__ void PassModelFuncs(Dvc_PedPomdp* model,
-		double _in_front_angle_cos, double _freq,
-		Dvc_COORD* _goals, Dvc_COORD* _path, int pathsize)
+__global__ void PassPedPomdpFunctionPointers(Dvc_PedPomdp* model)
 {
 	DvcModelStepIntObs_=&(model->Dvc_Step);
 	DvcModelCopyNoAlloc_=&(model->Dvc_Copy_NoAlloc);
 	DvcModelCopyToShared_=&(model->Dvc_Copy_ToShared);
 	DvcModelGet_=&(model->Dvc_Get);
-	DvcModelGetMinRewardAction_=&(model->Dvc_GetMinRewardAction);
-	in_front_angle_cos=_in_front_angle_cos;
-	freq=_freq;
-	goals=_goals;
-	if(path == NULL) path=new Dvc_Path();
-	printf("pass model to gpu\n");
-	 
-}
-__global__ void UpdatePathKernel(Dvc_COORD* _path, int pathsize)
-{
-	if(path) {delete path; path=new Dvc_Path();}
-	if(path==NULL) 	path=new Dvc_Path();
-
-	path->size_=pathsize;
-	path->pos_=0;
-	path->way_points_=_path;
-	printf("pass path to gpu %d\n", path);
+	//DvcModelGetBestAction_=&(model->Dvc_GetBestAction);
+	DvcModelGetMaxReward_=&(model->Dvc_GetMaxReward);
+	DvcModelNumActions_ = &(model->NumActions);
 }
 
-__global__ void UpdateGoalKernel(Dvc_COORD* _goals)
-{
-	goals=_goals;
-}
-
-__global__ void PassActionValueFuncs(Dvc_PedPomdp* model, Dvc_PedPomdpSmartPolicy* lowerbound,
-		/*Dvc_TrivialParticleLowerBound*/Dvc_PedPomdpParticleLowerBound* b_lowerbound,
-		Dvc_PedPomdpParticleUpperBound1* upperbound)
-{
-	DvcPolicyAction_=&(lowerbound->Action);
-
-	DvcLowerBoundValue_=&(lowerbound->Value);//DvcRandomPolicy.Value
-	DvcUpperBoundValue_=&(upperbound->Value);//DvcUncNavigationParticleUpperBound1.Value
-
-	DvcParticleLowerBound_Value_=&(b_lowerbound->Value);//DvcTrivialParticleLowerBound.Value
-
-}
-
-__global__ void PassValueFuncs(Dvc_PedPomdpSmartPolicyGraph* lowerbound,
-		/*Dvc_TrivialParticleLowerBound*/Dvc_PedPomdpParticleLowerBound* b_lowerbound,
-		Dvc_PedPomdpParticleUpperBound1* upperbound)
-{
-	DvcLowerBoundValue_=&(lowerbound->Value);//DvcRandomPolicy.Value
-	DvcUpperBoundValue_=&(upperbound->Value);//DvcUncNavigationParticleUpperBound1.Value
-
-	DvcParticleLowerBound_Value_=&(b_lowerbound->Value);//DvcTrivialParticleLowerBound.Value
-
-}
-
-/*__global__ void PassValueFuncs(Dvc_PedPomdpSmartPolicy* lowerbound,
-		Dvc_TrivialParticleLowerBound* b_lowerbound,
-		Dvc_PedPomdpParticleUpperBound1* upperbound)
-{
-	DvcLowerBoundValue_=&(lowerbound->Value);//DvcRandomPolicy.Value
-	DvcUpperBoundValue_=&(upperbound->Value);//DvcUncNavigationParticleUpperBound1.Value
-
-	DvcParticleLowerBound_Value_=&(b_lowerbound->Value);//DvcTrivialParticleLowerBound.Value
-
-}*/
-
-__global__ void PassModelParameters(
+__global__ void PassPedPomdpParams(	double _in_front_angle_cos, double _freq,
+		Dvc_COORD* _goals, Dvc_COORD* _car_goal, int pathsize,
 		double GOAL_TRAVELLED,
 		int N_PED_IN,
 		int N_PED_WORLD,
@@ -181,7 +65,18 @@ __global__ void PassModelParameters(
 		bool debug,
 		double control_freq,
 		double AccSpeed,
-		double GOAL_REWARD){
+		double GOAL_REWARD,
+		double NumAcc,
+		double NumSteerAngle,
+		double MaxSteerAngle,
+		double TimeReward
+		)
+{
+	in_front_angle_cos=_in_front_angle_cos;
+	freq=_freq;
+	goals=_goals;
+	car_goal = _car_goal;
+
 	Dvc_ModelParams::GOAL_TRAVELLED =  GOAL_TRAVELLED ;
 	Dvc_ModelParams::N_PED_IN = N_PED_IN  ;
 	Dvc_ModelParams::N_PED_WORLD = N_PED_WORLD  ;
@@ -202,98 +97,46 @@ __global__ void PassModelParameters(
 	Dvc_ModelParams::PED_SPEED = PED_SPEED  ;
 	Dvc_ModelParams::debug =  debug ;
 	Dvc_ModelParams::control_freq =  control_freq ;
-	Dvc_ModelParams::AccSpeed =  AccSpeed ;
-	Dvc_ModelParams::GOAL_REWARD = GOAL_REWARD  ;
+	Dvc_ModelParams::AccSpeed =  AccSpeed;
+	Dvc_ModelParams::NumAcc =  NumAcc;
+	Dvc_ModelParams::NumSteerAngle =  NumSteerAngle;
+	Dvc_ModelParams::MaxSteerAngle =  MaxSteerAngle;
 
+	Dvc_ModelParams::GOAL_REWARD = GOAL_REWARD;
+	Dvc_ModelParams::TIME_REWARD = TimeReward;
 
-	/*printf("Dvc_ModelParams::GOAL_TRAVELLED=%f\n", Dvc_ModelParams::GOAL_TRAVELLED);
-	printf("Dvc_ModelParams::N_PED_IN=%d\n", Dvc_ModelParams::N_PED_IN);
-	printf("Dvc_ModelParams::N_PED_WORLD=%d\n", Dvc_ModelParams::N_PED_WORLD);
-	printf("Dvc_ModelParams::VEL_MAX=%f\n", Dvc_ModelParams::VEL_MAX);
-	printf("Dvc_ModelParams::NOISE_GOAL_ANGLE=%f\n", Dvc_ModelParams::NOISE_GOAL_ANGLE);
-	printf("Dvc_ModelParams::CRASH_PENALTY=%f\n", Dvc_ModelParams::CRASH_PENALTY);
-	printf("Dvc_ModelParams::REWARD_FACTOR_VEL=%f\n", Dvc_ModelParams::REWARD_FACTOR_VEL);
-	printf("Dvc_ModelParams::REWARD_BASE_CRASH_VEL=%f\n", Dvc_ModelParams::REWARD_BASE_CRASH_VEL);
-	printf("Dvc_ModelParams::BELIEF_SMOOTHING=%f\n", Dvc_ModelParams::BELIEF_SMOOTHING);
-	printf("Dvc_ModelParams::NOISE_ROBVEL=%f\n", Dvc_ModelParams::NOISE_ROBVEL);
-	printf("Dvc_ModelParams::COLLISION_DISTANCE=%f\n", Dvc_ModelParams::COLLISION_DISTANCE);
-	printf("Dvc_ModelParams::IN_FRONT_ANGLE_DEG=%f\n", Dvc_ModelParams::IN_FRONT_ANGLE_DEG);
-	printf("Dvc_ModelParams::LASER_RANGE= %f\n", Dvc_ModelParams::LASER_RANGE);
-	printf("Dvc_ModelParams::pos_rln=%f\n", Dvc_ModelParams::pos_rln); // position resolution
-	printf("Dvc_ModelParams::vel_rln=%f\n", Dvc_ModelParams::vel_rln); // velocity resolution
-	printf("Dvc_ModelParams::PATH_STEP=%f\n", Dvc_ModelParams::PATH_STEP);
-	printf("Dvc_ModelParams::GOAL_TOLERANCE=%f\n", Dvc_ModelParams::GOAL_TOLERANCE);
-	printf("Dvc_ModelParams::PED_SPEED=%f\n", Dvc_ModelParams::PED_SPEED);
-	printf("Dvc_ModelParams::debug=%d\n", Dvc_ModelParams::debug);
-	printf("Dvc_ModelParams::control_freq=%f\n", Dvc_ModelParams::control_freq);
-	printf("Dvc_ModelParams::AccSpeed=%f\n", Dvc_ModelParams::AccSpeed);
-	printf("Dvc_ModelParams::GOAL_REWARD=%f\n", Dvc_ModelParams::GOAL_REWARD);*/
+	printf("pass model to gpu\n");
 }
 
-void Simulator::UpdateGPUPath(DSPOMDP* Hst_model)
-{
+//__global__ void UpdatePathKernel(Dvc_COORD* _path, int pathsize)
+//{
+//	if(path) {delete path; path=new Dvc_Path();}
+//	if(path==NULL) 	path=new Dvc_Path();
+//
+//	path->size_=pathsize;
+//	path->pos_=0;
+//	path->way_points_=_path;
+//	printf("pass path to gpu %d\n", path);
+//}
 
-	if(Globals::config.useGPU){
-		PedPomdp* Hst =static_cast<PedPomdp*>(Hst_model);
-
-		if(tempPath)HANDLE_ERROR(cudaFree(tempPath));
-		HANDLE_ERROR(cudaMallocManaged((void**)&tempPath, Hst->world.path.size()*sizeof(Dvc_COORD)));
-
-		for(int i=0;i<Hst->world.path.size();i++){
-			tempPath[i].x=Hst->world.path[i].x;
-			tempPath[i].y=Hst->world.path[i].y;
-		}
-
-		UpdatePathKernel<<<1,1,1>>>(tempPath,Hst->world.path.size());
-		HANDLE_ERROR(cudaDeviceSynchronize());
-	}
-	//exit(-1);
-}
-
-void Simulator::UpdateGPUGoals(DSPOMDP* Hst_model)
-{
-	if(Globals::config.useGPU){
-		PedPomdp* Hst =static_cast<PedPomdp*>(Hst_model);
-		if(tempGoals)HANDLE_ERROR(cudaFree(tempGoals));
-		HANDLE_ERROR(cudaMallocManaged((void**)&tempGoals,  Hst->world.goals.size()*sizeof(Dvc_COORD)));
+void PedPomdp::InitGPUModel(){
+	PedPomdp* Hst =static_cast<PedPomdp*>(this);
 
 
-		for(int i=0;i<Hst->world.goals.size();i++){
-			tempGoals[i].x=Hst->world.goals[i].x;
-			tempGoals[i].y=Hst->world.goals[i].y;
-		}
-		UpdateGoalKernel<<<1,1,1>>>(tempGoals);
-		HANDLE_ERROR(cudaDeviceSynchronize());
-	}
+	HANDLE_ERROR(cudaMallocManaged((void**)&Dvc_pomdpmodel, sizeof(Dvc_PedPomdp)));
 
-}
+	PassPedPomdpFunctionPointers<<<1,1,1>>>(Dvc_pomdpmodel);
+	HANDLE_ERROR(cudaDeviceSynchronize());
 
+	logd <<"Hst->world_model->path.size()= "<< Hst->world_model->path.size()<< endl;
 
-void Simulator::InitializedGPUModel(std::string rollout_type, DSPOMDP* Hst_model)
-{
-	PedPomdp* Hst =static_cast<PedPomdp*>(Hst_model);
-	HANDLE_ERROR(cudaMalloc((void**)&Dvc, sizeof(Dvc_PedPomdp)));
-	if(rollout_type=="INDEPENDENT")
-		  HANDLE_ERROR(cudaMalloc((void**)&smart_lowerbound, sizeof(Dvc_PedPomdpSmartPolicy)));
-	if(rollout_type=="GRAPH")
-	  HANDLE_ERROR(cudaMalloc((void**)&graph_lowerbound, sizeof(Dvc_PedPomdpSmartPolicyGraph)));
+	HANDLE_ERROR(cudaMallocManaged((void**)&tempCarGoal, 1*sizeof(Dvc_COORD)));
 
-	HANDLE_ERROR(cudaMalloc((void**)&b_lowerbound, sizeof(Dvc_TrivialParticleLowerBound)));
-	HANDLE_ERROR(cudaMalloc((void**)&b_smart_lowerbound, sizeof(Dvc_PedPomdpParticleLowerBound)));
+	if(tempGoals==NULL && Hst->world_model->goals.size()>0)
+	HANDLE_ERROR(cudaMallocManaged((void**)&tempGoals,  Hst->world_model->goals.size()*sizeof(Dvc_COORD)));
 
-	HANDLE_ERROR(cudaMalloc((void**)&upperbound, sizeof(Dvc_PedPomdpParticleUpperBound1)));
-
-	if(tempPath==NULL && Hst->world.path.size()>0)
-	HANDLE_ERROR(cudaMallocManaged((void**)&tempPath, Hst->world.path.size()*sizeof(Dvc_COORD)));
-	if(tempGoals==NULL && Hst->world.goals.size()>0)
-	HANDLE_ERROR(cudaMallocManaged((void**)&tempGoals,  Hst->world.goals.size()*sizeof(Dvc_COORD)));
-
-	
-/*	HANDLE_ERROR(cudaMemcpy(tempGoals, Hst->world.goals.data(),
-			Hst->world.goals.size()*sizeof(Dvc_COORD), cudaMemcpyHostToDevice));
-	HANDLE_ERROR(cudaMemcpy(tempPath, Hst->world.path.data(),
-			Hst->world.path.size()*sizeof(Dvc_COORD), cudaMemcpyHostToDevice));*/
-	PassModelParameters<<<1,1,1>>>(
+	PassPedPomdpParams<<<1,1,1>>>(
+		Hst->world_model->in_front_angle_cos, Hst->world_model->freq, tempGoals, tempCarGoal,Hst->world_model->path.size(),
 		ModelParams::GOAL_TRAVELLED,
 		ModelParams::N_PED_IN,
 		ModelParams::N_PED_WORLD,
@@ -315,60 +158,132 @@ void Simulator::InitializedGPUModel(std::string rollout_type, DSPOMDP* Hst_model
 		ModelParams::debug,
 		ModelParams::control_freq,
 		ModelParams::AccSpeed,
-		ModelParams::GOAL_REWARD);
+		ModelParams::GOAL_REWARD,
+		ModelParams::NumAcc,
+		ModelParams::NumSteerAngle,
+		ModelParams::MaxSteerAngle,
+		ModelParams::TIME_REWARD);
+	
+	HANDLE_ERROR(cudaDeviceSynchronize());
 
-	PassModelFuncs<<<1,1,1>>>(Dvc,Hst->world.in_front_angle_cos, Hst->world.freq, tempGoals, tempPath,Hst->world.path.size());
-	if(rollout_type=="INDEPENDENT")
-	  PassActionValueFuncs<<<1,1,1>>>(Dvc,static_cast<Dvc_PedPomdpSmartPolicy*>(smart_lowerbound),/*b_lowerbound*/b_smart_lowerbound,upperbound);
-	if(rollout_type=="GRAPH")
-	  PassValueFuncs<<<1,1,1>>>(graph_lowerbound,/*b_lowerbound*/b_smart_lowerbound,upperbound);
-
-	UpdateGPUGoals(Hst_model);
+	UpdateGPUGoals(Hst);
+	UpdateGPUCarGoal(Hst);
 
 	HANDLE_ERROR(cudaDeviceSynchronize());
+
+}
+
+__global__ void PassActionValueFuncs(
+		Dvc_PedPomdpParticleUpperBound1* upperbound)
+{
+	DvcUpperBoundValue_ = &(upperbound->Value);
+}
+
+void PedPomdp::InitGPUUpperBound(string name,
+		string particle_bound_name) const{
+	HANDLE_ERROR(cudaMalloc((void**)&upperbound, sizeof(Dvc_PedPomdpParticleUpperBound1)));
+
+	PassActionValueFuncs<<<1,1,1>>>(upperbound);
+
+	HANDLE_ERROR(cudaDeviceSynchronize());
+}
+
+
+
+__global__ void PassPedPomdpPolicyFuncPointers(Dvc_PedPomdpSmartPolicy* lowerbound)
+{
+	DvcDefaultPolicyAction_=&(lowerbound->Action);
+	DvcLowerBoundValue_=&(lowerbound->Value);
+}
+__global__ void PassPedPomdpPlbFuncPointers(Dvc_PedPomdpParticleLowerBound* b_lowerbound)
+{
+	DvcParticleLowerBound_Value_=&(b_lowerbound->Value);
+}
+
+
+void PedPomdp::InitGPULowerBound(string name,
+		string particle_bound_name) const{
+	HANDLE_ERROR(cudaMallocManaged((void**)&smart_lowerbound, sizeof(Dvc_PedPomdpSmartPolicy)));
+
+	PassPedPomdpPolicyFuncPointers<<<1,1,1>>>(smart_lowerbound);
+
+	HANDLE_ERROR(cudaDeviceSynchronize());
+
+	HANDLE_ERROR(cudaMallocManaged((void**)&b_smart_lowerbound, sizeof(Dvc_PedPomdpParticleLowerBound)));
+
+	PassPedPomdpPlbFuncPointers<<<1,1,1>>>(b_smart_lowerbound);
+
+	HANDLE_ERROR(cudaDeviceSynchronize());
+}
+
+
+
+
+void PedPomdp::DeleteGPUModel()
+{
+	  HANDLE_ERROR(cudaFree(Dvc_pomdpmodel));
+
+	  if(tempGoals)HANDLE_ERROR(cudaFree(tempGoals));
+	  if(tempCarGoal)HANDLE_ERROR(cudaFree(tempCarGoal));
+}
+
+void PedPomdp::DeleteGPUUpperBound(string name,
+		string particle_bound_name)
+{
+	  HANDLE_ERROR(cudaFree(upperbound));
+}
+
+void PedPomdp::DeleteGPULowerBound(string name,
+		string particle_bound_name)
+{
+	  if(smart_lowerbound)HANDLE_ERROR(cudaFree(smart_lowerbound));
+	  if(b_smart_lowerbound)HANDLE_ERROR(cudaFree(b_smart_lowerbound));
+}
+
+__global__ void UpdateGoalKernel(Dvc_COORD* _goals)
+{
+	goals=_goals;
+}
+
+__global__ void UpdateCarGoalKernel(Dvc_COORD* _car_goal)
+{
+	car_goal=_car_goal;
+}
+
+void UpdateGPUGoals(DSPOMDP* Hst_model)
+{
+	if(Globals::config.useGPU){
+		PedPomdp* Hst =static_cast<PedPomdp*>(Hst_model);
+		if(tempGoals)HANDLE_ERROR(cudaFree(tempGoals));
+
+		cout << __FUNCTION__ << "@" << __LINE__ << endl;
+		cout << "goal list size: " << Hst->world_model->goals.size()<< endl;
+		HANDLE_ERROR(cudaMallocManaged((void**)&tempGoals,  Hst->world_model->goals.size()*sizeof(Dvc_COORD)));
+
+
+		for(int i=0;i<Hst->world_model->goals.size();i++){
+			tempGoals[i].x=Hst->world_model->goals[i].x;
+			tempGoals[i].y=Hst->world_model->goals[i].y;
+		}
+		UpdateGoalKernel<<<1,1,1>>>(tempGoals);
+		HANDLE_ERROR(cudaDeviceSynchronize());
+	}
+
+}
+
+void UpdateGPUCarGoal(DSPOMDP* Hst_model)
+{
+	if(Globals::config.useGPU){
+		PedPomdp* Hst =static_cast<PedPomdp*>(Hst_model);
+
+		if(tempCarGoal)HANDLE_ERROR(cudaFree(tempCarGoal));
+		HANDLE_ERROR(cudaMallocManaged((void**)&tempCarGoal, 1*sizeof(Dvc_COORD)));
+
+		tempCarGoal[0].x=Hst->world_model->car_goal.x;
+		tempCarGoal[0].y=Hst->world_model->car_goal.y;
+
+		UpdateCarGoalKernel<<<1,1,1>>>(tempCarGoal);
+		HANDLE_ERROR(cudaDeviceSynchronize());
+	}
 	//exit(-1);
 }
-
-
-DSPOMDP* Simulator::InitializeModel(option::Option* options) {
-
-}
-void Simulator::DeleteGPUPolicyGraph()
-{
-}
-
-void Simulator::InitializeDefaultParameters() {
-
-	//Globals::config.time_per_move=0.1;
-    //Globals::config.time_per_move = 10;//(1.0/ModelParams::control_freq) * 0.9;
-    Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
-	Globals::config.num_scenarios=100;
-	Globals::config.discount=/*0.983*/0.95/*0.966*/;
-	Globals::config.sim_len=1/*180*//*10*/;
-	Globals::config.pruning_constant= 0.001;//1000000;//0.001
-
-	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/25;
-
-	Globals::config.GPUid=1;//default GPU
-	Globals::config.useGPU=true	;
-	Globals::config.disableGPU=false;
-	Globals::config.use_multi_thread_=true;
-	
-	//Globals::config.NUM_THREADS=5;
-	Globals::config.NUM_THREADS=5;
-
-	Globals::config.exploration_mode=UCT;
-	Globals::config.exploration_constant=/*0.095*//*0.1*/0.3;
-
-	Globals::config.silence=true;
-	Obs_parallel_level=OBS_PARALLEL_Y;
-	Obs_type=OBS_INT_ARRAY;
-	DESPOT::num_Obs_element_in_GPU=1+ModelParams::N_PED_IN*2+2;
-	switch(FIX_SCENARIO){
-	case 0:		Load_Graph=false; break;
-	case 1:     Load_Graph=true; break;
-	case 2:     Load_Graph=false; break;
-	}
-	cout<<"Load_Graph="<<Load_Graph<<endl;
-}
-

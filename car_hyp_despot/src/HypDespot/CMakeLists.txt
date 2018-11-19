@@ -1,20 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
-message("@@@@@@@@@@@@@@ HypDespot cmake list @@@@@@@@@@@@@@")
-#SET(CMAKE_MODULE_PATH
-#  "${CMAKE_SOURCE_DIR}/cmake"
-#"${CMAKE_SOURCE_DIR}/CMake/cuda" 
-#  "${CMAKE_MODULE_PATH}")
-#SET(CMAKE_MODULE_PATH "/usr/local/share/cmake/torch" ${CMAKE_MODULE_PATH})
-#find_package(CUDA REQUIRED)
-#message("after find cuda")
+message("@@@@@@@@@@@@@@ Hyp-despot cmake list @@@@@@@@@@@@@@")
 
-#project(GPUDespot LANGUAGES CXX CUDA)
-#set(CUDAHOSTCXX "g++-4")
-#set(CMAKE_CUDA_COMPILER "/usr/local/cuda-8.0/bin/nvcc")
 set(CUDA_SDK_ROOT_DIR "/usr/local/cuda/samples")
 
-
-#project(HypDespot CXX CUDA)
+#project(HyP_DESPOT_Hyp-despot CXX CUDA)
 
 
 if(NOT DEFINED CMAKE_CXX_STANDARD)
@@ -26,82 +15,77 @@ if(NOT DEFINED CMAKE_CUDA_STANDARD)
   set(CMAKE_CUDA_STANDARD 11)
   set(CMAKE_CUDA_STANDARD_REQUIRED True)
 endif()
-#find_package(CUDA QUIET REQUIRED)
 
 
-#set(CUDA_SDK_ROOT_DIR "/usr/local/cuda/samples")
-#set(CUDA_CUDART_LIBRARY "/usr/local/cuda/lib64/libcudart.so ../")
+# set(BINARY_INSTALL_PATH "bin" CACHE PATH "Binary install path")
+# set(LIBRARY_INSTALL_PATH "lib" CACHE PATH "Library install path")
+# set(INCLUDE_INSTALL_PATH "include" CACHE PATH "Include install path")
+# set(CONFIG_INSTALL_PATH "${LIBRARY_INSTALL_PATH}/Hyp-despot/cmake")
 
+# set(DESPOT_BUILD_EXAMPLES ON CACHE BOOL "Build C++ model examples")
+# set(DESPOT_BUILD_POMDPX ON CACHE BOOL "Build POMDPX example")
+# set(DESPOT_BUILD_GPUS ON CACHE BOOL "Build GPU despot")
 
-set(BINARY_INSTALL_PATH "bin" CACHE PATH "Binary install path")
-set(LIBRARY_INSTALL_PATH "lib" CACHE PATH "Library install path")
-set(INCLUDE_INSTALL_PATH "include" CACHE PATH "Include install path")
-set(CONFIG_INSTALL_PATH "${LIBRARY_INSTALL_PATH}/HypDespot/cmake")
-
-set(DESPOT_BUILD_EXAMPLES ON CACHE BOOL "Build C++ model examples")
-set(DESPOT_BUILD_POMDPX ON CACHE BOOL "Build POMDPX example")
-set(DESPOT_BUILD_GPUS ON CACHE BOOL "Build GPU despot")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -mfpmath=sse")
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_30")
-set(CMAKE_MODULE_PATH ${CMAKE_PREFIX_PATH} "${PROJECT_SOURCE_DIR}/cmake")
-
-#set (CMAKE_CXX_FLAGS "--std=c++11")
-#set (CUDA_PROPAGATE_HOST_FLAGS ON)
-#set (CUDA_64_BIT_DEVICE_CODE ON)
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -mfpmath=sse")
+# set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_30")
+# set(CMAKE_MODULE_PATH ${CMAKE_PREFIX_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
 if (CUDA)
-  #set(CUDA_SEPARABLE_COMPILATION ON CACHE BOOL "Compile CUDA objects with separable compilation enabled.")
-  #set(CUDA_USE_STATIC_CUDA_RUNTIME OFF CACHE BOOL "Use the static version of the CUDA runtime library if available")
 endif()
 
+#add_definitions(-std=c++0x -O3)
 
-# Pass options to NVCC
-set(
-    CUDA_NVCC_FLAGS
-    ${CUDA_NVCC_FLAGS};
-    #-O3 -gencode arch=compute_30,code=sm_30
-    -g -G
-    )
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lunwind")
+
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+#  ${PROJECT_NAME}
 )
 
 
 include_directories(
    ${catkin_INCLUDE_DIRS}
-   include
-   ../planner/
-   ../planner/GPU_Car_Drive/
+   include/
 )
 
-#set_directory_properties( PROPERTIES COMPILE_DEFINITIONS "" )
+message("@@@@@@@@@@@@@@ before add lib @@@@@@@@@@@@@@")
 
-add_library(#"${PROJECT_NAME}" STATIC
+add_library(
+# "${PROJECT_NAME}" STATIC
 "HypDespot" STATIC
-#add_executable(${PROJECT_NAME}  
-  src/core/belief.cpp
+
+  src/interface/pomdp.cpp
+  src/interface/world.cpp
+  src/interface/belief.cpp
+  src/interface/lower_bound.cpp
+  src/interface/upper_bound.cpp
+  src/interface/default_policy.cpp
+  src/interface/policy_graph.cpp
+  src/core/particle_belief.cpp
   src/core/globals.cpp
-  src/core/lower_bound.cpp
+  src/core/builtin_lower_bounds.cpp
   src/core/mdp.cpp
   src/core/node.cpp
-  src/core/policy.cpp
-  src/core/policy_graph.cpp
-  src/core/pomdp.cpp
+  src/core/builtin_policy.cpp
+  src/core/builtin_policygraph.cpp
+  src/core/pomdp_world.cpp
   src/core/solver.cpp
-  src/core/history.cpp
-  src/core/upper_bound.cpp
+  src/core/builtin_upper_bounds.cpp
+  src/logger.cpp
+  src/planner.cpp
+  src/Parallel_planner.cu
   src/evaluator.cpp
-  src/ippc/client.cpp
   src/pomdpx/parser/function.cpp
   src/pomdpx/parser/parser.cpp
   src/pomdpx/parser/variable.cpp
   src/pomdpx/pomdpx.cpp
   src/random_streams.cpp
-  src/simple_tui.cpp
+  src/plannerbase.cpp
   src/solver/aems.cpp
   src/solver/despot.cpp
   src/solver/pomcp.cpp
+  src/solver/baseline_solver.cpp
   src/util/coord.cpp
   src/util/dirichlet.cpp
   src/util/exec_tracker.cpp
@@ -111,42 +95,52 @@ add_library(#"${PROJECT_NAME}" STATIC
   src/util/random.cpp
   src/util/seeds.cpp
   src/util/util.cpp
+  src/util/error_handler.cpp
   src/util/tinyxml/tinystr.cpp
   src/util/tinyxml/tinyxml.cpp
   src/util/tinyxml/tinyxmlerror.cpp
   src/util/tinyxml/tinyxmlparser.cpp
-  src/GPUcore/GPUbelief.cu   
+
+  src/GPUinterface/GPUdefault_policy.cu  
+  src/GPUinterface/GPUpomdp.cu 
+  src/GPUinterface/GPUlower_bound.cu  
+  src/GPUinterface/GPUupper_bound.cu  
+  src/GPUcore/GPUbuiltin_lower_bound.cu
+  src/GPUcore/GPUbuiltin_policy.cu
+  src/GPUcore/GPUpolicy_graph.cu
+  src/GPUcore/GPUbuiltin_upper_bound.cu
   src/GPUcore/GPUconfig.cu   
   src/GPUcore/GPUhistory.cu      
   src/GPUcore/GPUnode.cu  
-  src/GPUcore/GPUpolicy.cu        
-  src/GPUcore/GPUpomdp.cu  
-  src/GPUcore/shared_node.cu
   src/GPUcore/GPUglobals.cu  
-  src/GPUcore/GPUlower_bound.cu  
-  src/GPUcore/GPUpolicy_graph.cu  
+  src/GPUcore/shared_node.cu
   src/GPUcore/thread_globals.cu
-  src/GPUutil/GPUcstdlib.cu  
-  src/GPUutil/GPUdebug.cu  
-  src/GPUutil/GPUHostReflection.cu  
   src/GPUutil/GPUmemorypool.cu  
   src/GPUutil/GPUseeds.cu    
   src/GPUutil/GPUutil.cu
   src/GPUutil/GPUcoord.cu      
-  src/GPUutil/GPUcstring.cu  
-  src/GPUutil/GPUFile.cu   
-  src/GPUutil/GPUKnob.cu            
   src/GPUutil/GPUrandom.cu      
-  src/GPUutil/GPUThreadId.cu 
   src/GPUrandom_streams.cu
-  src/solver/GPUdespot.cu
+  src/solver/Hyp_despot.cu
+  ${LIBRVO_SRCS}
+  # src/planner/Path.cpp
+  # src/planner/simulator.cu
+  #   src/planner/collision.cpp
+  #   src/planner/coord.cpp                  
+  #   src/planner/math_utils.cpp
+  #   src/planner/ped_pomdp.cpp
+  #   src/planner/WorldModel.cpp
+  #   src/planner/custom_particle_belief.cpp  
+  #   src/planner/param.cpp
+  #   src/planner/GPU_Car_Drive/GPU_Car_Drive.cu     
+  #   src/planner/GPU_Car_Drive/GPU_LowerBoundPolicy.cu
+  #   src/planner/GPU_Car_Drive/GPU_Init.cu         
+  #   src/planner/GPU_Car_Drive/GPU_Path.cu
+  #   src/planner/GPU_Car_Drive/GPU_CarUpperBound.cu  
+  #   src/planner/GPU_Car_Drive/GPU_param.cu  
   #OPTIONS --compiler-options "-fPIC"
 )
-
-#add_compile_options(${PROJECT_NAME}
-#    PRIVATE
-#    $<$<COMPILE_LANGUAGE:CUDA>:-arch=compute_30,code=sm_30>
-#)
+message("@@@@@@@@@@@@@@ after add lib @@@@@@@@@@@@@@")
 
 set_target_properties( "HypDespot"
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
@@ -158,37 +152,10 @@ target_compile_definitions(HypDespot
   INTERFACE KW_IMPORTS
 )
 
-target_link_libraries("HypDespot"
-  ${TinyXML_LIBRARIES}
-)
+message("@@@@@@@@@@@@@@ LIBUNWIND_LIBRARIES @@@@@@@@@@@@@@")
 
-
-
-install(TARGETS "HypDespot"
-  EXPORT "DespotTargets"
-  ARCHIVE DESTINATION "${LIBRARY_INSTALL_PATH}"
-  LIBRARY DESTINATION "${LIBRARY_INSTALL_PATH}"
-  RUNTIME DESTINATION "${BINARY_INSTALL_PATH}"
-)
-install(DIRECTORY "include/HypDespot/"
-  DESTINATION "${INCLUDE_INSTALL_PATH}/HypDespot"
-)
-
-# Install a DespotConfig.cmake file so CMake can find_package(Despot).
-include(CMakePackageConfigHelpers)
-configure_package_config_file("cmake/DespotConfig.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/DespotConfig.cmake"
-  INSTALL_DESTINATION "${CONFIG_INSTALL_PATH}"
-  PATH_VARS INCLUDE_INSTALL_PATH
-)
-
-install(EXPORT "DespotTargets"
-  FILE "DespotTargets.cmake"
-  DESTINATION "${CONFIG_INSTALL_PATH}"
-)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/DespotConfig.cmake"
-  DESTINATION "${CONFIG_INSTALL_PATH}"
-)
-
-message("@@@@@@@@@@@@@@ HypDespot end @@@@@@@@@@@@@@")
+target_link_libraries(HypDespot # "${PROJECT_NAME}"
+   ${LIBUNWIND_LIBRARIES}
+ )
+message("@@@@@@@@@@@@@@ end @@@@@@@@@@@@@@")
 

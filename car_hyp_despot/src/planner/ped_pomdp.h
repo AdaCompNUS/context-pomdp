@@ -4,10 +4,12 @@
 
 //#include "util/util.h"
 #include "disabled_util.h"
-#include "despot/core/pomdp.h"
+#include "despot/interface/pomdp.h"
 #include <despot/core/mdp.h>
 #include "despot/core/globals.h"
 #include "despot/util/coord.h"
+#include <despot/core/prior.h>
+
 //#include "lower_bound.h"
 //#include "upper_bound.h"
 //#include "string.h"
@@ -20,11 +22,30 @@
 #include <string>
 #include "math_utils.h"
 
+
+//#include <solver/despot.h>
+
 using namespace std;
 using namespace despot;
 
+class PedNeuralSolverPrior:public SolverPrior{
+	WorldModel& world_model;
+public:
+	PedNeuralSolverPrior(const DSPOMDP* model, WorldModel& world):
+			SolverPrior(model),
+			world_model(world)
+	{
+		action_probs_.resize(model->NumActions());
+	}
+	virtual const vector<double>& ComputePreference();
+
+	virtual double ComputeValue();
+};
+
 class PedPomdp : public DSPOMDP {
 public:
+
+	PedPomdp();
 	PedPomdp(WorldModel &);
 	void UpdateVel(int& vel, int action, Random& random) const;
 	void RobStep(int &robY,int &rob_vel, int action, Random& random) const;
@@ -34,8 +55,8 @@ public:
 	bool Step(PomdpStateWorld& state, double rNum, int action, double& reward, uint64_t& obs) const;
 
 	bool ImportanceSamplingStep(State& state_, double rNum, int action, double& reward, uint64_t& obs) const;
-    std::vector<double> ImportanceWeight(std::vector<State*> particles) const;
-    double ImportanceScore(PomdpState* state) const;
+    std::vector<double> ImportanceWeight(std::vector<State*> particles, ACT_TYPE last_action) const;
+    double ImportanceScore(PomdpState* state, ACT_TYPE last_action) const;
 
     State* CreateStartState(string type = "DEFAULT") const {
 		return 0;	
@@ -54,14 +75,14 @@ public:
 	const std::vector<int>& ObserveVector(const State& )   const;
 	double ObsProb(uint64_t z, const State& s, int action) const;
 
-	inline int NumActions() const { return 3; }
+	inline int NumActions() const { return (int)(2*ModelParams::NumAcc+1); }
 
 	PomdpState* GreateStartState(string type) const;
 
 	std::vector<std::vector<double>> GetBeliefVector(const std::vector<State*> particles) const;
 	Belief* InitialBelief(const State* start, string type) const;
 
-	ValuedAction GetMinRewardAction() const;
+	ValuedAction GetBestAction() const;
 
 	double GetMaxReward() const;
 
@@ -75,7 +96,7 @@ public:
 	void Statistics(const std::vector<PomdpState*> particles) const;
 
 	void PrintState(const State& state, ostream& out = cout) const;
-	void PrintWorldState(PomdpStateWorld state, ostream& out = cout);
+	void PrintWorldState(const PomdpStateWorld& state, ostream& out = cout) const;
 	void PrintObs(const State & state, uint64_t obs, ostream& out = cout) const;
 	void PrintAction(int action, ostream& out = cout) const;
 	void PrintBelief(const Belief& belief, ostream& out = cout) const;
@@ -84,7 +105,7 @@ public:
 	State* Copy(const State* particle) const;
 	void Free(State* particle) const;
 
-	std::vector<State*> ConstructParticles(std::vector<PomdpState> & samples);
+	std::vector<State*> ConstructParticles(std::vector<PomdpState> & samples) const;
 	int NumActiveParticles() const;
 	void PrintParticles(const std::vector<State*> particles, ostream& out) const;
 
@@ -95,42 +116,74 @@ public:
 	State* ImportState(std::istream& in) const;
 	void ImportStateList(std::vector<State*>& particles, std::istream& in) const;
 
-	Dvc_State* AllocGPUParticles(int numParticles,int alloc_mode) const;
 
-	void CopyGPUParticles(Dvc_State* des,Dvc_State* src,int src_offset,int* IDs,
-			int num_particles,bool interleave,
-			Dvc_RandomStreams* streams, int stream_pos,
+	/* HyP-DESPOT GPU model */
+	Dvc_State* AllocGPUParticles(int numParticles, MEMORY_MODE mode,  Dvc_State*** particles_all_a = NULL ) const;
+
+	void DeleteGPUParticles( MEMORY_MODE mode, Dvc_State** particles_all_a = NULL) const;
+
+	void CopyParticleIDsToGPU(int* dvc_IDs, const std::vector<int>& particleIDs, void* CUDAstream=NULL) const;
+
+	Dvc_State* CopyParticlesToGPU(Dvc_State* dvc_particles, const std::vector<State*>& particles , bool deep_copy) const;
+
+	void ReadParticlesBackToCPU(std::vector<State*>& particles ,const Dvc_State* parent_particles,
+				bool deepcopy) const;
+
+	void CopyGPUParticlesFromParent(Dvc_State* des,Dvc_State* src,int src_offset,int* IDs,
+		int num_particles,bool interleave,
+		Dvc_RandomStreams* streams, int stream_pos,
 			void* CUDAstream=NULL, int shift=0) const;
 
-	void CopyGPUWeight1(void* cudaStream=NULL, int shift=0) const;
-	float CopyGPUWeight2(void* cudaStream=NULL, int shift=0) const;
-	Dvc_State* GetGPUParticles() const;
+	void CreateMemoryPool() const;
+	
+	void DestroyMemoryPool(MEMORY_MODE mode) const;
 
-	void CopyToGPU(const std::vector<int>& particleIDs,int* Dvc_ptr, void* CUDAstream=NULL) const;
-	Dvc_State* CopyToGPU(const std::vector<State*>& particles , bool copy_cells) const;
-	void ReadBackToCPU(std::vector<State*>& particles ,const Dvc_State* parent_particles,
-				bool copycells) const;
+	void InitGPUModel();
+	void InitGPUUpperBound(string name,	string particle_bound_name) const;
+	void InitGPULowerBound(string name,	string particle_bound_name) const ;
 
-	void DeleteGPUParticles( int num_particles) const;
-	void DeleteGPUParticles(Dvc_State* particles, int num_particles) const;
-	void CreateMemoryPool(int chunk_size) const;
-	void DestroyMemoryPool(int mode) const;
+	void DeleteGPUModel();
+	void DeleteGPUUpperBound(string name, string particle_bound_name);
+	void DeleteGPULowerBound(string name, string particle_bound_name);
+
+	virtual OBS_TYPE StateToIndex(const State*) const;
+
+	/* end HyP-DESPOT GPU model */
 
 
-	WorldModel &world;
+	SolverPrior* CreateSolverPrior(World* world, std::string name, bool update_prior = true) const;
 
-	bool use_rvo;
+	State* CopyForSearch(const State* particle) const;
+
+	WorldModel *world_model;
+
+
+	bool use_rvo_in_search;
+	bool use_rvo_in_simulation;
  // protected:
 	enum {
 		ACT_CUR,
 		ACT_ACC,
 		ACT_DEC
 	};
+
 private:
 	int** map;
 	PomdpState startState;
 	mutable MemoryPool<PomdpState> memory_pool_;
 	mutable Random random_;
+
+	void InitRVOSetting();
+
+
+public:
+	// Let's drive
+
+	double GetAcceleration(ACT_TYPE action, bool debug=false) const;
+	double GetSteering(ACT_TYPE action, bool debug=false) const;
+	static ACT_TYPE GetActionID(double steering, double acc, bool debug=false);
 };
+
+
 #endif
 

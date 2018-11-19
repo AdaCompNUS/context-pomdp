@@ -12,11 +12,12 @@ private:
 public:
 	static Random RANDOM;
 
+
 	Random(double seed);
 	Random(unsigned seed);
 
 	unsigned seed();
-
+	void seed(unsigned);
 	unsigned NextUnsigned();
 	int NextInt(int n);
 	int NextInt(int min, int max);
@@ -34,9 +35,24 @@ public:
 	}
 
 	static int GetCategory(const std::vector<double>& category_probs,
-		double rand_num);
+	                       double rand_num);
 };
 
+class QuickRandom {
+public:
+
+	static void InitRandGen();
+	static void DestroyRandGen();
+
+	static float RandGeneration(float seed);
+
+	static void SetSeed(unsigned long long int v, int ThreadID);
+
+
+	static unsigned long long int* seeds_;
+};
+
+#define INIT_QUICKRANDSEED 123456
 } // namespace despot
 
 #endif

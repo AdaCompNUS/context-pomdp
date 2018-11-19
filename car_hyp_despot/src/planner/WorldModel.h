@@ -9,6 +9,8 @@ struct PedBelief {
     COORD pos;
     double vel;
     std::vector<double> prob_goals;
+
+    std::vector<std::vector<double>> prob_modes_goals;
     int sample_goal() const;
     int maxlikely_goal() const;
 };
@@ -25,22 +27,22 @@ public:
 	double getMinCarPedDist(const PomdpState& state);
 	double getMinCarPedDistAllDirs(const PomdpState& state);
 	int defaultPolicy(const std::vector<State*>& particles);
+	ACT_TYPE defaultStatePolicy(const State* _state) const;
     int defaultGraphEdge(const State* particle, bool print_debug);
 
-    bool isLocalGoal(const PomdpState& state);
-    bool isLocalGoal(const PomdpStateWorld& state);
+//    bool isLocalGoal(const PomdpState& state);
+//    bool isLocalGoal(const PomdpStateWorld& state);
 
     bool isGlobalGoal(const CarStruct& car);
-
-    double getDistToGoal(const CarStruct& car);
-	bool inFront(COORD ped_pos, int car) const;
+	bool inFront(const COORD ped_pos, const CarStruct car) const;
     
     bool inCollision(const PomdpState& state);
-    bool inRealCollision(const PomdpState& state);
     bool inCollision(const PomdpStateWorld& state);
+    bool inRealCollision(const PomdpStateWorld& state);
     
     bool inCollision(const PomdpState& state, int &id);
     bool inCollision(const PomdpStateWorld& state, int &id);
+    bool inRealCollision(const PomdpStateWorld& state, int &id);
     
     int minStepToGoal(const PomdpState& state);
 
@@ -52,25 +54,30 @@ public:
     void RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
     void RVO2PedStep(PedStruct peds[], double& random, int num_ped); //no interaction between car and pedestrian
     void RVO2PedStep(PedStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
+    void RVO2PedStep(PomdpStateWorld& state, Random& random);
     void PedStepDeterministic(PedStruct& ped, int step);
     void FixGPUVel(CarStruct &car);
-	void RobStep(CarStruct &car, Random& random);
-	void RobStep(CarStruct &car, double& random, double acc);
-    void RobStep(CarStruct &car, Random& random, double acc);
+	void RobStep(CarStruct &car, double steering, Random& random);
+	void RobStep(CarStruct &car, double steering, double& random);
+	void RobStep(CarStruct &car, double& random, double acc, double steering);
+    void RobStep(CarStruct &car, Random& random, double acc, double steering);
     void RobVelStep(CarStruct &car, double acc, Random& random);
     void RobVelStep(CarStruct &car, double acc, double& random);
     double ISRobVelStep(CarStruct &car, double acc, Random& random);//importance sampling RobvelStep
 
     double pedMoveProb(COORD p0, COORD p1, int goal_id);
+    double pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, int ped_mode);
+
     void setPath(Path path);
     void updatePedBelief(PedBelief& b, const PedStruct& curr_ped);
     PedBelief initPedBelief(const PedStruct& ped);
 
-    inline int GetThreadID(){return MapThread(this_thread::get_id());}
+    inline int GetThreadID(){return Globals::MapThread(this_thread::get_id());}
     void InitRVO();
 
 
 	Path path;
+    COORD car_goal;
     std::vector<COORD> goals;
     double freq;
     const double in_front_angle_cos;
@@ -79,29 +86,41 @@ public:
 public:
     std::string goal_file_name_;
     void InitPedGoals();
+
+    /// lets drive
+    vector<vector<COORD>> ped_mean_dirs;
+    COORD DistractedPedMeanDir(COORD& ped, int goal_id);
+    COORD AttentivePedMeanDir(int ped_id, int goal_id);
+    void PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarStruct& car);
 };
 
 class WorldStateTracker {
 public:
     typedef pair<float, Pedestrian> PedDistPair;
 
-    WorldStateTracker(WorldModel& _model): model(_model) {}
+    WorldStateTracker(WorldModel& _model): model(_model) {
+    	car_heading_dir = 0;
+    	carvel = 0;
+    }
 
-    void updatePed(const Pedestrian& ped);
-    void updateCar(const COORD& car, const double dist=0);
+    void updatePed(const Pedestrian& ped, bool doPrint = false);
+    void updateCar(const CarStruct car);
     void updateVel(double vel);
     void cleanPed();
+    void removePeds();
 
     bool emergency();
 
-    std::vector<PedDistPair> getSortedPeds();
+    std::vector<PedDistPair> getSortedPeds(bool doPrint = false);
 
     PomdpState getPomdpState();
 
+    // Car state
     COORD carpos;
     double carvel;
-    double car_dist_trav;
+    double car_heading_dir;
 
+    //Ped states
     std::vector<Pedestrian> ped_list;
 
     WorldModel& model;
@@ -126,4 +145,11 @@ public:
     void printBelief() const;
 };
 
+enum {
+	PED_ATT,
+	PED_DIS
+};
 
+double cap_angle(double angle);
+int ClosestInt(double v);
+int FloorIntRobust(double v);

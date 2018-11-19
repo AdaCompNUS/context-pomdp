@@ -27,7 +27,7 @@ public:
 		return values_;
 	}
 	int IndexOf(std::string val) const;
-	const bool HasValue(std::string val) const;
+	bool HasValue(std::string val) const;
 	inline const std::string& GetValue(int v) const {
 		return values_[v];
 	}
@@ -102,7 +102,7 @@ public:
 	inline void observed(bool o) {
 		observed_ = o;
 	}
-	inline const bool observed() const {
+	inline bool observed() const {
 		return observed_;
 	}
 

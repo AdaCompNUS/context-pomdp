@@ -32,7 +32,14 @@ namespace Dvc_ModelParams {
 	DEVICE double control_freq;
 	DEVICE double AccSpeed;
 
+	DEVICE double NumAcc;
+
+	DEVICE double MaxSteerAngle;
+	DEVICE double NumSteerAngle;
+
     // deprecated params
 	DEVICE double GOAL_REWARD;
+	DEVICE double TIME_REWARD;
+
 }
 

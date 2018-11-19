@@ -59,6 +59,7 @@ public:
 
     std::string obstacle_file_name_;
     std::string goal_file_name_;
+    float time_scale_; // lets_drive
 
     PedsSystem(){
         initialized = false;
@@ -146,8 +147,10 @@ public:
 
         ped_sim_ = new RVO::RVOSimulator();
     
+
         // Specify global time step of the simulation.
-        ped_sim_->setTimeStep(1.0f/freq);    
+        n.param<float>("time_scale", time_scale_, 1.0);
+        ped_sim_->setTimeStep(1.0f/freq* time_scale_); // slow down the update of peds
 
         // setAgentDefaults (float neighborDist, size_t maxNeighbors, float timeHorizon, float timeHorizonObst, float radius, float maxSpeed, const Vector2 &velocity=Vector2())
         //ped_sim_->setAgentDefaults(3.0f, 2, 2.0f, 2.0f, 0.25f, 3.0f); // we can let timeHorizon = c * 1/maxNeighbors
@@ -161,6 +164,7 @@ public:
         ped_sim_->setAgentDefaults(5.0f, 5, 2.5f, 2.5f, 0.25f, 2.5f); // densesense
 
         addObstacle();
+
     }
 
     void spin() {

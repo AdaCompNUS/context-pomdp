@@ -37,33 +37,10 @@
 #include "Obstacle.h"
 
 #include <iostream>
-//#define _OPENMP
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-
-//#define RECORD_TIME
-
-#ifdef RECORD_TIME
-using namespace std;
-
-#include <chrono>
-#include <atomic>
-typedef std::chrono::high_resolution_clock Time;
-typedef std::chrono::nanoseconds ns;
-
-//std::chrono::time_point<std::chrono::system_clock> start_time;
-
-static atomic<double> Tree_process_time(0);
-static atomic<double> LP_time(0);
-static atomic<double> Find_neighbour_time(0);
-static atomic<int> Call_count(0);
-
-#endif
-
-
-
 
 namespace RVO {
 	RVOSimulator::RVOSimulator() : defaultAgent_(NULL), globalTime_(0.0f), kdTree_(NULL), timeStep_(0.0f)
@@ -100,19 +77,7 @@ namespace RVO {
 		}
 
 		delete kdTree_;
-
 	}
-
-	void RVOSimulator::OutputTime(){
-#ifdef RECORD_TIME
-		cout<< "~~~~~~~~~~~~~~~~~~~~~Call_count="<<Call_count.load()<<", Tree_process_time="<< Tree_process_time.load()/Call_count.load()
-		<< ", Find_neighbour_time="<< Find_neighbour_time.load() /Call_count.load()
-		<<", LP_time="<<LP_time.load()/Call_count.load()<<endl;
-#endif
-
-	}
-
-
 
 	size_t RVOSimulator::addAgent(const Vector2 &position)
 	{
@@ -232,6 +197,10 @@ namespace RVO {
 		agents_[agentNo] -> ped_id_ = ped_id;
 	}
 
+	int RVOSimulator::getAgentPedID(size_t agentNo){
+		return agents_[agentNo] -> ped_id_;
+	}
+
 	void RVOSimulator::updateAgent(int ped_id, RVO::Vector2 pos, RVO::Vector2 pref_vel){
 		int i;
 		for (i = 0; i < static_cast<int>(agents_.size()); ++i) {
@@ -268,76 +237,12 @@ namespace RVO {
 
 	void RVOSimulator::doStep()
 	{
-#ifdef RECORD_TIME
-		auto start = Time::now();
-#endif
 		kdTree_->buildAgentTree();
 
-#ifdef RECORD_TIME
-
-		double oldValue=Tree_process_time.load();
-		Tree_process_time.compare_exchange_weak(oldValue,oldValue+
-							chrono::duration_cast < ns> (Time::now() - start).count()/1000000000.0f);
+#ifdef _OPENMP
+#pragma omp parallel for
 #endif
-
-
-
-#ifdef RECORD_TIME
-
-		start = Time::now();
-
-	#ifdef _OPENMP
-	#pragma omp parallel for
-	#endif
-
-		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
-			agents_[i]->computeNeighbors();	
-		}
-		oldValue=Find_neighbour_time.load();
-		Find_neighbour_time.compare_exchange_weak(oldValue,oldValue+
-							chrono::duration_cast < ns> (Time::now() - start).count()/1000000000.0f);
-
-		start = Time::now();
-
-	#ifdef _OPENMP
-	#pragma omp parallel for
-	#endif
-		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {	
-			agents_[i]->computeNewVelocity();
-		}
-	#ifdef _OPENMP
-	#pragma omp parallel for
-	#endif
-		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
-			agents_[i]->update();
-		}
-
-		oldValue=LP_time.load();
-		LP_time.compare_exchange_weak(oldValue,oldValue+
-							chrono::duration_cast < ns> (Time::now() - start).count()/1000000000.0f);
-
-		Call_count++;
-#else
-
-	#ifdef _OPENMP
-	#pragma omp parallel for
-	#endif
-
-		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
-			agents_[i]->computeNeighbors();			
-			agents_[i]->computeNewVelocity();
-		}
-
-	#ifdef _OPENMP
-	#pragma omp parallel for
-	#endif
-		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
-			agents_[i]->update();
-		}
-
-#endif
-
-/*		int veh_agent_index = -1;
+		int veh_agent_index = -1;
 		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
 			if(agents_[i]->tag_ == "vehicle"){
 				veh_agent_index = i;
@@ -362,9 +267,14 @@ namespace RVO {
 			}
 			
 			agents_[i]->computeNewVelocity();
-		}*/
+		}
 
-
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
+		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
+			agents_[i]->update();
+		}
 
 		globalTime_ += timeStep_;
 	}
@@ -569,4 +479,50 @@ namespace RVO {
 		kdTree_->clearAllAgents();
 		//std::cout<<"222"<<std::endl;
 	}
+
+
+	/// lets drive
+
+	void RVOSimulator::doPreStep()
+	{
+		// Build KD tree and compute nearest neighbors
+		kdTree_->buildAgentTree();
+
+	#ifdef _OPENMP
+	#pragma omp parallel for
+	#endif
+		int veh_agent_index = -1;
+		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
+			if(agents_[i]->tag_ == "vehicle"){
+				veh_agent_index = i;
+			}
+		}
+		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
+			agents_[i]->computeNeighbors();
+
+			if(i != veh_agent_index && veh_agent_index != -1){// there exists a vehicle and it is not the current agent
+				if( abs(agents_[i]->position_ - agents_[veh_agent_index]->position_)<4.0){//only consider to insert veh when it's not far away
+					bool insert_veh = true; // whether to insert vehicle to the neighbor list or not
+					for (int j = 0; j<agents_[i]->agentNeighbors_.size(); j++){
+						if(agents_[i]->agentNeighbors_[j].second->tag_ == "vehicle") { // vehicle already in the neighbor list, do not insert
+							insert_veh = false;
+						}
+					}
+					if(insert_veh) {
+						//std::cout<<"Insert vehicle for agent: "<<agents_[i]->id_<<std::endl;
+						agents_[i]->agentNeighbors_.push_back(std::make_pair(absSq(agents_[i]->position_ - agents_[veh_agent_index]->position_), agents_[veh_agent_index]));
+					}
+				}
+			}
+		}
+	}
+
+	void RVOSimulator::doStepForPed(int i)
+	{
+		agents_[i]->computeNewVelocity();
+		agents_[i]->update();
+
+	}
+
 }
+

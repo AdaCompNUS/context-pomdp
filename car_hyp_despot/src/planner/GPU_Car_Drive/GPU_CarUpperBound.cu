@@ -1,3 +1,3 @@
 #include "GPU_CarUpperBound.h"
+#include <despot/GPUinterface/GPUupper_bound.h>
 
-/*Implemented in GPU_Car_Drive.cu*/

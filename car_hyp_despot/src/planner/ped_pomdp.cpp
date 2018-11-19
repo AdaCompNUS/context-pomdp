@@ -1,9 +1,18 @@
 #include "ped_pomdp.h"
 
-#include <despot/core/policy_graph.h>
 #include <limits>
-#include <despot/GPUutil/GPUlimits.h>
 #include <despot/GPUcore/thread_globals.h>
+#include <despot/interface/default_policy.h>
+#include <despot/core/builtin_policy.h>
+#include <despot/core/builtin_lower_bounds.h>
+#include <despot/core/builtin_upper_bounds.h>
+
+#include "custom_particle_belief.h"
+
+#include <despot/solver/despot.h>
+
+static std::map<uint64_t, std::vector<int>> Obs_hash_table;
+static PomdpState hashed_state;
 
 
 class PedPomdpParticleLowerBound : public ParticleLowerBound {
@@ -16,79 +25,87 @@ public:
 	{
 	}
 
-    // IMPORTANT: Check after changing reward function.
+	// IMPORTANT: Check after changing reward function.
 	virtual ValuedAction Value(const std::vector<State*>& particles) const {
 		PomdpState* state = static_cast<PomdpState*>(particles[0]);
 		int min_step = numeric_limits<int>::max();
-		auto& carpos = ped_pomdp_->world.path[state->car.pos];
+		auto& carpos = state->car.pos;
 		double carvel = state->car.vel;
-	
-		// Find mininum num of steps for car-pedestrian collision
-		for (int i=0; i<state->num; i++) {
-			auto& p = state->peds[i];
-            // 3.25 is maximum distance to collision boundary from front laser (see collsion.cpp)
-			int step = (p.vel + carvel<=1e-5)?min_step:int(ceil(ModelParams::control_freq
-						* max(COORD::EuclideanDistance(carpos, p.pos) - 1.0, 0.0)
-						/ ((p.vel + carvel))));
-			/*if(step<0) printf("   step, vel_sum, ped_vel, car_vel = %d %f %f %f\n"
-					,step, p.vel+carvel,p.vel, carvel);
-			if(p.vel<=1e-5) printf("   ped: goal,id,pos_x, pos_y, vel = %d %d %f %f %f\n"
-					,p.goal, p.id,p.pos.x,p.pos.y, p.vel);*/
 
+		// Find mininum num of steps for car-pedestrian collision
+		for (int i = 0; i < state->num; i++) {
+			auto& p = state->peds[i];
+			// 3.25 is maximum distance to collision boundary from front laser (see collsion.cpp)
+			int step = (p.vel + carvel <= 1e-5) ? min_step : int(ceil(ModelParams::control_freq
+			           * max(COORD::EuclideanDistance(carpos, p.pos) - /*1.0*/3.25, 0.0)
+			           / ((p.vel + carvel))));
+
+			if(DoPrintCPU)
+				printf("   step,min_step, p.vel + carvel=%d %d %f\n",step,min_step, p.vel + carvel);
 			min_step = min(step, min_step);
 		}
 
-        double move_penalty = ped_pomdp_->MovementPenalty(*state);
+		double move_penalty = ped_pomdp_->MovementPenalty(*state);
 
-        // Case 1, no pedestrian: Constant car speed
+		// Case 1, no pedestrian: Constant car speed
 		double value = move_penalty / (1 - Globals::Discount());
-        // Case 2, with pedestrians: Constant car speed, head-on collision with nearest neighbor
+		// Case 2, with pedestrians: Constant car speed, head-on collision with nearest neighbor
 		if (min_step != numeric_limits<int>::max()) {
-            double crash_penalty = ped_pomdp_->CrashPenalty(*state);
+			double crash_penalty = ped_pomdp_->CrashPenalty(*state);
 			value = (move_penalty) * (1 - Globals::Discount(min_step)) / (1 - Globals::Discount())
-				+ crash_penalty * Globals::Discount(min_step);
-			/*if(true)
+			        + crash_penalty * Globals::Discount(min_step);
+			if(DoPrintCPU)
 				printf("   min_step,crash_penalty, value=%d %f %f\n"
-						,min_step, crash_penalty,value);*/
+						,min_step, crash_penalty,value);
 		}
-        /*if(true)
-			printf("   min_step,num_peds,move_penalty, value=%d %d %f %f\n"
-					,min_step,state->num, move_penalty,value);*/
 
-		/*if(particles[0]->scenario_id==52){
-			printf("Rollout bottom: bottom_value=%f, last discount depth=-- \n", value);
-		}*/
+		if(DoPrintCPU)
+			printf("   min_step,num_peds,move_penalty, value=%d %d %f %f\n"
+					,min_step,state->num, move_penalty,value);
 		return ValuedAction(ped_pomdp_->ACT_CUR, State::Weight(particles) * value);
 	}
 };
 
+void PedPomdp::InitRVOSetting() {
+	use_rvo_in_search = false;
+	use_rvo_in_simulation = true;
+	if (use_rvo_in_simulation)
+		ModelParams::LASER_RANGE = 8.0;
+	else
+		ModelParams::LASER_RANGE = 8.0;
+}
+
 PedPomdp::PedPomdp(WorldModel &model_) :
-	world(model_),
+	world_model(&model_),
 	random_(Random((unsigned) Seeds::Next()))
 {
-	use_rvo = true;
-	//particle_lower_bound_ = new PedPomdpParticleLowerBound(this);
+	InitRVOSetting();
+}
+
+PedPomdp::PedPomdp() :
+	world_model(NULL),
+	random_(Random((unsigned) Seeds::Next()))
+{
+	InitRVOSetting();
 }
 
 const std::vector<int>& PedPomdp::ObserveVector(const State& state_) const {
-	const PomdpState &state=static_cast<const PomdpState&>(state_);
+	const PomdpState &state = static_cast<const PomdpState&>(state_);
 	static std::vector<int> obs_vec;
-	obs_vec.resize(state.num * 2 + 2);
 
-	int i=0;
-    obs_vec[i++] = state.car.pos;
-	obs_vec[i++] = int((state.car.vel+1e-5) / ModelParams::vel_rln);//add some noise to make 1.5/0.003=50
+	obs_vec.resize(state.num * 2 + 3);
 
-	for(int j = 0; j < state.num; j ++) {
-		obs_vec[i++] = int(state.peds[j].pos.x / ModelParams::pos_rln); 
+	int i = 0;
+	obs_vec[i++] = int(state.car.pos.x / ModelParams::pos_rln);
+	obs_vec[i++] = int(state.car.pos.y / ModelParams::pos_rln);
+
+	obs_vec[i++] = int((state.car.vel + 1e-5) / ModelParams::vel_rln); //add some noise to make 1.5/0.003=50
+
+	for (int j = 0; j < state.num; j ++) {
+		obs_vec[i++] = int(state.peds[j].pos.x / ModelParams::pos_rln);
 		obs_vec[i++] = int(state.peds[j].pos.y / ModelParams::pos_rln);
 	}
 
-	/*if(CPUDoPrint){
-		for (int j=0;j<i;j++)
-			cout<<obs_vec[j]<<" ";
-		cout<<endl;
-	}*/
 	return obs_vec;
 }
 
@@ -97,185 +114,133 @@ uint64_t PedPomdp::Observe(const State& state) const {
 	return myhash(ObserveVector(state));
 }
 
-std::vector<State*> PedPomdp::ConstructParticles(std::vector<PomdpState> & samples) {
-	int num_particles=samples.size();
+std::vector<State*> PedPomdp::ConstructParticles(std::vector<PomdpState> & samples) const {
+	int num_particles = samples.size();
 	std::vector<State*> particles;
-	for(int i=0;i<samples.size();i++) {
-		PomdpState* particle = static_cast<PomdpState*>(Allocate(-1, 1.0/num_particles));
+	for (int i = 0; i < samples.size(); i++) {
+		PomdpState* particle = static_cast<PomdpState*>(Allocate(-1, 1.0 / num_particles));
 		(*particle) = samples[i];
 		particle->SetAllocated();
-		particle->weight = 1.0/num_particles;
+		particle->weight = 1.0 / num_particles;
 		particles.push_back(particle);
 	}
 
-	/*if(static_cast<PomdpState*>(particles[0])->num>=ModelParams::N_PED_IN-1)
-	    cout << "11 reached!"<<endl;*/
 	return particles;
 }
 
 // Very high cost for collision
 double PedPomdp::CrashPenalty(const PomdpState& state) const { // , int closest_ped, double closest_dist) const {
 	// double ped_vel = state.ped[closest_ped].vel;
-    return ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL); 
+	return ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);
 }
 // Very high cost for collision
 double PedPomdp::CrashPenalty(const PomdpStateWorld& state) const { // , int closest_ped, double closest_dist) const {
 	// double ped_vel = state.ped[closest_ped].vel;
-    return ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL); 
+	return ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);
 }
 
 // Avoid frequent dec or acc
 double PedPomdp::ActionPenalty(int action) const {
-    return (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
+	return (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
 }
 
 // Less penalty for longer distance travelled
 double PedPomdp::MovementPenalty(const PomdpState& state) const {
-    return ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
-    /*
-    // with no pedestrians nearby, but lower speed with pedestrians nearby
-    retrun //(min_dist > 3.0 || (min_dist < 3.0 && action != ACT_ACC)) ?
-		(1.0 * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX);
-		//: -1.5;
-    */
+//	return ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
+	return -ModelParams::TIME_REWARD;
 }
 // Less penalty for longer distance travelled
 double PedPomdp::MovementPenalty(const PomdpStateWorld& state) const {
-    return ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
-    /*
-    // with no pedestrians nearby, but lower speed with pedestrians nearby
-    retrun //(min_dist > 3.0 || (min_dist < 3.0 && action != ACT_ACC)) ?
-		(1.0 * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX);
-		//: -1.5;
-    */
+//	return ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
+	return -ModelParams::TIME_REWARD;
 }
 
 bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0.0;
 
-
-	/*if(state_.scenario_id==CPUPrintPID){
-		if(CPUDoPrint){
+	if(FIX_SCENARIO==1 || DESPOT::Print_nodes){
+		if(CPUDoPrint && state_.scenario_id==CPUPrintPID){
 			printf("(CPU) Before step: scenario%d \n", state_.scenario_id);
+			printf("action= %d \n",action);
 			PomdpState* pedpomdp_state=static_cast<PomdpState*>(&state_);
 			printf("Before step:\n");
-			printf("car pox= %d ",pedpomdp_state->car.pos);
-			printf("dist=%f\n",pedpomdp_state->car.dist_travelled);
-			printf("car vel= %f\n",pedpomdp_state->car.vel);
+			printf("car_pos= %f,%f",pedpomdp_state->car.pos.x, pedpomdp_state->car.pos.y);
+			printf("car_heading=%f\n",pedpomdp_state->car.heading_dir);
+			printf("car_vel= %f\n",pedpomdp_state->car.vel);
 			for(int i=0;i<pedpomdp_state->num;i++)
 			{
 				printf("ped %d pox_x= %f pos_y=%f\n",i,
 						pedpomdp_state->peds[i].pos.x,pedpomdp_state->peds[i].pos.y);
 			}
 		}
-	}*/
-	// CHECK: relative weights of each reward component
+	}
 	// Terminate upon reaching goal
-	if (world.isLocalGoal(state)) {
+	if (world_model->isGlobalGoal(state.car)) {
         reward = ModelParams::GOAL_REWARD;
-    	/*if(CPUDoPrint && state_.scenario_id==CPUPrintPID){
-			printf("Reach goal\n");
-    	}*/
 		return true;
 	}
-
-	//int closest_front_ped;
-	//double closest_front_dist;
-	//int closest_side_ped;
-	//double closest_side_dist;
-	//world.getClosestPed(state, closest_front_ped, closest_front_dist,
-			//closest_side_ped, closest_side_dist);
 
  	// Safety control: collision; Terminate upon collision
-	//if (closest_front_dist < ModelParams::COLLISION_DISTANCE) {
-    if(state.car.vel > 0.001 && world.inCollision(state) ) { /// collision occurs only when car is moving
-		reward = CrashPenalty(state); //, closest_ped, closest_dist);
-		if(action == ACT_DEC) reward += 0.1;
-		return true;
-	}
-
-	// Forbidden actions
-/*    double carvel = state.car.vel;
-	if (action == ACT_CUR && 0.1 < carvel && carvel < 0.6) {
+    if(state.car.vel > 0.001 && world_model->inCollision(state) ) { /// collision occurs only when car is moving
 		reward = CrashPenalty(state);
 		return true;
 	}
-    if (action == ACT_ACC && carvel >= ModelParams::VEL_MAX) {
-		reward = CrashPenalty(state);
-		return true;
-    }
-    if (action == ACT_DEC && carvel <= 0.01) {
-		reward = CrashPenalty(state);
-		return true;
-    }
-*/
-    // encourage speed up when there's no pedestrian
-    //if (carvel < 0.1 && closest_side_dist > 1.5 && closest_front_dist > 3.5 &&
-            //(closest_front_ped < 0 || world.isMovingAway(state, closest_front_ped))) {
-        //reward += -10;
-    //}
-
-
-    // encourage slowdown when pedestrian is close
-    //double min_dist_all_dirs = min(closest_front_dist, closest_side_dist);
-	//if (min_dist_all_dirs<6.0 && state.car.vel>1.0) {
-		//reward+=-4;
-	//}
-
-	/*
-	if ((min_dist < 2.5 && (state.car.vel > 1.0 || action == ACT_ACC)) || (min_dist > 4.0 && state.car.vel < 0.5)) {
-		reward += -1000;
-	}
-	*/
 
 	// Smoothness control
 	reward += ActionPenalty(action);
-	/*if(state_.scenario_id==52){
-		printf("+ActionPenalty (act %d)=%f\n",action, reward);
-	}*/
+
 	// Speed control: Encourage higher speed
 	reward += MovementPenalty(state);
-	/*if(state_.scenario_id==52){
-		printf("+MovementPenalty=%f\n",reward);
-	}*/
+
 	// State transition
-	//Random random(rNum);
-	double acc = (action == ACT_ACC) ? ModelParams::AccSpeed :
-		((action == ACT_CUR) ?  0 : (-ModelParams::AccSpeed));
 
 	//use rNum directly to keep consistent with GPU codes
-	if(use_multi_thread_)
+	if (Globals::config.use_multi_thread_)
 	{
-		record[MapThread(this_thread::get_id())]=123456;
+		QuickRandom::SetSeed(INIT_QUICKRANDSEED, Globals::MapThread(this_thread::get_id()));
 	}
 	else
-		record[0]=123456;
+		QuickRandom::SetSeed(INIT_QUICKRANDSEED, 0);
+
+	logd << "[PedPomdp::"<<__FUNCTION__<<"] Refract action"<< endl;
+	double acc = GetAcceleration(action);
+	double steering = GetSteering(action);
+
+	world_model->RobStep(state.car, steering, rNum/*random*/);
+
+	world_model->RobVelStep(state.car, acc, rNum/*random*/);
 
 
-	world.RobStep(state.car, rNum, acc);
-	world.RobVelStep(state.car, acc, rNum/*random*/);
-
-	if(!use_rvo){
-		for(int i=0;i<state.num;i++)
-			world.PedStep(state.peds[i], rNum);
+	if(use_rvo_in_search){
+		// Attentive pedestrians
+		world_model->RVO2PedStep(state.peds,rNum, state.num, state.car);
+		for(int i=0;i<state.num;i++){
+			//Distracted pedestrians
+			if(state.peds[i].mode==PED_DIS)
+				world_model->PedStep(state.peds[i], rNum);
+		}
 	}
 	else{
-		//world.RVO2PedStep(state.peds,random,state.num);
-		world.RVO2PedStep(state.peds,rNum,state.num,state.car);
+		for(int i=0;i<state.num;i++)
+		{
+			world_model->PedStep(state.peds[i], rNum/*random*/);
+
+			assert(state.peds[i].pos.x==state.peds[i].pos.x);//debugging
+		}
 	}
 
-
-	/*if(CPUDoPrint && state.scenario_id==CPUPrintPID){
+	if(CPUDoPrint && state.scenario_id==CPUPrintPID){
 		if(true){
 			PomdpState* pedpomdp_state=static_cast<PomdpState*>(&state_);
+			printf("(CPU) After step: scenario=%d \n", pedpomdp_state->scenario_id);
 			printf("rand=%f, action=%d \n", rNum, action);
 
 			printf("After step:\n");
 			printf("Reward=%f\n",reward);
 
-			printf("car pox= %d ",pedpomdp_state->car.pos);
-			printf("dist=%f\n",pedpomdp_state->car.dist_travelled);
+			printf("car_pos= %f,%f",pedpomdp_state->car.pos.x, pedpomdp_state->car.pos.y);
+			printf("car_heading=%f\n",pedpomdp_state->car.heading_dir);
 			printf("car vel= %f\n",pedpomdp_state->car.vel);
 			for(int i=0;i<pedpomdp_state->num;i++)
 			{
@@ -283,46 +248,27 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 						pedpomdp_state->peds[i].pos.x,pedpomdp_state->peds[i].pos.y);
 			}
 		}
-	}*/
-	//if(action==0 && state_.scenario_id==0)cout<<"3-"<<rNum<<endl;
+	}
+
 	// Observation
 	obs = Observe(state);
-	/*if(CPUDoPrint && state.scenario_id==CPUPrintPID){
-		cout<< "observation="<<obs<<endl;
-	}*/
 	return false;
 }
 
 bool PedPomdp::Step(PomdpStateWorld& state, double rNum, int action, double& reward, uint64_t& obs) const {
-	
+
 	reward = 0.0;
 
-	if (world.isLocalGoal(state)) {
+	if (world_model->isGlobalGoal(state.car)) {
         reward = ModelParams::GOAL_REWARD;
 		return true;
 	}
 
-    if(state.car.vel > 0.001 && world.inCollision(state) ) { /// collision occurs only when car is moving
-		reward = CrashPenalty(state); //, closest_ped, closest_dist);
-		if(action == ACT_DEC) reward += 0.1;
-		return true;
-	}
-/*
-	// Forbidden actions
-    double carvel = state.car.vel;
-	if (action == ACT_CUR && 0.1 < carvel && carvel < 0.6) {
+    if(state.car.vel > 0.001 && world_model->inRealCollision(state) ) { /// collision occurs only when car is moving
 		reward = CrashPenalty(state);
 		return true;
 	}
-    if (action == ACT_ACC && carvel >= ModelParams::VEL_MAX) {
-		reward = CrashPenalty(state);
-		return true;
-    }
-    if (action == ACT_DEC && carvel <= 0.01) {
-		reward = CrashPenalty(state);
-		return true;
-    } 
-*/
+
 	// Smoothness control
 	reward += ActionPenalty(action);
 
@@ -331,116 +277,29 @@ bool PedPomdp::Step(PomdpStateWorld& state, double rNum, int action, double& rew
 
 	// State transition
 	Random random(rNum);
-	double acc = (action == ACT_ACC) ? ModelParams::AccSpeed :
-		((action == ACT_CUR) ?  0 : (-ModelParams::AccSpeed));
-	world.RobStep(state.car, rNum, acc);
-	world.RobVelStep(state.car, acc, rNum/*random*/);
+	logd << "[PedPomdp::"<<__FUNCTION__<<"] Refract action"<< endl;
+	double acc = GetAcceleration(action);
+	double steering = GetSteering(action);
 
-	if(!use_rvo){
-		for(int i=0;i<state.num;i++)
-			world.PedStep(state.peds[i], rNum);
+	world_model->RobStep(state.car, steering, random);
+	world_model->RobVelStep(state.car, acc, random);
+
+	if(use_rvo_in_simulation){
+		// Attentive pedestrians
+		world_model->RVO2PedStep(state,random);
+		// Distracted pedestrians
+		for(int i=0;i<state.num;i++){
+			if(state.peds[i].mode==PED_DIS)
+				world_model->PedStep(state.peds[i], random);
+		}
 	}
 	else{
-		//world.RVO2PedStep(state.peds,random,state.num);
-		world.RVO2PedStep(state.peds,rNum,state.num,state.car);
-	}
-
-	return false;
-}
-
-bool PedPomdp::ImportanceSamplingStep(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
-	PomdpState& state = static_cast<PomdpState&>(state_);
-	reward = 0.0;
-	// CHECK: relative weights of each reward component
-	// Terminate upon reaching goal
-	if (world.isLocalGoal(state)) {
-        reward = ModelParams::GOAL_REWARD;
-		return true;
-	}
-
-	//int closest_front_ped;
-	//double closest_front_dist;
-	//int closest_side_ped;
-	//double closest_side_dist;
-	//world.getClosestPed(state, closest_front_ped, closest_front_dist,
-			//closest_side_ped, closest_side_dist);
-
- 	// Safety control: collision; Terminate upon collision
-	//if (closest_front_dist < ModelParams::COLLISION_DISTANCE) {
-    if(state.car.vel > 0.001 && world.inCollision(state) ) { /// collision occurs only when car is moving
-		reward = CrashPenalty(state); //, closest_ped, closest_dist);
-		if(action == ACT_DEC) reward += 0.1;
-		return true;
-	}
-/*
-	// Forbidden actions
-
-    double carvel = state.car.vel;
-	if (action == ACT_CUR && 0.1 < carvel && carvel < 0.6) {
-		reward = CrashPenalty(state);
-		return true;
-	}
-    if (action == ACT_ACC && carvel >= ModelParams::VEL_MAX) {
-		reward = CrashPenalty(state);
-		return true;
-    }
-    if (action == ACT_DEC && carvel <= 0.01) {
-		reward = CrashPenalty(state);
-		return true;
-    }
-*/
-    // encourage speed up when there's no pedestrian
-    //if (carvel < 0.1 && closest_side_dist > 1.5 && closest_front_dist > 3.5 &&
-            //(closest_front_ped < 0 || world.isMovingAway(state, closest_front_ped))) {
-        //reward += -10;
-    //}
-
-
-    // encourage slowdown when pedestrian is close
-    //double min_dist_all_dirs = min(closest_front_dist, closest_side_dist);
-	//if (min_dist_all_dirs<6.0 && state.car.vel>1.0) {
-		//reward+=-4;
-	//}
-
-	/*
-	if ((min_dist < 2.5 && (state.car.vel > 1.0 || action == ACT_ACC)) || (min_dist > 4.0 && state.car.vel < 0.5)) {
-		reward += -1000;
-	}
-	*/
-
-	// Smoothness control
-	reward += ActionPenalty(action);
-
-	// Speed control: Encourage higher speed
-	reward += MovementPenalty(state);
-
-	// State transition
-	Random random(rNum);
-	double acc = (action == ACT_ACC) ? ModelParams::AccSpeed :
-		((action == ACT_CUR) ?  0 : (-ModelParams::AccSpeed));
-	
-	///world.RobStep(state.car, random);
-	world.RobStep(state.car, random, acc);
-	//state.weight *= world.ISRobVelStep(state.car, acc, random);
-	world.RobVelStep(state.car, acc, rNum);
-	
-	if(!use_rvo){
 		for(int i=0;i<state.num;i++)
-			world.PedStep(state.peds[i], rNum);
-		//state.weight *= world.ISPedStep(state.car, state.peds[i], random);
-	} else{
-		
-		//world.RVO2PedStep(state.peds,random,state.num);
-	//	cout<<"+++== "<<state.peds[0].pos.x<<" ";
-		world.RVO2PedStep(state.peds,rNum,state.num,state.car);
-	//	cout<<state.peds[0].pos.x<<endl;
+			world_model->PedStep(state.peds[i], random);
 	}
-
-	// Observation
-	obs = Observe(state);
-
 	return false;
 }
+
 
 double PedPomdp::ObsProb(uint64_t obs, const State& s, int action) const {
 	return obs == Observe(s);
@@ -451,355 +310,98 @@ std::vector<std::vector<double>> PedPomdp::GetBeliefVector(const std::vector<Sta
 	return belief_vec;
 }
 
-Belief* PedPomdp::InitialBelief(const State* start, string type) const {
-	assert(false);
-	return NULL;
+Belief* PedPomdp::InitialBelief(const State* state, string type) const {
+
+	//Uniform initial distribution
+	std::vector<State*> empty; 
+
+	empty.resize(Globals::config.num_scenarios);
+	for (int i =0;i< empty.size();i++){
+		empty[i] = memory_pool_.Allocate();
+		empty[i]->SetAllocated();
+		empty[i]->weight = 1.0/empty.size();
+	}
+
+	PedPomdpBelief* belief=new PedPomdpBelief(empty , this);
+
+	// const PomdpStateWorld* world_state=static_cast<const PomdpStateWorld*>(state);
+	// belief->DeepUpdate(world_state);
+
+	return belief;
 }
 
 /// output the probability of the intentions of the pedestrians
 void PedPomdp::Statistics(const std::vector<PomdpState*> particles) const {
 	return;
-	double goal_count[10][10]={{0}};
+	double goal_count[10][10] = {{0}};
 	cout << "Current Belief" << endl;
-	if(particles.size() == 0)
+	if (particles.size() == 0)
 		return;
 
 	PrintState(*particles[0]);
 	PomdpState* state_0 = particles[0];
-	for(int i = 0; i < particles.size(); i ++) {
+	for (int i = 0; i < particles.size(); i ++) {
 		PomdpState* state = particles[i];
-		for(int j = 0; j < state->num; j ++) {
+		for (int j = 0; j < state->num; j ++) {
 			goal_count[j][state->peds[j].goal] += particles[i]->weight;
 		}
 	}
 
-	for(int j = 0; j < state_0->num; j ++) {
+	for (int j = 0; j < state_0->num; j ++) {
 		cout << "Ped " << j << " Belief is ";
-		for(int i = 0; i < world.goals.size(); i ++) {
-			cout << (goal_count[j][i] + 0.0) <<" ";
+		for (int i = 0; i < world_model->goals.size(); i ++) {
+			cout << (goal_count[j][i] + 0.0) << " ";
 		}
 		cout << endl;
 	}
 }
 
-/*/// output the probability of the intentions of the pedestrians
-void PedPomdp::PrintParticles(const std::vector<State*> particles, ostream& out) const {
-	cout<<"******** scenario belief********"<<endl;
 
-	double goal_count[10][10]={{0}};
-	cout << "Current Belief" << endl;
-	if(particles.size() == 0)
-		return;
-	const PomdpState* pomdp_state=static_cast<const PomdpState*>(particles.at(0));
 
-	//PrintState(*pomdp_state);
-
-	//PomdpState* state_0 = particles[0];
-	//const PomdpState* state_0=static_cast<const PomdpState*>(particles.at(0));
-	for(int i = 0; i < particles.size(); i ++) {
-		//PomdpState* state = particles[i];
-		const PomdpState* pomdp_state=static_cast<const PomdpState*>(particles.at(i));
-		for(int j = 0; j < pomdp_state->num; j ++) {
-			goal_count[j][pomdp_state->peds[j].goal] += particles[i]->weight;
-		}
-	}
-
-	for(int j = 0; j < 6; j ++) {
-		cout << "Ped " << pomdp_state->peds[j].id << " Belief is ";
-		for(int i = 0; i < world.goals.size(); i ++) {
-			cout << (goal_count[j][i] + 0.0) <<" ";
-		}
-		cout << endl;
-	}
-
-	cout<<"******** end of scenario belief********"<<endl;
-}*/
-
-ValuedAction PedPomdp::GetMinRewardAction() const {
-	return ValuedAction(0, 
-			ModelParams::CRASH_PENALTY * (ModelParams::VEL_MAX*ModelParams::VEL_MAX + ModelParams::REWARD_BASE_CRASH_VEL));
+ValuedAction PedPomdp::GetBestAction() const {
+	return ValuedAction(0,
+	                    ModelParams::CRASH_PENALTY * (ModelParams::VEL_MAX * ModelParams::VEL_MAX + ModelParams::REWARD_BASE_CRASH_VEL));
 }
 
-class PedPomdpSmartScenarioLowerBound : public Policy {
+class PedPomdpSmartScenarioLowerBound : public DefaultPolicy {
 protected:
 	const PedPomdp* ped_pomdp_;
 
 public:
 	PedPomdpSmartScenarioLowerBound(const DSPOMDP* model, ParticleLowerBound* bound) :
-		Policy(model,bound),
-		//ped_pomdp_(model)
+		DefaultPolicy(model, bound),
 		ped_pomdp_(static_cast<const PedPomdp*>(model))
 	{
 	}
 
 	int Action(const std::vector<State*>& particles,
-			RandomStreams& streams, History& history) const {
-		return ped_pomdp_->world.defaultPolicy(particles);
+	           RandomStreams& streams, History& history) const {
+		return ped_pomdp_->world_model->defaultPolicy(particles);
 	}
 };
 
-class PedPomdpSmartGraphScenarioLowerBound : public PolicyGraph {
-protected:
-	WorldModel* world_;
-	enum {
-		CLOSE_STATIC,
-		CLOSE_MOVING,
-		MEDIUM_FAST,
-		MEDIUM_MED,
-		MEDIUM_SLOW,
-		FAR_MAX,
-		FAR_NOMAX,
-	};
-public:
-
-	PedPomdpSmartGraphScenarioLowerBound(const DSPOMDP* model, ParticleLowerBound* bound,WorldModel* world,
-			Belief* belief=NULL):
-			PolicyGraph(model, bound, belief), world_(world) {
-
-	}
-	~PedPomdpSmartGraphScenarioLowerBound(){
-		ClearGraph();
-	}
-	void ConstructGraph(int size, int branch){
-		size = 3;//3 action nodes
-		branch= 7; //7 obs edges
-		cout<<"FIX_SCENARIO,Load_Graph="<<FIX_SCENARIO<<" "<<Load_Graph<<endl;
-		if(FIX_SCENARIO==1 || Load_Graph==true)
-		{
-			ifstream fin;fin.open("Graph.txt", ios::in);
-
-			assert(fin.is_open());
-			/*if(!fin.is_open())
-			{
-				throw string("No Graph.txt!");
-				exit(-1);
-			}*/
-			ImportGraph(fin,size,branch);
-			fin.close();
-		}
-		else
-		{
-			cout<<"Generating graph"<<endl;
-			graph_size_=size;
-			num_edges_per_node_=branch;
-			action_nodes_.resize(size);
-
-			//Set random actions for nodes
-			for (int i = 0; i < graph_size_; i++)
-			{
-				action_nodes_[i]=i;
-			}
-			//Link to random nodes for edges
-			for (int i = 0; i < num_edges_per_node_; i++)
-			{
-				switch(i){
-				case CLOSE_STATIC:
-					for (int j = 0; j < graph_size_; j++){
-						obs_edges_[(OBS_TYPE)i].push_back(0);
-					}
-					break;
-				case CLOSE_MOVING:
-					for (int j = 0; j < graph_size_; j++){
-						obs_edges_[(OBS_TYPE)i].push_back(2);
-					}
-					break;
-				case MEDIUM_FAST:
-					for (int j = 0; j < graph_size_; j++){
-						obs_edges_[(OBS_TYPE)i].push_back(2);
-					}
-					break;
-				case MEDIUM_MED:
-					for (int j = 0; j < graph_size_; j++){
-						obs_edges_[(OBS_TYPE)i].push_back(0);
-					}
-					break;
-				case MEDIUM_SLOW:
-					for (int j = 0; j < graph_size_; j++){
-						obs_edges_[(OBS_TYPE)i].push_back(1);
-					}
-					break;
-				case FAR_MAX:
-					for (int j = 0; j < graph_size_; j++){
-						obs_edges_[(OBS_TYPE)i].push_back(0);
-					}
-					break;
-				case FAR_NOMAX:
-					for (int j = 0; j < graph_size_; j++){
-						obs_edges_[(OBS_TYPE)i].push_back(1);
-					}
-					break;
-				}
-			}
-			current_node_=0;
-		}
-
-		if(FIX_SCENARIO==2 && !Load_Graph)
-		{
-			ofstream fout;fout.open("Graph.txt", ios::trunc);
-			ExportGraph(fout);
-			fout.close();
-		}
-	}
-
-	ValuedAction Value(const vector<State*>& particles,
-		RandomStreams& streams, History& history) const {
-		vector<State*> copy;
-		for (int i = 0; i < particles.size(); i++)
-			copy.push_back(model_->Copy(particles[i]));
-
-		initial_depth_ = history.Size();
-		int MaxDepth=min(Globals::config.max_policy_sim_len+initial_depth_,streams.Length());
-		int depth;
-		if(FIX_SCENARIO)
-			entry_node_=0;/*Debug*/
-		else
-			entry_node_=0;
-		int Action_decision=action_nodes_[entry_node_];
-		double TotalValue=0;
-		int init_pos=streams.position();
-
-		//cout<<" [Vnode] raw lb for "<<copy.size()<<" particles: ";
-		for (int i = 0; i < copy.size(); i++)
-		{
-			current_node_=entry_node_;
-
-			streams.position(init_pos);
-			State* particle = copy[i];
-			vector<State*> local_particles;
-			local_particles.push_back(particle);
-			bool terminal=false;
-			double value = 0;
-
-			for(depth=initial_depth_-1;depth<MaxDepth;depth++)
-			{
-				int action = action_nodes_[current_node_];
-
-				if(depth==initial_depth_)
-					Action_decision=action;
-				terminal=false;
-				if(depth>=initial_depth_){
-					OBS_TYPE obs;
-					double reward;
-
-					/*if(i==0){
-						if(!terminal){
-							PomdpState* pedpomdp_state=static_cast<PomdpState*>(particle);
-							printf("Before step:\n");
-							for(int i=0;i<pedpomdp_state->num;i++)
-							{
-								printf("ped %d pox_x= %f pos_y=%f\n",i,
-										pedpomdp_state->peds[i].pos.x,pedpomdp_state->peds[i].pos.y);
-							}
-						}
-					}*/
-					terminal = model_->Step(*particle,
-						streams.Entry(particle->scenario_id), action, reward, obs);
-
-					value += reward * particle->weight * Globals::Discount(depth-initial_depth_);
-					/*if(particle->scenario_id==418 )
-						printf("terminal,reward, value, depth, init_depth=%d %f %f %d %d \n"
-							,terminal,reward,value/particle->weight,depth,initial_depth_);*/
-					/*if(history.Size()>1)
-						printf("terminal,reward, value, depth, init_depth=%d %f %f %d %d \n"
-							,terminal,reward,value/particle->weight,depth,initial_depth_);*/
-					streams.Advance();
-					/*if(i==0){
-						if(!terminal){
-							PomdpState* pedpomdp_state=static_cast<PomdpState*>(particle);
-							printf("After step:\n");
-							for(int i=0;i<pedpomdp_state->num;i++)
-							{
-								printf("ped %d pox_x= %f pos_y=%f\n",i,
-										pedpomdp_state->peds[i].pos.x,pedpomdp_state->peds[i].pos.y);
-							}
-						}
-						printf("Act at depth %d = %d, get reward %f\n",depth,action,reward);
-					}*/
-
-					/*if(particle->scenario_id==418)
-						printf("Act at depth %d = %d, get reward %f\n",depth,action,reward);*/
-				}
-				if(terminal)
-					break;
-				else
-				{
-					int edge=world_->defaultGraphEdge(particle, (particle->scenario_id==418)?true:false);
-					//if(particle->scenario_id==418) printf("Trace edge %d\n",edge);
-					//vector<int> link= obs_edges_[obs];
-					current_node_=obs_edges_[(OBS_TYPE)edge][current_node_];
-					if(current_node_>10000)
-						cout<<"error"<<endl;
-				}
-			}
-
-			if(!terminal)
-			{
-				value += Globals::Discount(depth-initial_depth_+1) * particle_lower_bound_->Value(local_particles).value;
-				/*if( particle->scenario_id==418 )
-					printf("terminal,va.value, depth, init_depth=%d %f %d %d \n"
-							,terminal,value/particle->weight,depth,initial_depth_);*/
-				/*if(history.Size()>1)
-					printf("terminal,va.value, depth, init_depth=%d %f %d %d \n"
-						,terminal,value/particle->weight,depth,initial_depth_);*/
-			}
-			//cout.precision(3);
-			//cout<< value<<" ";
-			TotalValue+=value;
-		}
-		//cout<<endl;
-		for (int i = 0; i < copy.size(); i++)
-			model_->Free(copy[i]);
-
-		return ValuedAction(Action_decision, TotalValue);
-	}
-};
-
-/*void PedPomdp::InitializeScenarioLowerBound(string name, RandomStreams& streams) {
-	// name = "TRIVIAL";
-	name="SMART";
-	if(name == "TRIVIAL") {
-		scenario_lower_bound_ = new TrivialScenarioLowerBound(this);
-	} else if(name == "RANDOM") {
-		scenario_lower_bound_ = new RandomPolicy(this);
-	} else if (name == "SMART") {
-		scenario_lower_bound_ = new PedPomdpSmartScenarioLowerBound(this);
-	} else {
-		cerr << "Unsupported scenario lower bound: " << name << endl;
-		exit(0);
-	}
-}*/
 
 ScenarioLowerBound* PedPomdp::CreateScenarioLowerBound(string name,
-		string particle_bound_name) const {
-	// name = "TRIVIAL";
-	//name="SMART_GRAPH";
-	name="SMART";
-
-	if(name == "TRIVIAL") {
-		return new TrivialParticleLowerBound(this);
-	} else if(name == "RANDOM") {
-		//return new RandomPolicy(this);
-		//return new RandomPolicy(this, CreateParticleLowerBound(particle_bound_name)); 
-		return new RandomPolicy(this, new PedPomdpParticleLowerBound(this));
-		//return NULL;
+        string particle_bound_name) const {
+	name = "SMART";
+	ScenarioLowerBound* lb;
+	if (name == "TRIVIAL") {
+		lb = new TrivialParticleLowerBound(this);
+	} else if (name == "RANDOM") {
+		lb = new RandomPolicy(this, new PedPomdpParticleLowerBound(this));
 	} else if (name == "SMART") {
-		Globals::config.rollout_type="INDEPENDENT";
-		cout<<"Smart policy independent rollout"<<endl;
-		//return new PedPomdpSmartScenarioLowerBound(this, CreateParticleLowerBound(particle_bound_name));
-		return new PedPomdpSmartScenarioLowerBound(this, new PedPomdpParticleLowerBound(this));
-	} else if (name == "SMART_GRAPH") {
-		Globals::config.rollout_type="GRAPH";
-		cout<<"Smart policy graph rollout"<<endl;
-
-		PedPomdpSmartGraphScenarioLowerBound* tmp=new PedPomdpSmartGraphScenarioLowerBound(this,
-				new PedPomdpParticleLowerBound(this), &world);
-		tmp->ConstructGraph(3, 7);
-		tmp->SetEntry(0);
-		return tmp;
+		Globals::config.rollout_type = "INDEPENDENT";
+		cout << "[LowerBound] Smart policy independent rollout" << endl;
+		lb = new PedPomdpSmartScenarioLowerBound(this, new PedPomdpParticleLowerBound(this));
 	} else {
-		cerr << "Unsupported scenario lower bound: " << name << endl;
+		cerr << "[LowerBound] Unsupported scenario lower bound: " << name << endl;
 		exit(0);
 	}
+
+	if (Globals::config.useGPU)
+		InitGPULowerBound(name, particle_bound_name);
+
+	return lb;
 }
 
 double PedPomdp::GetMaxReward() const {
@@ -811,52 +413,24 @@ protected:
 	const PedPomdp* ped_pomdp_;
 public:
 	PedPomdpSmartParticleUpperBound(const DSPOMDP* model) :
-		//ParticleUpperBound(model),
 		ped_pomdp_(static_cast<const PedPomdp*>(model))
 	{
 	}
 
-    // IMPORTANT: Check after changing reward function.
+	// IMPORTANT: Check after changing reward function.
 	double Value(const State& s) const {
 		const PomdpState& state = static_cast<const PomdpState&>(s);
-        /*
-        double min_dist = ped_pomdp_->world.getMinCarPedDist(state);
-        if (min_dist < ModelParams::COLLISION_DISTANCE) {
-            return ped_pomdp_->CrashPenalty(state);
-        }
-        */
-        if (ped_pomdp_->world.inCollision(state))
-            return ped_pomdp_->CrashPenalty(state);
 
-        int min_step = ped_pomdp_->world.minStepToGoal(state);
+		if (ped_pomdp_->world_model->inCollision(state))
+			return ped_pomdp_->CrashPenalty(state);
+
+		int min_step = ped_pomdp_->world_model->minStepToGoal(state);
 		return ModelParams::GOAL_REWARD * Globals::Discount(min_step);
 	}
 };
 
-/*void PedPomdp::InitializeParticleUpperBound(string name, RandomStreams& streams) {
-	name = "SMART";
-	if (name == "TRIVIAL") {
-		particle_upper_bound_ = new TrivialParticleUpperBound(this);
-	} else if (name == "SMART") {
-		particle_upper_bound_ = new PedPomdpSmartParticleUpperBound(this);
-	} else {
-		cerr << "Unsupported particle upper bound: " << name << endl;
-		exit(0);
-	}
-}
 
-void PedPomdp::InitializeScenarioUpperBound(string name, RandomStreams& streams) {
-	//name = "SMART";
-	name = "TRIVIAL";
-	if (name == "TRIVIAL") {
-		scenario_upper_bound_ = new TrivialScenarioUpperBound(this);
-	} else {
-		cerr << "Unsupported scenario upper bound: " << name << endl;
-		exit(0);
-	}
-}*/
-
-ParticleUpperBound* PedPomdp::CreateParticleUpperBound(string name) const{
+ParticleUpperBound* PedPomdp::CreateParticleUpperBound(string name) const {
 	name = "SMART";
 	if (name == "TRIVIAL") {
 		return new TrivialParticleUpperBound(this);
@@ -869,75 +443,84 @@ ParticleUpperBound* PedPomdp::CreateParticleUpperBound(string name) const{
 }
 
 ScenarioUpperBound* PedPomdp::CreateScenarioUpperBound(string name,
-		string particle_bound_name) const{
+        string particle_bound_name) const {
 	//name = "SMART";
 	name = "TRIVIAL";
+	ScenarioUpperBound* ub;
 	if (name == "TRIVIAL") {
-		cout<<"Trivial upper bound"<<endl;
-		return new TrivialParticleUpperBound(this);
+		cout << "[UpperBound] Trivial upper bound" << endl;
+		ub =  new TrivialParticleUpperBound(this);
 	} else if (name == "SMART") {
-		cout<<"Smart upper bound"<<endl;
-		return new PedPomdpSmartParticleUpperBound(this);
+		cout << "[UpperBound] Smart upper bound" << endl;
+		ub = new PedPomdpSmartParticleUpperBound(this);
 	}
 	else {
-		cerr << "Unsupported scenario upper bound: " << name << endl;
+		cerr << "[UpperBound] Unsupported scenario upper bound: " << name << endl;
 		exit(0);
 	}
+	if (Globals::config.useGPU)
+		InitGPUUpperBound(name,	particle_bound_name);
+	return ub;
 }
 
 void PedPomdp::PrintState(const State& s, ostream& out) const {
-	const PomdpState & state=static_cast<const PomdpState&> (s);
-    COORD& carpos = world.path[state.car.pos];
-    double car_angle = 0.0;
-    if (state.car.pos < world.path.size()-1){
-	    COORD cardir = world.path[state.car.pos + 1] - world.path[state.car.pos];
-	    if (cardir.x* cardir.x + cardir.y *cardir.y > 1e-5)
-	    	car_angle = atan2(cardir.y, cardir.x) + 3.1415926;
+
+	if (DESPOT::Debug_mode)
+		return;
+
+	if (static_cast<const PomdpStateWorld*> (&s)!=NULL){
+		PrintWorldState(static_cast<const PomdpStateWorld&> (s), out);
+		return;
 	}
 
-	out << "car angle = " << car_angle << endl;
-	out << "car pos / dist_trav / vel = " << "(" << carpos.x<< ", " <<carpos.y << ") / " 
-        << state.car.dist_travelled << " / "
-        << state.car.vel << endl;
-	out<< state.num << " pedestrians " << endl;
-	for(int i = 0; i < state.num; i ++) {
+	const PomdpState & state = static_cast<const PomdpState&> (s);
+	auto& carpos = state.car.pos;
+
+	out << "car pos / heading / vel = " << "(" << carpos.x << ", " << carpos.y << ") / "
+	    << state.car.heading_dir << " / "
+	    << state.car.vel << endl;
+	out << state.num << " pedestrians " << endl;
+	for (int i = 0; i < state.num; i ++) {
 		out << "ped " << i << ": id / pos / vel / goal / dist2car / infront =  " << state.peds[i].id << " / "
-            << "(" << state.peds[i].pos.x << ", " << state.peds[i].pos.y << ") / "
-            << state.peds[i].vel << " / "
-            << state.peds[i].goal << " / "
-            << COORD::EuclideanDistance(state.peds[i].pos, carpos) << "/"
-			<< world.inFront(state.peds[i].pos, state.car.pos) << endl;
+		    << "(" << state.peds[i].pos.x << ", " << state.peds[i].pos.y << ") / "
+		    << state.peds[i].vel << " / "
+		    << state.peds[i].goal << " / "
+		    << COORD::EuclideanDistance(state.peds[i].pos, carpos) << "/"
+		    << world_model->inFront(state.peds[i].pos, state.car) << endl;
 	}
-    double min_dist = -1;
-    if (state.num > 0)
-        min_dist = COORD::EuclideanDistance(carpos, state.peds[0].pos);
+	double min_dist = -1;
+	if (state.num > 0)
+		min_dist = COORD::EuclideanDistance(carpos, state.peds[0].pos);
 	out << "MinDist: " << min_dist << endl;
 }
-void PedPomdp::PrintWorldState(PomdpStateWorld state, ostream& out) {
-    COORD& carpos = world.path[state.car.pos];
+void PedPomdp::PrintWorldState(const PomdpStateWorld& state, ostream& out) const {
 
-	out << "car pos / dist_trav / vel = " << "(" << carpos.x<< ", " <<carpos.y << ") / "
-        << state.car.dist_travelled << " / "
-        << state.car.vel << endl;
-	out<< state.num << " pedestrians " << endl;
-	int mindist_id=0;
-    double min_dist = std::numeric_limits<int>::max();
+	out << "World state:\n";
+	auto& carpos = state.car.pos;
 
-	for(int i = 0; i < state.num; i ++) {
-		if(COORD::EuclideanDistance(state.peds[i].pos, carpos)<min_dist)
+	out << "car pos / heading / vel = " << "(" << carpos.x << ", " << carpos.y << ") / "
+	    << state.car.heading_dir << " / "
+	    << state.car.vel << endl;
+	out << state.num << " pedestrians " << endl;
+	int mindist_id = 0;
+	double min_dist = std::numeric_limits<int>::max();
+
+	for (int i = 0; i < state.num; i ++) {
+		if (COORD::EuclideanDistance(state.peds[i].pos, carpos) < min_dist)
 		{
-			min_dist=COORD::EuclideanDistance(state.peds[i].pos, carpos);
-			mindist_id=i;
+			min_dist = COORD::EuclideanDistance(state.peds[i].pos, carpos);
+			mindist_id = i;
 		}
 		out << "ped " << i << ": id / pos / vel / goal / dist2car / infront =  " << state.peds[i].id << " / "
-            << "(" << state.peds[i].pos.x << ", " << state.peds[i].pos.y << ") / "
-            << state.peds[i].vel << " / "
-            << state.peds[i].goal << " / "
-            << COORD::EuclideanDistance(state.peds[i].pos, carpos) << "/"
-			<< world.inFront(state.peds[i].pos, state.car.pos) << endl;
+		    << "(" << state.peds[i].pos.x << ", " << state.peds[i].pos.y << ") / "
+		    << state.peds[i].vel << " / "
+		    << state.peds[i].goal << " / "
+		    << COORD::EuclideanDistance(state.peds[i].pos, carpos) << "/"
+		    << world_model->inFront(state.peds[i].pos, state.car)
+		    << " (mode) " << state.peds[i].mode << endl;
 	}
-    if (state.num > 0)
-        min_dist = COORD::EuclideanDistance(carpos, state.peds[/*0*/mindist_id].pos);
+	if (state.num > 0)
+		min_dist = COORD::EuclideanDistance(carpos, state.peds[/*0*/mindist_id].pos);
 	out << "MinDist: " << min_dist << endl;
 }
 void PedPomdp::PrintObs(const State&state, uint64_t obs, ostream& out) const {
@@ -949,52 +532,54 @@ void PedPomdp::PrintAction(int action, ostream& out) const {
 }
 
 void PedPomdp::PrintBelief(const Belief& belief, ostream& out ) const {
-	
+
 }
 
 /// output the probability of the intentions of the pedestrians
 void PedPomdp::PrintParticles(const vector<State*> particles, ostream& out) const {
-	cout<<"Particles for planning:"<<endl;
-	double goal_count[ModelParams::N_PED_IN][10]={{0}};
-    double q_goal_count[ModelParams::N_PED_IN][10]={{0}};//without weight, it is q;
-    double q_single_weight;
-    q_single_weight=1.0/particles.size();
+	cout << "Particles for planning:" << endl;
+	double goal_count[ModelParams::N_PED_IN][10] = {{0}};
+	double q_goal_count[ModelParams::N_PED_IN][10] = {{0}}; //without weight, it is q;
+	double q_single_weight;
+	q_single_weight = 1.0 / particles.size();
 	cout << "Current Belief" << endl;
-	if(particles.size() == 0)
+	if (particles.size() == 0)
 		return;
-	const PomdpState* pomdp_state=static_cast<const PomdpState*>(particles.at(0));
+	const PomdpState* pomdp_state = static_cast<const PomdpState*>(particles.at(0));
 
-	//PrintState(*pomdp_state);
+	if(DESPOT::Debug_mode){
+		DESPOT::Debug_mode = false;
+		PrintState(*pomdp_state);
+		DESPOT::Debug_mode = true;
+	}
 
-	//PomdpState* state_0 = particles[0];
-	//const PomdpState* state_0=static_cast<const PomdpState*>(particles.at(0));
-	for(int i = 0; i < particles.size(); i ++) {
+	for (int i = 0; i < particles.size(); i ++) {
 		//PomdpState* state = particles[i];
-		const PomdpState* pomdp_state=static_cast<const PomdpState*>(particles.at(i));
-		for(int j = 0; j < pomdp_state->num; j ++) {
+		const PomdpState* pomdp_state = static_cast<const PomdpState*>(particles.at(i));
+		for (int j = 0; j < pomdp_state->num; j ++) {
 			goal_count[j][pomdp_state->peds[j].goal] += particles[i]->weight;
-            q_goal_count[j][pomdp_state->peds[j].goal] += q_single_weight;
+			q_goal_count[j][pomdp_state->peds[j].goal] += q_single_weight;
 		}
 	}
 
-	for(int j = 0; j < 6; j ++) {
+	for (int j = 0; j < 6; j ++) {
 		cout << "Ped " << pomdp_state->peds[j].id << " Belief is ";
-		for(int i = 0; i < world.goals.size(); i ++) {
-			cout << (goal_count[j][i] + 0.0) <<" ";
+		for (int i = 0; i < world_model->goals.size(); i ++) {
+			cout << (goal_count[j][i] + 0.0) << " ";
 		}
 		cout << endl;
 	}
 
-    cout<<"<><><> q:"<<endl;
-    for(int j = 0; j < 6; j ++) {
-        cout << "Ped " << pomdp_state->peds[j].id << " Belief is ";
-        for(int i = 0; i < world.goals.size(); i ++) {
-            cout << (q_goal_count[j][i] + 0.0) <<" ";
-        }
-        cout << endl;
-    }
+	cout << "<><><> q:" << endl;
+	for (int j = 0; j < 6; j ++) {
+		cout << "Ped " << pomdp_state->peds[j].id << " Belief is ";
+		for (int i = 0; i < world_model->goals.size(); i ++) {
+			cout << (q_goal_count[j][i] + 0.0) << " ";
+		}
+		cout << endl;
+	}
 
-	cout<<"******** end of scenario belief********"<<endl;
+	cout << "******** end of scenario belief********" << endl;
 
 }
 
@@ -1007,15 +592,9 @@ State* PedPomdp::Allocate(int state_id, double weight) const {
 }
 
 State* PedPomdp::Copy(const State* particle) const {
-	//num_active_particles ++;
 	PomdpState* new_particle = memory_pool_.Allocate();
 	*new_particle = *static_cast<const PomdpState*>(particle);
 
-	//debugging
-	/*for(int i=0;i<new_particle->num;i++){
-		PedStruct ped = new_particle -> peds[i];
-		assert(ped.pos.x == ped.pos.x);
-	}*/
 	new_particle->SetAllocated();
 	return new_particle;
 }
@@ -1030,161 +609,170 @@ int PedPomdp::NumActiveParticles() const {
 	return memory_pool_.num_allocated();
 }
 
-double PedPomdp::ImportanceScore(PomdpState* state) const
-{	
+double PedPomdp::ImportanceScore(PomdpState* state, ACT_TYPE last_action) const
+{
 	double score = 1.8; //0.3 * 6; 0.3 basic score for each pedestrian
 	for(int i=0;i<state->num;i++){
 		PedStruct ped = state -> peds[i];
 		CarStruct car = state -> car;
 		COORD ped_pos = ped.pos;
 
-		const COORD& goal = world.goals[ped.goal];
+		const COORD& goal = world_model->goals[ped.goal];
 		double move_dw, move_dh;
-		if (goal.x == -1 && goal.y == -1) {  //stop intention 
+		if (goal.x == -1 && goal.y == -1) {  //stop intention
 			move_dw = 0; //stop intention does not change ped pos, hence movement is 0;
 			move_dh = 0;
 		}
 		else {
 			MyVector goal_vec(goal.x - ped_pos.x, goal.y - ped_pos.y);
-		    double a = goal_vec.GetAngle();
-		    MyVector move(a, ped.vel*1.0, 0); //movement in unit time
-		    move_dw = move.dw;
-		    move_dh = move.dh;
+			double a = goal_vec.GetAngle();
+			MyVector move(a, ped.vel*1.0, 0); //movement in unit time
+			move_dw = move.dw;
+			move_dh = move.dh;
 		}
 
-	    int count = 0;
-	    
+		int count = 0;
+
 		for(int t=1; t<=5; t++){
 			ped_pos.x += move_dw;
-		    ped_pos.y += move_dh;
-		  
-		    double dist = car.vel; // car.vel * 1;
-		    int nxt = world.path.forward(car.pos, dist);
-		    car.pos = nxt;
+			ped_pos.y += move_dh;
 
-		    double d = COORD::EuclideanDistance(world.path[car.pos], ped_pos);
+			Random random(double(state->scenario_id));
+			int step = car.vel/ModelParams::control_freq;
+			for (int i=0;i<step;i++){
+				world_model->RobStep(state->car, GetSteering(last_action), random);
+				world_model->RobVelStep(state->car, GetAcceleration(last_action), random);
+			}
 
-		    if(d <= 1 && count < 3) {count ++; score += 4;}
-		    else if(d <= 2 && count < 3) {count ++; score += 2;}
-		    else if(d <= 3 && count < 3) {count ++; score += 1;}
+		   /* double dist = car.vel; // car.vel * 1;
+			int nxt = world_model->path.forward(car.pos, dist);
+			car.pos = nxt;*/
+
+			double d = COORD::EuclideanDistance(car.pos, ped_pos);
+
+			if(d <= 1 && count < 3) {count ++; score += 4;}
+			else if(d <= 2 && count < 3) {count ++; score += 2;}
+			else if(d <= 3 && count < 3) {count ++; score += 1;}
 		}
 	}
 
 	return score;
 }
 
-std::vector<double> PedPomdp::ImportanceWeight(std::vector<State*> particles) const
+std::vector<double> PedPomdp::ImportanceWeight(std::vector<State*> particles, ACT_TYPE last_action) const
 {
- 	double total_weight=State::Weight(particles);
- 	double new_total_weight=0;
-	int particles_num=particles.size();
+	double total_weight = State::Weight(particles);
+	double new_total_weight = 0;
+	int particles_num = particles.size();
 
 	std::vector<PomdpState*> pomdp_state_particles;
 
 	std::vector <double> importance_weight;
 
 	bool use_is_despot = true;
-	if(use_is_despot == false){
-		for(int i=0; i<particles_num;i++){
+	if (use_is_despot == false) {
+		for (int i = 0; i < particles_num; i++) {
 			importance_weight.push_back(particles[i]->weight);
 		}
 		return importance_weight;
 	}
 
-	cout<<"use importance sampling ***** "<<endl;
+	cout << "use importance sampling ***** " << endl;
 
-	for(int i=0; i<particles_num;i++){
+	for (int i = 0; i < particles_num; i++) {
 		pomdp_state_particles.push_back(static_cast<PomdpState*>(particles[i]));
 	}
 
-	for(int i=0; i<particles_num;i++){
+	for (int i = 0; i < particles_num; i++) {
 
-		importance_weight.push_back(pomdp_state_particles[i]->weight * ImportanceScore(pomdp_state_particles[i]));
+		importance_weight.push_back(pomdp_state_particles[i]->weight * ImportanceScore(pomdp_state_particles[i], last_action));
 		new_total_weight += importance_weight[i];
 	}
 
 	//normalize to total_weight
-	for(int i=0; i<particles_num;i++){
-		importance_weight[i]=importance_weight[i]*total_weight/new_total_weight;
-		assert(importance_weight[i]>0);
+	for (int i = 0; i < particles_num; i++) {
+		importance_weight[i] = importance_weight[i] * total_weight / new_total_weight;
+		assert(importance_weight[i] > 0);
 	}
 
 	return importance_weight;
 }
 
 
-int PedPomdp::NumObservations() const{
+int PedPomdp::NumObservations() const {
 	//cout<<__FUNCTION__<<": Obs space too large! INF used instead"<<endl;
 	return std::numeric_limits<int>::max();
 }
-int PedPomdp::ParallelismInStep() const{
+int PedPomdp::ParallelismInStep() const {
 	return ModelParams::N_PED_IN;
 }
-void PedPomdp::ExportState(const State& state, std::ostream& out) const{
-	PomdpState cardriveState=static_cast<const PomdpState&>(state);
+void PedPomdp::ExportState(const State& state, std::ostream& out) const {
+	PomdpState cardriveState = static_cast<const PomdpState&>(state);
 	ios::fmtflags old_settings = out.flags();
 
-	int Width=7;
-	int Prec=3;
-	//out << "Head ";
-	out << cardriveState.scenario_id <<" ";
-	out << cardriveState.weight <<" ";
-	out << cardriveState.num<<" ";
-	out << cardriveState.car.dist_travelled <<" "
-			<<cardriveState.car.pos<<" "
-			<<cardriveState.car.vel<<" ";
-	for (int i=0;i<ModelParams::N_PED_IN;i++)
-		out << cardriveState.peds[i].goal <<" "<<cardriveState.peds[i].id
-		<<" "<<cardriveState.peds[i].pos.x<<" "<<cardriveState.peds[i].pos.y
-		<<" "<<cardriveState.peds[i].vel<<" ";
+	int Width = 7;
+	int Prec = 3;
+	out << cardriveState.scenario_id << " ";
+	out << cardriveState.weight << " ";
+	out << cardriveState.num << " ";
+	out << cardriveState.car.heading_dir << " "
+			<< cardriveState.car.pos.x<<" "
+			<< cardriveState.car.pos.y<<" "
+			<< cardriveState.car.vel << " ";
+	for (int i = 0; i < ModelParams::N_PED_IN; i++)
+		out << cardriveState.peds[i].goal << " " << cardriveState.peds[i].id
+		    << " " << cardriveState.peds[i].pos.x << " " << cardriveState.peds[i].pos.y
+		    << " " << cardriveState.peds[i].vel << " ";
 
-	out /*<< "End"*/<<endl;
+	out << endl;
 
 	out.flags(old_settings);
 }
-State* PedPomdp::ImportState(std::istream& in) const{
+State* PedPomdp::ImportState(std::istream& in) const {
 	PomdpState* cardriveState = memory_pool_.Allocate();
 
 	if (in.good())
 	{
 		string str;
-		while(getline(in, str))
+		while (getline(in, str))
 		{
-			if(!str.empty())
+			if (!str.empty())
 			{
 				istringstream ss(str);
 
 				ss >> cardriveState->scenario_id;
 				ss >> cardriveState->weight;
 				ss >> cardriveState->num;
-				ss >> cardriveState->car.dist_travelled >>cardriveState->car.pos>>cardriveState->car.vel;
-				for (int i=0;i<ModelParams::N_PED_IN;i++)
-					ss >> cardriveState->peds[i].goal >>cardriveState->peds[i].id
-					>>cardriveState->peds[i].pos.x>>cardriveState->peds[i].pos.y
-					>>cardriveState->peds[i].vel;
+				ss >> cardriveState->car.heading_dir
+					>> cardriveState->car.pos.x
+					>> cardriveState->car.pos.y
+					>> cardriveState->car.vel;
+				for (int i = 0; i < ModelParams::N_PED_IN; i++)
+					ss >> cardriveState->peds[i].goal >> cardriveState->peds[i].id
+					   >> cardriveState->peds[i].pos.x >> cardriveState->peds[i].pos.y
+					   >> cardriveState->peds[i].vel;
 			}
 		}
 	}
 
 	return cardriveState;
 }
-void PedPomdp::ImportStateList(std::vector<State*>& particles, std::istream& in) const{
+void PedPomdp::ImportStateList(std::vector<State*>& particles, std::istream& in) const {
 	if (in.good())
 	{
-		int PID=0;
+		int PID = 0;
 		string str;
 		getline(in, str);
-		//cout<<str<<endl;
 		istringstream ss(str);
 		int size;
-		ss>>size;
+		ss >> size;
 		particles.resize(size);
-		while(getline(in, str))
+		while (getline(in, str))
 		{
-			if(!str.empty())
+			if (!str.empty())
 			{
-				if(PID>=particles.size())
-					cout<<"Import particles error: PID>=particles.size()!"<<endl;
+				if (PID >= particles.size())
+					cout << "Import particles error: PID>=particles.size()!" << endl;
 
 				PomdpState* cardriveState = memory_pool_.Allocate();
 
@@ -1193,15 +781,153 @@ void PedPomdp::ImportStateList(std::vector<State*>& particles, std::istream& in)
 				ss >> cardriveState->scenario_id;
 				ss >> cardriveState->weight;
 				ss >> cardriveState->num;
-				ss >> cardriveState->car.dist_travelled >>cardriveState->car.pos>>cardriveState->car.vel;
-				for (int i=0;i<ModelParams::N_PED_IN;i++)
-					ss >> cardriveState->peds[i].goal >>cardriveState->peds[i].id
-					>>cardriveState->peds[i].pos.x>>cardriveState->peds[i].pos.y
-					>>cardriveState->peds[i].vel;
-				particles[PID]=cardriveState;
+				ss >> cardriveState->car.heading_dir
+								>> cardriveState->car.pos.x
+								>> cardriveState->car.pos.y
+								>> cardriveState->car.vel;
+				for (int i = 0; i < ModelParams::N_PED_IN; i++)
+					ss >> cardriveState->peds[i].goal >> cardriveState->peds[i].id
+					   >> cardriveState->peds[i].pos.x >> cardriveState->peds[i].pos.y
+					   >> cardriveState->peds[i].vel;
+				particles[PID] = cardriveState;
 				PID++;
 
 			}
 		}
 	}
 }
+
+
+OBS_TYPE PedPomdp::StateToIndex(const State* state) const{
+	std::hash<std::vector<int>> myhash;
+	std::vector<int> obs_vec=ObserveVector(*state);
+	OBS_TYPE obs=myhash(obs_vec);
+	Obs_hash_table[obs]=obs_vec;
+
+	//cout<<"Hash obs: "<<obs<<endl;
+
+	if(obs<=(OBS_TYPE)140737351976300){
+		cout<<"empty obs: "<<obs<<endl;
+		return obs;
+	}
+
+	return obs;
+}
+
+
+SolverPrior* PedPomdp::CreateSolverPrior(World* world, std::string name, bool update_prior) const{
+	SolverPrior* prior=NULL;
+
+	if ( name == "NEURAL") {
+		prior= new PedNeuralSolverPrior(this,*world_model);
+	}
+
+	const State* init_state=world->GetCurrentState();
+
+	if (init_state != NULL && update_prior){
+		prior->Add(-1, init_state);
+		State* init_search_state_=CopyForSearch(init_state);//the state is used in search
+		prior->Add_in_search(-1, init_search_state_);
+	}
+
+	return prior;
+}
+
+State* PedPomdp::CopyForSearch(const State* particle) const {
+	//num_active_particles ++;
+	PomdpState* new_particle = memory_pool_.Allocate();
+	const PomdpStateWorld* world_state = static_cast<const PomdpStateWorld*>(particle);
+
+	new_particle->num=min(ModelParams::N_PED_IN, world_state->num);
+	new_particle->car=world_state->car;
+	for (int i=0;i<new_particle->num; i++){
+		new_particle->peds[i]=world_state->peds[i];
+	}
+
+	new_particle->SetAllocated();
+	return new_particle;
+}
+
+
+double PedPomdp::GetAcceleration(ACT_TYPE action, bool debug) const{
+	double acc_ID=(action%((int)(2*ModelParams::NumAcc+1)));
+	double normalized_acc=acc_ID/ModelParams::NumAcc;
+	double shifted_acc=normalized_acc-1;
+	if(debug)
+		cout<<"[GetAcceleration] (acc_ID, noirmalized_acc, shifted_acc)="
+		<<"("<<acc_ID<<","<<normalized_acc<<","<<shifted_acc<<")"<<endl;
+	return shifted_acc*ModelParams::AccSpeed;
+}
+
+
+double PedPomdp::GetSteering(ACT_TYPE action, bool debug) const{
+	double steer_ID=FloorIntRobust(action/(2*ModelParams::NumAcc+1));
+	double normalized_steer=steer_ID/ModelParams::NumSteerAngle;
+	double shifted_steer=normalized_steer-1;
+
+	if(debug)
+		cout<<"[GetSteering] (steer_ID, normalized_steer, shifted_steer)="
+		<<"("<<steer_ID<<","<<normalized_steer<<","<<shifted_steer<<")"<<endl;
+	return shifted_steer*ModelParams::MaxSteerAngle;
+}
+
+ACT_TYPE PedPomdp::GetActionID(double steering, double acc, bool debug){
+	if(debug){
+		cout<<"[GetActionID] (shifted_steer, normalized_steer, steer_ID)="
+				<<"("<<steering/ModelParams::MaxSteerAngle<<","
+				<<(steering/ModelParams::MaxSteerAngle+1)<<","
+				<<(ACT_TYPE)ClosestInt((steering/ModelParams::MaxSteerAngle+1)*(ModelParams::NumSteerAngle))<<")"<<endl;
+		cout<<"[GetActionID] (shifted_acc, noirmalized_acc, acc_ID)="
+				<<"("<<acc/ModelParams::AccSpeed<<","
+				<<acc/ModelParams::AccSpeed+1<<","
+				<<(ACT_TYPE)ClosestInt((acc/ModelParams::AccSpeed+1)*ModelParams::NumAcc)<<")"<<endl;
+	}
+	return (ACT_TYPE)ClosestInt((steering/ModelParams::MaxSteerAngle+1)*(ModelParams::NumSteerAngle))
+			*(ACT_TYPE)ClosestInt(2*ModelParams::NumAcc+1)
+			+(ACT_TYPE)ClosestInt((acc/ModelParams::AccSpeed+1)*ModelParams::NumAcc);
+}
+
+/*
+ * query the policy network to provide prior probability for PUCT
+ */
+const vector<double>& PedNeuralSolverPrior::ComputePreference(){
+
+	throw std::runtime_error( "PedNeuralSolverPrior::ComputePreference hasn't been implemented!" );
+	cerr << "" << endl;
+
+	// TODO: get the 4 latest history states
+
+	// TODO: Convert states into images
+
+	// TODO: Send images to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
+
+
+	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
+	for (int action = 0;  action < ped_model->NumActions(); action ++){
+		double accelaration = ped_model->GetAcceleration(action);
+		// TODO: get the probability of accelaration from the Gaussian mixture, and store in action_probs_
+		// Hint: Need to implement Gaussian pdf and calculate mixture
+		// Hint: Refer to Components/mdn.py in the BTS_RL_NN project
+
+	}
+
+	// return the output as vector<double>
+	return action_probs_;
+}
+
+/*
+ * query the value network to initialize leaf node values
+ */
+double PedNeuralSolverPrior::ComputeValue(){
+
+	throw std::runtime_error( "PedNeuralSolverPrior::ComputeValue hasn't been implemented!" );
+
+	// TODO: get the 4 latest history states and convert into images
+	// Hint: Can reuse the history images in ComputePreference
+
+	// TODO: Send images to drive_net, and get the value output
+
+	// TODO: return the output as double
+	return 0;
+}
+

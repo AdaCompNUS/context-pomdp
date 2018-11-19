@@ -20,137 +20,145 @@
 
 #include <chrono>
 #include <despot/GPUcore/CudaInclude.h>
+#include <despot/core/globals.h>
+
 #include <signal.h>
 #include <limits.h>
-extern int Active_thread_count;
-extern int Expansion_Count;
-extern float Serial_expansion_time;
-//extern float Time_limit;
-extern float discount;
-extern std::chrono::time_point<std::chrono::system_clock> start_time;
-extern int kernelNum;
-extern bool use_multi_thread_;
-extern int Concurrency_threashold;
-extern struct sigaction sa;
-extern unsigned long long int* Record;
-extern unsigned long long int* record;
 
 
+namespace despot {
 
-extern int NUM_THREADS;
-const int MAX_DEPTH=50;
+namespace Globals {
+
 typedef std::chrono::high_resolution_clock Time;
 typedef std::chrono::milliseconds ms;
 typedef std::chrono::seconds sec;
 typedef std::chrono::microseconds us;
 typedef std::chrono::nanoseconds ns;
 typedef std::chrono::duration<float> fsec;
-void segfault_sigaction(int sig, siginfo_t *info, void *c);
-/*#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-inline void gpuAssert(cudaError_t code, char *file, int line, bool abort=true)
-{
-    if (code != cudaSuccess)
-    {
-        fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-        if (abort) exit(code);
-    }
-}*/
+
+
+class ThreadParams{
+public:
+  // Parameters for serialized printing in HyP-DESPOT. Typicallly used for debugging purposes.
+
+  static ThreadParams PARAMS;
+
+  ThreadParams(int dummy);
+
+  int PrintThreadID;
+  OBS_TYPE PrintParentEdge;
+  OBS_TYPE PrintEdge;
+  int PrintDepth;
+  ACT_TYPE PrintAction;
+
+   bool CPUDoPrint;
+   int CPUPrintPID;
+};
+
+class ThreadStatistics{
+public:
+  static ThreadStatistics STATISTICS;
+
+  ThreadStatistics(int dummy);
+
+  int Active_thread_count;
+  float Serial_expansion_time;
+  std::chrono::time_point<std::chrono::system_clock> start_time;
+  int Expansion_Count;
+
+};
+
+
+class StreamManager{
+public:
+  static StreamManager MANAGER;
+
+  StreamManager(int dummy);
+  
+#ifdef __CUDACC__
+  cudaStream_t* cuda_streams;
+#endif
+
+  int Concurrency_threashold;
+  int stream_counter;
+};
+
+
+//Thread ID mapping
+
+void AddMappedThread(std::thread::id the_id, int mapped_id);
+int MapThread(std::thread::id the_id);
 void AddActiveThread();
 void MinusActiveThread();
-void AddExpanded();
-void ResetExpanded();
-int CountExpanded();
-void AddSerialTime(float);
+
+
+//Thread statistics tracking
+void RecordStartTime();
+double ElapsedTime();
+double ElapsedTime(std::chrono::time_point<std::chrono::system_clock> s);
+double SpeedUp(double parallel_time);
+double Efficiency(double parallel_time);
 bool Timeout(float);
-void SetUpCPUThreads(bool useCPU, int ThreadNum);
-void AdvanceStreamCounter(int stride);
+void AddSerialTime(float);
+void ResetSerialTime();
+
+void AddExpanded();
+int CountExpanded();
+
+//Multi-threading helper
+void ChooseGPUForThread();
+
+// Stream helper
 int GetCurrentStream();
+void SetupCUDAStreams();
+void DestroyCUDAStreams();
+
+#ifdef __CUDACC__
+cudaStream_t& GetThreadCUDAStream(int ThreadID);
+#endif
+
+void AdvanceStreamCounter(int stride);
+
+// Mutex operations
 void lock_process();
 void unlock_process();
 
 
+//Serialized printing in parallel threads
+
 void Global_print_mutex(std::thread::id threadIdx,void* address,const  char* func, int mode );
 template<typename T>
 void Global_print_node(std::thread::id threadIdx,void* node_address,int depth,float step_reward,
-		float value,float ub,float uub, float v_loss,float weight,T edge,float weu, const char* msg);
+    float value,float ub,float uub, float v_loss,float weight,T edge,float weu, const char* msg);
 void Global_print_child(std::thread::id threadIdx,void* node_address,int depth, int v_star);
 void Global_print_expand(std::thread::id threadIdx,void* node_address,int depth, int obs);
-void Global_print_queue(std::thread::id threadIdx,void* node_address,bool empty_queue, int Active_thread_count);
+void Global_print_queue(std::thread::id threadIdx,void* node_address,bool empty_queue);
 void Global_print_down(std::thread::id threadIdx,void* node_address,int depth);
 void Global_print_deleteT(std::thread::id threadIdx,int mode, int the_case);
 void Global_print_GPUuse(std::thread::id threadIdx);
 void Global_print_message(std::thread::id threadIdx, char* msg);
 void Global_print_value(std::thread::id threadIdx, double value, char* msg);
 
-void AddMappedThread(std::thread::id the_id, int mapped_id);
-int MapThread(std::thread::id the_id);
+}//namespace Globals
 
-void DebugRandom(std::ostream& fout, char* msg);
-void InitRandGen();
-void DestroyRandGen();
-float RandGeneration1(float seed);
+} // namespace despot
 
-#ifdef __CUDACC__
-extern cudaStream_t* cuda_streams;
+/*================ Debugging ==================*/
+/* For printing debugging information in the search process of HP-DESPOT */
+#define FIX_SCENARIO 0 // 0: normal mode, 1: read scenarios and particles from files, 2: run and export scenarios and particles as files
+#define DoPrintCPU false
+#define PRINT_ID 49
+#define ACTION_ID 0
 
-#endif
-
-class spinlock_barrier
-{
-public:
-  spinlock_barrier(const spinlock_barrier&) = delete;
-  spinlock_barrier& operator=(const spinlock_barrier&) = delete;
-
-  explicit spinlock_barrier(unsigned int count); /*:
-    m_count(check_counter(count)), m_generation(0),
-    m_count_reset_value(count)
-  {
-  }*/
-
-  void count_down_and_wait();
-  void reset_barrier(unsigned int count);
-  /*{
-    unsigned int gen = m_generation.load();
-
-    if (--m_count == 0)
-    {
-      if (m_generation.compare_exchange_weak(gen, gen + 1))
-      {
-        m_count = m_count_reset_value;
-      }
-      return;
-    }
-
-    while ((gen == m_generation) && (m_count != 0))
-      std::this_thread::yield();
-  }*/
-  void DettachThread(const char *msg);
-  void AttachThread(const char* msg);
-#ifdef __CUDACC__
-
-
-#endif
-
-
-private:
-  static inline unsigned int check_counter(unsigned int count)
-    {
-  	if (count == 0) {std::cout<<"Wrong counter value!"<<std::endl;exit(1);}
-  	return count;
-    }
-  std::atomic<unsigned int> m_count;
-  std::atomic<unsigned int> m_generation;
-  unsigned int m_count_reset_value;
-};
-extern spinlock_barrier* thread_barrier;
+extern bool CPUDoPrint;
+extern int CPUPrintPID;
 
 #ifdef __CUDACC__
 
 extern __device__ __managed__ bool GPUDoPrint;
-extern __device__ __managed__ bool GPUPrintPID;
 
 #endif
-
-extern int PrintThreadID;
+/*================ Debugging ==================*/
 
 #endif /* THREAD_GLOBALS_H_ */

@@ -12,7 +12,7 @@
 namespace despot {
 
 /* =============================================================================
- * SearchStatistics class
+ * SearchStatistics class (with mutex protection for multi-threading)
  * =============================================================================*/
 
 struct Shared_SearchStatistics: public SearchStatistics {

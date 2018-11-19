@@ -10,5 +10,6 @@ struct Path : std::vector<COORD> {
 	double getYaw(int i) const;
 	Path interpolate();
 	void cutjoin(const Path& p);
+	double getlength();
 };
 

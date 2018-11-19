@@ -7,6 +7,12 @@
 
 namespace despot {
 
+/* =============================================================================
+ * DvcCoord class
+ * =============================================================================*/
+/**
+ * Used in the Unk_Navigation and MARS examples
+ */
 struct DvcCoord {
 	int x, y;
 
@@ -18,12 +24,18 @@ struct DvcCoord {
 	DEVICE friend const DvcCoord operator +(const DvcCoord& first, const DvcCoord& second);
 	DEVICE friend bool operator ==(const DvcCoord& first, const DvcCoord& second);
 	DEVICE friend bool operator !=(const DvcCoord& first, const DvcCoord& second);
-	//DEVICE friend std::ostream& operator<<(std::ostream& os, const DvcCoord& coord);
 
 	DEVICE static double EuclideanDistance(DvcCoord c1, DvcCoord c2);
 	DEVICE static int ManhattanDistance(DvcCoord c1, DvcCoord c2);
 	DEVICE static int DirectionalDistance(DvcCoord c1, DvcCoord c2, int direction);
 };
+
+/* =============================================================================
+ * Dvc_COORD class
+ * =============================================================================*/
+/**
+ * Used in the CarDriving example. A coordinate in Euclidean space.
+ */
 
 struct Dvc_COORD
 {
@@ -50,10 +62,16 @@ struct Dvc_COORD
   DEVICE static double ManhattanDistance(Dvc_COORD lhs, Dvc_COORD rhs);
 
 };
-/*---------------------------------------------------------------------------*/
+
+/* =============================================================================
+ * Dvc_Vector class
+ * =============================================================================*/
+/**
+ * Used in the CarDriving example. A vector in both Euclidean and Polar form
+ */
+
 class Dvc_Vector
 {
-	/*Dvc_Vector represents a vector in both Euclidean and Polar form*/
 public:
 	DEVICE Dvc_Vector();
 	DEVICE Dvc_Vector(float _dw,float _dh);
@@ -83,8 +101,6 @@ struct Dvc_Compass {
 		NORTH, EAST, SOUTH, WEST, NORTHEAST, SOUTHEAST, SOUTHWEST, NORTHWEST
 	};
 
-	//static const DvcCoord DIRECTIONS[];
-	//static const std::string CompassString[];
 	DEVICE static int Opposite(int dir);
 	DEVICE static bool Opposite(int dir1, int dir2);
 	DEVICE static DvcCoord GetDirections(int i);

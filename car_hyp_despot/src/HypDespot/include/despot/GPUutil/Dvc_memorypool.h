@@ -11,6 +11,15 @@
 #endif
 namespace despot {
 #define MAX_CHUNK_NUM 5000
+
+/* =============================================================================
+ * Dvc_MemoryPool class
+ * =============================================================================*/
+/**
+ * Chunked list of GPU memory for efficient GPU memory allocation (in device code).
+ * Typically used to allocate particles
+ */
+
 template<class T>
 class Dvc_MemoryPool {
 public:
@@ -45,12 +54,8 @@ public:
 		{
 		chunks_=new Dvc_Chunk*[MAX_CHUNK_NUM];
 		current_chunck=-1;
-		//Dvc_Chunk/*<T>*/::SetChunkSize(16384);
 	}
-	/*void SetChunkSize(int size)
-	{
-		Dvc_Chunk<T>::SetChunkSize(size);
-	}*/
+
 	DEVICE T* Allocate(int size) {
 
 		assert(size<=Dvc_Chunk/*<T>*/::Size);
@@ -80,7 +85,6 @@ public:
 		{
 			if(chunks_[i]) delete chunks_[i];chunks_[i]=NULL;
 		}
-		//delete [] chunks_;
 		freehead_=NULL;
 		freepos_=NULL;
 		num_allocated_ = 0;
@@ -94,12 +98,12 @@ private:
 
 	DEVICE bool chunck_full(int size)
 	{
-		return (freepos_+size-freehead_>=Dvc_Chunk/*<T>*/::Size)|| (freepos_==NULL);
+		return (freepos_+size-freehead_>=Dvc_Chunk::Size)|| (freepos_==NULL);
 	}
 
 	DEVICE void NewChunk() {
 		current_chunck++;
-		chunks_[current_chunck] = new Dvc_Chunk/*<T>*/;
+		chunks_[current_chunck] = new Dvc_Chunk;
 		freehead_=chunks_[current_chunck]->Objects;
 		freepos_=freehead_;
 	}

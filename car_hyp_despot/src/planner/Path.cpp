@@ -80,26 +80,14 @@ Path Path::interpolate() {
 			double u = t - ti;
 			double nx = sx + dx*u;
 			double ny = sy + dy*u;
-			p.push_back(COORD(nx, ny));
+
+			if (p.size()==0 || nx != p.back().x || ny != p.back().y)
+				p.push_back(COORD(nx, ny));
+
 			t += step;
 		}
 
 		ti += d;
-
-		/*
-		int n = int(d/ModelParams::PATH_STEP);
-		double dx,dy;
-		dx=(path[i+1].x-path[i].x)/n;
-		dy=(path[i+1].y-path[i].y)/n;
-		double nx,ny;
-		nx=path[i].x;
-		ny=path[i].y;
-		for(int j=0;j<n;j++) {
-			p.push_back(COORD(nx,ny));	
-			nx+=dx;
-			ny+=dy;
-		}
-		*/
 	}
 	p.push_back(path[path.size()-1]);
 	return p;
@@ -109,4 +97,16 @@ void Path::cutjoin(const Path& p) {
 	int i = max(0, nearest(p[0])-1);
 	erase(begin()+i, end());
 	insert(end(), p.begin()/*+1*/, p.end());
+}
+
+
+double Path::getlength(){
+    auto& path = *this;
+
+	double path_len = 0;
+	for(int i=0; i<path.size()-1; i++) {
+        double d = COORD::EuclideanDistance(path[i], path[i+1]);
+        path_len += d;
+	}
+	return path_len;
 }

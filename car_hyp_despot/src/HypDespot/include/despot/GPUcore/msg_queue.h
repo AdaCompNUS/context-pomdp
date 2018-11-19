@@ -10,7 +10,12 @@
 
 
 #include "thread_globals.h"
+#include <despot/core/globals.h>
+
 using namespace std;
+namespace despot {
+using namespace Globals;
+
 template< class T>
 class MsgQueque{
 	deque<T*> _queue;
@@ -26,9 +31,9 @@ public:
 	{
 		{
 			lock_guard<mutex> lck(_mutex);
-			Global_print_mutex(this_thread::get_id(),this, __FUNCTION__, 0);
+			Globals::Global_print_mutex(this_thread::get_id(),this, __FUNCTION__, 0);
 			_queue.push_front(msg);
-			Global_print_mutex(this_thread::get_id(),this, __FUNCTION__, 1);
+			Globals::Global_print_mutex(this_thread::get_id(),this, __FUNCTION__, 1);
 		}
 		_cond.notify_one();
 	}
@@ -42,44 +47,43 @@ public:
 	{
 		unique_lock<mutex> lck(_mutex);
 		T* msg=NULL;
-		Global_print_mutex(this_thread::get_id(),this, __FUNCTION__, 0);
+		Globals::Global_print_mutex(this_thread::get_id(),this, __FUNCTION__, 0);
 		_cond.wait(lck,[this, timeout]{
 			if (_queue.empty())
 			{
-				Global_print_mutex(this_thread::get_id(),this, "receive::wait", 1);
-				Global_print_queue(this_thread::get_id(),this, _queue.empty(), Active_thread_count);
+				Globals::Global_print_mutex(this_thread::get_id(),this, "receive::wait", 1);
+				Globals::Global_print_queue(this_thread::get_id(),this, _queue.empty());
 			}
-			//cout<<"thread "<<this_thread::get_id()<<" "<<this<<"::"<<", _queue.empty()="<<_queue.empty()<<", Active_thread_count= "<<Active_thread_count<<endl;
-			return !_queue.empty()||(_queue.empty() && Active_thread_count==0)||Timeout(timeout);
+			return !_queue.empty()||(_queue.empty() && ThreadStatistics::STATISTICS.Active_thread_count==0)||Globals::Timeout(timeout);
 		});
 
 
 		if(!_queue.empty())
 		{
 			if(is_expansion_thread)
-				AddActiveThread();
+				Globals::AddActiveThread();
 			msg= move(_queue.back());
-			Global_print_mutex(this_thread::get_id(),msg, __FUNCTION__, 2);
+			Globals::Global_print_mutex(this_thread::get_id(),msg, __FUNCTION__, 2);
 
-			//msg->AddVLoss(pow(sqrt(NUM_CHILDREN),msg->GetDepth()));
 			_queue.pop_back();
 		}
 		else
 		{
 			;
 		}
-		Global_print_mutex(this_thread::get_id(),msg, __FUNCTION__, 3);
+		Globals::Global_print_mutex(this_thread::get_id(),msg, __FUNCTION__, 3);
 		return msg;
 	}
 	bool empty()
 	{
 		unique_lock<mutex> lck(_mutex);
-		Global_print_mutex(this_thread::get_id(),this, __FUNCTION__, 0);
-		Global_print_mutex(this_thread::get_id(),this, __FUNCTION__, 1);
+		Globals::Global_print_mutex(this_thread::get_id(),this, __FUNCTION__, 0);
+		Globals::Global_print_mutex(this_thread::get_id(),this, __FUNCTION__, 1);
 		return _queue.empty();
 	}
 
 
 };
 
+}
 #endif /* MSGQUEUE_H_ */

@@ -19,13 +19,18 @@ struct Config {
 	double noise;
 	bool silence;
 	bool useGPU;
+	bool use_prior;
 	std::string rollout_type;
 	int GPUid;
 	bool use_multi_thread_;
 	int NUM_THREADS;
 	int exploration_mode;
 	double exploration_constant;
-	bool disableGPU;
+	double exploration_constant_o;
+	bool enable_despot_thread;
+	bool experiment_mode;
+	int despot_thread_gap;
+	int expanstion_switch_thresh;
 
 	Config() :
 		search_depth(90),
@@ -41,14 +46,20 @@ struct Config {
 		noise(0.1),
 		silence(false),
 	    useGPU(false),
+	    use_prior(false),
 	    rollout_type("BLIND"),
 	    GPUid(0),
 	    use_multi_thread_(false),
 	    NUM_THREADS(0),
 	    exploration_mode(0),
-	    exploration_constant(0.95),
-	    disableGPU(false)
+	    exploration_constant(0.3),
+	    exploration_constant_o(0.3),
+	    enable_despot_thread(false),
+	    experiment_mode(false),
+		despot_thread_gap(10000000),
+		expanstion_switch_thresh(2)
 	{
+		rollout_type = "INDEPENDENT";
 	}
 };
 

@@ -27,6 +27,7 @@
 namespace despot {
 
 typedef uint64_t OBS_TYPE;
+typedef int ACT_TYPE;
 
 namespace Globals {
 extern const double NEG_INFTY;
@@ -61,6 +62,15 @@ inline void PrintLocs() {
 	tracker.PrintLocs();
 }
 } // namespace
+
+/*================ For Hyp-despot ===============*/
+enum MEMORY_MODE { INIT, ALLOC_ROOT, ALLOC, RESET, DESTROY};
+enum OBS_PARAM
+{
+	OBS_LONG64,
+	OBS_INT_ARRAY,
+};
+extern OBS_PARAM Obs_type;
 
 } // namespace despot
 

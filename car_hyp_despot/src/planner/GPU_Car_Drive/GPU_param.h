@@ -37,9 +37,15 @@ namespace Dvc_ModelParams {
 
 	DEVICE extern double control_freq;
 	DEVICE extern double AccSpeed;
+	DEVICE extern double NumAcc;
+
+	DEVICE extern double MaxSteerAngle;
+	DEVICE extern double NumSteerAngle;
+//	DEVICE extern double angle_rln=MaxSteerAngle/NumSteerAngle; // velocity resolution
 
     // deprecated params
 	DEVICE extern double GOAL_REWARD;
+	DEVICE extern double TIME_REWARD;
 };
 
 #endif

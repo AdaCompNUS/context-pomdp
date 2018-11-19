@@ -1,9 +1,10 @@
 #ifndef MDP_H
 #define MDP_H
 
-#include <despot/core/pomdp.h>
+#include <despot/interface/pomdp.h>
 
 namespace despot {
+class ParticleBelief;
 
 /**
  * Interface for a discrete MDP. This class implements the following functions:
@@ -23,15 +24,15 @@ public:
 
 	virtual int NumStates() const = 0;
 	virtual int NumActions() const = 0;
-	virtual const std::vector<State>& TransitionProbability(int s, int a) const = 0;
-	virtual double Reward(int s, int a) const = 0;
+	virtual const std::vector<State>& TransitionProbability(int s, ACT_TYPE a) const = 0;
+	virtual double Reward(int s, ACT_TYPE a) const = 0;
 
 	virtual void ComputeOptimalPolicyUsingVI();
 	const std::vector<ValuedAction>& policy() const;
 
 	virtual void ComputeBlindAlpha();
 	double ComputeActionValue(const ParticleBelief* belief,
-		const StateIndexer& indexer, int action) const;
+		const StateIndexer& indexer, ACT_TYPE action) const;
 	const std::vector<std::vector<double> >& blind_alpha() const;
 };
 

@@ -37,7 +37,6 @@ extern DEVICE const double Dvc_INF;
 extern DEVICE const double Dvc_TINY;
 
 extern Dvc_Config* config;
-//extern ExecTracker tracker;
 
 DEVICE inline bool Dvc_Fequals(double a, double b) {
 	return std::fabs(a - b) < Dvc_TINY;
@@ -51,17 +50,6 @@ DEVICE inline double Dvc_Discount(Dvc_Config* config,int d) {
 	return std::pow(config->discount, d);
 }
 
-/*inline HOST void Dvc_Track(std::string addr, std::string loc) {
-	tracker.Track(addr, loc);
-}
-
-inline HOST void Dvc_Untrack(std::string addr) {
-	tracker.Untrack(addr);
-}
-
-inline HOST void Dvc_PrintLocs() {
-	tracker.PrintLocs();
-}*/
 } // namespace
 
 } // namespace despot

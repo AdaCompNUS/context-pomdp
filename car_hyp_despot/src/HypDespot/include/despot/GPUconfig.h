@@ -40,6 +40,7 @@ public:
 	}
 
 	static void CopyToGPU(const Config* src);
+	static void Clear();
 };
 
 extern DEVICE Dvc_Config* Dvc_config;

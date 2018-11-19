@@ -8,22 +8,19 @@
 #ifndef DVCPEDPOMDPUPPERBOUND_H_
 #define DVCPEDPOMDPUPPERBOUND_H_
 #include <despot/GPUcore/GPUhistory.h>
-#include <despot/GPUcore/GPUpomdp.h>
-#include <despot/GPUcore/GPUupper_bound.h>
+#include <despot/GPUinterface/GPUpomdp.h>
+#include <despot/GPUinterface/GPUupper_bound.h>
 
 using despot::Dvc_History;
 using despot::Dvc_State;
+using despot::Dvc_ScenarioUpperBound;
+using namespace despot;
 
-
-class Dvc_PedPomdpParticleUpperBound1/*: public Dvc_ParticleUpperBound */{
-protected:
-	//const PedPomdp* rs_model_;
+class Dvc_PedPomdpParticleUpperBound1: public Dvc_ScenarioUpperBound{
 public:
-	/*PedPomdpParticleUpperBound1(const PedPomdp* model) :
-		rs_model_(model) {
-	}*/
 
 	DEVICE static float Value(const Dvc_State* particles, int scenarioID, Dvc_History& history);
+
 };
 #endif /* DVCPEDPOMDPSMARTSCENARIOLOWERBOUNDPOLICY_H_ */
 

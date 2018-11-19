@@ -17,16 +17,7 @@
 	#define DEVICE __device__
 	#define ALIGN(n) __align__(n)
 
-	enum OBS_PARAM
-	{
-		OBS_PARALLEL_NONE,
-		OBS_PARALLEL_X,
-		OBS_PARALLEL_Y,
-		OBS_LONG64,
-		OBS_INT_ARRAY,
-	};
-	extern int Obs_parallel_level;
-	extern int Obs_type;
+
 
 	//#include <thrust/device_vector.h>
 	//#define ThrustVector thrust::host_vector

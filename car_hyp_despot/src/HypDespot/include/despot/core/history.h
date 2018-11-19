@@ -12,7 +12,7 @@ namespace despot {
  */
 class History {
 public:
-	void Add(int action, OBS_TYPE obs) {
+	void Add(ACT_TYPE action, OBS_TYPE obs) {
 		actions_.push_back(action);
 		observations_.push_back(obs);
 	}
@@ -22,11 +22,11 @@ public:
 		observations_.pop_back();
 	}
 
-	int Action(int t) const {
+	ACT_TYPE Action(int t) const {
 		return actions_[t];
 	}
 
-	const int* Action() const {
+	const ACT_TYPE* Action() const {
 		return actions_.data();
 	}
 
@@ -47,7 +47,7 @@ public:
 		observations_.resize(d);
 	}
 
-	int LastAction() const {
+	ACT_TYPE LastAction() const {
 		return actions_.back();
 	}
 
@@ -69,13 +69,126 @@ public:
 		return os;
 	}
 
-	History(const History& src);
+	//History(const History& src);
 	History(){
 		;
 	}
 private:
-  std::vector<int> actions_;
+  std::vector<ACT_TYPE> actions_;
 	std::vector<OBS_TYPE> observations_;
+};
+
+
+class State;
+/**
+ * Action-observation history. (used for POMDPLite solver)
+ */
+class ActionStateHistory {
+public:
+	void Add(ACT_TYPE action, const State* state) {
+		actions_.push_back(action);
+		states_.push_back(state);
+	}
+
+	void RemoveLast() {
+		actions_.pop_back();
+		states_.pop_back();
+	}
+
+	ACT_TYPE Action(int t) const {
+		return actions_[t];
+	}
+
+	const State* state(int t) const {
+		return states_[t];
+	}
+
+	const std::vector<const State*>& states() const {
+		return states_;
+	}
+
+	size_t Size() const {
+		return actions_.size();
+	}
+
+	void Truncate(int d) {
+		actions_.resize(d);
+		states_.resize(d);
+	}
+
+	ACT_TYPE LastAction() const {
+		return actions_.back();
+	}
+
+	const State* LastState() const {
+		return states_.back();
+	}
+
+	ActionStateHistory Suffix(int s) const {
+		ActionStateHistory history;
+		for (int i = s; i < Size(); i++)
+			history.Add(Action(i), state(i));
+		return history;
+	}
+
+
+private:
+  std::vector<ACT_TYPE> actions_;
+  std::vector<const State*> states_;
+};
+
+class VariableActionStateHistory{
+public:
+	void Add(ACT_TYPE action, State* state) {
+		actions_.push_back(action);
+		states_.push_back(state);
+	}
+
+	void RemoveLast() {
+		actions_.pop_back();
+		states_.pop_back();
+	}
+
+	ACT_TYPE Action(int t) const {
+		return actions_[t];
+	}
+
+	State* state(int t) const {
+		return states_[t];
+	}
+
+	std::vector<State*>& states() {
+		return states_;
+	}
+
+	size_t Size() const {
+		return actions_.size();
+	}
+
+	void Truncate(int d) {
+		actions_.resize(d);
+		states_.resize(d);
+	}
+
+	ACT_TYPE LastAction() const {
+		return actions_.back();
+	}
+
+	State* LastState() const {
+		return states_.back();
+	}
+
+	ActionStateHistory Suffix(int s) const {
+		ActionStateHistory history;
+		for (int i = s; i < Size(); i++)
+			history.Add(Action(i), state(i));
+		return history;
+	}
+
+
+private:
+  std::vector<ACT_TYPE> actions_;
+  std::vector<State*> states_;
 };
 
 } // namespace despot

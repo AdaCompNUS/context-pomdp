@@ -59,7 +59,7 @@ public:
 	 * Update current belief, history, and any other internal states that is
 	 * needed for Search() to function correctly.
 	 */
-	virtual void Update(int action, OBS_TYPE obs);
+	virtual void BeliefUpdate(ACT_TYPE action, OBS_TYPE obs);
 
 	/**
 	 * Set initial belief for planning. Make sure internal states associated with
@@ -68,10 +68,6 @@ public:
 	 */
 	virtual void belief(Belief* b);
 	Belief* belief();
-
-	virtual void initGPUHistory(){};
-	virtual void clearGPUHistory(){};
-	virtual void PrintStatisticResult(){};
 };
 
 } // namespace despot

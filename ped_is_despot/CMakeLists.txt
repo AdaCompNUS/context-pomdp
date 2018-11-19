@@ -91,6 +91,9 @@ add_message_files(
     ped_local_frame_vector.msg
     peds_believes.msg
     imitation_data.msg
+    car_info.msg
+    ped_info.msg
+    peds_info.msg
 )
 
 generate_messages(
@@ -207,7 +210,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(ped_pomdp src/PedPomdpNode.cpp src/controller.cpp)
+add_executable(ped_pomdp src/PedPomdpNode.cpp src/controller.cpp src/world_simulator.cpp src/pomdp_simulator.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

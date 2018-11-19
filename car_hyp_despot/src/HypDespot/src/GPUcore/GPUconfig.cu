@@ -20,6 +20,10 @@ __global__ void copy(const Dvc_Config* src)
 	Dvc_config->useGPU = src->useGPU;
 }
 
+__global__ void AllocGlobalConfig() {
+	Dvc_config = new Dvc_Config;
+}
+
 void Dvc_Config::CopyToGPU(const Config* src) {
 	cudaMallocManaged((void**)&tmp, sizeof(Dvc_Config));
 	tmp->search_depth = src->search_depth;
@@ -35,12 +39,26 @@ void Dvc_Config::CopyToGPU(const Config* src) {
 	tmp->silence = src->silence;
 	tmp->useGPU = src->useGPU;
 
+	AllocGlobalConfig<<<1, 1, 1>>>();
+	HANDLE_ERROR(cudaDeviceSynchronize());
+
 	copy<<<1,1>>>(tmp);
 	HANDLE_ERROR(cudaDeviceSynchronize());
 
 	cudaFree(tmp);
 }
 
+__global__ void clearConfig() {
+	if (Dvc_config != NULL) {
+		delete Dvc_config;
+		Dvc_config = NULL;
+	}
+}
+
+void Dvc_Config::Clear() {
+	clearConfig<<<1, 1, 1>>>();
+	HANDLE_ERROR(cudaDeviceSynchronize());
+}
 
 
 }//namespace despot

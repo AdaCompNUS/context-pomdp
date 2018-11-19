@@ -40,6 +40,8 @@ goal_reached = 0
 use_steer_from_path = True # False, if True, steering will be calculated from path
 use_steer_from_pomdp = False # True, if True, steering will come from 'cmd_vel' topic
 
+time_scale = 1.0  # default: don't scale time
+
 sio = socketio.Server()
 app = Flask(__name__)
 
@@ -215,7 +217,7 @@ class Pursuit(object):
         line.points.append(Point(a[0], a[1], 0))
         self.pub_line.publish(line)
         cmd_vel_to_pub = Twist()
-        cmd_vel_to_pub.linear.x = car_speed
+        cmd_vel_to_pub.linear.x = car_speed * time_scale  # slow down the car motion
         cmd_vel_to_pub.angular.x = car_steer
         self.pub_cmd_vel.publish(cmd_vel_to_pub)
 
@@ -279,6 +281,15 @@ def send_vel_to_unity(sid, data):
         sio.emit('empty', data={}, skip_sid=True)
 
 if __name__=='__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--time_scale',
+        type=float,
+        default=1.0,
+        help='Scale the time in the simulator')
+
+    time_scale = parser.parse_args().time_scale
 
     rospy.init_node('purepursuit')
     pursuit = Pursuit()

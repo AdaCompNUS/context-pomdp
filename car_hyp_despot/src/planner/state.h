@@ -2,7 +2,7 @@
 #define PED_STATE_H
 #include "coord.h"
 #include "param.h"
-#include "despot/core/pomdp.h"
+#include "despot/interface/pomdp.h"
 //#include "util/util.h"
 #include "disabled_util.h"
 #include <vector>
@@ -30,6 +30,7 @@ struct PedStruct {
 	int goal;  //goal
 	int id;   //id
     double vel;
+    int mode;
 };
 
 class Pedestrian
@@ -49,9 +50,9 @@ public:
 };
 
 struct CarStruct {
-	int pos;
+	COORD pos;
 	double vel;
-	double dist_travelled;
+	double heading_dir;/*[0, 2*PI) heading direction with respect to the world X axis */
 };
 
 class PomdpState : public State {
@@ -72,6 +73,7 @@ public:
 	CarStruct car;
 	int num;
 	PedStruct peds[ModelParams::N_PED_WORLD];
+//	int peds_mode[ModelParams::N_PED_WORLD];
 	PomdpStateWorld() {}
 
 	string text() const {

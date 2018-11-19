@@ -43,7 +43,7 @@ int Variable::IndexOf(string value) const {
 	return (it != index_.end()) ? it->second : -1;
 }
 
-const bool Variable::HasValue(string value) const {
+bool Variable::HasValue(string value) const {
 	for (int i = 0; i < values_.size(); i++)
 		if (values_[i] == value)
 			return true;

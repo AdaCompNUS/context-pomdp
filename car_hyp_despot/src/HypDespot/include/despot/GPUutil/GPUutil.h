@@ -17,6 +17,7 @@ DEVICE inline void Dvc_UnsetFlag(int& flags, int bit) {
 }
 
 
+
 } // namespace despot
 
 #endif
