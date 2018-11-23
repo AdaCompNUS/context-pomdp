@@ -1,12 +1,14 @@
 
 #include "world_simulator.h"
 #include "WorldModel.h"
+#include "ped_pomdp.h"
 
 #include <ped_pathplan/StartGoal.h>
 #include <ped_is_despot/car_info.h>
 #include <ped_is_despot/peds_info.h>
 #include <ped_is_despot/ped_info.h>
 #include <ped_is_despot/peds_believes.h>
+#include <nav_msgs/OccupancyGrid.h>
 
 WorldStateTracker* SimulatorBase::stateTracker;
 
@@ -14,6 +16,7 @@ WorldModel SimulatorBase::worldModel;
 
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector);
+void receive_map_callback(nav_msgs::OccupancyGrid map);
 
 COORD poseToCoord(const tf::Stamped<tf::Pose>& pose) {
 	COORD coord;
@@ -71,8 +74,6 @@ bool WorldSimulator::Connect(){
     actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
     actionPubPlot_= nh.advertise<geometry_msgs::Twist>("pomdp_action_plot",1);
     
-    
-
     pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);
 	car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
 	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
@@ -80,10 +81,12 @@ bool WorldSimulator::Connect(){
 
 	speedSub_ = nh.subscribe("odom", 1, &WorldSimulator::speedCallback, this);
     pedSub_ = nh.subscribe("ped_local_frame_vector", 1, pedPoseCallback); 
+    mapSub_ = nh.subscribe("map", 1, receive_map_callback); // nav_msgs::OccupancyGrid
+
   	carSub_ = nh.subscribe("IL_car_info", 1, &WorldSimulator::update_il_car, this);
    	//steerSub_ = nh.subscribe("IL_steer_cmd", 1, &WorldSimulator::update_il_steering, this);
 
-    timer_speed = nh.createTimer(ros::Duration(0.05), &WorldSimulator::publishSpeed, this);
+    timer_speed = nh.createTimer(ros::Duration(0.05), &WorldSimulator::publishCmdAction, this);
 
     return true;
 }
@@ -179,26 +182,25 @@ State* WorldSimulator::GetCurrentState() const{
 }
 
 double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action){
-	double reward=0;
+	double reward = 0.0;
+
 	if (worldModel.isGlobalGoal(state.car)) {
-        reward = ModelParams::GOAL_REWARD;
+		reward = ModelParams::GOAL_REWARD;
 		return reward;
 	}
 
-	//cout<< "   + goal reward:"<< reward << endl;
- 	// Safety control: collision; Terminate upon collision
-    if(state.car.vel > 0.001 && worldModel.inRealCollision(state) ) { /// collision occurs only when car is moving
-		reward = ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);  //, closest_ped, closest_dist);
-		if(action == PedPomdp::ACT_DEC) reward += 0.1;
+	PedPomdp* pedpomdp_model = static_cast<PedPomdp*>(model_);
+
+	if(state.car.vel > 0.001 && worldModel.inRealCollision(state) ) { /// collision occurs only when car is moving
+		reward = pedpomdp_model->CrashPenalty(state);
 		return reward;
 	}
-	//cout<< "   + collision and ACT_DEC reward:"<< reward << endl;
+
 	// Smoothness control
-	reward +=  (action == PedPomdp::ACT_DEC || action == PedPomdp::ACT_ACC) ? -0.1 : 0.0;
-	//cout<< "   + action reward:"<< reward << endl;
+	reward += pedpomdp_model->ActionPenalty(action);
+
 	// Speed control: Encourage higher speed
-	reward += ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
-	//cout<< "   + vel reward:"<< reward << " REWARD_FACTOR_VEL, car vel, VEL_MAX:" <<ModelParams::REWARD_FACTOR_VEL<<","<< state.car.vel <<","<<ModelParams::VEL_MAX<< endl;
+	reward += pedpomdp_model->MovementPenalty(state);
 
 	return reward;
 }
@@ -215,13 +217,17 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 	/* Update state */
 	PomdpStateWorld* curr_state = static_cast<PomdpStateWorld*>(GetCurrentState());
+	double acc;
+	double steer;
 
 	/* Reach goal: no more action sent */
 	if(worldModel.isGlobalGoal(curr_state->car)) {
 		cout << "--------------------------- goal reached ----------------------------" << endl;
 		cout << "" << endl;
 		// Stop the car after reaching goal
-		action=PedPomdp::ACT_DEC;
+		acc = static_cast<PedPomdp*>(model_)->GetAccfromAccID(PedPomdp::ACT_DEC);
+		steer = 0;
+		action=static_cast<PedPomdp*>(model_)->GetActionID(steer, acc);
 		goal_reached=true;
 		//return true;
 	}
@@ -232,7 +238,9 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 		cout << "--------------------------- collision = 1 ----------------------------" << endl;
 		cout << "collision ped: " << collision_peds_id<<endl;
 		
-		action=PedPomdp::ACT_DEC;
+		acc = static_cast<PedPomdp*>(model_)->GetAccfromAccID(PedPomdp::ACT_DEC);
+		steer = 0;
+		action=static_cast<PedPomdp*>(model_)->GetActionID(steer, acc);
 	}
 
 
@@ -242,16 +250,17 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	cout<<"reward **= "<<step_reward<<endl;
 	safeAction=action;
 
-	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Publish action (for data collection)"<<endl;
-	publishAction(action, step_reward);
+//	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Publish action (for data collection)"<<endl;
+//	publishAction(action, step_reward);
 
-	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Update target speed"<<endl;
-	cout<<"target_speed = "<<target_speed_<<endl;
+	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Update steering and target speed"<<endl;
+	cout<<"current steering = "<<steering_<<endl;
+	cout<<"current target_speed = "<<target_speed_<<endl;
 
-
-	/* Publish target velocity to Unity */
+	/* Publish steering and target velocity to Unity */
 	if (goal_reached == true){
 		//ros::shutdown();
+		steering_ = 0;
 		target_speed_=real_speed_;
 	    target_speed_ -= 0.5;
 		if(target_speed_<=0.0) target_speed_ = 0.0;
@@ -265,6 +274,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 		//return;
 	}
 	else if(stateTracker->emergency()){
+		steering_ = 0;
 		target_speed_=-1;
 		cout<<"--------------------------- emergency ----------------------------" <<endl;
 	}
@@ -400,11 +410,9 @@ void WorldSimulator::AddObstacle(){
 }
 
 
-
-void WorldSimulator::publishSpeed(const ros::TimerEvent &e)
+void WorldSimulator::publishCmdAction(const ros::TimerEvent &e)
 {
 	geometry_msgs::Twist cmd;
-	cmd.angular.z = 0;
 	cmd.linear.x = target_speed_;
 	cmd.linear.y = real_speed_;
 	cmd.angular.z = steering_;
@@ -530,13 +538,10 @@ void WorldSimulator::publishAction(int action, double reward)
 	actionPub_.publish(marker);
 	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Publish action comand"<<endl;
     geometry_msgs::Twist action_cmd;
-    action_cmd.linear.x=safeAction;
+    action_cmd.linear.x=action;
     action_cmd.linear.y=reward;
     actionPubPlot_.publish(action_cmd);
 }
-
-
-
 
 
 bool WorldSimulator::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const
@@ -560,8 +565,6 @@ bool WorldSimulator::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& i
     }
     return true;
 }
-
-
 
 
 //=============== from pedpomdpnode ==============
@@ -615,6 +618,14 @@ void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
 	//pc_pub.publish(pc);
 }
 
+void receive_map_callback(nav_msgs::OccupancyGrid map){
+
+	for (int i=0;i< SolverPrior::nn_priors.size();i++){
+		PedNeuralSolverPrior * nn_prior = static_cast<PedNeuralSolverPrior *>(SolverPrior::nn_priors[i]);
+		nn_prior->raw_map_ = map;
+	}
+}
+
 geometry_msgs::PoseStamped WorldSimulator::getPoseAhead(const tf::Stamped<tf::Pose>& carpose) {
     static int last_i = -1;
     static double last_yaw = 0;
@@ -655,12 +666,12 @@ void WorldSimulator::update_il_car(const ped_is_despot::car_info::ConstPtr car) 
     }
 }
 
-void WorldSimulator::update_il_steering(const std_msgs::Float32::ConstPtr steer){
-	if (b_update_il == true){
-    	p_IL_data.action_reward.angular.x = float(steer->data);
-    	cout<< "receive steer "<<steer->data <<endl;
-    }
-}
+//void WorldSimulator::update_il_steering(const std_msgs::Float32::ConstPtr steer){
+//	if (b_update_il == true){
+//    	p_IL_data.action_reward.angular.x = float(steer->data);
+//    	cout<< "receive steer "<<steer->data <<endl;
+//    }
+//}
 
 
 void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float cmd_vel)

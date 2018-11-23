@@ -149,10 +149,15 @@ public:
 
 	SIM_MODE simulation_mode_;
 	
-public:
-	static bool b_use_drive_net_;
+public: // lets_drive
+	static int b_use_drive_net_;
 	static int gpu_id_;
+    static float time_scale_; // scale down the speed of time, value < 1.0
 
+private:
 
+	SolverPrior* prior_;
+
+	void CreateNNPriors(DSPOMDP* model);
 };
 #endif /* MOMDP_H_ */

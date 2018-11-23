@@ -91,7 +91,7 @@ public:
 
 	void publishPedsPrediciton();
 	void publishAction(int action, double reward);
-	void publishSpeed(const ros::TimerEvent &e);
+	void publishCmdAction(const ros::TimerEvent &e);
 	void publishROSState();
 
 	void robotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
@@ -133,7 +133,7 @@ public:
 	ros::Publisher pa_pub;
 	ros::Publisher cmdPub_, actionPub_, actionPubPlot_;
 
-    ros::Subscriber speedSub_, pedSub_, scanSub_, move_base_speed_;
+    ros::Subscriber speedSub_, pedSub_, mapSub_, scanSub_, move_base_speed_;
 
     ros::Timer timer_speed;
 

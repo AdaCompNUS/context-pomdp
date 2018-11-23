@@ -39,7 +39,7 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 
 	bool fixed_path;
 	double pruning_constant, pathplan_ahead;
-    n.param("pruning_constant", pruning_constant, 0.0);
+    n.param("pruning_constant", pruning_constant, 0.001);
 	n.param("fixed_path", fixed_path, false);
 	n.param("pathplan_ahead", pathplan_ahead, 4.0);
 
@@ -65,8 +65,9 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 
     n.param("max_vel", ModelParams::VEL_MAX, 2.0);
 
-    n.param("use_drivenet", Controller::b_use_drive_net_, false);
+    n.param("use_drivenet", Controller::b_use_drive_net_, 0);
     n.param("gpu_id", Controller::gpu_id_, 0);
+    n.param<float>("time_scale", Controller::time_scale_, 0);
 
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
 	controller = new Controller(nh, fixed_path, pruning_constant, pathplan_ahead, obstacle_file_name);

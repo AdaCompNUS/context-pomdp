@@ -26,7 +26,7 @@ class VelPublisher {
 public:
     VelPublisher(): curr_vel(0), target_vel(0) {
         ros::NodeHandle n("~");
-        n.param("use_drivenet", b_use_drive_net_, false);
+        n.param("use_drivenet", b_use_drive_net_, 0);
         n.param<std::string>("drivenet_mode", drive_net_mode, "action");
         steering = 0;
     }
@@ -34,18 +34,18 @@ public:
     void spin() {
         ros::NodeHandle nh;
 
-        if (b_use_drive_net_ & drive_net_mode == "action"){
+        if (b_use_drive_net_ == IMITATION & drive_net_mode == "action"){
             action_sub = nh.subscribe("cmd_vel_drive_net", 1, &VelPublisher::actionCallBack, this);
         }
-        else if (b_use_drive_net_ & drive_net_mode == "vel"){
+        else if (b_use_drive_net_ == IMITATION & drive_net_mode == "vel"){
             vel_sub = nh.subscribe("cmd_vel_drive_net", 1, &VelPublisher::velCallBack, this);
             // pomdp offers no steering signal
         }
-        else if (b_use_drive_net_ & drive_net_mode == "steer"){
+        else if (b_use_drive_net_ == IMITATION & drive_net_mode == "steer"){
             steer_sub = nh.subscribe("cmd_vel_drive_net", 1, &VelPublisher::steerCallBack, this);
             vel_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::velCallBack, this);
         }
-        else if (!b_use_drive_net_)
+        else if (b_use_drive_net_ == NO || b_use_drive_net_ == LETS_DRIVE)
             action_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::actionCallBack, this);
 
         ros::Timer timer = nh.createTimer(ros::Duration(1 / freq), &VelPublisher::publishSpeed, this);
@@ -74,7 +74,7 @@ public:
     }
 
     double curr_vel, target_vel, init_curr_vel, steering;
-    bool b_use_drive_net_;
+    int b_use_drive_net_;
     std::string drive_net_mode;
     ros::Subscriber vel_sub, steer_sub, action_sub, odom_sub;
     ros::Publisher cmd_pub;

@@ -37,6 +37,11 @@ initialized = False
 
 goal_reached = 0
 
+NO_NET = 0
+IMITATION = 1
+LETS_DRIVE = 2
+
+
 use_steer_from_path = True # False, if True, steering will be calculated from path
 use_steer_from_pomdp = False # True, if True, steering will come from 'cmd_vel' topic
 
@@ -289,7 +294,24 @@ if __name__=='__main__':
         default=1.0,
         help='Scale the time in the simulator')
 
+    parser.add_argument(
+        '--net',
+        type=int,
+        default=NO_NET,
+        help='Neural network mode')
+
     time_scale = parser.parse_args().time_scale
+    use_drive_net = parser.parse_args().net
+
+    if use_drive_net == NO_NET:
+        use_steer_from_path = True
+        use_steer_from_pomdp = False
+    elif use_drive_net == IMITATION:
+        use_steer_from_path = False
+        use_steer_from_pomdp = True
+    elif use_drive_net == LETS_DRIVE:
+        use_steer_from_path = False
+        use_steer_from_pomdp = True
 
     rospy.init_node('purepursuit')
     pursuit = Pursuit()

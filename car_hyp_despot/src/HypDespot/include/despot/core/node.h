@@ -44,6 +44,15 @@ public:
 
 	double weight_;
   	int num_GPU_particles_;  // Used in GPUDESPOT
+
+protected: // lets_drive
+  	std::vector<double> prior_action_probs_;
+  	double prior_value_;
+
+  	double prior_action_probs(int i){return prior_action_probs_[i];}
+  	void prior_action_probs(int i, double v){prior_action_probs_[i]=v;}
+
+public:
 	VNode(){;}
 	VNode(std::vector<State*>& particles, std::vector<int> particleIDs, int depth = 0, QNode* parent = NULL,
 		OBS_TYPE edge = (OBS_TYPE)-1);

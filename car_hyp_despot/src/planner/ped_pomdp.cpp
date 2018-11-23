@@ -887,25 +887,143 @@ ACT_TYPE PedPomdp::GetActionID(double steering, double acc, bool debug){
 			+(ACT_TYPE)ClosestInt((acc/ModelParams::AccSpeed+1)*ModelParams::NumAcc);
 }
 
+double PedPomdp::GetAccfromAccID(int acc){
+	switch(acc){
+		case ACT_CUR: return 0;
+		case ACT_ACC: return ModelParams::AccSpeed;
+		case ACT_DEC: return -ModelParams::AccSpeed;
+	}
+}
+
+
+/*
+ * Initialize the prior class and the neural networks
+ */
+inline PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
+		WorldModel& world) :
+		SolverPrior(model), world_model(world) {
+
+	action_probs_.resize(model->NumActions());
+
+	// TODO Declare the neural network as a class member, and load it here
+
+	// TODO: The environment map will be received via ROS topic as the OccupancyGrid type
+	//		 Data will be stored in raw_map_ (class member)
+	//       In the current stage, just use a randomized raw_map_ to develop your code.
+	//		 Init raw_map_ including its properties here
+	//	     Refer to python codes: bag_2_hdf5.parse_map_data_from_dict
+	//		 (map_dict_entry is the raw OccupancyGrid data)
+
+	// TODO: Convert the data in raw_map to your desired image data structure;
+	// 		 (like a torch tensor);
+
+}
+
+void PedNeuralSolverPrior::ProcessNeuralInput(int mode){
+	int num_history = 0;
+	if (mode == FULL) // Full update of the input channels
+		num_history = 4;
+	else if (mode == PARTIAL) // Partial update of input channels and reuse old channels
+		num_history = 1;
+
+	// Refer to the NN-architecture to understand this function
+
+	// TODO: get the 4 latest history states
+	vector<PomdpState*> hist_states;
+	int latest=as_history_in_search_.Size()-1;
+	for (int t = latest; t > latest - num_history ; t--){// process in reserved time order
+		PomdpState* car_peds_state = static_cast<PomdpState*>(as_history_in_search_.state(t));
+		hist_states.push_back(car_peds_state);
+	}
+
+	// TODO: Create num_history copies of the map image, each for a frame of dynamic environment
+
+	// TODO: Get peds from hist_states and put them into the dynamic maps
+	//		 Do this for all num_history time steps
+	// 		 Refer to python codes: bag_2_hdf5.process_peds, bag_2_hdf5.get_map_indices, bag_2_hdf5.add_to_ped_map
+	//		 get_map_indices converts positions to pixel indices
+	//		 add_to_ped_map fills the corresponding entry (with some intensity value)
+
+	for (int i = 0 ; i < hist_states.size() ; i++){
+		// get the array of pedestrians (of length ModelParams::N_PED_IN)
+		auto& ped_list = hist_states[i]->peds;
+		for (int ped_id=0; ped_id < ModelParams::N_PED_IN; ped_id++){
+			// Process each pedestrian
+			PedStruct ped = ped_list[ped_id];
+			// ...
+		}
+	}
+
+	// TODO: Allocate 1 goal image (a tensor)
+	// TODO: Get path and fill into the goal image
+	//       Refer to python codes: bag_2_hdf5.construct_path_data, bag_2_hdf5.fill_image_with_points
+	//	     construct_path_data only calculates the pixel indices
+	//       fill_image_with_points fills the entries in the images (with some intensity value)
+	Path& path = world_model.path;
+	for(int i=0;i<path.size();i++){
+		// process each point
+
+	}
+
+	// TODO: Allocate num_history history images, each for a frame of car state
+	//		 Refer to python codes: bag_2_hdf5.get_transformed_car, fill_car_edges, fill_image_with_points
+	//		 get_transformed_car apply the current transformation to the car bounding box
+	//	     fill_car_edges fill edges of the car shape with dense points
+	//		 fill_image_with_points fills the corresponding entries in the images (with some intensity value)
+	for (int i = 0 ; i < hist_states.size() ; i++){
+		CarStruct& car = hist_states[i]->car;
+
+		//     car vertices in its local frame
+		//      (-0.8, 0.95)---(3.6, 0.95)
+		//      |                       |
+		//      |                       |
+		//      |                       |
+		//      (-0.8, -0.95)--(3.6, 0.95)
+		// ...
+	}
+
+	// TODO: Now we have all the high definition images, scale them down to 32x32
+	//		 Refer to python codes bag_2_hdf5.rescale_image
+	//		 Dependency: OpenCV
+
+	// TODO: Declare the nn_input_images_ as a class member in the header file
+	if (mode == FULL){
+		// TODO: Update all 9 channels of nn_input_images_ with the 32x32 images here.
+		//		 [IMPORTANT] Be cautious on the order of the channels:
+		//			config.channel_map = 0  # current step
+		//	    	config.channel_map1 = 1  # history steps t-1
+		//	    	config.channel_map2 = 2  # history steps t-2
+		//	    	config.channel_map3 = 3  # history steps t-3
+		//	    	config.channel_goal = 4
+		//	    	config.channel_hist1 = 5  # current step
+		//	    	config.channel_hist2 = 6  # history steps
+		//	    	config.channel_hist3 = 7  # history steps
+		//	    	config.channel_hist4 = 8  # history steps
+	}
+	else if(mode == PARTIAL){
+		// TODO: Here we are reusing the last 3 frames of history and only updating the latest time step
+		//		 Move t-2 to t-3, t-1 to t-2, t to t-1, for both channel_map's, and channel_hist's
+		//		 Update t with the current data
+	}
+}
+
 /*
  * query the policy network to provide prior probability for PUCT
  */
 const vector<double>& PedNeuralSolverPrior::ComputePreference(){
 
+	// TODO: remove this when you finish the coding
 	throw std::runtime_error( "PedNeuralSolverPrior::ComputePreference hasn't been implemented!" );
 	cerr << "" << endl;
 
-	// TODO: get the 4 latest history states
+	// TODO: Construct input images
+	ProcessNeuralInput(FULL);
 
-	// TODO: Convert states into images
-
-	// TODO: Send images to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
-
-
+	// TODO: Send nn_input_images_ to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
 	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
 	for (int action = 0;  action < ped_model->NumActions(); action ++){
 		double accelaration = ped_model->GetAcceleration(action);
-		// TODO: get the probability of accelaration from the Gaussian mixture, and store in action_probs_
+		// TODO: get the probability of acceleration from the Gaussian mixture, and store in action_probs_
 		// Hint: Need to implement Gaussian pdf and calculate mixture
 		// Hint: Refer to Components/mdn.py in the BTS_RL_NN project
 
@@ -920,14 +1038,18 @@ const vector<double>& PedNeuralSolverPrior::ComputePreference(){
  */
 double PedNeuralSolverPrior::ComputeValue(){
 
+	// TODO: remove this when you finish the coding
 	throw std::runtime_error( "PedNeuralSolverPrior::ComputeValue hasn't been implemented!" );
 
-	// TODO: get the 4 latest history states and convert into images
-	// Hint: Can reuse the history images in ComputePreference
+	// TODO: Construct input images
+	// 		 Here we can reuse existing channels
+	ProcessNeuralInput(PARTIAL);
 
-	// TODO: Send images to drive_net, and get the value output
+	// TODO: Send nn_input_images_ to drive_net, and get the value output
 
 	// TODO: return the output as double
 	return 0;
 }
+
+
 

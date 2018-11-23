@@ -13,8 +13,13 @@
 
 using namespace std;
 
-bool Controller::b_use_drive_net_=false;
+int Controller::b_use_drive_net_=0;
 int Controller::gpu_id_=0;
+float Controller::time_scale_ = 1.0;
+
+static DSPOMDP* ped_pomdp_model;
+static ACT_TYPE action = (ACT_TYPE)(-1);
+static OBS_TYPE obs =(OBS_TYPE)(-1);
 
 
 struct my_sig_action {
@@ -89,10 +94,10 @@ nh(_nh), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file
 */
 
 /// for audi r8
+
+    simulation_mode_ = UNITY;
+
     fixed_path_=false;
-
-    
-
 	cout << "fixed_path = " << fixed_path_ << endl;
 	cout << "pathplan_ahead = " << pathplan_ahead_ << endl;
 	Globals::config.pruning_constant = pruning_constant;
@@ -103,8 +108,6 @@ nh(_nh), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file
 
 	cerr << "DEBUG: Initializing publishers..." << endl;
 
-
-    
 	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1, true); // for visualization
 
 	pathSub_= nh.subscribe("plan", 1, &Controller::RetrievePathCallBack, this); // receive path from path planner
@@ -115,8 +118,6 @@ nh(_nh), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file
 	start_goal_pub=nh.advertise<ped_pathplan::StartGoal> ("ped_path_planner/planner/start_goal", 1);//send goal to path planner
     
     //imitation learning
-
-	b_use_drive_net_ = false;
 
 	last_action=-1;
 	last_obs=-1;
@@ -130,8 +131,28 @@ DSPOMDP* Controller::InitializeModel(option::Option* options) {
 	cerr << "DEBUG: Initializing model" << endl;
 
 	DSPOMDP* model = new PedPomdp();
+	static_cast<PedPomdp*>(model)->world_model=&SimulatorBase::worldModel;
+
 	model_ = model;
+	ped_pomdp_model= model;
+
 	return model;
+}
+
+
+void Controller::CreateNNPriors(DSPOMDP* model) {
+	if (Globals::config.use_multi_thread_) {
+		SolverPrior::nn_priors.resize(Globals::config.NUM_THREADS);
+	} else
+		SolverPrior::nn_priors.resize(1);
+
+	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+		SolverPrior::nn_priors[i] =
+				static_cast<PedPomdp*>(model)->CreateSolverPrior(
+						unity_driving_simulator_, "NEURAL", false);
+	}
+	prior_ = SolverPrior::nn_priors[0];
+	logi << "Created solver prior " << typeid(*prior_).name() << endl;
 }
 
 World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options){
@@ -151,6 +172,10 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model, opti
 				pathplan_ahead_, obstacle_file_name_, COORD(goalx_, goaly_));
 			break;
 	}
+
+	if (Globals::config.useGPU)
+		model->InitGPUModel();
+
 	//Establish connection with external system
 	world->Connect();
    //Initialize the state of the external system
@@ -166,6 +191,9 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model, opti
 		unity_driving_simulator_ = static_cast<WorldSimulator*>(world);
 		break;
 	}
+
+    CreateNNPriors(model);
+
    return world;
 }
 
@@ -174,35 +202,51 @@ void Controller::InitializeDefaultParameters() {
 
 	Globals::config.root_seed=time(NULL);
 
-	Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
-	//Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
-	Globals::config.num_scenarios=1;
-	Globals::config.discount=/*0.983*/0.95/*0.966*/;
-	Globals::config.sim_len=200/*180*//*10*/;
+	Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9 / time_scale_;
+	Globals::config.num_scenarios=1000;
+	Globals::config.discount=1.0; //0.95;
+	Globals::config.sim_len=200/*180*//*10*/; // this is not used
+
+	//Globals::config.pruning_constant= 0.001; // passed as a ROS node param
+
+	Globals::config.useGPU=true;
+	Globals::config.GPUid=1;//default GPU
+	Globals::config.use_multi_thread_=true;
+	Globals::config.NUM_THREADS=5;
+
+	Globals::config.exploration_mode=UCT;
+	Globals::config.exploration_constant=0.3;
+	Globals::config.exploration_constant_o = 1.0;
 
 	Globals::config.search_depth=10;
 	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/5;
 
-	Globals::config.exploration_constant=/*0.095*//*0.1*/0.5;
+	Globals::config.experiment_mode = true;
 
 	Globals::config.silence=false;
+	Obs_type=OBS_INT_ARRAY;
+	DESPOT::num_Obs_element_in_GPU=1+ModelParams::N_PED_IN*2+3;
 
-	Globals::config.root_seed=1024;
+	if (b_use_drive_net_ == LETS_DRIVE)
+		Globals::config.use_prior = true;
+	else
+		Globals::config.use_prior = false;
+
+//	Globals::config.root_seed=1024;
 
 	logging::level(3);
 }
 
-std::string Controller::ChooseSolver(){
-	return "POMDPLITE";
-}
 
+std::string Controller::ChooseSolver(){
+	return "DESPOT";
+}
 
 
 Controller::~Controller()
 {
 
 }
-
 
 
 void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
@@ -280,10 +324,7 @@ void Controller::publishPath(const string& frame_id, const Path& path) {
 	pathPub_.publish(navpath);
 }
 
-
-
 bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
-
 
 	cerr << "DEBUG: Running step" << endl;
 
@@ -324,7 +365,24 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 
 	double start_t = get_time_second();
-	solver->BeliefUpdate(last_action, last_obs);
+//	solver->BeliefUpdate(last_action, last_obs);
+
+	const State* cur_state=world->GetCurrentState();
+	assert(cur_state);
+
+	State* search_state =static_cast<const PedPomdp*>(ped_pomdp_model)->CopyForSearch(cur_state);//create a new state for search
+
+	static_cast<PedPomdpBelief*>(solver->belief())->DeepUpdate(
+			SolverPrior::nn_priors[0]->history_states(),
+			SolverPrior::nn_priors[0]->history_states_for_search(),
+			cur_state,
+			search_state, last_action);
+
+	for(int i=0; i<SolverPrior::nn_priors.size();i++){
+		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
+		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
+	}
+
 	double end_t = get_time_second();
 	double update_time = (end_t - start_t);
 	logi << "[RunStep] Time spent in Update(): " << update_time << endl;
@@ -336,21 +394,24 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 	//ped_belief_->publishBelief();// replaced by publishImitationData
 
-
 	start_t = get_time_second();
 	ACT_TYPE action;
 	double step_reward;
-	if (!b_use_drive_net_){
+	if (b_use_drive_net_ == NO){
 		cerr << "DEBUG: Search for action using " <<typeid(*solver).name()<< endl;
-
+		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(static_cast<const PedPomdp*>(ped_pomdp_model));
 		action = solver->Search().action;
 	}
-	else{
-		// Query the drive_net for actions
-
-
+	else if (b_use_drive_net_ == LETS_DRIVE){
+		cerr << "DEBUG: Search for action using " <<typeid(*solver).name()<< " with NN prior" << endl;
+		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(static_cast<const PedPomdp*>(ped_pomdp_model));
+		action = solver->Search().action;
 	}
-
+	else if (b_use_drive_net_ == IMITATION){
+		// Query the drive_net for actions, do nothing here
+	}
+	else
+		throw("drive net usage mode not supported!");
 
 	end_t = get_time_second();
 	double search_time = (end_t - start_t);
@@ -390,7 +451,7 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 void Controller::PlanningLoop(Solver*& solver, World* world, Logger* logger) {
 
 	cerr <<"DEBUG: before entering controlloop"<<endl;
-    timer_ = nh.createTimer(ros::Duration(1.0/control_freq), 
+    timer_ = nh.createTimer(ros::Duration(1.0/control_freq/time_scale_),
 			(boost::bind(&Controller::RunStep, this, solver, world, logger)));
 }
 

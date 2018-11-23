@@ -21,7 +21,8 @@
 #include <utility>
 #include <string>
 #include "math_utils.h"
-
+#include <nav_msgs/OccupancyGrid.h>
+#include <vector>
 
 //#include <solver/despot.h>
 
@@ -30,16 +31,21 @@ using namespace despot;
 
 class PedNeuralSolverPrior:public SolverPrior{
 	WorldModel& world_model;
+
+	enum UPDATE_MODES { FULL, PARTIAL };
+
 public:
-	PedNeuralSolverPrior(const DSPOMDP* model, WorldModel& world):
-			SolverPrior(model),
-			world_model(world)
-	{
-		action_probs_.resize(model->NumActions());
-	}
-	virtual const vector<double>& ComputePreference();
+
+	PedNeuralSolverPrior(const DSPOMDP* model, WorldModel& world);
+	virtual const std::vector<double>& ComputePreference();
 
 	virtual double ComputeValue();
+
+	void ProcessNeuralInput(int);
+
+public:
+	nav_msgs::OccupancyGrid raw_map_;
+
 };
 
 class PedPomdp : public DSPOMDP {
@@ -182,6 +188,7 @@ public:
 	double GetAcceleration(ACT_TYPE action, bool debug=false) const;
 	double GetSteering(ACT_TYPE action, bool debug=false) const;
 	static ACT_TYPE GetActionID(double steering, double acc, bool debug=false);
+	static double GetAccfromAccID(int);
 };
 
 
