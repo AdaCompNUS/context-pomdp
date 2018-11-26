@@ -36,6 +36,8 @@ catkin_package(
 )
 
 add_executable(ped_clustering src/ped_clustering.cpp)
+add_dependencies(ped_clustering cluster_extraction_generate_messages_cpp)
+
 add_dependencies(ped_clustering ${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(ped_clustering
   ${PCL_LIBRARIES}

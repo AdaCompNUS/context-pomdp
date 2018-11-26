@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.4.6)
 project(cluster_assoc)
 
+set(CMAKE_CXX_STANDARD 11)
+
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
@@ -55,6 +58,7 @@ catkin_package(
  
 add_executable(clusterAssoc src/cluster_assoc.cpp)
 add_dependencies(clusterAssoc
+  cluster_assoc_generate_messages_cpp
     ${PROJECT_NAME}_gencfg
     ${catkin_EXPORTED_TARGETS}
 )

@@ -29,7 +29,7 @@
 //#include <fmutil/fm_math.h>
 #include <std_msgs/Int64.h>
 #include <pcl_conversions/pcl_conversions.h>
-
+#include <pcl/search/impl/search.hpp>
 
 #include <geometry_msgs/PolygonStamped.h>
 #include <sensor_msgs/LaserScan.h>

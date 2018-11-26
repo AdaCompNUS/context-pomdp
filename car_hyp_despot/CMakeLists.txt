@@ -26,6 +26,13 @@ if(NOT DEFINED CMAKE_CUDA_STANDARD)
   set(CMAKE_CUDA_STANDARD 11)
   set(CMAKE_CUDA_STANDARD_REQUIRED True)
 endif()
+
+# set(CMAKE_C_COMPILER "/usr/bin/gcc-6")
+
+# set(CMAKE_CXX_COMPILER "/usr/bin/gcc-6")
+
+# set(CUDAHOSTCXX "g++-6")
+
 #find_package(CUDA QUIET REQUIRED)
 
 
@@ -41,6 +48,8 @@ set(CONFIG_INSTALL_PATH "${LIBRARY_INSTALL_PATH}/GPUmodel/cmake")
 set(DESPOT_BUILD_EXAMPLES ON CACHE BOOL "Build C++ model examples")
 set(DESPOT_BUILD_POMDPX ON CACHE BOOL "Build POMDPX example")
 set(DESPOT_BUILD_GPUS ON CACHE BOOL "Build GPU despot")
+
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/opt/libtorch")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -mfpmath=sse")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_30")
@@ -70,6 +79,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
 )
+
+find_package(Torch REQUIRED)
 
 #add_subdirectory(src/HypDespot/)
 
@@ -112,7 +123,9 @@ message("@@@@@@@@@@@@@@ before add lib @@@@@@@@@@@@@@")
 #set_directory_properties( PROPERTIES COMPILE_DEFINITIONS "" )
 
 add_library(
-"${PROJECT_NAME}" STATIC
+"${PROJECT_NAME}" 
+# SHARED
+STATIC
 
   src/HypDespot/src/interface/pomdp.cpp
   src/HypDespot/src/interface/world.cpp
@@ -285,6 +298,10 @@ add_library(
 )
 message("@@@@@@@@@@@@@@ after add lib @@@@@@@@@@@@@@")
 
+
+add_dependencies("${PROJECT_NAME}" ped_is_despot_generate_messages_cpp)
+add_dependencies("${PROJECT_NAME}" car_hyp_despot_generate_messages_cpp)
+
 #add_compile_options(${PROJECT_NAME}
 #    PRIVATE
 #    $<$<COMPILE_LANGUAGE:CUDA>:-arch=compute_30,code=sm_30>
@@ -305,9 +322,14 @@ target_compile_definitions(${PROJECT_NAME}
 
 target_link_libraries("${PROJECT_NAME}"
   #GPUmodel
+  # ${catkin_LIBRARIES}
   ${TinyXML_LIBRARIES}
   #HypDespot
 )
+
+message("Torch library list:  ${TORCH_LIBRARIES}")
+target_link_libraries("${PROJECT_NAME}" "${TORCH_LIBRARIES}")
+
 
 
 

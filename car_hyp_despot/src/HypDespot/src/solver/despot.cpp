@@ -22,7 +22,7 @@ static long Num_searches = 0;
 static int InitialSearch = true;
 
 
-vector<SolverPrior*> SolverPrior::nn_priors; // to be assigned in Controller.cpp
+std::vector<SolverPrior*> SolverPrior::nn_priors; // to be assigned in Controller.cpp
 
 
 namespace despot {
@@ -522,6 +522,19 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		PrepareGPUDataForRoot(root, model, particleIDs, particles);
 	}
 
+	if(Globals::config.use_prior){
+		int prior_ID = 0;
+		if (Globals::config.use_multi_thread_){
+			prior_ID=MapThread(this_thread::get_id());
+		}
+		std::vector<torch::Tensor> hist_images;
+		hist_images.push_back(SolverPrior::nn_priors[prior_ID]->Process_history(0));
+
+		map<OBS_TYPE, despot::VNode*> single_node_map;
+		single_node_map[(OBS_TYPE)0] = root;
+		SolverPrior::nn_priors[prior_ID]->Compute(hist_images, single_node_map);
+	}
+
 //	used_time = Globals::ElapsedTime();
 //	cout << std::setprecision(5) << "Root data preperation in " << used_time << " s" << endl;
 
@@ -690,16 +703,22 @@ void DESPOT::Compare() {
 
 void DESPOT::InitLowerBound(VNode* vnode, ScenarioLowerBound* lower_bound,
                             RandomStreams& streams, History& history, bool b_init_root) {
-	if (Globals::config.use_prior && !b_init_root){
+	/*if (Globals::config.use_prior && !b_init_root){
 		int prior_id = 0;
 		if (Globals::config.use_multi_thread_){
 			prior_id=MapThread(this_thread::get_id());
 		}
 
 		ValuedAction move;
-		/*Initialize the value*/
+		// Initialize the value
 		assert(SolverPrior::nn_priors[prior_id]);
 		move.value = SolverPrior::nn_priors[prior_id]->ComputeValue();
+		move.action = -1; // fake action
+	}*/
+	if (Globals::config.use_prior){
+		ValuedAction move;
+		// Initialize the value
+		move.value = vnode->prior_value();
 		move.action = -1; // fake action
 	}
 	else{
@@ -1672,6 +1691,7 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 	if (!use_GPU_ || !vnode->PassGPUThreshold())
 		Globals::Global_print_expand(this_thread::get_id(), vnode, vnode->depth(), vnode->edge());
 
+/*
 	vector<double> action_probs; action_probs.resize(0);
 
 	if(Globals::config.use_prior){
@@ -1682,6 +1702,7 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 		action_probs = SolverPrior::nn_priors[ThreadID]->ComputePreference();
 	}
+*/
 
 	for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
 		logd << " Action " << action << endl;
@@ -1695,7 +1716,7 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 			qnode = new QNode(vnode, action);
 
 		if (Globals::config.use_prior){
-			qnode->prior_probability(action_probs[action]);
+			qnode->prior_probability(vnode->prior_action_probs(action)/*action_probs[action]*/);
 		}
 
 		children.push_back(qnode);
@@ -1746,6 +1767,12 @@ void DESPOT::DisableDebugInfo() {
 void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
                     ScenarioUpperBound* ub, const DSPOMDP* model, RandomStreams& streams,
                     History& history) {
+	int prior_ID = 0;
+	if (Globals::config.use_prior){
+		if (Globals::config.use_multi_thread_){
+			prior_ID=MapThread(this_thread::get_id());
+		}
+	}
 
 	VNode* parent = qnode->parent();
 	streams.position(parent->depth());
@@ -1832,14 +1859,40 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 			                  parent->depth() + 1, qnode, obs);
 		logd << " New node created!" << endl;
 		children[obs] = vnode;
+	}
+
+	//lets drive
+	if (Globals::config.use_prior){
+		// Process last 3 steps of history
+		torch::Tensor hist_images = SolverPrior::nn_priors[prior_ID]->Process_history(1);
+		// collect the current state for all nodes
+		std::vector<State*> node_states;
+		for (map<OBS_TYPE, vector<State*> >::iterator it = partitions.begin();
+		        it != partitions.end(); it++){
+			State* particle = it->second[0];
+			node_states.push_back(particle);
+		}
+
+		std::vector<torch::Tensor> node_images = SolverPrior::nn_priors[prior_ID]->Process_node_states(node_states);
+
+		// Combine images to complete input
+		std::vector<torch::Tensor> complete_images;
+
+		for (int i=0;i<node_images.size();i++){
+			complete_images.push_back(SolverPrior::nn_priors[prior_ID]->Combine_images(node_images[i],hist_images));
+		}
+
+		SolverPrior::nn_priors[prior_ID]->Compute(complete_images, children);
+	}
+
+	for (map<OBS_TYPE, vector<State*> >::iterator it = partitions.begin();
+		        it != partitions.end(); it++) {
+		OBS_TYPE obs = it->first;
+		VNode* vnode = children[obs];
 		auto start1 = Time::now();
 
 		history.Add(qnode->edge(), obs);
-		int prior_ID = 0;
 		if (Globals::config.use_prior){
-			if (Globals::config.use_multi_thread_){
-				prior_ID=MapThread(this_thread::get_id());
-			}
 			SolverPrior::nn_priors[prior_ID]->Add_in_search(qnode->edge(), vnode->particles()[0]);
 		}
 

@@ -45,15 +45,21 @@ public:
 	double weight_;
   	int num_GPU_particles_;  // Used in GPUDESPOT
 
-protected: // lets_drive
+// lets_drive
+protected:
+  	const double DUMMY_VALUE = 10000000;
   	std::vector<double> prior_action_probs_;
   	double prior_value_;
 
+public:
   	double prior_action_probs(int i){return prior_action_probs_[i];}
   	void prior_action_probs(int i, double v){prior_action_probs_[i]=v;}
+  	double prior_value(){assert(prior_value_!=DUMMY_VALUE); return prior_value_;}
+  	void prior_value(double v){prior_value_ = v;}
+// lets_drive
 
 public:
-	VNode(){;}
+	VNode():prior_value_(DUMMY_VALUE){;}
 	VNode(std::vector<State*>& particles, std::vector<int> particleIDs, int depth = 0, QNode* parent = NULL,
 		OBS_TYPE edge = (OBS_TYPE)-1);
 	VNode(Belief* belief, int depth = 0, QNode* parent = NULL, OBS_TYPE edge =

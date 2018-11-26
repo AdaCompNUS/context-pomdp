@@ -919,60 +919,39 @@ inline PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 
 }
 
-void PedNeuralSolverPrior::ProcessNeuralInput(int mode){
-	int num_history = 0;
-	if (mode == FULL) // Full update of the input channels
-		num_history = 4;
-	else if (mode == PARTIAL) // Partial update of input channels and reuse old channels
-		num_history = 1;
-
-	// Refer to the NN-architecture to understand this function
-
-	// TODO: get the 4 latest history states
-	vector<PomdpState*> hist_states;
-	int latest=as_history_in_search_.Size()-1;
-	for (int t = latest; t > latest - num_history ; t--){// process in reserved time order
-		PomdpState* car_peds_state = static_cast<PomdpState*>(as_history_in_search_.state(t));
-		hist_states.push_back(car_peds_state);
-	}
-
+torch::Tensor PedNeuralSolverPrior::Process_states(
+		const vector<PomdpState*>& hist_states) {
 	// TODO: Create num_history copies of the map image, each for a frame of dynamic environment
-
 	// TODO: Get peds from hist_states and put them into the dynamic maps
 	//		 Do this for all num_history time steps
 	// 		 Refer to python codes: bag_2_hdf5.process_peds, bag_2_hdf5.get_map_indices, bag_2_hdf5.add_to_ped_map
 	//		 get_map_indices converts positions to pixel indices
 	//		 add_to_ped_map fills the corresponding entry (with some intensity value)
-
-	for (int i = 0 ; i < hist_states.size() ; i++){
+	for (int i = 0; i < hist_states.size(); i++) {
 		// get the array of pedestrians (of length ModelParams::N_PED_IN)
 		auto& ped_list = hist_states[i]->peds;
-		for (int ped_id=0; ped_id < ModelParams::N_PED_IN; ped_id++){
+		for (int ped_id = 0; ped_id < ModelParams::N_PED_IN; ped_id++) {
 			// Process each pedestrian
 			PedStruct ped = ped_list[ped_id];
 			// ...
 		}
 	}
-
 	// TODO: Allocate 1 goal image (a tensor)
 	// TODO: Get path and fill into the goal image
 	//       Refer to python codes: bag_2_hdf5.construct_path_data, bag_2_hdf5.fill_image_with_points
 	//	     construct_path_data only calculates the pixel indices
 	//       fill_image_with_points fills the entries in the images (with some intensity value)
 	Path& path = world_model.path;
-	for(int i=0;i<path.size();i++){
+	for (int i = 0; i < path.size(); i++) {
 		// process each point
-
 	}
-
 	// TODO: Allocate num_history history images, each for a frame of car state
 	//		 Refer to python codes: bag_2_hdf5.get_transformed_car, fill_car_edges, fill_image_with_points
 	//		 get_transformed_car apply the current transformation to the car bounding box
 	//	     fill_car_edges fill edges of the car shape with dense points
 	//		 fill_image_with_points fills the corresponding entries in the images (with some intensity value)
-	for (int i = 0 ; i < hist_states.size() ; i++){
+	for (int i = 0; i < hist_states.size(); i++) {
 		CarStruct& car = hist_states[i]->car;
-
 		//     car vertices in its local frame
 		//      (-0.8, 0.95)---(3.6, 0.95)
 		//      |                       |
@@ -986,7 +965,29 @@ void PedNeuralSolverPrior::ProcessNeuralInput(int mode){
 	//		 Refer to python codes bag_2_hdf5.rescale_image
 	//		 Dependency: OpenCV
 
-	// TODO: Declare the nn_input_images_ as a class member in the header file
+	torch::Tensor dummy = torch::randn({hist_states.size()*2+1, 32, 32});
+
+	return dummy;
+}
+
+
+vector<torch::Tensor> PedNeuralSolverPrior::Process_node_states(const vector<State*>& vnode_states){
+	vector<PomdpState*> cur_state;
+	vector<torch::Tensor> output_images;
+	cur_state.resize(1);
+	for (int i = 0; i < vnode_states.size(); i++){
+		cur_state[0]= static_cast<PomdpState*>(vnode_states[i]);
+
+		auto state_images = Process_states(cur_state);
+
+		output_images.push_back(state_images);
+	}
+
+	return output_images;
+}
+
+torch::Tensor Combine_images(const torch::Tensor& node_image, const torch::Tensor& hist_images){
+	/*// TODO: Declare the nn_input_images_ as a class member in the header file
 	if (mode == FULL){
 		// TODO: Update all 9 channels of nn_input_images_ with the 32x32 images here.
 		//		 [IMPORTANT] Be cautious on the order of the channels:
@@ -1004,7 +1005,53 @@ void PedNeuralSolverPrior::ProcessNeuralInput(int mode){
 		// TODO: Here we are reusing the last 3 frames of history and only updating the latest time step
 		//		 Move t-2 to t-3, t-1 to t-2, t to t-1, for both channel_map's, and channel_hist's
 		//		 Update t with the current data
+	}*/
+
+	torch::Tensor dummy = torch::randn({9, 32, 32});
+	return dummy;
+}
+
+
+void PedNeuralSolverPrior::Compute(vector<torch::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnodes){
+	// TODO: Send nn_input_images_ to drive_net, and get the policy and value output
+
+
+	for (std::map<OBS_TYPE, despot::VNode* >::iterator it = vnodes.begin();
+		        it != vnodes.end(); it++) {
+		despot::VNode* vnode = it->second;
+
+		vector<double> dummy_action_probs;
+		double dummy_value;
+
+		// Update the values in the vnode
+		for(int i = 0; i< dummy_action_probs.size(); i++){
+			vnode->prior_action_probs(i, dummy_action_probs[i]);
+		}
+		vnode->prior_value(dummy_value);
 	}
+}
+
+
+torch::Tensor PedNeuralSolverPrior::Process_history(int mode){
+	int num_history = 0;
+	if (mode == FULL) // Full update of the input channels
+		num_history = 4;
+	else if (mode == PARTIAL) // Partial update of input channels and reuse old channels
+		num_history = 3;
+
+	// Refer to the NN-architecture to understand this function
+
+	// TODO: get the 4 latest history states
+	vector<PomdpState*> hist_states;
+	int latest=as_history_in_search_.Size()-1;
+	for (int t = latest; t > latest - num_history ; t--){// process in reserved time order
+		PomdpState* car_peds_state = static_cast<PomdpState*>(as_history_in_search_.state(t));
+		hist_states.push_back(car_peds_state);
+	}
+
+	torch::Tensor state_images = Process_states(hist_states);
+
+	return state_images;
 }
 
 /*
@@ -1017,7 +1064,7 @@ const vector<double>& PedNeuralSolverPrior::ComputePreference(){
 	cerr << "" << endl;
 
 	// TODO: Construct input images
-	ProcessNeuralInput(FULL);
+	Process_history(FULL);
 
 	// TODO: Send nn_input_images_ to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
 	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
@@ -1043,7 +1090,7 @@ double PedNeuralSolverPrior::ComputeValue(){
 
 	// TODO: Construct input images
 	// 		 Here we can reuse existing channels
-	ProcessNeuralInput(PARTIAL);
+	Process_history(PARTIAL);
 
 	// TODO: Send nn_input_images_ to drive_net, and get the value output
 

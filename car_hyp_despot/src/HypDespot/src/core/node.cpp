@@ -21,7 +21,8 @@ VNode::VNode(vector<State*>& particles,std::vector<int> particleIDs, int depth, 
 	parent_(parent),
 	edge_(edge),
 	vstar(this),
-	likelihood(1) {
+	likelihood(1),
+	prior_value_(DUMMY_VALUE){
 	logd << "Constructed vnode with " << particles_.size() << " particles"
 		<< endl;
 	for (int i = 0; i < particles_.size(); i++) {
@@ -53,7 +54,8 @@ VNode::VNode(Belief* belief, int depth, QNode* parent, OBS_TYPE edge) :
 	parent_(parent),
 	edge_(edge),
 	vstar(this),
-	likelihood(1) {
+	likelihood(1),
+	prior_value_(DUMMY_VALUE) {
 	weight_=0;
 }
 
@@ -65,7 +67,8 @@ VNode::VNode(int count, double value, int depth, QNode* parent, OBS_TYPE edge) :
 	parent_(parent),
 	edge_(edge),
 	count_(count),
-	value_(value) {
+	value_(value),
+	prior_value_(DUMMY_VALUE) {
 	weight_=0;
 }
 

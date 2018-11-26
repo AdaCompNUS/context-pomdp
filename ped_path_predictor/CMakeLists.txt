@@ -143,6 +143,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node src/main_test.cpp src/ped_path_predictor.cpp src/world_state.cpp)
+add_dependencies(${PROJECT_NAME}_node cluster_assoc_generate_messages_cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

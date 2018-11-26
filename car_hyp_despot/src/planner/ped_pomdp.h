@@ -23,16 +23,23 @@
 #include "math_utils.h"
 #include <nav_msgs/OccupancyGrid.h>
 #include <vector>
+#include "despot/core/node.h"
 
 //#include <solver/despot.h>
 
 using namespace std;
 using namespace despot;
 
+
+#ifndef __CUDACC__
+
 class PedNeuralSolverPrior:public SolverPrior{
 	WorldModel& world_model;
 
-	enum UPDATE_MODES { FULL, PARTIAL };
+	torch::Tensor Process_states(const vector<PomdpState*>& hist_states);
+
+
+	enum UPDATE_MODES { FULL=0, PARTIAL=1 };
 
 public:
 
@@ -41,12 +48,17 @@ public:
 
 	virtual double ComputeValue();
 
-	void ProcessNeuralInput(int);
+	void Compute(vector<torch::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode);
+
+	torch::Tensor Process_history(int);
+	vector<torch::Tensor> Process_node_states(const vector<State*>& vnode_states);
+	torch::Tensor Combine_images(const torch::Tensor& node_image, const torch::Tensor& hist_images);
 
 public:
 	nav_msgs::OccupancyGrid raw_map_;
 
 };
+#endif
 
 class PedPomdp : public DSPOMDP {
 public:

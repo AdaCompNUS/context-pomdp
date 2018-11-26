@@ -74,10 +74,13 @@ add_executable(costmap_2d_markers src/costmap_2d_markers.cpp)
 add_executable(costmap_2d_cloud src/costmap_2d_cloud.cpp)
 add_executable(costmap_2d_node src/costmap_2d_node.cpp)
 
+add_dependencies(ped_costmap cluster_assoc_generate_messages_cpp)
+
 add_dependencies(ped_costmap ped_costmap_generate_messages_cpp)
 add_dependencies(costmap_2d_markers ped_costmap_generate_messages_cpp)
 add_dependencies(costmap_2d_cloud ped_costmap_generate_messages_cpp)
 add_dependencies(costmap_2d_node ped_costmap_generate_messages_cpp)
+
 
 target_link_libraries(ped_costmap
    ${catkin_LIBRARIES}

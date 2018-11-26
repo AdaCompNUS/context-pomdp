@@ -59,6 +59,9 @@ include_directories(
 )
 
 add_library(ped_pathplan src/pathplan.cpp src/pathplan_ros.cpp)
+add_dependencies(ped_pathplan ped_pathplan_generate_messages_cpp)
+add_dependencies(ped_pathplan cluster_assoc_generate_messages_cpp)
+
 
 add_executable(path_planner src/PathPlanner.cpp)
 add_executable(send_start_goal src/SendStartGoal.cpp)
@@ -72,6 +75,8 @@ target_link_libraries(send_start_goal
    ${catkin_LIBRARIES}
    ped_pathplan
 )
+
+
 
 add_dependencies(path_planner ped_pathplan_generate_messages_cpp)
 add_dependencies(send_start_goal ped_pathplan_generate_messages_cpp)

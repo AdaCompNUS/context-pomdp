@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.8)
 
 set(CUDA_SDK_ROOT_DIR "/usr/local/cuda/samples")
 
+
 project(ped_is_despot CXX CUDA)
 
 if(NOT DEFINED CMAKE_CXX_STANDARD)
@@ -14,6 +15,14 @@ if(NOT DEFINED CMAKE_CUDA_STANDARD)
   set(CMAKE_CUDA_STANDARD 11)
   set(CMAKE_CUDA_STANDARD_REQUIRED True)
 endif()
+
+
+# set(CMAKE_C_COMPILER "/usr/bin/gcc-6")
+
+# set(CMAKE_CXX_COMPILER "/usr/bin/gcc-6")
+
+# set(CUDAHOSTCXX "g++-6")
+
 
 set(BINARY_INSTALL_PATH "bin" CACHE PATH "Binary install path")
 set(LIBRARY_INSTALL_PATH "lib" CACHE PATH "Library install path")
@@ -35,6 +44,9 @@ add_definitions(-std=c++0x -O3)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+
+find_package(Torch REQUIRED)
+
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
@@ -46,6 +58,7 @@ find_package(catkin REQUIRED COMPONENTS
   car_hyp_despot
   peds_unity_system
 )
+
 
 #add_subdirectory(src/HypDespot/)
 #add_subdirectory(src/planner/)
@@ -166,7 +179,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ped_path_predictor
-#  CATKIN_DEPENDS geometry_msgs roscpp std_msgs
+ CATKIN_DEPENDS geometry_msgs roscpp
 #  DEPENDS system_lib
 )
 
@@ -224,12 +237,6 @@ add_executable(ped_pomdp src/PedPomdpNode.cpp src/controller.cpp src/world_simul
 add_executable(local_frame src/local_frame.cpp)
 add_executable(vel_publisher src/VelPublisher.cpp)
 
-
-add_dependencies(ped_pomdp ped_is_despot_generate_messages_cpp)
-add_dependencies(local_frame ped_is_despot_generate_messages_cpp)
-add_dependencies(local_frame pnc_msgs_generate_messages_cpp)
-add_dependencies(vel_publisher ped_is_despot_generate_messages_cpp)
-
 ## Specify libraries to link a library or executable target against
 #target_link_libraries(
    #GPUmodel
@@ -239,10 +246,23 @@ add_dependencies(vel_publisher ped_is_despot_generate_messages_cpp)
    #HypDespot
 #)
 
+# LINK_LIST = "torch;caffe2_library;caffe2_gpu_library;/usr/lib/x86_64-linux-gnu/libcuda.so;/usr/local/cuda-9.0/lib64/libnvrtc.so;/usr/local/cuda-9.0/lib64/libnvToolsExt.so;/usr/local/cuda-9.0/lib64/libcudart_static.a;-lpthread;dl;/usr/lib/x86_64-linux-gnu/librt.so"
+message("@@@@@@@@@@@@@@ ped_is_despot linking @@@@@@@@@@@@@@")
+
+# set(LINK_LIST "torch;/usr/lib/x86_64-linux-gnu/libcuda.so;/usr/local/cuda-9.0/lib64/libnvrtc.so;/usr/local/cuda-9.0/lib64/libnvToolsExt.so;/usr/local/cuda-9.0/lib64/libcudart_static.a;-lpthread;dl;/usr/lib/x86_64-linux-gnu/librt.so")
+ 
+# target_link_libraries(ped_pomdp "${LINK_LIST}")
+# target_link_libraries(local_frame "${LINK_LIST}")
+
+
+# target_link_libraries(ped_pomdp "${TORCH_LIBRARIES}")
+# target_link_libraries(local_frame "${TORCH_LIBRARIES}")
+
 target_link_libraries(ped_pomdp
    ${catkin_LIBRARIES}
    ####rvo
    car_hyp_despot
+   # "${TORCH_LIBRARIES}"
    #/home/panpan/workspace/catkin_ws/src/ped_is_despot/src/planner/build/libGPUmodel.a
 )
 
@@ -256,6 +276,21 @@ target_link_libraries(vel_publisher
 )
 
 
+add_dependencies(ped_pomdp caffe2)
+add_dependencies(ped_pomdp caffe2_gpu_library)
+add_dependencies(local_frame caffe2_library)
+add_dependencies(local_frame caffe2_gpu_library)
+
+add_dependencies(ped_pomdp ped_pathplan_generate_messages_cpp)
+
+add_dependencies(ped_pomdp ped_is_despot_generate_messages_cpp)
+add_dependencies(ped_pomdp cluster_assoc_generate_messages_cpp)
+
+add_dependencies(local_frame ped_is_despot_generate_messages_cpp)
+add_dependencies(local_frame pnc_msgs_generate_messages_cpp)
+add_dependencies(vel_publisher ped_is_despot_generate_messages_cpp)
+
+message("@@@@@@@@@@@@@@ ped_is_despot end @@@@@@@@@@@@@@")
 
 #############
 ## Install ##
