@@ -52,7 +52,7 @@ public:
 
 	torch::Tensor Process_history(int);
 	vector<torch::Tensor> Process_node_states(const vector<State*>& vnode_states);
-	torch::Tensor Combine_images(const torch::Tensor& node_image, const torch::Tensor& hist_images);
+	torch::Tensor Combine_images(const torch::Tensor& node_image, const torch::Tensor& hist_images){return torch::zeros({1,1,1});}
 
 public:
 	nav_msgs::OccupancyGrid raw_map_;

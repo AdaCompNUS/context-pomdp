@@ -45,7 +45,6 @@ add_definitions(-std=c++0x -O3)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 
-find_package(Torch REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
@@ -59,6 +58,15 @@ find_package(catkin REQUIRED COMPONENTS
   peds_unity_system
 )
 
+set(CMAKE_PREFIX_PATH_BAK  "${CMAKE_PREFIX_PATH}")
+
+set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch")
+# set(CUDA_HOST_COMPILER "/usr/bin/gcc-5")
+
+find_package(Torch REQUIRED)
+set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH_BAK}")
+
+message("==============================CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}" )
 
 #add_subdirectory(src/HypDespot/)
 #add_subdirectory(src/planner/)
@@ -114,7 +122,11 @@ generate_messages(
         std_msgs
         geometry_msgs
         nav_msgs
+        pnc_msgs
         peds_unity_system
+        ped_pathplan
+        ped_is_despot
+        cluster_assoc
 )
 
 ## Generate messages in the 'msg' folder
@@ -180,7 +192,7 @@ catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ped_path_predictor
  CATKIN_DEPENDS geometry_msgs roscpp
-#  DEPENDS system_lib
+  DEPENDS system_lib
 )
 
 ###########
@@ -257,38 +269,62 @@ message("@@@@@@@@@@@@@@ ped_is_despot linking @@@@@@@@@@@@@@")
 
 # target_link_libraries(ped_pomdp "${TORCH_LIBRARIES}")
 # target_link_libraries(local_frame "${TORCH_LIBRARIES}")
+# message("==============================catkin_LIBRARIES: ${catkin_LIBRARIES}" )
+
+
 
 target_link_libraries(ped_pomdp
    ${catkin_LIBRARIES}
-   ####rvo
-   car_hyp_despot
-   # "${TORCH_LIBRARIES}"
-   #/home/panpan/workspace/catkin_ws/src/ped_is_despot/src/planner/build/libGPUmodel.a
 )
 
 target_link_libraries(local_frame
    ${catkin_LIBRARIES}
-   car_hyp_despot
 )
+
 
 target_link_libraries(vel_publisher
    ${catkin_LIBRARIES}
 )
 
 
-add_dependencies(ped_pomdp caffe2)
-add_dependencies(ped_pomdp caffe2_gpu_library)
-add_dependencies(local_frame caffe2_library)
-add_dependencies(local_frame caffe2_gpu_library)
+target_link_libraries(ped_pomdp
 
-add_dependencies(ped_pomdp ped_pathplan_generate_messages_cpp)
+   # "${TORCH_LIBRARIES}"
+	# torch
+	# caffe2_library
+	# caffe2_gpu_library
+   ####rvo
+   car_hyp_despot
 
-add_dependencies(ped_pomdp ped_is_despot_generate_messages_cpp)
-add_dependencies(ped_pomdp cluster_assoc_generate_messages_cpp)
+   #/home/panpan/workspace/catkin_ws/src/ped_is_despot/src/planner/build/libGPUmodel.a
+)
 
-add_dependencies(local_frame ped_is_despot_generate_messages_cpp)
-add_dependencies(local_frame pnc_msgs_generate_messages_cpp)
-add_dependencies(vel_publisher ped_is_despot_generate_messages_cpp)
+
+
+target_link_libraries(local_frame
+   car_hyp_despot
+)
+
+
+
+# add_dependencies(ped_pomdp caffe2)
+# add_dependencies(ped_pomdp caffe2_gpu_library)
+# add_dependencies(local_frame caffe2_library)
+# add_dependencies(local_frame caffe2_gpu_library)
+
+# add_dependencies(ped_pomdp car_hyp_despot)
+# add_dependencies(local_frame car_hyp_despot)
+# add_dependencies(vel_publisher car_hyp_despot)
+
+
+# add_dependencies(ped_pomdp ped_pathplan_generate_messages_cpp)
+
+# add_dependencies(ped_pomdp ped_is_despot_generate_messages_cpp)
+# add_dependencies(ped_pomdp cluster_assoc_generate_messages_cpp)
+
+# add_dependencies(local_frame ped_is_despot_generate_messages_cpp)
+# add_dependencies(local_frame pnc_msgs_generate_messages_cpp)
+# add_dependencies(vel_publisher ped_is_despot_generate_messages_cpp)
 
 message("@@@@@@@@@@@@@@ ped_is_despot end @@@@@@@@@@@@@@")
 

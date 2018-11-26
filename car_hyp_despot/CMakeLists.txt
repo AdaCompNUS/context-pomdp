@@ -27,9 +27,6 @@ if(NOT DEFINED CMAKE_CUDA_STANDARD)
   set(CMAKE_CUDA_STANDARD_REQUIRED True)
 endif()
 
-# set(CMAKE_C_COMPILER "/usr/bin/gcc-6")
-
-# set(CMAKE_CXX_COMPILER "/usr/bin/gcc-6")
 
 # set(CUDAHOSTCXX "g++-6")
 
@@ -49,11 +46,14 @@ set(DESPOT_BUILD_EXAMPLES ON CACHE BOOL "Build C++ model examples")
 set(DESPOT_BUILD_POMDPX ON CACHE BOOL "Build POMDPX example")
 set(DESPOT_BUILD_GPUS ON CACHE BOOL "Build GPU despot")
 
-set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/opt/libtorch")
+# message("==============================CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}" )
+
+
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -mfpmath=sse")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_30")
 set(CMAKE_MODULE_PATH ${CMAKE_PREFIX_PATH} "${PROJECT_SOURCE_DIR}/cmake")
+
 
 #set (CMAKE_CXX_FLAGS "--std=c++11")
 #set (CUDA_PROPAGATE_HOST_FLAGS ON)
@@ -80,7 +80,28 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
+set(CMAKE_PREFIX_PATH_BAK  "${CMAKE_PREFIX_PATH}")
+
+set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch")
+# set(CUDA_HOST_COMPILER "/usr/bin/gcc-5")
+# set(CUDAHOSTCXX "g++-5")
+# set(CMAKE_C_COMPILER "/usr/bin/gcc-5")
+
+# set(CMAKE_CXX_COMPILER "/usr/bin/gcc-5")
+
+# set(CMAKE_C_COMPILER_VERSION 5.5)
+
+message("==============================CUDA_HOST_COMPILER: ${CUDA_HOST_COMPILER}" )
+message("==============================CMAKE_C_COMPILER: ${CMAKE_C_COMPILER}" )
+
+message("==============================CMAKE_C_COMPILER_VERSION: ${CMAKE_C_COMPILER_VERSION}" )
+
 find_package(Torch REQUIRED)
+
+
+set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH_BAK}")
+
+message("==============================CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}" )
 
 #add_subdirectory(src/HypDespot/)
 
@@ -124,8 +145,8 @@ message("@@@@@@@@@@@@@@ before add lib @@@@@@@@@@@@@@")
 
 add_library(
 "${PROJECT_NAME}" 
-# SHARED
-STATIC
+SHARED
+# STATIC
 
   src/HypDespot/src/interface/pomdp.cpp
   src/HypDespot/src/interface/world.cpp
@@ -329,6 +350,12 @@ target_link_libraries("${PROJECT_NAME}"
 
 message("Torch library list:  ${TORCH_LIBRARIES}")
 target_link_libraries("${PROJECT_NAME}" "${TORCH_LIBRARIES}")
+
+# target_link_libraries("${PROJECT_NAME}" 
+#   torch
+#   caffe2_library
+#   caffe2_gpu_library
+#   )
 
 
 
