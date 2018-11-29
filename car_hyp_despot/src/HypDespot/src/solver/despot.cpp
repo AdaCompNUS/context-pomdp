@@ -527,7 +527,7 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		if (Globals::config.use_multi_thread_){
 			prior_ID=MapThread(this_thread::get_id());
 		}
-		std::vector<torch::Tensor> hist_images;
+		std::vector<at::Tensor> hist_images;
 		hist_images.push_back(SolverPrior::nn_priors[prior_ID]->Process_history(0));
 
 		map<OBS_TYPE, despot::VNode*> single_node_map;
@@ -1864,7 +1864,7 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 	//lets drive
 	if (Globals::config.use_prior){
 		// Process last 3 steps of history
-		torch::Tensor hist_images = SolverPrior::nn_priors[prior_ID]->Process_history(1);
+		at::Tensor hist_images = SolverPrior::nn_priors[prior_ID]->Process_history(1);
 		// collect the current state for all nodes
 		std::vector<State*> node_states;
 		for (map<OBS_TYPE, vector<State*> >::iterator it = partitions.begin();
@@ -1873,10 +1873,10 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 			node_states.push_back(particle);
 		}
 
-		std::vector<torch::Tensor> node_images = SolverPrior::nn_priors[prior_ID]->Process_node_states(node_states);
+		std::vector<at::Tensor> node_images = SolverPrior::nn_priors[prior_ID]->Process_node_states(node_states);
 
 		// Combine images to complete input
-		std::vector<torch::Tensor> complete_images;
+		std::vector<at::Tensor> complete_images;
 
 		for (int i=0;i<node_images.size();i++){
 			complete_images.push_back(SolverPrior::nn_priors[prior_ID]->Combine_images(node_images[i],hist_images));

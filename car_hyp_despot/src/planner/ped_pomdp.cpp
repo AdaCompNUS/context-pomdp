@@ -919,7 +919,7 @@ inline PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 
 }
 
-torch::Tensor PedNeuralSolverPrior::Process_states(
+at::Tensor PedNeuralSolverPrior::Process_states(
 		const vector<PomdpState*>& hist_states) {
 	// TODO: Create num_history copies of the map image, each for a frame of dynamic environment
 	// TODO: Get peds from hist_states and put them into the dynamic maps
@@ -965,15 +965,15 @@ torch::Tensor PedNeuralSolverPrior::Process_states(
 	//		 Refer to python codes bag_2_hdf5.rescale_image
 	//		 Dependency: OpenCV
 
-	torch::Tensor dummy = torch::randn({hist_states.size()*2+1, 32, 32});
+	at::Tensor dummy = torch::randn({hist_states.size()*2+1, 32, 32});
 
 	return dummy;
 }
 
 
-vector<torch::Tensor> PedNeuralSolverPrior::Process_node_states(const vector<State*>& vnode_states){
+vector<at::Tensor> PedNeuralSolverPrior::Process_node_states(const vector<State*>& vnode_states){
 	vector<PomdpState*> cur_state;
-	vector<torch::Tensor> output_images;
+	vector<at::Tensor> output_images;
 	cur_state.resize(1);
 	for (int i = 0; i < vnode_states.size(); i++){
 		cur_state[0]= static_cast<PomdpState*>(vnode_states[i]);
@@ -986,7 +986,7 @@ vector<torch::Tensor> PedNeuralSolverPrior::Process_node_states(const vector<Sta
 	return output_images;
 }
 
-torch::Tensor Combine_images(const torch::Tensor& node_image, const torch::Tensor& hist_images){
+at::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images){
 	/*// TODO: Declare the nn_input_images_ as a class member in the header file
 	if (mode == FULL){
 		// TODO: Update all 9 channels of nn_input_images_ with the 32x32 images here.
@@ -1007,12 +1007,12 @@ torch::Tensor Combine_images(const torch::Tensor& node_image, const torch::Tenso
 		//		 Update t with the current data
 	}*/
 
-	torch::Tensor dummy = torch::randn({9, 32, 32});
+	at::Tensor dummy = torch::randn({9, 32, 32});
 	return dummy;
 }
 
 
-void PedNeuralSolverPrior::Compute(vector<torch::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnodes){
+void PedNeuralSolverPrior::Compute(vector<at::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnodes){
 	// TODO: Send nn_input_images_ to drive_net, and get the policy and value output
 
 
@@ -1032,7 +1032,7 @@ void PedNeuralSolverPrior::Compute(vector<torch::Tensor>& images, map<OBS_TYPE, 
 }
 
 
-torch::Tensor PedNeuralSolverPrior::Process_history(int mode){
+at::Tensor PedNeuralSolverPrior::Process_history(int mode){
 	int num_history = 0;
 	if (mode == FULL) // Full update of the input channels
 		num_history = 4;
@@ -1049,7 +1049,7 @@ torch::Tensor PedNeuralSolverPrior::Process_history(int mode){
 		hist_states.push_back(car_peds_state);
 	}
 
-	torch::Tensor state_images = Process_states(hist_states);
+	at::Tensor state_images = Process_states(hist_states);
 
 	return state_images;
 }

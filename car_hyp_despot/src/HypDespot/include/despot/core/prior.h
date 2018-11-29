@@ -2,9 +2,9 @@
 #define PRIOR_H
 #include <despot/planner.h>
 
-#ifndef __CUDACC__
+//#ifndef __CUDACC__
 #include <torch/script.h> // One-stop header.
-#endif
+//#endif
 
 using namespace std;
 
@@ -93,10 +93,10 @@ public:
 
 	// lets drive
 
-	virtual torch::Tensor Process_history(int) = 0;
-	virtual std::vector<torch::Tensor> Process_node_states(const std::vector<State*>& vnode_states) = 0;
-	virtual torch::Tensor Combine_images(const torch::Tensor& node_image, const torch::Tensor& hist_images) = 0;
-	virtual void Compute(vector<torch::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode)=0;
+	virtual at::Tensor Process_history(int) = 0;
+	virtual std::vector<at::Tensor> Process_node_states(const std::vector<State*>& vnode_states) = 0;
+	virtual at::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images) = 0;
+	virtual void Compute(vector<at::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode)=0;
 #endif
 
 

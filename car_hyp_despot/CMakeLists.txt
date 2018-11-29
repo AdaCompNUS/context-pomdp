@@ -76,11 +76,11 @@ set(
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  nav_msgs
+  sensor_msgs
   geometry_msgs
   message_generation
 )
-
-set(CMAKE_PREFIX_PATH_BAK  "${CMAKE_PREFIX_PATH}")
 
 set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch")
 # set(CUDA_HOST_COMPILER "/usr/bin/gcc-5")
@@ -91,17 +91,9 @@ set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch")
 
 # set(CMAKE_C_COMPILER_VERSION 5.5)
 
-message("==============================CUDA_HOST_COMPILER: ${CUDA_HOST_COMPILER}" )
-message("==============================CMAKE_C_COMPILER: ${CMAKE_C_COMPILER}" )
-
-message("==============================CMAKE_C_COMPILER_VERSION: ${CMAKE_C_COMPILER_VERSION}" )
 
 find_package(Torch REQUIRED)
 
-
-set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH_BAK}")
-
-message("==============================CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}" )
 
 #add_subdirectory(src/HypDespot/)
 
@@ -115,10 +107,13 @@ generate_messages(
     DEPENDENCIES
         std_msgs
         geometry_msgs
+        # ped_is_despot
+        car_hyp_despot
 )
 
 include_directories(
    ${catkin_INCLUDE_DIRS}
+
    src/RVO2/src
    src/HypDespot/include/
    src/HypDespot/include/despot/
@@ -145,8 +140,8 @@ message("@@@@@@@@@@@@@@ before add lib @@@@@@@@@@@@@@")
 
 add_library(
 "${PROJECT_NAME}" 
-SHARED
-# STATIC
+# SHARED
+STATIC
 
   src/HypDespot/src/interface/pomdp.cpp
   src/HypDespot/src/interface/world.cpp
@@ -321,7 +316,7 @@ message("@@@@@@@@@@@@@@ after add lib @@@@@@@@@@@@@@")
 
 
 add_dependencies("${PROJECT_NAME}" ped_is_despot_generate_messages_cpp)
-add_dependencies("${PROJECT_NAME}" car_hyp_despot_generate_messages_cpp)
+# add_dependencies("${PROJECT_NAME}" car_hyp_despot_generate_messages_cpp)
 
 #add_compile_options(${PROJECT_NAME}
 #    PRIVATE

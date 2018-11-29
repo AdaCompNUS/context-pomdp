@@ -36,7 +36,7 @@ using namespace despot;
 class PedNeuralSolverPrior:public SolverPrior{
 	WorldModel& world_model;
 
-	torch::Tensor Process_states(const vector<PomdpState*>& hist_states);
+	at::Tensor Process_states(const vector<PomdpState*>& hist_states);
 
 
 	enum UPDATE_MODES { FULL=0, PARTIAL=1 };
@@ -48,11 +48,11 @@ public:
 
 	virtual double ComputeValue();
 
-	void Compute(vector<torch::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode);
+	void Compute(vector<at::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode);
 
-	torch::Tensor Process_history(int);
-	vector<torch::Tensor> Process_node_states(const vector<State*>& vnode_states);
-	torch::Tensor Combine_images(const torch::Tensor& node_image, const torch::Tensor& hist_images){return torch::zeros({1,1,1});}
+	at::Tensor Process_history(int);
+	vector<at::Tensor> Process_node_states(const vector<State*>& vnode_states);
+	at::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images){return torch::zeros({1,1,1});}
 
 public:
 	nav_msgs::OccupancyGrid raw_map_;
