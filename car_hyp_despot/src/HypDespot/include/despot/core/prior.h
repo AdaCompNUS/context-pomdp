@@ -4,6 +4,8 @@
 
 //#ifndef __CUDACC__
 #include <torch/script.h> // One-stop header.
+#include <ATen/ATen.h>
+#include <torch/torch.h>
 //#endif
 
 using namespace std;
@@ -81,9 +83,9 @@ public:
 	}
 
 
-	virtual const std::vector<double>& ComputePreference() = 0;
-
-	virtual double ComputeValue()=0;
+//	virtual const std::vector<double>& ComputePreference() = 0;
+//
+//	virtual double ComputeValue()=0;
 
 	const std::vector<double>& action_probs() const;
 
@@ -92,11 +94,11 @@ public:
 #ifndef __CUDACC__
 
 	// lets drive
-
-	virtual at::Tensor Process_history(int) = 0;
-	virtual std::vector<at::Tensor> Process_node_states(const std::vector<State*>& vnode_states) = 0;
-	virtual at::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images) = 0;
-	virtual void Compute(vector<at::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode)=0;
+	virtual void Process_history(int) = 0;
+	virtual std::vector<torch::Tensor> Process_history_input() = 0;
+	virtual std::vector<torch::Tensor> Process_nodes_input(const std::vector<State*>& vnode_states) = 0;
+//	virtual torch::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images) = 0;
+	virtual void Compute(vector<torch::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode)=0;
 #endif
 
 

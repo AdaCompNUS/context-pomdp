@@ -6,10 +6,9 @@
 #include <despot/core/builtin_policy.h>
 #include <despot/core/builtin_lower_bounds.h>
 #include <despot/core/builtin_upper_bounds.h>
+#include <despot/solver/despot.h>
 
 #include "custom_particle_belief.h"
-
-#include <despot/solver/despot.h>
 
 static std::map<uint64_t, std::vector<int>> Obs_hash_table;
 static PomdpState hashed_state;
@@ -905,52 +904,209 @@ inline PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 
 	action_probs_.resize(model->NumActions());
 
-	// TODO Declare the neural network as a class member, and load it here
+	// TODO: get num_peds_in_NN from ROS param
+	num_peds_in_NN = 20;
+	// TODO: get num_hist_channels from ROS param
+	num_hist_channels = 4;
 
-	// TODO: The environment map will be received via ROS topic as the OccupancyGrid type
+	// DONE Declare the neural network as a class member, and load it here
+
+	// TODO: Pass the model name through ROS params
+
+	neural_network = torch::jit::load("path to .pt");
+
+	// DONE: The environment map will be received via ROS topic as the OccupancyGrid type
 	//		 Data will be stored in raw_map_ (class member)
 	//       In the current stage, just use a randomized raw_map_ to develop your code.
 	//		 Init raw_map_ including its properties here
 	//	     Refer to python codes: bag_2_hdf5.parse_map_data_from_dict
 	//		 (map_dict_entry is the raw OccupancyGrid data)
 
-	// TODO: Convert the data in raw_map to your desired image data structure;
+	map_prop_.downsample_ratio = 0.03125;
+	map_prop_.resolution = raw_map_.info.resolution;
+	map_prop_.origin = COORD(raw_map_.info.origin.position.x, raw_map_.info.origin.position.y);
+	map_prop_.dim = (int)(raw_map_.info.height);
+	map_prop_.new_dim = (int)(map_prop_.dim * map_prop_.downsample_ratio);
+	map_prop_.map_intensity_scale = 1500.0;
+
+	// DONE: Convert the data in raw_map to your desired image data structure;
 	// 		 (like a torch tensor);
+
+	map_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
+
+	int index = 0;
+	for (std::vector<int8_t>::const_reverse_iterator iterator = raw_map_.data.rbegin();
+		  iterator != raw_map_.data.rend(); ++iterator) {
+		int x = (size_t)(index / map_prop_.dim);
+		int y = (size_t)(index % map_prop_.dim);
+		assert(*iterator != -1);
+		map_image_.at<float>(x,y) = (float)(*iterator);
+		index++;
+	}
+
+	double minVal, maxVal;
+	minMaxLoc(map_image_, &minVal, &maxVal);
+	map_prop_.map_intensity = maxVal;
+
+	goal_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
+
+	for( int i=0;i<num_hist_channels;i++){
+		map_hist_images_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
+		car_hist_images_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
+	}
+
+	empty_map_tensor_ = at::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
+	map_tensor_ = at::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
+	goal_tensor = at::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
+
+	for( int i=0;i<num_hist_channels;i++){
+		map_hist_tensor_.push_back(at::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat));
+		car_hist_tensor_.push_back(at::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat));
+	}
+
+	// Car geometry
+	vector<cv::Point3f> polygon { Point3f(3.6, 0.95, 1), Point3f(-0.8, 0.95, 1), Point3f(-0.8, -0.95, 1), Point3f(3.6, -0.95, 1)};
 
 }
 
-at::Tensor PedNeuralSolverPrior::Process_states(
-		const vector<PomdpState*>& hist_states) {
-	// TODO: Create num_history copies of the map image, each for a frame of dynamic environment
-	// TODO: Get peds from hist_states and put them into the dynamic maps
+COORD PedNeuralSolverPrior::point_to_indices(COORD pos, COORD origin, double resolution, int dim) const{
+    COORD indices = COORD((pos.x - origin.x) / resolution, (pos.y - origin.y) / resolution);
+    if (indices.x < 0 || indices.y < 0 ||
+    		indices.x > (dim - 1) || indices.y > (dim - 1))
+        return COORD(-1, -1);
+    return indices;
+}
+
+void PedNeuralSolverPrior::add_in_map(cv::Mat map_image, COORD indices, double map_intensity, double map_intensity_scale){
+	if (indices.x == -1 || indices.y == -1)
+		return;
+
+	map_image.at<float>((int)round(indices.x), (int)round(indices.y)) = map_intensity * map_intensity_scale;
+}
+
+float radians(float degrees){
+	return (degrees * M_PI)/180.0;
+}
+
+std::vector<COORD> PedNeuralSolverPrior::get_transformed_car(CarStruct car, COORD origin, double resolution){
+    float theta = car.heading_dir; // TODO: validate that python code is using [0, 2pi] as the range
+    float x = car.pos.x - origin.x;
+    float y = car.pos.y - origin.x;
+    // transformation matrix: rotate by theta and translate with (x,y)
+//    cv::Mat rot_mat( 3, 3, CV_32FC1 );
+//
+//    double rot_array[] = {cos(theta), -sin(theta), x, sin(theta), cos(theta), y, 0, 0, 1};
+//    MatIterator_<double> it, end;
+//    int i =0;
+//    for( it = rot_mat.begin<double>(), end = rot_mat.end<double>(); it != end; ++it)
+//    {
+//        *it = rot_array[i];
+//        i++;
+//    }
+
+    // rotate and scale the car
+    vector<COORD> car_polygon;
+    for (int i=0; i < car_shape.size(); i++){
+//    	Point3f& original = car_shape[i];
+//    	Point3f rotated;
+    	vector<Point3f> original, rotated;
+    	original.push_back(car_shape[i]);
+    	rotated.resize(1);
+    	cv::transform(original, rotated,
+    			cv::Matx33f(cos(theta), -sin(theta), x, sin(theta), cos(theta), y, 0, 0, 1));
+    	car_polygon.push_back(COORD(rotated[0].x / resolution, rotated[0].y / resolution));
+    }
+
+    // TODO: validate the transformation in test_opencv
+    return car_polygon;
+}
+
+void fill_car_edges(Mat image, vector<COORD>& points){
+	float default_intensity = 1.0;
+
+	for (int i=0;i<points.size();i++){
+		int r0, c0, r1, c1;
+		r0 = round(points[i].x);
+		c0 = round(points[i].y);
+		if (i+1 < points.size()){
+			r1 = round(points[i+1].x);
+			c1 = round(points[i+1].y);
+		}
+		else{
+			r1 = round(points[0].x);
+			c1 = round(points[0].y);
+		}
+
+		cv::line(image, Point(r0,c0), Point(r1,c1), default_intensity);
+	}
+}
+
+void rescale_image(cv::Mat& image, at::Tensor& tensor, double downsample_ratio=0.03125){
+	Mat tmp = image;
+	Mat dst;
+    for (int i=0; i < (int)log2(1.0 / downsample_ratio); i++){
+        pyrDown( tmp, dst, Size( tmp.cols/2, tmp.rows/2 ) );
+        tmp = dst;
+    }
+
+    for(int i=0; i<tmp.rows; i++)
+        for(int j=0; j<tmp.cols; j++)
+        	tensor[i][j] = tmp.at<float>(i,j);
+}
+
+void PedNeuralSolverPrior::Process_states(const vector<PomdpState*>& hist_states, const vector<int> hist_ids) {
+	// DONE: Create num_history copies of the map image, each for a frame of dynamic environment
+	// DONE: Get peds from hist_states and put them into the dynamic maps
 	//		 Do this for all num_history time steps
 	// 		 Refer to python codes: bag_2_hdf5.process_peds, bag_2_hdf5.get_map_indices, bag_2_hdf5.add_to_ped_map
 	//		 get_map_indices converts positions to pixel indices
 	//		 add_to_ped_map fills the corresponding entry (with some intensity value)
 	for (int i = 0; i < hist_states.size(); i++) {
+		// clear data in the dynamic map
+		int hist_channel = hist_ids[i];
+
+		map_hist_images_[hist_channel].setTo(0.0);
 		// get the array of pedestrians (of length ModelParams::N_PED_IN)
 		auto& ped_list = hist_states[i]->peds;
+		int num_valid_ped = 0;
 		for (int ped_id = 0; ped_id < ModelParams::N_PED_IN; ped_id++) {
 			// Process each pedestrian
 			PedStruct ped = ped_list[ped_id];
-			// ...
+			// get position of the ped
+			COORD ped_indices = point_to_indices(ped.pos, map_prop_.origin, map_prop_.resolution, map_prop_.dim);
+			if (ped_indices.x == -1 or ped_indices.y == -1) // ped out of map
+				continue;
+			// put the point in the dynamic map
+			add_in_map(map_hist_images_[hist_channel], ped_indices, map_prop_.map_intensity, map_prop_.map_intensity_scale);
 		}
 	}
-	// TODO: Allocate 1 goal image (a tensor)
-	// TODO: Get path and fill into the goal image
+	// DONE: Allocate 1 goal image (a tensor)
+	// DONE: Get path and fill into the goal image
 	//       Refer to python codes: bag_2_hdf5.construct_path_data, bag_2_hdf5.fill_image_with_points
 	//	     construct_path_data only calculates the pixel indices
 	//       fill_image_with_points fills the entries in the images (with some intensity value)
-	Path& path = world_model.path;
-	for (int i = 0; i < path.size(); i++) {
-		// process each point
+	if (hist_states.size()==1) { // only for current node states
+		goal_image_.setTo(0.0);
+		Path& path = world_model.path;
+		for (int i = 0; i < path.size(); i++) {
+			COORD point = path[i];
+			// process each point
+			COORD indices = point_to_indices(point, map_prop_.origin, map_prop_.resolution, map_prop_.dim);
+			if (indices.x == -1 or indices.y == -1) // path point out of map
+				continue;
+			// put the point in the goal map
+			add_in_map(goal_image_,indices, map_prop_.map_intensity, map_prop_.map_intensity_scale);
+		}
 	}
-	// TODO: Allocate num_history history images, each for a frame of car state
+	// DONE: Allocate num_history history images, each for a frame of car state
 	//		 Refer to python codes: bag_2_hdf5.get_transformed_car, fill_car_edges, fill_image_with_points
-	//		 get_transformed_car apply the current transformation to the car bounding box
+	// DONE: get_transformed_car apply the current transformation to the car bounding box
 	//	     fill_car_edges fill edges of the car shape with dense points
 	//		 fill_image_with_points fills the corresponding entries in the images (with some intensity value)
 	for (int i = 0; i < hist_states.size(); i++) {
+		int hist_channel = hist_ids[i];
+		map_hist_images_[hist_channel].setTo(0.0);
+
 		CarStruct& car = hist_states[i]->car;
 		//     car vertices in its local frame
 		//      (-0.8, 0.95)---(3.6, 0.95)
@@ -959,62 +1115,73 @@ at::Tensor PedNeuralSolverPrior::Process_states(
 		//      |                       |
 		//      (-0.8, -0.95)--(3.6, 0.95)
 		// ...
+		vector<COORD> transformed_car = get_transformed_car(car, map_prop_.origin, map_prop_.resolution);
+		fill_car_edges(car_hist_images_[hist_channel],transformed_car);
 	}
 
-	// TODO: Now we have all the high definition images, scale them down to 32x32
+	// DONE: Now we have all the high definition images, scale them down to 32x32
 	//		 Refer to python codes bag_2_hdf5.rescale_image
 	//		 Dependency: OpenCV
-
-	at::Tensor dummy = torch::randn({hist_states.size()*2+1, 32, 32});
-
-	return dummy;
+	rescale_image(goal_image_, goal_tensor);
+	for (int i = 0; i < hist_states.size(); i++) {
+		int hist_channel = hist_ids[i];
+		rescale_image(map_hist_images_[hist_channel], map_hist_tensor_[hist_channel]);
+		rescale_image(car_hist_images_[hist_channel], car_hist_tensor_[hist_channel]);
+	}
 }
 
-
-vector<at::Tensor> PedNeuralSolverPrior::Process_node_states(const vector<State*>& vnode_states){
+std::vector<torch::Tensor> PedNeuralSolverPrior::Process_nodes_input(const std::vector<State*>& vnode_states){
 	vector<PomdpState*> cur_state;
-	vector<at::Tensor> output_images;
+	vector<torch::Tensor> output_images;
 	cur_state.resize(1);
+	vector<int> hist_ids({3}); // use as the last hist step
 	for (int i = 0; i < vnode_states.size(); i++){
 		cur_state[0]= static_cast<PomdpState*>(vnode_states[i]);
 
-		auto state_images = Process_states(cur_state);
+		Process_states(cur_state, hist_ids);
 
-		output_images.push_back(state_images);
+		auto node_nn_input = Combine_images();
+
+		output_images.push_back(node_nn_input);
 	}
 
 	return output_images;
 }
 
-at::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images){
-	/*// TODO: Declare the nn_input_images_ as a class member in the header file
-	if (mode == FULL){
-		// TODO: Update all 9 channels of nn_input_images_ with the 32x32 images here.
-		//		 [IMPORTANT] Be cautious on the order of the channels:
-		//			config.channel_map = 0  # current step
-		//	    	config.channel_map1 = 1  # history steps t-1
-		//	    	config.channel_map2 = 2  # history steps t-2
-		//	    	config.channel_map3 = 3  # history steps t-3
-		//	    	config.channel_goal = 4
-		//	    	config.channel_hist1 = 5  # current step
-		//	    	config.channel_hist2 = 6  # history steps
-		//	    	config.channel_hist3 = 7  # history steps
-		//	    	config.channel_hist4 = 8  # history steps
-	}
-	else if(mode == PARTIAL){
-		// TODO: Here we are reusing the last 3 frames of history and only updating the latest time step
-		//		 Move t-2 to t-3, t-1 to t-2, t to t-1, for both channel_map's, and channel_hist's
-		//		 Update t with the current data
-	}*/
+torch::Tensor PedNeuralSolverPrior::Combine_images(){
+	//DONE: Make a tensor with all 9 channels of nn_input_images_ with the 32x32 images here.
+			//		 [IMPORTANT] Be cautious on the order of the channels:
+			//			config.channel_map = 0  # current step
+			//	    	config.channel_map1 = 1  # history steps t-1
+			//	    	config.channel_map2 = 2  # history steps t-2
+			//	    	config.channel_map3 = 3  # history steps t-3
+			//	    	config.channel_goal = 4
+			//	    	config.channel_hist1 = 5  # current step
+			//	    	config.channel_hist2 = 6  # history steps
+			//	    	config.channel_hist3 = 7  # history steps
+			//	    	config.channel_hist4 = 8  # history steps
 
-	at::Tensor dummy = torch::randn({9, 32, 32});
-	return dummy;
+	// DONE: stack them together and return
+	torch::Tensor result;
+	for (int i = 0; i < num_hist_channels; i++) {
+		if (i==0)
+			result = map_hist_tensor_[i].unsqueeze(0);
+		else
+			result = torch::stack({result, map_hist_tensor_[i].unsqueeze(0)}, 0);
+	}
+
+	result = torch::stack({result, goal_tensor.unsqueeze(0)}, 0);
+
+	for (int i = 0; i < num_hist_channels; i++) {
+		result = torch::stack({result, car_hist_tensor_[i].unsqueeze(0)}, 0);
+	}
+
+	return result;
 }
 
 
 void PedNeuralSolverPrior::Compute(vector<at::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnodes){
 	// TODO: Send nn_input_images_ to drive_net, and get the policy and value output
-
 
 	for (std::map<OBS_TYPE, despot::VNode* >::iterator it = vnodes.begin();
 		        it != vnodes.end(); it++) {
@@ -1032,14 +1199,34 @@ void PedNeuralSolverPrior::Compute(vector<at::Tensor>& images, map<OBS_TYPE, des
 }
 
 
-at::Tensor PedNeuralSolverPrior::Process_history(int mode){
+void PedNeuralSolverPrior::Process_history(int mode){
 	int num_history = 0;
+	vector<int> hist_ids;
 	if (mode == FULL) // Full update of the input channels
-		num_history = 4;
+		num_history = num_hist_channels;
 	else if (mode == PARTIAL) // Partial update of input channels and reuse old channels
-		num_history = 3;
+		num_history = num_hist_channels - 1;
 
-	// Refer to the NN-architecture to understand this function
+	for (int i = 0 ; i<num_history ; i++)
+		hist_ids.push_back(i);
+
+	// DONE: get the 4 latest history states
+	vector<PomdpState*> hist_states;
+	int latest=as_history_in_search_.Size()-1;
+	for (int t = latest; t > latest - num_history ; t--){// process in reserved time order
+		PomdpState* car_peds_state = static_cast<PomdpState*>(as_history_in_search_.state(t));
+		hist_states.push_back(car_peds_state);
+	}
+
+	if (mode == FULL){
+		Process_states(hist_states, hist_ids);
+	}else if (mode == PARTIAL){
+		Process_states(hist_states, hist_ids);
+	}
+}
+
+std::vector<torch::Tensor> PedNeuralSolverPrior::Process_history_input(){
+	int num_history = num_hist_channels;
 
 	// TODO: get the 4 latest history states
 	vector<PomdpState*> hist_states;
@@ -1049,54 +1236,62 @@ at::Tensor PedNeuralSolverPrior::Process_history(int mode){
 		hist_states.push_back(car_peds_state);
 	}
 
-	at::Tensor state_images = Process_states(hist_states);
+	vector<int> hist_ids;
+	for (int i = 0 ; i<num_history ; i++)
+		hist_ids.push_back(i);
 
-	return state_images;
+	Process_states(hist_states, hist_ids);
+
+	std::vector<torch::Tensor> nn_input;
+	nn_input.push_back(Combine_images());
+	return nn_input;
 }
 
-/*
- * query the policy network to provide prior probability for PUCT
- */
-const vector<double>& PedNeuralSolverPrior::ComputePreference(){
-
-	// TODO: remove this when you finish the coding
-	throw std::runtime_error( "PedNeuralSolverPrior::ComputePreference hasn't been implemented!" );
-	cerr << "" << endl;
-
-	// TODO: Construct input images
-	Process_history(FULL);
-
-	// TODO: Send nn_input_images_ to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
-	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
-	for (int action = 0;  action < ped_model->NumActions(); action ++){
-		double accelaration = ped_model->GetAcceleration(action);
-		// TODO: get the probability of acceleration from the Gaussian mixture, and store in action_probs_
-		// Hint: Need to implement Gaussian pdf and calculate mixture
-		// Hint: Refer to Components/mdn.py in the BTS_RL_NN project
-
-	}
-
-	// return the output as vector<double>
-	return action_probs_;
-}
-
-/*
- * query the value network to initialize leaf node values
- */
-double PedNeuralSolverPrior::ComputeValue(){
-
-	// TODO: remove this when you finish the coding
-	throw std::runtime_error( "PedNeuralSolverPrior::ComputeValue hasn't been implemented!" );
-
-	// TODO: Construct input images
-	// 		 Here we can reuse existing channels
-	Process_history(PARTIAL);
-
-	// TODO: Send nn_input_images_ to drive_net, and get the value output
-
-	// TODO: return the output as double
-	return 0;
-}
-
+///*
+// * query the policy network to provide prior probability for PUCT
+// */
+//const vector<double>& PedNeuralSolverPrior::ComputePreference(){
+//
+//	// TODO: remove this when you finish the coding
+//	throw std::runtime_error( "PedNeuralSolverPrior::ComputePreference hasn't been implemented!" );
+//	cerr << "" << endl;
+//
+//	// TODO: Construct input images
+//	Process_history(FULL);
+//
+//	auto nn_input = Combine_images();
+//
+//	// TODO: Send nn_input_images_ to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
+//	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
+//	for (int action = 0;  action < ped_model->NumActions(); action ++){
+//		double accelaration = ped_model->GetAcceleration(action);
+//		// TODO: get the probability of acceleration from the Gaussian mixture, and store in action_probs_
+//		// Hint: Need to implement Gaussian pdf and calculate mixture
+//		// Hint: Refer to Components/mdn.py in the BTS_RL_NN project
+//
+//	}
+//
+//	// return the output as vector<double>
+//	return action_probs_;
+//}
+//
+///*
+// * query the value network to initialize leaf node values
+// */
+//double PedNeuralSolverPrior::ComputeValue(){
+//
+//	// TODO: remove this when you finish the coding
+//	throw std::runtime_error( "PedNeuralSolverPrior::ComputeValue hasn't been implemented!" );
+//
+//	// TODO: Construct input images
+//	// 		 Here we can reuse existing channels
+//	Process_history(PARTIAL);
+//
+//	// TODO: Send nn_input_images_ to drive_net, and get the value output
+//
+//	// TODO: return the output as double
+//	return 0;
+//}
+//
 
 

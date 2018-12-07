@@ -25,40 +25,81 @@
 #include <vector>
 #include "despot/core/node.h"
 
+#include "opencv2/imgproc.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
+using namespace cv;
+
 //#include <solver/despot.h>
 
 using namespace std;
 using namespace despot;
 
 
-#ifndef __CUDACC__
+//#ifndef __CUDACC__
 
 class PedNeuralSolverPrior:public SolverPrior{
 	WorldModel& world_model;
 
-	at::Tensor Process_states(const vector<PomdpState*>& hist_states);
+	COORD point_to_indices(COORD pos, COORD origin, double resolution, int dim) const;
+	void add_in_map(cv::Mat map_tensor, COORD indices, double map_intensity, double map_intensity_scale);
+	std::vector<COORD> get_transformed_car(CarStruct car, COORD origin, double resolution);
+	void Process_states(const vector<PomdpState*>& hist_states, const vector<int> hist_ids);
 
 
 	enum UPDATE_MODES { FULL=0, PARTIAL=1 };
 
+	struct map_properties{
+
+		double resolution;
+		COORD origin;
+		int dim;
+		double map_intensity;
+		int new_dim; // down sampled resolution
+
+		double map_intensity_scale;
+		double downsample_ratio;
+	};
+
+private:
+	at::Tensor empty_map_tensor_;
+	at::Tensor map_tensor_;
+	std::vector<at::Tensor> map_hist_tensor_;
+	std::vector<at::Tensor> car_hist_tensor_;
+	at::Tensor goal_tensor;
+
+	cv::Mat map_image_;
+	std::vector<cv::Mat> map_hist_images_;
+	std::vector<cv::Mat> car_hist_images_;
+	cv::Mat goal_image_;
+
+	vector<cv::Point3f> car_shape;
 public:
 
 	PedNeuralSolverPrior(const DSPOMDP* model, WorldModel& world);
-	virtual const std::vector<double>& ComputePreference();
-
-	virtual double ComputeValue();
+//	virtual const std::vector<double>& ComputePreference();
+//
+//	virtual double ComputeValue();
 
 	void Compute(vector<at::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode);
 
-	at::Tensor Process_history(int);
-	vector<at::Tensor> Process_node_states(const vector<State*>& vnode_states);
-	at::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images){return torch::zeros({1,1,1});}
+	void Process_history(int);
+	std::vector<torch::Tensor> Process_history_input();
+
+	std::vector<torch::Tensor> Process_nodes_input(const std::vector<State*>& vnode_states);
+//	at::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images){return torch::zeros({1,1,1});}
+	torch::Tensor Combine_images();
 
 public:
+	int num_hist_channels;
+	int num_peds_in_NN;
 	nav_msgs::OccupancyGrid raw_map_;
 
+	map_properties map_prop_;
+	std::shared_ptr<torch::jit::script::Module> neural_network;
+
 };
-#endif
+//#endif
 
 class PedPomdp : public DSPOMDP {
 public:

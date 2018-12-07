@@ -94,6 +94,7 @@ set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch")
 
 find_package(Torch REQUIRED)
 
+find_package(OpenCV REQUIRED)
 
 #add_subdirectory(src/HypDespot/)
 
@@ -113,7 +114,7 @@ generate_messages(
 
 include_directories(
    ${catkin_INCLUDE_DIRS}
-
+   ${OpenCV_INCLUDE_DIRS}
    src/RVO2/src
    src/HypDespot/include/
    src/HypDespot/include/despot/
@@ -345,6 +346,8 @@ target_link_libraries("${PROJECT_NAME}"
 
 message("Torch library list:  ${TORCH_LIBRARIES}")
 target_link_libraries("${PROJECT_NAME}" "${TORCH_LIBRARIES}")
+
+target_link_libraries("${PROJECT_NAME}" "${OpenCV_LIBRARIES}")
 
 # target_link_libraries("${PROJECT_NAME}" 
 #   torch
