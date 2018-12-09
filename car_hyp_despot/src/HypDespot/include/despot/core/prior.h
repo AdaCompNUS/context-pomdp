@@ -4,8 +4,10 @@
 
 //#ifndef __CUDACC__
 #include <torch/script.h> // One-stop header.
-#include <ATen/ATen.h>
+//#include <ATen/ATen.h>
 #include <torch/torch.h>
+#include "torch/csrc/jit/ivalue.h"
+
 //#endif
 
 using namespace std;

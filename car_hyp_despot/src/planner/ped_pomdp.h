@@ -49,6 +49,11 @@ class PedNeuralSolverPrior:public SolverPrior{
 
 	enum UPDATE_MODES { FULL=0, PARTIAL=1 };
 
+	enum {
+		VALUE, ACC_PI, ACC_MU, ACC_SIGMA, ANG, VEL_PI, VEL_MU, VEL_SIGMA,
+		                   CAR_VALUE_0, RES_IMAGE_0
+	};
+
 	struct map_properties{
 
 		double resolution;
@@ -81,7 +86,7 @@ public:
 //
 //	virtual double ComputeValue();
 
-	void Compute(vector<at::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode);
+	void Compute(vector<torch::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode);
 
 	void Process_history(int);
 	std::vector<torch::Tensor> Process_history_input();
@@ -96,7 +101,7 @@ public:
 	nav_msgs::OccupancyGrid raw_map_;
 
 	map_properties map_prop_;
-	std::shared_ptr<torch::jit::script::Module> neural_network;
+	std::shared_ptr<torch::jit::script::Module> drive_net;
 
 };
 //#endif

@@ -10,9 +10,14 @@
 
 #include "custom_particle_belief.h"
 
+#include <errno.h>
+#include <sys/stat.h>
+
+
 static std::map<uint64_t, std::vector<int>> Obs_hash_table;
 static PomdpState hashed_state;
 
+#define ONEOVERSQRT2PI 1.0 / sqrt(2.0 * M_PI)
 
 class PedPomdpParticleLowerBound : public ParticleLowerBound {
 private:
@@ -913,7 +918,7 @@ inline PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 
 	// TODO: Pass the model name through ROS params
 
-	neural_network = torch::jit::load("path to .pt");
+	drive_net = torch::jit::load("path to .pt");
 
 	// DONE: The environment map will be received via ROS topic as the OccupancyGrid type
 	//		 Data will be stored in raw_map_ (class member)
@@ -1054,6 +1059,38 @@ void rescale_image(cv::Mat& image, at::Tensor& tensor, double downsample_ratio=0
         	tensor[i][j] = tmp.at<float>(i,j);
 }
 
+int img_counter = 0;
+std::string img_folder="./visualize";
+
+void mkdir_safe(std::string dir){
+	if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+	{
+	    if( errno == EEXIST ) {
+	       // alredy exists
+	    } else {
+	       // something else
+	        std::cout << "cannot create sessionnamefolder error:" << strerror(errno) << std::endl;
+	        throw std::runtime_error( strerror(errno) );
+	    }
+	}
+}
+
+void export_image(Mat& image){
+	mkdir_safe(img_folder);
+	std::ostringstream stringStream;
+	stringStream << img_folder << "/" << img_counter << ".jpg";
+	std::string img_name = stringStream.str();
+	imwrite( img_name , image );
+}
+
+void inc_counter(){
+	img_counter ++;
+}
+
+void reset_counter(){
+	img_counter = 0;
+}
+
 void PedNeuralSolverPrior::Process_states(const vector<PomdpState*>& hist_states, const vector<int> hist_ids) {
 	// DONE: Create num_history copies of the map image, each for a frame of dynamic environment
 	// DONE: Get peds from hist_states and put them into the dynamic maps
@@ -1176,25 +1213,112 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(){
 		result = torch::stack({result, car_hist_tensor_[i].unsqueeze(0)}, 0);
 	}
 
+	if (true){
+		for (int i = 0; i < num_hist_channels; i++)
+			export_image(map_hist_images_[i]);
+		export_image(goal_image_);
+		for (int i = 0; i < num_hist_channels; i++)
+			export_image(car_hist_images_[i]);
+		inc_counter();
+	}
+
 	return result;
 }
 
+at::Tensor gaussian_probability(at::Tensor &sigma, at::Tensor &mu, at::Tensor &data) {
+    // data = data.toType(at::kDouble);
+    // sigma = sigma.toType(at::kDouble);
+    // mu = mu.toType(at::kDouble);
+    // data = data.toType(at::kDouble);
+    data = data.unsqueeze(1).expand_as(sigma);
+//    std::cout << "data=" << data << std::endl;
+//    std::cout << "mu=" << mu  << std::endl;
+//    std::cout << "sigma=" << sigma  << std::endl;
+//    std::cout << "data - mu=" << data - mu  << std::endl;
 
-void PedNeuralSolverPrior::Compute(vector<at::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnodes){
+    auto exponent = -0.5 * at::pow((data - mu) / sigma, at::Scalar(2));
+    std::cout << "exponent=" << exponent << std::endl;
+    auto ret = ONEOVERSQRT2PI * (exponent.exp() / sigma);
+    std::cout << "ret=" << ret << std::endl;
+    return at::prod(ret, 2);
+}
+
+at::Tensor gm_pdf(at::Tensor &pi, at::Tensor &sigma,
+    at::Tensor &mu, at::Tensor &target) {
+    auto prob_double = pi * gaussian_probability(sigma, mu, target);
+    auto prob_float = prob_double.toType(at::kFloat);
+    std::cout << "prob_float=" << prob_float << std::endl;
+    auto safe_sum = at::add(at::sum(prob_float, at::IntList(1)), at::Scalar(0.000001));
+    return safe_sum;
+}
+
+void PedNeuralSolverPrior::Compute(vector<torch::Tensor>& input_batch, map<OBS_TYPE, despot::VNode*>& vnodes){
 	// TODO: Send nn_input_images_ to drive_net, and get the policy and value output
+	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
 
+	std::vector<torch::jit::IValue> inputs;
+
+	for (int node_id = 0; node_id< input_batch.size(); node_id++){
+		torch::Tensor& entry = input_batch[node_id];
+		inputs.push_back(entry.unsqueeze_(0));
+	}
+
+	auto drive_net_output = drive_net->forward(inputs).toTuple()->elements();
+
+	auto value_batch = drive_net_output[VALUE].toTensor();
+	auto acc_pi_batch = drive_net_output[ACC_PI].toTensor();
+	auto acc_mu_batch = drive_net_output[ACC_MU].toTensor();
+	auto acc_sigma_batch = drive_net_output[ACC_SIGMA].toTensor();
+	auto ang_batch = drive_net_output[ANG].toTensor();
+
+    auto value_double = value_batch.accessor<float, 2>();
+
+	int node_id = -1;
 	for (std::map<OBS_TYPE, despot::VNode* >::iterator it = vnodes.begin();
 		        it != vnodes.end(); it++) {
 		despot::VNode* vnode = it->second;
+		node_id ++;
 
-		vector<double> dummy_action_probs;
-		double dummy_value;
+		auto acc_pi = acc_pi_batch[node_id];
+		auto acc_mu = acc_mu_batch[node_id];
+		auto acc_sigma = acc_sigma_batch[node_id];
+		auto ang = ang_batch[node_id];
+
+		// TODO: Send nn_input_images_ to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
+
+		int num_accs = 2*ModelParams::NumAcc+1;
+		at::Tensor acc_candiates = at::ones({num_accs, 1}, at::kFloat);
+		for (int acc = 0;  acc < num_accs; acc ++){
+			acc_candiates[acc][0] = ped_model->GetAcceleration(acc);
+		}
+
+		int num_modes = acc_pi.size(0);
+
+		auto acc_pi_actions = acc_pi.unsqueeze(0).expand({num_accs, num_modes});
+		auto acc_mu_actions = acc_mu.unsqueeze(0).expand({num_accs, num_modes, 1});
+		auto acc_sigma_actions = acc_sigma.unsqueeze(0).expand({num_accs, num_modes, 1});
+
+		auto acc_probs_Tensor = gm_pdf(acc_pi_actions, acc_sigma_actions, acc_mu_actions, acc_candiates);
+
+        auto steer_probs_Tensor = at::_softmax(ang, 0, false);
+
+	    auto acc_probs_double = acc_probs_Tensor.accessor<float, 1>();
+	    auto steer_probs_double = steer_probs_Tensor.accessor<float, 1>();
 
 		// Update the values in the vnode
-		for(int i = 0; i< dummy_action_probs.size(); i++){
-			vnode->prior_action_probs(i, dummy_action_probs[i]);
+		for (int action = 0;  action < ped_model->NumActions(); action ++){
+			int acc_ID=(action%((int)(2*ModelParams::NumAcc+1)));
+			int steerID = FloorIntRobust(action/(2*ModelParams::NumAcc+1));
+
+			float acc_prob = acc_probs_double[acc_ID];
+			float steer_prob = steer_probs_double[steerID];
+
+			float joint_prob = acc_prob * steer_prob;
+			vnode->prior_action_probs(action, joint_prob);
+			// get the steering prob from angs
 		}
-		vnode->prior_value(dummy_value);
+
+		vnode->prior_value(value_double[node_id][0]);
 	}
 }
 
