@@ -13,6 +13,8 @@ struct PedBelief {
     std::vector<std::vector<double>> prob_modes_goals;
     int sample_goal() const;
     int maxlikely_goal() const;
+
+    void sample_goal_mode(int& goal, int& mode) const;
 };
 
 class WorldModel {

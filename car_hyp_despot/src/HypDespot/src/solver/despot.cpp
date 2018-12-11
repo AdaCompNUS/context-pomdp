@@ -4,6 +4,12 @@
 #include <despot/core/builtin_upper_bounds.h>
 
 #include <despot/core/prior.h>
+#include <exception>
+#undef LOG
+#define LOG(lv) \
+if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
+else despot::logging::stream(lv)
+#include <despot/util/logging.h>
 
 using namespace std;
 static double HitCount = 0;
@@ -31,6 +37,8 @@ int DESPOT::num_Obs_element_in_GPU;
 double DESPOT::Initial_root_gap;
 bool DESPOT::Debug_mode = false;
 bool DESPOT::Print_nodes = false;
+
+int max_trial = 1;
 
 MemoryPool<QNode> DESPOT::qnode_pool_;
 MemoryPool<Shared_QNode> DESPOT::s_qnode_pool_;
@@ -462,8 +470,8 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 
 		print_queue.send(root);
 
-		if (DESPOT::Debug_mode || FIX_SCENARIO == 1)
-			if (num_trials == 10)
+//		if (DESPOT::Debug_mode || FIX_SCENARIO == 1)
+			if (num_trials == max_trial)
 				break;
 	} while (used_time * (num_trials + 1.0) / num_trials < timeout
 	         && !Globals::Timeout(Globals::config.time_per_move)
@@ -522,16 +530,20 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 	}
 
 	if(Globals::config.use_prior){
+
 		int prior_ID = 0;
 		if (Globals::config.use_multi_thread_){
 			prior_ID=MapThread(this_thread::get_id());
 		}
+
+		logi << "INFO: Processing root images " << endl;
 		// Convert the current history to nn input images
 		std::vector<torch::Tensor> hist_images = SolverPrior::nn_priors[prior_ID]->Process_history_input();
 
 		map<OBS_TYPE, despot::VNode*> single_node_map;
 		single_node_map[(OBS_TYPE)0] = root;
 
+		logi << "INFO: Querying nn for root " << endl;
 		// Initialize the root node by querying the nn
 		SolverPrior::nn_priors[prior_ID]->Compute(hist_images, single_node_map);
 	}
@@ -643,8 +655,8 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 			num_trials++;
 			Globals::AddSerialTime(used_time);
 
-			if (DESPOT::Debug_mode || FIX_SCENARIO == 1)
-				if (num_trials == 10)
+//			if (DESPOT::Debug_mode || FIX_SCENARIO == 1)
+				if (num_trials == max_trial)
 					break;
 
 		} while (used_time * (num_trials + 1.0) / num_trials < timeout
@@ -787,6 +799,8 @@ ValuedAction DESPOT::Search() {
 	} else {
 		if(Debug_mode)
 			std::srand(0);
+		logi << "[DESPOT::Search] sampling particles for search " << endl;
+
 		particles = belief_->Sample(Globals::config.num_scenarios);
 	}
 	logi << "[DESPOT::Search] Time for sampling " << particles.size()
@@ -868,6 +882,8 @@ ValuedAction DESPOT::Search() {
 			initialized = true;
 		}
 	} else {
+		logi << "[DESPOT::Search] Initializing streams " << endl;
+
 		if (FIX_SCENARIO == 1 || Debug_mode) {
 			std::ifstream fin;
 			string stream_file = "Streams" + std::to_string(step_counter) + ".txt";
@@ -893,14 +909,16 @@ ValuedAction DESPOT::Search() {
 		upper_bound_->Init(streams);
 	}
 
-
 	if (use_GPU_) {
+		logi << "[DESPOT::Search] Copying streams to GPU " << endl;
+
 		PrepareGPUStreams(streams);
 		for (int i = 0; i < particles.size(); i++) {
 			particles[i]->scenario_id = i;
 		}
 	}
 
+	logi << "[DESPOT::Search] Construct tree " << endl;
 
 	root_ = ConstructTree(particles, streams, lower_bound_, upper_bound_,
 	                      model_, history_, Globals::config.time_per_move, &statistics_);
@@ -1876,9 +1894,11 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 		}
 
 		// Process into the bach of tensors
+		logi << "INFO: Processing node images " << endl;
 		std::vector<torch::Tensor> nn_nodes_batch = SolverPrior::nn_priors[prior_ID]->Process_nodes_input(node_states);
 
 		// Query the nn to initialize the priors
+		logi << "INFO: Querying nn for nodes " << endl;
 		SolverPrior::nn_priors[prior_ID]->Compute(nn_nodes_batch, children);
 	}
 
@@ -2035,7 +2055,11 @@ ValuedAction DESPOT::Evaluate(VNode* root, vector<State*>& particles,
 }
 
 void DESPOT::belief(Belief* b) {
-	logi << "[DESPOT::belief] Start: Set initial belief." << endl;
+	try{
+		logi << "[DESPOT::belief] Start: Set initial belief." << endl;
+	}catch (std::exception e) {
+		cerr << "Exception at logi: " << e.what() << endl;
+	}
 	belief_ = b;
 	history_.Truncate(0);
 

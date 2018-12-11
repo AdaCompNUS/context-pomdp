@@ -93,7 +93,7 @@ public:
 
 
 public:
-#ifndef __CUDACC__
+//#ifndef __CUDACC__
 
 	// lets drive
 	virtual void Process_history(int) = 0;
@@ -101,7 +101,7 @@ public:
 	virtual std::vector<torch::Tensor> Process_nodes_input(const std::vector<State*>& vnode_states) = 0;
 //	virtual torch::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images) = 0;
 	virtual void Compute(vector<torch::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode)=0;
-#endif
+//#endif
 
 
 public:

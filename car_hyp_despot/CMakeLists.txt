@@ -49,11 +49,13 @@ set(DESPOT_BUILD_GPUS ON CACHE BOOL "Build GPU despot")
 # message("==============================CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}" )
 
 
-
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -mfpmath=sse")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_30")
 set(CMAKE_MODULE_PATH ${CMAKE_PREFIX_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
+
+set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 #set (CMAKE_CXX_FLAGS "--std=c++11")
 #set (CUDA_PROPAGATE_HOST_FLAGS ON)
@@ -139,6 +141,14 @@ message("@@@@@@@@@@@@@@ before add lib @@@@@@@@@@@@@@")
 
 #set_directory_properties( PROPERTIES COMPILE_DEFINITIONS "" )
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} dummmmmy")
+
+message("==============================CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+
+string(REPLACE " dummmmmy" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+message("==============================CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+
+
 add_library(
 "${PROJECT_NAME}" 
 # SHARED
@@ -219,6 +229,7 @@ STATIC
   src/planner/coord.cpp                  
   src/planner/math_utils.cpp
   src/planner/ped_pomdp.cpp
+  src/planner/neural_prior.cpp
   src/planner/WorldModel.cpp
   src/planner/custom_particle_belief.cpp  
   src/planner/param.cpp

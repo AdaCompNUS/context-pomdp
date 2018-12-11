@@ -153,6 +153,7 @@ public: // lets_drive
 	static int b_use_drive_net_;
 	static int gpu_id_;
     static float time_scale_; // scale down the speed of time, value < 1.0
+    static std::string model_file_;
 
 private:
 

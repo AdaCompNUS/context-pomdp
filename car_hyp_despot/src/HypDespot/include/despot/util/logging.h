@@ -50,6 +50,8 @@ public:
 
 } // namespace despot
 
+//#undef LOG
+
 #define LOG(lv) \
 if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
 else despot::logging::stream(lv)

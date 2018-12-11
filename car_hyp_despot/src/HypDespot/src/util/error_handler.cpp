@@ -13,6 +13,7 @@
 //Sigfault handling
 struct sigaction sa;
 struct sigaction sigact;
+struct sigaction fpeact;
 
 
 static const char *gregs[] = {
@@ -195,8 +196,18 @@ void set_error_handlers() {
 	sa.sa_flags = SA_SIGINFO;
 	sigaction(SIGSEGV, &sa, NULL);
 
+	std::memset((void*) (&sigact), 0, sizeof(struct sigaction));
+	sigemptyset(&sigact.sa_mask);
 	sigact.sa_sigaction = abort_sigaction;
 	sigact.sa_flags = SA_RESTART | SA_SIGINFO;
 	sigaction(SIGABRT, &sigact, NULL);
+
+	std::memset((void*) (&fpeact), 0, sizeof(struct sigaction));
+	sigemptyset(&fpeact.sa_mask);
+	fpeact.sa_sigaction = abort_sigaction;
+	fpeact.sa_flags = SA_RESTART | SA_SIGINFO;
+	sigaction(SIGFPE, &fpeact, NULL);
+
+
 	std::set_unexpected(my_terminate);
 }

@@ -285,6 +285,7 @@ def send_vel_to_unity(sid, data):
         print "no data received"
         sio.emit('empty', data={}, skip_sid=True)
 
+import argparse
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser()

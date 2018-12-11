@@ -399,6 +399,8 @@ void PlannerBase::OptionParse(option::Option *options, int &num_runs,
 	if (options[E_VERBOSITY])
 		verbosity = atoi(options[E_VERBOSITY].arg);
 	logging::level(verbosity);
+
+	cout << "[CmdLine] Using verbosity level " << logging::level() << endl;
 }
 
 void PlannerBase::InitializeLogger(Logger *&logger,

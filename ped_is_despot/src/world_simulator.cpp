@@ -10,6 +10,14 @@
 #include <ped_is_despot/peds_believes.h>
 #include <nav_msgs/OccupancyGrid.h>
 
+#include "neural_prior.h"
+
+#undef LOG
+#define LOG(lv) \
+if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
+else despot::logging::stream(lv)
+#include <despot/util/logging.h>
+
 WorldStateTracker* SimulatorBase::stateTracker;
 
 WorldModel SimulatorBase::worldModel;
@@ -42,7 +50,7 @@ WorldSimulator::WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model, unsigned se
 		
 	global_frame_id = ModelParams::rosns + "/map";
 
-	cout<<__FUNCTION__<<" global_frame_id: "<<global_frame_id <<" "<< endl;
+	logi<<__FUNCTION__<<" global_frame_id: "<<global_frame_id <<" "<< endl;
 
 
 	ros::NodeHandle n("~");
@@ -69,6 +77,7 @@ WorldSimulator::~WorldSimulator(){
  * Establish connection to simulator or system
  */
 bool WorldSimulator::Connect(){
+	cerr << "DEBUG: Connecting with world" << endl;
 
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1);
     actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
@@ -96,6 +105,9 @@ bool WorldSimulator::Connect(){
  * Initialize or reset the (simulation) environment, return the start state if applicable
  */
 State* WorldSimulator::Initialize(){
+
+	cerr << "DEBUG: Initializing world" << endl;
+
 	safeAction=2;
 	target_speed_=0.0;
 	steering_ = 0.0;
@@ -619,10 +631,13 @@ void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
 }
 
 void receive_map_callback(nav_msgs::OccupancyGrid map){
+	logi << "[receive_map_callback] " << endl;
 
 	for (int i=0;i< SolverPrior::nn_priors.size();i++){
 		PedNeuralSolverPrior * nn_prior = static_cast<PedNeuralSolverPrior *>(SolverPrior::nn_priors[i]);
 		nn_prior->raw_map_ = map;
+		nn_prior->map_received = true;
+		nn_prior->Init();
 	}
 }
 

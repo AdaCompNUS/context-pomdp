@@ -13,6 +13,11 @@
 #include <numeric>
 #include "ped_pomdp.h"
 
+#undef LOG
+#define LOG(lv) \
+if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
+else despot::logging::stream(lv)
+#include <despot/util/logging.h>
 
 using namespace std;
 
@@ -45,7 +50,7 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
     in_front_angle_cos(cos(ModelParams::IN_FRONT_ANGLE_DEG / 180.0 * M_PI)) {
     goal_file_name_ = "null";
 
-    InitPedGoals();
+//    InitPedGoals();
 
 	if (DESPOT::Debug_mode)
 		ModelParams::NOISE_GOAL_ANGLE = 0.000001;
@@ -53,6 +58,7 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
 
 void WorldModel::InitPedGoals(){
 
+	logi << "WorldModel::InitPedGoals\n";
      if(goal_file_name_ == "null"){
         std::cout<<"Using default goals"<<std::endl;
 
@@ -82,7 +88,7 @@ void WorldModel::InitPedGoals(){
 
         if(file.fail()){
             std::cout<<"open goal file failed !!!!!!"<<std::endl;
-            return;
+            exit(-1);
         }
 
         std::string line;
@@ -105,7 +111,7 @@ void WorldModel::InitPedGoals(){
         file.close();
     }
 
-     for(int i=0;i<ModelParams::N_PED_IN; i++){
+     for(int i=0;i<ModelParams::N_PED_WORLD; i++){
     	 vector<COORD> dirs(goals.size());
     	 ped_mean_dirs.push_back(dirs);
      }
@@ -964,6 +970,39 @@ int PedBelief::sample_goal() const {
     return i;
 }
 
+void PedBelief::sample_goal_mode(int& goal, int& mode) const {
+//	logd << "[PedBelief::sample_goal_mode] " << endl;
+
+    double r = Random::RANDOM.NextDouble();
+
+    bool done = false;
+    for (int ped_type = 0 ; ped_type < prob_modes_goals.size() ; ped_type++){
+    	auto& goal_probs = prob_modes_goals[ped_type];
+    	for (int ped_goal = 0 ; ped_goal < goal_probs.size() ; ped_goal++){
+    	    r -= prob_modes_goals[ped_type][ped_goal];
+    		if(r <= 0) {
+    		    goal = ped_goal;
+    		    mode = ped_type;
+    		    done = true;
+    		    break;
+    		}
+    		else{
+			}
+    	}
+    	if (done)
+    		break;
+    }
+
+    if(r > 0) {
+    	logd << "[WARNING]: [PedBelief::sample_goal_mode] execess probability " << r << endl;
+    	goal = 0;
+    	mode = 0;
+    }
+    else{
+//    	logd << "[PedBelief::sample_goal_mode] sampled values " << goal << " " << mode << endl;
+    }
+}
+
 int PedBelief::maxlikely_goal() const {
     double ml = 0;
     int mi = prob_goals.size()-1; // stop intention
@@ -997,14 +1036,28 @@ PomdpState WorldBeliefTracker::sample() {
 	s.num = 0;
     for(int i=0; i < sorted_beliefs.size() && i < ModelParams::N_PED_IN; i++) {
 		auto& p = sorted_beliefs[i];
+
+//		logd << "[WorldBeliefTracker::sample] " << this << "->p:" << &p << endl;
+//		logd << "-prob_goals: " << p.prob_goals << endl;
+//		for (int i=0;i<p.prob_goals.size();i++){
+//			logd << p.prob_goals[i] << " ";
+//		}
+//		logd << "-prob_modes_goals: " << p.prob_modes_goals << endl;
+//		for (int i=0;i<p.prob_modes_goals.size();i++){
+//			logd << p.prob_modes_goals[i] << " ";
+//		}
+
 		if (COORD::EuclideanDistance(p.pos, car.pos) < ModelParams::LASER_RANGE) {
 			s.peds[s.num].pos = p.pos;
-			s.peds[s.num].goal = p.sample_goal();
+//			s.peds[s.num].goal = p.sample_goal();
+			p.sample_goal_mode(s.peds[s.num].goal, s.peds[s.num].mode);
 			s.peds[s.num].id = p.id;
             s.peds[s.num].vel = p.vel;
 			s.num ++;
 		}
     }
+
+//	logd << "[WorldBeliefTracker::sample] done" << endl;
 
     return s;
 }
@@ -1015,6 +1068,8 @@ vector<PomdpState> WorldBeliefTracker::sample(int num) {
 		Random::RANDOM.seed(0);
 
     vector<PomdpState> particles;
+	logd << "[WorldBeliefTracker::sample] Sampling" << endl;
+
     for(int i=0; i<num; i++) {
         particles.push_back(sample());
     }
@@ -1269,6 +1324,9 @@ COORD WorldModel::AttentivePedMeanDir(int ped_id, int goal_id){
 
 void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarStruct& car){
 	int num_ped = peds.size();
+
+	logd << "num_peds in belief tracker: " << num_ped << endl;
+
     int threadID=GetThreadID();
 
     // Construct a new set of agents every time
@@ -1319,6 +1377,11 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 			COORD dir;
 			dir.x = ped_sim_[threadID]->getAgentPosition(i).x() - peds[i].pos.x;
 			dir.y = ped_sim_[threadID]->getAgentPosition(i).y() - peds[i].pos.y;
+
+			logd << "[PrepareAttentivePedMeanDirs] ped_mean_dirs len=" << ped_mean_dirs.size()
+					<< " goal_list len=" << ped_mean_dirs[0].size() << "\n";
+
+			logd << "[PrepareAttentivePedMeanDirs] i=" << i << " goal_id=" << goal_id << "\n";
 
 			ped_mean_dirs[i][goal_id]=dir;
 	    }

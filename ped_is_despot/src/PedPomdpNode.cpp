@@ -13,6 +13,9 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Path.h>
+
+#include "neural_prior.h"
+
 //#include <pomdp_path_planner/GetPomdpPath.h>
 //#include <pomdp_path_planner/PomdpPath.h>
 //#include <ped_navfn/MakeNavPlan.h>
@@ -20,9 +23,7 @@ bool b_load_goal=true; // !!!set to false only for data collection purpose!!!
 
 PedPomdpNode::PedPomdpNode(int argc, char** argv)
 {
-    ROS_INFO("Starting Pedestrian Avoidance ... ");
-
-    
+	ROS_INFO("Starting Pedestrian Avoidance ... ");
 
 	cerr << "DEBUG: Setting up subscription..." << endl;
     ros::NodeHandle nh;
@@ -67,7 +68,14 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 
     n.param("use_drivenet", Controller::b_use_drive_net_, 0);
     n.param("gpu_id", Controller::gpu_id_, 0);
-    n.param<float>("time_scale", Controller::time_scale_, 0);
+    n.param<std::string>("model", Controller::model_file_, "");
+
+    n.param<float>("time_scale", Controller::time_scale_, 1.0);
+
+    cerr << "DEBUG: Params list: " << endl;
+    cerr << "-use_drivenet " << Controller::b_use_drive_net_ << endl;
+    cerr << "-model " << Controller::model_file_ << endl;
+    cerr << "-time_scale " << Controller::time_scale_ << endl;
 
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
 	controller = new Controller(nh, fixed_path, pruning_constant, pathplan_ahead, obstacle_file_name);
@@ -105,17 +113,25 @@ PedPomdpNode::~PedPomdpNode()
 
 int main(int argc, char** argv)
 {
-        cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
+    cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
 
     ros::init(argc, argv, "mdp");
     cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
 
     // raise error for floating point exceptions rather than silently return nan
-    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+//    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+//    feenableexcept(FE_DIVBYZERO | FE_OVERFLOW);
+
     cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
 
     srand(unsigned(time(0)));
         cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
 
-    PedPomdpNode mdp_node(argc, argv);
+	cout << "[Controller] Testing model start" << endl;
+
+	PedNeuralSolverPrior::Test_model("/home/panpan/Unity/DESPOT-Unity/torchscript_version.pt");
+
+	cout << "[Controller] Testing model end" << endl;
+
+	PedPomdpNode mdp_node(argc, argv);
 }

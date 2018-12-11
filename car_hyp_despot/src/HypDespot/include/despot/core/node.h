@@ -53,7 +53,14 @@ protected:
 
 public:
   	double prior_action_probs(int i){return prior_action_probs_[i];}
-  	void prior_action_probs(int i, double v){prior_action_probs_[i]=v;}
+  	void prior_action_probs(int i, double v){
+  		if (prior_action_probs_.size() > i)
+  			prior_action_probs_[i]=v;
+  		else if (prior_action_probs_.size() == i)
+  			prior_action_probs_.push_back(v);
+  		else
+  			assert(false);
+  	}
   	double prior_value(){assert(prior_value_!=DUMMY_VALUE); return prior_value_;}
   	void prior_value(double v){prior_value_ = v;}
 // lets_drive

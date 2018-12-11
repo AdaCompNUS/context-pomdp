@@ -9,13 +9,21 @@
 #include "pomdp_simulator.h"
 
 #include "custom_particle_belief.h"
+#include "neural_prior.h"
 
+#undef LOG
+#define LOG(lv) \
+if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
+else despot::logging::stream(lv)
+#include <despot/util/logging.h>
 
 using namespace std;
 
 int Controller::b_use_drive_net_=0;
 int Controller::gpu_id_=0;
 float Controller::time_scale_ = 1.0;
+std::string Controller::model_file_ = "";
+
 
 static DSPOMDP* ped_pomdp_model;
 static ACT_TYPE action = (ACT_TYPE)(-1);
@@ -124,6 +132,7 @@ nh(_nh), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file
 
 	unity_driving_simulator_ = NULL;
 	pomdp_driving_simulator_ = NULL;
+
 }
 
 
@@ -141,23 +150,36 @@ DSPOMDP* Controller::InitializeModel(option::Option* options) {
 
 
 void Controller::CreateNNPriors(DSPOMDP* model) {
+	cerr << "DEBUG: Creating solver prior " << endl;
+
 	if (Globals::config.use_multi_thread_) {
 		SolverPrior::nn_priors.resize(Globals::config.NUM_THREADS);
 	} else
 		SolverPrior::nn_priors.resize(1);
 
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+		cerr << "DEBUG: Creating prior "<< i << endl;
+
 		SolverPrior::nn_priors[i] =
 				static_cast<PedPomdp*>(model)->CreateSolverPrior(
 						unity_driving_simulator_, "NEURAL", false);
+
+		if (Globals::config.use_prior){
+			assert(model_file_ != "");
+			static_cast<PedNeuralSolverPrior*>(SolverPrior::nn_priors[i])->Load_model(model_file_);
+		}
 	}
+
 	prior_ = SolverPrior::nn_priors[0];
-	logi << "Created solver prior " << typeid(*prior_).name() << endl;
+	cerr << "DEBUG: Created solver prior " << typeid(*prior_).name() << endl;
+//	logi << "Created solver prior " << typeid(*prior_).name() << endl;
+
 }
 
 World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options){
 
 	cerr << "DEBUG: Initializing world" << endl;
+
 
    //Create a custom world as defined and implemented by the user
 	World* world;
@@ -192,7 +214,7 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model, opti
 		break;
 	}
 
-    CreateNNPriors(model);
+   CreateNNPriors(model);
 
    return world;
 }
@@ -203,16 +225,19 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.root_seed=time(NULL);
 
 	Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9 / time_scale_;
-	Globals::config.num_scenarios=1000;
+	Globals::config.num_scenarios=1;
 	Globals::config.discount=1.0; //0.95;
 	Globals::config.sim_len=200/*180*//*10*/; // this is not used
 
 	//Globals::config.pruning_constant= 0.001; // passed as a ROS node param
 
 	Globals::config.useGPU=true;
+	if (b_use_drive_net_ == LETS_DRIVE)
+		Globals::config.useGPU=false;
+
 	Globals::config.GPUid=1;//default GPU
 	Globals::config.use_multi_thread_=true;
-	Globals::config.NUM_THREADS=5;
+	Globals::config.NUM_THREADS=1;
 
 	Globals::config.exploration_mode=UCT;
 	Globals::config.exploration_constant=0.3;
@@ -234,7 +259,7 @@ void Controller::InitializeDefaultParameters() {
 
 //	Globals::config.root_seed=1024;
 
-	logging::level(3);
+	logging::level(4);
 }
 
 
@@ -403,8 +428,11 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 		action = solver->Search().action;
 	}
 	else if (b_use_drive_net_ == LETS_DRIVE){
-		cerr << "DEBUG: Search for action using " <<typeid(*solver).name()<< " with NN prior" << endl;
+		cerr << "DEBUG: Search for action using " <<typeid(*solver).name()<< " with NN prior." << endl;
+		assert(solver->belief());
+		cerr << "DEBUG: Sampling particles" << endl;
 		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(static_cast<const PedPomdp*>(ped_pomdp_model));
+		cerr << "DEBUG: Launch search with NN prior" << endl;
 		action = solver->Search().action;
 	}
 	else if (b_use_drive_net_ == IMITATION){
@@ -484,6 +512,8 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	 * initialize world
 	 * =========================*/
 	World *world = InitializeWorld(world_type, model, options);
+
+	cerr << "DEBUG: End initializing world" << endl;
 	assert(world != NULL);
 
 	/* =========================
