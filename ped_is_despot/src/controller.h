@@ -123,7 +123,7 @@ private:
     double StepReward(PomdpStateWorld& state, int action);
 
 	void publishPlannerPeds(const State &);
-
+	bool getUnityPos();
 public:
 	DSPOMDP* InitializeModel(option::Option* options);
 
@@ -160,5 +160,8 @@ private:
 	SolverPrior* prior_;
 
 	void CreateNNPriors(DSPOMDP* model);
+
+private:
+	Path path_from_topic;
 };
 #endif /* MOMDP_H_ */

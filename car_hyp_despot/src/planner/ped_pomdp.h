@@ -63,7 +63,7 @@ public:
 	const std::vector<int>& ObserveVector(const State& )   const;
 	double ObsProb(uint64_t z, const State& s, int action) const;
 
-	inline int NumActions() const { return (int)(2*ModelParams::NumAcc+1); }
+	inline int NumActions() const { return (int)(2*ModelParams::NumAcc+1) * (ModelParams::NumSteerAngle*2 +1); }
 
 	PomdpState* GreateStartState(string type) const;
 

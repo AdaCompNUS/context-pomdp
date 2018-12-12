@@ -18,6 +18,7 @@ else despot::logging::stream(lv)
 #include <despot/util/logging.h>
 
 using namespace std;
+using namespace despot;
 
 int Controller::b_use_drive_net_=0;
 int Controller::gpu_id_=0;
@@ -122,7 +123,6 @@ nh(_nh), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file
 
     navGoalSub_ = nh.subscribe("navgoal", 1, &Controller::setGoal, this); //receive user input of goal	
 	
-
 	start_goal_pub=nh.advertise<ped_pathplan::StartGoal> ("ped_path_planner/planner/start_goal", 1);//send goal to path planner
     
     //imitation learning
@@ -225,6 +225,7 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.root_seed=time(NULL);
 
 	Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9 / time_scale_;
+
 	Globals::config.num_scenarios=1;
 	Globals::config.discount=1.0; //0.95;
 	Globals::config.sim_len=200/*180*//*10*/; // this is not used
@@ -259,7 +260,10 @@ void Controller::InitializeDefaultParameters() {
 
 //	Globals::config.root_seed=1024;
 
-	logging::level(4);
+	logging::level(3);
+
+	logi << "[default param] time_per_move=" << Globals::config.time_per_move << endl;
+
 }
 
 
@@ -277,6 +281,7 @@ Controller::~Controller()
 void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 	if(fixed_path_ && WorldSimulator::worldModel.path.size()>0)  return;
 
+
 	ped_pathplan::StartGoal startGoal;
 	geometry_msgs::PoseStamped pose;
 	tf::poseStampedTFToMsg(carpose, pose);
@@ -289,6 +294,12 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 	pose.pose.position.y=goaly_;
 	
 	startGoal.goal=pose;
+
+	logi << "Sending goal to path planner " << endl;
+
+	logi << "start: " << startGoal.start.pose.position.x << startGoal.start.pose.position.y << endl;
+	logi << "goal: " << startGoal.goal.pose.position.x << startGoal.goal.pose.position.y << endl;
+
 	start_goal_pub.publish(startGoal);	
 }
 
@@ -298,8 +309,10 @@ void Controller::setGoal(const geometry_msgs::PoseStamped::ConstPtr goal) {
 }
 
 void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
-//	cout<<"receive path from navfn "<<path->poses.size()<<endl;
-	if(fixed_path_ && WorldSimulator::worldModel.path.size()>0) return;
+
+	logi<<"receive path from navfn "<<path->poses.size()<<endl;
+
+	if(fixed_path_ && path_from_topic.size()>0) return;
 
 	if(path->poses.size()==0) return;
 
@@ -314,15 +327,16 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
-	if(pathplan_ahead_>0 && WorldSimulator::worldModel.path.size()>0) {
-        WorldSimulator::worldModel.path.cutjoin(p);
-        auto pi = WorldSimulator::worldModel.path.interpolate();
-        WorldSimulator::worldModel.setPath(pi);
+	if(pathplan_ahead_>0 && path_from_topic.size()>0) {
+		path_from_topic.cutjoin(p);
+		path_from_topic = path_from_topic.interpolate();
+        WorldSimulator::worldModel.setPath(path_from_topic);
 	} else {
-		WorldSimulator::worldModel.setPath(p.interpolate());
+		path_from_topic = p.interpolate();
+		WorldSimulator::worldModel.setPath(path_from_topic);
 	}
 
-	publishPath(path->header.frame_id, WorldSimulator::worldModel.path);
+	publishPath(path->header.frame_id, path_from_topic);
 }
 
 void Controller::publishPath(const string& frame_id, const Path& path) {
@@ -349,6 +363,27 @@ void Controller::publishPath(const string& frame_id, const Path& path) {
 	pathPub_.publish(navpath);
 }
 
+bool Controller::getUnityPos(){
+	logi << "[getUnityPos] Getting car pos from unity..." << endl;
+
+    tf::Stamped<tf::Pose> in_pose, out_pose;
+	in_pose.setIdentity();
+	in_pose.frame_id_ = ModelParams::rosns + "/base_link";
+	assert(unity_driving_simulator_);
+	cout<<"global_frame_id: "<<global_frame_id<<" "<<endl;
+	if(!unity_driving_simulator_->getObjectPose(global_frame_id, in_pose, out_pose)) {
+		cerr<<"transform error within Controller::RunStep"<<endl;
+		cout<<"laser frame "<<in_pose.frame_id_<<endl;
+		ros::Rate err_retry_rate(10);
+        err_retry_rate.sleep();
+        return false; // skip the current step
+	}
+	else
+		sendPathPlanStart(out_pose);
+
+	return true;
+}
+
 bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 	cerr << "DEBUG: Running step" << endl;
@@ -358,20 +393,19 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 	double step_start_t = get_time_second();
 
 	if(simulation_mode_ == UNITY){
-	    tf::Stamped<tf::Pose> in_pose, out_pose;
-		in_pose.setIdentity();
-		in_pose.frame_id_ = ModelParams::rosns + "/base_link";
-		assert(unity_driving_simulator_);
-		cout<<"global_frame_id: "<<global_frame_id<<" "<<endl;
-		if(!unity_driving_simulator_->getObjectPose(global_frame_id, in_pose, out_pose)) {
-			cerr<<"transform error within Controller::RunStep"<<endl;
-			cout<<"laser frame "<<in_pose.frame_id_<<endl;
-			ros::Rate err_retry_rate(10);
-	        err_retry_rate.sleep();
-	        return false; // skip the current step
+		bool unity_ready = getUnityPos();
+
+		if (!unity_ready)
+			return false;
+
+		if (path_from_topic.size()==0){
+			logi << "[RunStep] path topic not ready yet..." << endl;
+			sleep(1);
+			return false;
 		}
-		else
-			sendPathPlanStart(out_pose);
+		else{
+			WorldSimulator::worldModel.path = path_from_topic;
+		}
 	}
 
 	// imitation learning: pause update of car info and path info for imitation data
@@ -478,9 +512,14 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 void Controller::PlanningLoop(Solver*& solver, World* world, Logger* logger) {
 
+    logi << "Executing first step" << endl;
+
+    RunStep(solver, world, logger);
+
 	cerr <<"DEBUG: before entering controlloop"<<endl;
     timer_ = nh.createTimer(ros::Duration(1.0/control_freq/time_scale_),
 			(boost::bind(&Controller::RunStep, this, solver, world, logger)));
+
 }
 
 int Controller::RunPlanning(int argc, char *argv[]) {

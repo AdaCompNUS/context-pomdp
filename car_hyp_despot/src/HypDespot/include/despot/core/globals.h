@@ -65,6 +65,9 @@ inline void PrintLocs() {
 
 /*================ For Hyp-despot ===============*/
 enum MEMORY_MODE { INIT, ALLOC_ROOT, ALLOC, RESET, DESTROY};
+
+enum DRIVING_MODE {NO, IMITATION, LETS_DRIVE};
+
 enum OBS_PARAM
 {
 	OBS_LONG64,

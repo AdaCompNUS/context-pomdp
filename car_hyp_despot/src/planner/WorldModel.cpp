@@ -606,9 +606,9 @@ void WorldModel::RobStep(CarStruct &car, double steering, Random& random) {
 
 void WorldModel::RobStep(CarStruct &car, double steering, double& random) {
 	if(steering!=0){
-        assert(tan(steering)>0);
+        //assert(tan(steering)>0);
 		double TurningRadius = CAR_LENGTH/tan(steering);
-        assert(TurningRadius>0);
+        //assert(TurningRadius>0);
 		double beta= car.vel/freq/TurningRadius;
 		car.pos.x=car.pos.x+TurningRadius*(sin(car.heading_dir+beta)-sin(car.heading_dir));
 		car.pos.y=car.pos.y+TurningRadius*(cos(car.heading_dir)-cos(car.heading_dir+beta));

@@ -731,6 +731,7 @@ void DESPOT::InitLowerBound(VNode* vnode, ScenarioLowerBound* lower_bound,
 	if (Globals::config.use_prior){
 		ValuedAction move;
 		// Initialize the value
+		logi << "[InitLowerBound] Using prior for lower bound value: node at depth " << vnode->depth() << endl;
 		move.value = vnode->prior_value();
 		move.action = -1; // fake action
 	}
@@ -760,7 +761,13 @@ void DESPOT::InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 	//if(vnode->depth()==3)
 	//	cout<<vnode->depth()<<" "<<history.Size()<<" "<<streams.position()<<endl;
 	InitLowerBound(vnode, lower_bound, streams, history, b_init_root);
+
 	InitUpperBound(vnode, upper_bound, streams, history);
+
+	logi << "[InitBounds] node at level " << vnode->depth() <<
+			" neural lb=" << vnode->upper_bound() << " ub=" <<
+			vnode->lower_bound() << endl;
+
 	if (vnode->upper_bound() < vnode->lower_bound()
 	        // close gap because no more search can be done on leaf node
 	        || vnode->depth() == Globals::config.search_depth - 1) {
@@ -919,6 +926,9 @@ ValuedAction DESPOT::Search() {
 	}
 
 	logi << "[DESPOT::Search] Construct tree " << endl;
+
+	logi << "[used param] time_per_move=" << Globals::config.time_per_move << endl;
+
 
 	root_ = ConstructTree(particles, streams, lower_bound_, upper_bound_,
 	                      model_, history_, Globals::config.time_per_move, &statistics_);
@@ -1425,6 +1435,7 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 				CalExplorationValue(qnode);
 		}
 
+		logi << "qnode->upper_bound()= " << qnode->upper_bound(false) << " " << qnode->exploration_bonus << endl;
 		if (qnode->upper_bound(use_exploration_value) > upperstar + 1e-5) {
 			upperstar = qnode->upper_bound(use_exploration_value);
 			astar = action;
@@ -1735,6 +1746,9 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 			qnode = new QNode(vnode, action);
 
 		if (Globals::config.use_prior){
+			logi << "[Expand Vnode] Using prior for children qnode "<< action
+					<< ": vnode at depth " << vnode->depth() << endl;
+
 			qnode->prior_probability(vnode->prior_action_probs(action)/*action_probs[action]*/);
 		}
 
@@ -1894,11 +1908,11 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 		}
 
 		// Process into the bach of tensors
-		logi << "INFO: Processing node images " << endl;
+		logd << "INFO: Processing node images " << endl;
 		std::vector<torch::Tensor> nn_nodes_batch = SolverPrior::nn_priors[prior_ID]->Process_nodes_input(node_states);
 
 		// Query the nn to initialize the priors
-		logi << "INFO: Querying nn for nodes " << endl;
+		logd << "INFO: Querying nn for nodes " << endl;
 		SolverPrior::nn_priors[prior_ID]->Compute(nn_nodes_batch, children);
 	}
 

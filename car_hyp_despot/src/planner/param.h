@@ -4,7 +4,6 @@
 #include<string>
 #include <math.h>
 
-
 namespace ModelParams {
 	const int N_PED_WORLD=200;
 
@@ -41,8 +40,8 @@ namespace ModelParams {
 	const double AccSpeed=1.5;
 	const double NumAcc=1;
 
-	const double MaxSteerAngle=20/180.0*M_PI;
-	const double NumSteerAngle=2;
+	const double MaxSteerAngle=35/180.0*M_PI;
+	const double NumSteerAngle=7;
 	const double angle_rln=MaxSteerAngle/NumSteerAngle; // velocity resolution
 
 	extern std::string rosns;
@@ -78,7 +77,6 @@ namespace ModelParams {
 #define PED_SIZE 0.25f
 #define CAR_EXPAND_SIZE 0.2f
 
-enum{NO, IMITATION, LETS_DRIVE};
 
 #endif
 

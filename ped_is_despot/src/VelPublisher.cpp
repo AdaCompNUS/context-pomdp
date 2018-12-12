@@ -5,6 +5,8 @@
 #include <csignal>
 #include <iostream>
 #include "param.h"
+#include <despot/core/globals.h>
+
 
 const double freq = 10; //10;
 //const double acceleration0 = 0.7;
@@ -34,18 +36,18 @@ public:
     void spin() {
         ros::NodeHandle nh;
 
-        if (b_use_drive_net_ == IMITATION & drive_net_mode == "action"){
+        if (b_use_drive_net_ == despot::IMITATION & drive_net_mode == "action"){
             action_sub = nh.subscribe("cmd_vel_drive_net", 1, &VelPublisher::actionCallBack, this);
         }
-        else if (b_use_drive_net_ == IMITATION & drive_net_mode == "vel"){
+        else if (b_use_drive_net_ == despot::IMITATION & drive_net_mode == "vel"){
             vel_sub = nh.subscribe("cmd_vel_drive_net", 1, &VelPublisher::velCallBack, this);
             // pomdp offers no steering signal
         }
-        else if (b_use_drive_net_ == IMITATION & drive_net_mode == "steer"){
+        else if (b_use_drive_net_ == despot::IMITATION & drive_net_mode == "steer"){
             steer_sub = nh.subscribe("cmd_vel_drive_net", 1, &VelPublisher::steerCallBack, this);
             vel_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::velCallBack, this);
         }
-        else if (b_use_drive_net_ == NO || b_use_drive_net_ == LETS_DRIVE)
+        else if (b_use_drive_net_ == despot::NO || b_use_drive_net_ == despot::LETS_DRIVE)
             action_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::actionCallBack, this);
 
         ros::Timer timer = nh.createTimer(ros::Duration(1 / freq), &VelPublisher::publishSpeed, this);

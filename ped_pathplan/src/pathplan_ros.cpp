@@ -13,6 +13,8 @@ namespace ped_pathplan {
 
     void PathPlanROS::initialize(string name, Costmap2DROS* cmros) {
         if(!initialized) {
+
+        	cout <<"[INFO] initialize ros node" << endl;
             ros::NodeHandle private_nh("~/" + name);
             double steering_limit_deg, yaw_res_deg, cost_steering_deg;
             double discretize_ratio;
@@ -63,7 +65,7 @@ namespace ped_pathplan {
 
 	void PathPlanROS::makePlanAsync(const ped_pathplan::StartGoal::ConstPtr & startGoal) {
 		std::vector<geometry_msgs::PoseStamped> plan;
-		//cout<<"================ makePlanAsync"<<endl;
+		cout<<"================ makePlanAsync"<<endl;
 		makePlan(startGoal->start, startGoal->goal, plan);
 	}
 
