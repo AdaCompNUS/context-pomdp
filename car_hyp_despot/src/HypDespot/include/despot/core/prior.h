@@ -96,11 +96,12 @@ public:
 //#ifndef __CUDACC__
 
 	// lets drive
-	virtual void Process_history(int) = 0;
-	virtual std::vector<torch::Tensor> Process_history_input() = 0;
-	virtual std::vector<torch::Tensor> Process_nodes_input(const std::vector<State*>& vnode_states) = 0;
+	virtual void Process_history(despot::VNode*, int) = 0;
+	virtual std::vector<torch::Tensor> Process_history_input(despot::VNode* cur_node) = 0;
+	virtual std::vector<torch::Tensor> Process_nodes_input(const std::vector<despot::VNode*>& vnodes,
+			const std::vector<State*>& vnode_states) = 0;
 //	virtual torch::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images) = 0;
-	virtual void Compute(vector<torch::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode)=0;
+	virtual void Compute(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode) =0;
 //#endif
 
 

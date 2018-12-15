@@ -19,11 +19,19 @@ TrivialParticleUpperBound::~TrivialParticleUpperBound() {
 }
 
 double TrivialParticleUpperBound::Value(const State& state) const {
+
+	if (Globals::Discount() == 1.0)
+		return model_->GetMaxReward() * Globals::config.sim_len;
+
 	return model_->GetMaxReward() / (1 - Globals::Discount());
 }
 
 double TrivialParticleUpperBound::Value(const vector<State*>& particles,
 	RandomStreams& streams, History& history) const {
+
+	if (Globals::Discount() == 1.0)
+		return State::Weight(particles) * model_->GetMaxReward() * Globals::config.sim_len;
+
 	return State::Weight(particles) * model_->GetMaxReward() / (1 - Globals::Discount());
 }
 

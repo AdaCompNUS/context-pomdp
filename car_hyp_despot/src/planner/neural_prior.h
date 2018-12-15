@@ -37,6 +37,8 @@
 
 using namespace cv;
 
+//class VNode;
+
 //#ifndef __CUDACC__
 
 class PedNeuralSolverPrior:public SolverPrior{
@@ -45,7 +47,7 @@ class PedNeuralSolverPrior:public SolverPrior{
 	COORD point_to_indices(COORD pos, COORD origin, double resolution, int dim) const;
 	void add_in_map(cv::Mat map_tensor, COORD indices, double map_intensity, double map_intensity_scale);
 	std::vector<COORD> get_transformed_car(CarStruct car, COORD origin, double resolution);
-	void Process_states(const vector<PomdpState*>& hist_states, const vector<int> hist_ids);
+	void Process_states(std::vector<despot::VNode*> nodes, const vector<PomdpState*>& hist_states, const vector<int> hist_ids);
 
 	void Process_map(cv::Mat& src_image, at::Tensor& des_tensor, std::string flag);
 
@@ -75,6 +77,10 @@ private:
 	std::vector<at::Tensor> car_hist_tensor_;
 	at::Tensor goal_tensor;
 
+	std::vector<const despot::VNode*> map_hist_links;
+	std::vector<const despot::VNode*> car_hist_links;
+	const despot::VNode* goal_link;
+
 	cv::Mat map_image_;
 	cv::Mat rescaled_map_;
 	std::vector<cv::Mat> map_hist_images_;
@@ -89,14 +95,17 @@ public:
 //
 //	virtual double ComputeValue();
 
-	void Compute(vector<torch::Tensor>& images, map<OBS_TYPE, despot::VNode*>& vnode);
+	void Compute(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode);
+	void ComputeMiniBatch(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode);
 
-	void Process_history(int);
-	std::vector<torch::Tensor> Process_history_input();
+	void Process_history(despot::VNode* cur_node, int);
+	std::vector<torch::Tensor> Process_history_input(despot::VNode* cur_node);
 
-	std::vector<torch::Tensor> Process_nodes_input(const std::vector<State*>& vnode_states);
+	std::vector<torch::Tensor> Process_nodes_input(const std::vector<despot::VNode*>& vnodes, const std::vector<State*>& vnode_states);
 //	at::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images){return torch::zeros({1,1,1});}
-	torch::Tensor Combine_images();
+	torch::Tensor Combine_images(despot::VNode* cur_node);
+
+	void Reuse_history(int new_channel);
 
 public:
 	void Load_model(std::string);

@@ -337,20 +337,20 @@ float DESPOT::CalExplorationValue(int depth) {
 	return Globals::config.exploration_constant_o * Initial_root_gap;
 }
 
-void DESPOT::CalExplorationValue(Shared_QNode* node, int driving_mode){
+void DESPOT::CalExplorationValue(Shared_QNode* node){
 
 	if(Globals::config.exploration_constant>0){
-		if(driving_mode == NO || driving_mode == IMITATION){// UCT
-			node->exploration_bonus= Globals::config.exploration_constant *
+		if(!Globals::config.use_prior){// UCT
+			node->exploration_bonus = Globals::config.exploration_constant *
 				sqrt(log(static_cast<Shared_VNode*>(((QNode*)node)->parent())->visit_count_*
 						max(((QNode*)node)->parent()->Weight()*
 						Globals::config.num_scenarios,1.1))
 				/(node->visit_count_*max(((QNode*)node)->Weight()*
 						Globals::config.num_scenarios,1.1)));
 
-		}else if (driving_mode == LETS_DRIVE) {// PUCT
+		}else if (Globals::config.use_prior) {// PUCT
 
-			logi << "PUCT for qnode at level " << node->parent()->depth() << endl;
+//			logi << "PUCT for qnode at level " << node->parent()->depth() << endl;
 
 			node->exploration_bonus= Globals::config.exploration_constant *
 					node->prior_probability() *
@@ -359,6 +359,11 @@ void DESPOT::CalExplorationValue(Shared_QNode* node, int driving_mode){
 						Globals::config.num_scenarios,1.1)) /
 				((node->visit_count_*max(((QNode*)node)->Weight()*
 						Globals::config.num_scenarios,1.1)) + 1);
+
+//			cout << "PUCT for node " << node << " c_o=" << Globals::config.exploration_constant <<
+//					" visit " << static_cast<Shared_VNode*>(((QNode*)node)->parent())->visit_count_ <<
+//					" num_scenarios " << max(((QNode*)node)->parent()->Weight()*Globals::config.num_scenarios,1.1) <<
+//					" prior " << node->prior_probability() << endl;
 		}
 
 		node->exploration_bonus*=((QNode*)node)->Weight();

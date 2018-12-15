@@ -81,6 +81,9 @@ void WorldModel::InitPedGoals(){
 		};
     }
     else{
+
+        std::cout<<"Using goal file name " << goal_file_name_ <<std::endl;
+
         goals.resize(0);
 
         std::ifstream file;
@@ -548,7 +551,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, 
 	COORD goal;
 
 	if(ped_mode == PED_ATT)
-		goal = ped_mean_dirs[ped_id][goal_id];
+		goal = ped_mean_dirs[ped_id][goal_id] + prev;
 	else{
 		goal = goals[goal_id];
 	}
@@ -562,21 +565,42 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, 
 	// CHECK: beneficial to add back noise?
 	if(debug) cout<<"goal id "<<goal_id<<endl;
 	if (goal.x == -1 && goal.y == -1) {  //stop intention
+		logd <<"stop intention" << endl;
+
 		return (move_dist < sensor_noise) ? 0.4 : 0;
 	} else {
-		if (move_dist < sensor_noise) return 0;
 
-		if(ped_mode == PED_ATT){
-			// TODO: change to guassian around the true next position
-
-		}
-		else{
+		double angle = 0;
+		if (goal_dist > 1e-5 && move_dist > sensor_noise){
 			double cosa = DotProduct(curr.x-prev.x, curr.y-prev.y, goal.x-prev.x, goal.y-prev.y) / (move_dist * goal_dist);
 			if(cosa >1) cosa = 1;
 			else if(cosa < -1) cosa = -1;
-			double angle = acos(cosa);
-			return gaussian_prob(angle, ModelParams::NOISE_GOAL_ANGLE) + K;
+			angle = acos(cosa);
 		}
+		else
+			logd <<"goal_dist=" << goal_dist << " move_dist " << move_dist << endl;
+
+		double angle_prob = gaussian_prob(angle, ModelParams::NOISE_GOAL_ANGLE) + K;
+
+		double vel_error=0;
+		if(ped_mode == PED_ATT){
+			double mean_vel = ped_mean_dirs[ped_id][goal_id].Length();
+			vel_error = move_dist - mean_vel;
+
+			logd <<"ATT angle error=" << angle << endl;
+			logd <<"ATT vel_error=" << vel_error << endl;
+
+		}
+		else{
+			vel_error = move_dist - ModelParams::PED_SPEED/freq;
+
+			logd <<"DIS angle error=" << angle << endl;
+			logd <<"DIS vel_error=" << vel_error << endl;
+
+		}
+
+		double vel_prob = gaussian_prob(vel_error, ModelParams::NOISE_PED_VEL/freq) + K;
+		return angle_prob* vel_prob;
 	}
 }
 
@@ -726,6 +750,7 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
     for(int i=0; i<goals.size(); i++) {
 
     	// Attentive mode
+    	logd << "TEST ATT" << endl;
 		double prob = pedMoveProb(b.pos, curr_ped.pos, curr_ped.id, i, PED_ATT);
 		if(debug) cout << "attentive likelihood " << i << ": " << prob << endl;
         b.prob_modes_goals[PED_ATT][i] *=  prob;
@@ -733,6 +758,7 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 		b.prob_modes_goals[PED_ATT][i] += SMOOTHING / goals.size()/2.0; // CHECK: decrease or increase noise
 
 		// Detracted mode
+    	logd << "TEST DIS" << endl;
 		prob = pedMoveProb(b.pos, curr_ped.pos, curr_ped.id, i, PED_DIS);
 		if(debug) cout << "Detracted likelihood " << i << ": " << prob << endl;
 		b.prob_modes_goals[PED_DIS][i] *=  prob;
@@ -772,8 +798,10 @@ PedBelief WorldModel::initPedBelief(const PedStruct& ped) {
     b.id = ped.id;
     b.pos = ped.pos;
     b.vel = ModelParams::PED_SPEED;
-    for(int i =0 ; i < ModelParams::N_PED_IN; i++){
-    	b.prob_modes_goals.push_back(vector<double>(goals.size(), 1.0/goals.size()));
+//    cout << "PED_DIS + 1= "<< PED_DIS + 1 << endl;
+    int num_types = PED_DIS + 1;
+    for(int i =0 ; i < num_types; i++){
+    	b.prob_modes_goals.push_back(vector<double>(goals.size(), 1.0/goals.size()/num_types));
     }
     return b;
 }
@@ -931,10 +959,13 @@ void WorldBeliefTracker::update() {
 
     model.PrepareAttentivePedMeanDirs(peds, car);
 
+    model.PrintMeanDirs(peds, newpeds);
+
     // update car
     car.pos = stateTracker.carpos;
     car.vel = stateTracker.carvel;
 	car.heading_dir = /*0*/stateTracker.car_heading_dir;
+
 
     // update existing peds
     for(auto& kv : peds) {
@@ -1029,6 +1060,26 @@ void WorldBeliefTracker::printBelief() const {
     }
 }
 
+PomdpState WorldBeliefTracker::text() const{
+	if (logging::level()>=4){
+		for(int i=0; i < sorted_beliefs.size() && i < ModelParams::N_PED_IN; i++) {
+			auto& p = sorted_beliefs[i];
+			cout << "[WorldBeliefTracker::text] " << this << "->p:" << &p << endl;
+			cout << " sorted ped " << i << endl;
+			cout << "-prob_goals: " << p.prob_goals << endl;
+			for (int i=0;i<p.prob_goals.size();i++){
+				cout << p.prob_goals[i] << " ";
+			}
+			cout << "-prob_modes_goals: " << p.prob_modes_goals << endl;
+			for (int i=0;i<p.prob_modes_goals.size();i++){
+				for (int j=0;j<p.prob_modes_goals[i].size();j++){
+					cout << p.prob_modes_goals[i][j] << " ";
+				}
+				cout<< endl;
+			}
+		}
+	}
+}
 PomdpState WorldBeliefTracker::sample() {
     PomdpState s;
     s.car = car;
@@ -1037,15 +1088,7 @@ PomdpState WorldBeliefTracker::sample() {
     for(int i=0; i < sorted_beliefs.size() && i < ModelParams::N_PED_IN; i++) {
 		auto& p = sorted_beliefs[i];
 
-//		logd << "[WorldBeliefTracker::sample] " << this << "->p:" << &p << endl;
-//		logd << "-prob_goals: " << p.prob_goals << endl;
-//		for (int i=0;i<p.prob_goals.size();i++){
-//			logd << p.prob_goals[i] << " ";
-//		}
-//		logd << "-prob_modes_goals: " << p.prob_modes_goals << endl;
-//		for (int i=0;i<p.prob_modes_goals.size();i++){
-//			logd << p.prob_modes_goals[i] << " ";
-//		}
+
 
 		if (COORD::EuclideanDistance(p.pos, car.pos) < ModelParams::LASER_RANGE) {
 			s.peds[s.num].pos = p.pos;
@@ -1197,7 +1240,6 @@ void WorldModel::RVO2PedStep(PomdpStateWorld& state, Random& random){
     	    agent++;
     	}
     }
-
 }
 
 void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarStruct car){
@@ -1321,6 +1363,7 @@ COORD WorldModel::AttentivePedMeanDir(int ped_id, int goal_id){
 	return ped_mean_dirs[ped_id][goal_id];
 }
 
+#include "Vector2.h"
 
 void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarStruct& car){
 	int num_ped = peds.size();
@@ -1356,6 +1399,9 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 	for (size_t i = 0; i < num_ped; ++i) {
 		// For each ego ped
 	    for(int goal_id=0; goal_id<goals.size(); goal_id++) {
+
+	    	RVO::Vector2 ori_pos(ped_sim_[threadID]->getAgentPosition(i).x(),  ped_sim_[threadID]->getAgentPosition(i).y());
+
 			// Set preferred velocity for the ego ped according to goal_id
 			// Leave other pedestrians to have default preferred velocity
 
@@ -1384,7 +1430,48 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 			logd << "[PrepareAttentivePedMeanDirs] i=" << i << " goal_id=" << goal_id << "\n";
 
 			ped_mean_dirs[i][goal_id]=dir;
+
+	    	// reset ped state
+			ped_sim_[threadID]->setAgentPosition(i, ori_pos);
 	    }
+	}
+}
+
+void WorldModel::PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedStruct>& curr_peds){
+	if(logging::level()>=4){
+		int num_ped = old_peds.size();
+
+		for (size_t i = 0; i < 6; ++i) {
+			cout <<"ped "<< i << endl;
+			// For each ego ped
+			auto& old_ped = old_peds[i];
+			auto& cur_ped = curr_peds[i];
+
+			cout << "prev pos: "<< old_ped.pos.x << "," << old_ped.pos.y << endl;
+			cout << "cur pos: "<< cur_ped.pos.x << "," << cur_ped.pos.y << endl;
+
+			COORD dir = cur_ped.pos - old_ped.pos;
+
+			cout << "dir: " << endl;
+			for(int goal_id=0; goal_id<goals.size(); goal_id++) {
+				cout <<goal_id<<"," << dir.x << "," << dir.y << " ";
+			}
+			cout<< endl;
+
+			cout << "Meandir: " << endl;
+		    for(int goal_id=0; goal_id<goals.size(); goal_id++) {
+		    	cout <<goal_id<<","<<ped_mean_dirs[i][goal_id].x << ","<< ped_mean_dirs[i][goal_id].y << " ";
+		    }
+		    cout<< endl;
+
+			cout << "Att probs: " << endl;
+		    for(int goal_id=0; goal_id<goals.size(); goal_id++) {
+				double prob = pedMoveProb(old_ped.pos, cur_ped.pos, cur_ped.id, goal_id, PED_ATT);
+
+				cout <<"prob: "<< goal_id<<","<<prob << endl;
+			}
+		    cout<< endl;
+		}
 	}
 }
 

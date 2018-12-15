@@ -198,6 +198,28 @@ double VNode::utility_upper_bound() const {
 	return utility_upper_bound_;
 }
 
+double VNode::prior_value() {
+	if(prior_value_ != DUMMY_VALUE){
+		return prior_value_;
+	} else {
+		std::cerr << "prior_value_ uninitialized" << std::endl;
+		std::cerr << "node info: depth " << depth() << " parent action "
+				<< parent()->edge();
+
+		int sib_id = 0;
+		for (std::map<OBS_TYPE, VNode*>::iterator it =
+				parent()->children().begin(); it != parent()->children().end();
+				it++) {
+			OBS_TYPE obs = it->first;
+			if (this == it->second)
+				break;
+			sib_id++;
+		}
+		std::cerr << " sib_id " << sib_id << std::endl;
+		exit(1);
+	}
+}
+
 bool VNode::IsLeaf() {
 	return children_.size() == 0;
 }

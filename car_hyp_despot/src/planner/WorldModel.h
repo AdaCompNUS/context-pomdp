@@ -94,6 +94,9 @@ public:
     COORD DistractedPedMeanDir(COORD& ped, int goal_id);
     COORD AttentivePedMeanDir(int ped_id, int goal_id);
     void PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarStruct& car);
+
+    void PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedStruct>& curr_peds);
+
 };
 
 class WorldStateTracker {
@@ -145,11 +148,13 @@ public:
 
     void PrintState(const State& s, ostream& out = cout) const;
     void printBelief() const;
+
+    PomdpState text() const;
 };
 
-enum {
-	PED_ATT,
-	PED_DIS
+enum PED_MODES{
+	PED_ATT=0,
+	PED_DIS=1
 };
 
 double cap_angle(double angle);

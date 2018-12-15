@@ -52,6 +52,10 @@ struct COORD
   static double EuclideanDistance(COORD lhs, COORD rhs);
   static double ManhattanDistance(COORD lhs, COORD rhs);
   
+  double Length(){
+	  return sqrt(x*x + y*y);
+  }
+
 /*
   static int DirectionalDistance(COORD lhs, COORD rhs, int direction);
   enum {

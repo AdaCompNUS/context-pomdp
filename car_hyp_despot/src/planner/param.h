@@ -11,6 +11,8 @@ namespace ModelParams {
 	extern double GOAL_TRAVELLED;
 	extern double VEL_MAX;
 	extern double NOISE_GOAL_ANGLE;
+	extern double NOISE_PED_VEL;
+
 	extern double CRASH_PENALTY;
 	extern double REWARD_FACTOR_VEL;
 	extern double REWARD_BASE_CRASH_VEL;

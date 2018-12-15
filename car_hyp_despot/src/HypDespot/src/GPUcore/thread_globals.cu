@@ -26,6 +26,8 @@ mutex global_mutex;
 //Thread ID mapping
 map<std::thread::id, int > ThreadIdMap;
 
+bool force_print = true;
+
 
 // Parameters for serialized printing in HyP-DESPOT. Typicallly used for debugging purposes.
 ThreadParams::ThreadParams(int dummy){
@@ -225,7 +227,7 @@ template<typename T>
 void Global_print_node(std::thread::id threadIdx,void* node_address,int depth,float step_reward,
 		float value,float ub,float uub, float v_loss,float weight,T edge,float WEU, const char* msg)
 {
-	if(false || /*node_address ==NULL ||*/FIX_SCENARIO==1 || DESPOT::Print_nodes)
+	if(force_print || /*node_address ==NULL ||*/FIX_SCENARIO==1 || DESPOT::Print_nodes)
 	{
 		lock_guard<mutex> lck(global_mutex);
 		int threadID=MapThread(threadIdx);
@@ -286,7 +288,7 @@ void Global_print_child(std::thread::id threadIdx,void* node_address,int depth, 
 }
 void Global_print_expand(std::thread::id threadIdx,void* node_address,int depth, int obs)
 {
-	if(FIX_SCENARIO==1 || DESPOT::Print_nodes)
+	if(force_print || FIX_SCENARIO==1 || DESPOT::Print_nodes)
 	{
 		lock_guard<mutex> lck(global_mutex);
 		int threadID=0;
@@ -312,7 +314,7 @@ void Global_print_queue(std::thread::id threadIdx,void* node_address,bool empty_
 
 void Global_print_down(std::thread::id threadIdx,void* node_address,int depth)
 {
-	if(false)
+	if(force_print)
 	{
 		lock_guard<mutex> lck(global_mutex);
 		int threadID=MapThread(threadIdx);

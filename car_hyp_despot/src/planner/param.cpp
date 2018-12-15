@@ -8,6 +8,7 @@ namespace ModelParams {
 	double BELIEF_SMOOTHING = 0.05;
 	double NOISE_ROBVEL = 0.01;
 	double NOISE_GOAL_ANGLE = 3.14*0.1; //use 0 for debugging
+	double NOISE_PED_VEL = 0.3; //use 0 for debugging
     double NOISE_PED_POS = 0.2; // 0.6;
     double COLLISION_DISTANCE = 1.5;
 	double IN_FRONT_ANGLE_DEG = 181;

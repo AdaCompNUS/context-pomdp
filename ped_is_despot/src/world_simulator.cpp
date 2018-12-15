@@ -342,8 +342,11 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 void WorldSimulator::AddObstacle(){
 
+
 	if(obstacle_file_name_ == "null"){
 		/// for indian_cross
+		cout << "Using default obstacles " << endl;
+
 		std::vector<RVO::Vector2> obstacle[4];
 
 	    obstacle[0].push_back(RVO::Vector2(-4,-4));
@@ -378,6 +381,7 @@ void WorldSimulator::AddObstacle(){
 		    worldModel.ped_sim_[tid]->processObstacles();
 		}
 	} else{
+		cout << "Using obstacle file " << obstacle_file_name_ << endl;
 
 		int NumThreads=1/*Globals::config.NUM_THREADS*/;
 

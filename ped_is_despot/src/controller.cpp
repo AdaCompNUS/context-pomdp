@@ -226,13 +226,14 @@ void Controller::InitializeDefaultParameters() {
 
 	Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9 / time_scale_;
 
-	Globals::config.num_scenarios=1;
+	Globals::config.num_scenarios=3;
 	Globals::config.discount=1.0; //0.95;
 	Globals::config.sim_len=200/*180*//*10*/; // this is not used
 
 	//Globals::config.pruning_constant= 0.001; // passed as a ROS node param
 
 	Globals::config.useGPU=true;
+
 	if (b_use_drive_net_ == LETS_DRIVE)
 		Globals::config.useGPU=false;
 
@@ -400,7 +401,6 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 		if (path_from_topic.size()==0){
 			logi << "[RunStep] path topic not ready yet..." << endl;
-			sleep(1);
 			return false;
 		}
 		else{
@@ -451,7 +451,9 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 		ped_belief_->publishPedsPrediciton();
 	}
 
-	//ped_belief_->publishBelief();// replaced by publishImitationData
+	unity_driving_simulator_->beliefTracker->text();
+
+	//ped_belief>_->publishBelief();// replaced by publishImitationData
 
 	start_t = get_time_second();
 	ACT_TYPE action;
@@ -513,10 +515,22 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 void Controller::PlanningLoop(Solver*& solver, World* world, Logger* logger) {
 
     logi << "Executing first step" << endl;
+    bool ready = RunStep(solver, world, logger);
 
-    RunStep(solver, world, logger);
+    while(path_from_topic.size()==0){
+    	sleep(1);
+		logi << "Executing second step" << endl;
+		RunStep(solver, world, logger);
+//		timer_ = nh.createTimer(ros::Duration(0.1),
+//					(boost::bind(&Controller::RunStep, this, solver, world, logger)), true); // oneshot
 
-	cerr <<"DEBUG: before entering controlloop"<<endl;
+		ros::spinOnce();
+    }
+
+	RunStep(solver, world, logger);
+
+    sleep(1);
+    cerr <<"DEBUG: before entering controlloop"<<endl;
     timer_ = nh.createTimer(ros::Duration(1.0/control_freq/time_scale_),
 			(boost::bind(&Controller::RunStep, this, solver, world, logger)));
 
@@ -599,7 +613,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	cerr << "DEBUG: Starting rounds" << endl;
 	logger->InitRound(world->GetCurrentState());
 	round_=0; step_=0;
-
+	unity_driving_simulator_->beliefTracker->text();
 	PlanningLoop(solver, world, logger);
 	ros::spin();
 	logger->EndRound();

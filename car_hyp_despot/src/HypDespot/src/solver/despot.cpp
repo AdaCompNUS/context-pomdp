@@ -538,10 +538,10 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 
 		logi << "INFO: Processing root images " << endl;
 		// Convert the current history to nn input images
-		std::vector<torch::Tensor> hist_images = SolverPrior::nn_priors[prior_ID]->Process_history_input();
+		std::vector<torch::Tensor> hist_images = SolverPrior::nn_priors[prior_ID]->Process_history_input(root);
 
-		map<OBS_TYPE, despot::VNode*> single_node_map;
-		single_node_map[(OBS_TYPE)0] = root;
+		vector<despot::VNode*> single_node_map;
+		single_node_map.push_back(root);
 
 		logi << "INFO: Querying nn for root " << endl;
 		// Initialize the root node by querying the nn
@@ -728,21 +728,25 @@ void DESPOT::InitLowerBound(VNode* vnode, ScenarioLowerBound* lower_bound,
 		move.value = SolverPrior::nn_priors[prior_id]->ComputeValue();
 		move.action = -1; // fake action
 	}*/
+	ValuedAction move;
+
 	if (Globals::config.use_prior){
-		ValuedAction move;
 		// Initialize the value
-		logi << "[InitLowerBound] Using prior for lower bound value: node at depth " << vnode->depth() << endl;
+		logd << "[InitLowerBound] Using prior for lower bound value: node "<<vnode<<" at depth " << vnode->depth()
+				<< " value " << vnode->prior_value() << endl;
 		move.value = vnode->prior_value();
 		move.action = -1; // fake action
 	}
 	else{
 		streams.position(vnode->depth());
-		ValuedAction move = lower_bound->Value(vnode->particles(), streams,
+		move = lower_bound->Value(vnode->particles(), streams,
 											   history);
-		move.value *= Globals::Discount(vnode->depth());
-		vnode->default_move(move);
-		vnode->lower_bound(move.value);
 	}
+
+	move.value *= Globals::Discount(vnode->depth());
+
+	vnode->default_move(move);
+	vnode->lower_bound(move.value);
 }
 
 void DESPOT::InitUpperBound(VNode* vnode, ScenarioUpperBound* upper_bound,
@@ -764,9 +768,9 @@ void DESPOT::InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 	InitUpperBound(vnode, upper_bound, streams, history);
 
-	logi << "[InitBounds] node at level " << vnode->depth() <<
-			" neural lb=" << vnode->upper_bound() << " ub=" <<
-			vnode->lower_bound() << endl;
+	logd << "[InitBounds] node "<<vnode<<" at level " << vnode->depth() <<
+			" neural lb=" << vnode->lower_bound() << " ub=" <<
+			vnode->upper_bound() << endl;
 
 	if (vnode->upper_bound() < vnode->lower_bound()
 	        // close gap because no more search can be done on leaf node
@@ -1251,7 +1255,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 	for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
 		QNode* qnode = vnode->Child(action);
 
-		logi << "Children of root node: action: " << qnode->edge() << "  lowerbound: "
+		logd << "Children of root node: action: " << qnode->edge() << "  lowerbound: "
 				     << qnode->lower_bound() << endl;
 
 
@@ -1435,7 +1439,7 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 				CalExplorationValue(qnode);
 		}
 
-		logi << "qnode->upper_bound()= " << qnode->upper_bound(false) << " " << qnode->exploration_bonus << endl;
+		logd << "qnode->upper_bound()= " << qnode->upper_bound(false) << " " << qnode->exploration_bonus << endl;
 		if (qnode->upper_bound(use_exploration_value) > upperstar + 1e-5) {
 			upperstar = qnode->upper_bound(use_exploration_value);
 			astar = action;
@@ -1696,6 +1700,50 @@ VNode* DESPOT::FindBlocker(VNode* vnode) {
 	return cur;
 }
 
+void DESPOT::ComputePrior(vector<QNode*>& qnodes, const DSPOMDP * model){
+	if (Globals::config.use_prior){
+
+		logi << "[ComputePrior] for chilren qnodes" << endl;
+
+		int prior_ID = 0;
+		if (Globals::config.use_prior){
+			if (Globals::config.use_multi_thread_){
+				prior_ID=MapThread(this_thread::get_id());
+			}
+		}
+
+
+		VNode* first_vnode = NULL;
+		vector<VNode*> vnode_collect;
+		std::vector<State*> node_states;
+		for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
+			QNode* qnode = qnodes[action];
+			map<OBS_TYPE, VNode*>& children = qnode->children();
+			for (map<OBS_TYPE, VNode* >::iterator it = children.begin();
+						it != children.end(); it++) {
+				State* particle = it->second->particles()[0];
+				node_states.push_back(particle);
+				vnode_collect.push_back(it->second);
+
+				if (first_vnode == NULL)
+					first_vnode = it->second;
+			}
+		}
+
+		// Process last 3 steps of history
+		SolverPrior::nn_priors[prior_ID]->Process_history(first_vnode, 1); // 1 = PARTIAL
+
+		// Process into the bach of tensors
+		logd << "INFO: Processing node images " << endl;
+		std::vector<torch::Tensor> nn_nodes_batch = SolverPrior::nn_priors[prior_ID]->Process_nodes_input(vnode_collect, node_states);
+
+		// Query the nn and initialize the priors in colleccted nodes
+		logd << "INFO: Querying nn for nodes " << endl;
+		SolverPrior::nn_priors[prior_ID]->Compute(nn_nodes_batch, vnode_collect);
+	}
+
+}
+
 void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
                     ScenarioUpperBound* upper_bound, const DSPOMDP* model,
                     RandomStreams& streams, History& history) {
@@ -1721,19 +1769,6 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 	if (!use_GPU_ || !vnode->PassGPUThreshold())
 		Globals::Global_print_expand(this_thread::get_id(), vnode, vnode->depth(), vnode->edge());
 
-/*
-	vector<double> action_probs; action_probs.resize(0);
-
-	if(Globals::config.use_prior){
-		int ThreadID = 0;
-		if (Globals::config.use_multi_thread_){
-			ThreadID=MapThread(this_thread::get_id());
-		}
-
-		action_probs = SolverPrior::nn_priors[ThreadID]->ComputePreference();
-	}
-*/
-
 	for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
 		logd << " Action " << action << endl;
 
@@ -1746,13 +1781,18 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 			qnode = new QNode(vnode, action);
 
 		if (Globals::config.use_prior){
-			logi << "[Expand Vnode] Using prior for children qnode "<< action
+			logd << "[Expand Vnode] Using prior for children qnode "<< qnode << " action "<< action
 					<< ": vnode at depth " << vnode->depth() << endl;
 
 			qnode->prior_probability(vnode->prior_action_probs(action)/*action_probs[action]*/);
 		}
 
 		children.push_back(qnode);
+	}
+
+	for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
+		QNode* qnode = children[action];
+
 		if (use_GPU_ && vnode->PassGPUThreshold())
 			;
 		else
@@ -1762,6 +1802,16 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 			Expand(qnode, lower_bound, upper_bound, model, streams, history);
 		}
 
+	}
+
+	// lets_drive
+	ComputePrior(children, model);
+
+	if (Globals::config.use_prior){
+		for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
+			QNode* qnode = children[action];
+			InitChildrenBounds(qnode, lower_bound, upper_bound, model, streams, history);
+		}
 	}
 
 	if (use_GPU_ && vnode->PassGPUThreshold())
@@ -1855,6 +1905,7 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 	}
 	step_reward = Globals::Discount(parent->depth()) * step_reward
 	              - Globals::config.pruning_constant;	//pruning_constant is used for regularization
+	qnode->step_reward = step_reward;
 
 	bool doPrint = DESPOT::Print_nodes;
 
@@ -1864,10 +1915,6 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 		cout << "step reward (d= " << parent->depth() + 1 << " ): "
 		     << step_reward / parent->Weight() << endl;
 	}
-
-	double lower_bound = step_reward;
-	double upper_bound = step_reward;
-
 
 	AveRewardTime += Globals::ElapsedTime(start);
 
@@ -1893,39 +1940,32 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 		logd << " New node created!" << endl;
 		children[obs] = vnode;
 	}
+	MakeObsNodeTime += Globals::ElapsedTime(start);
 
-	//lets drive
-	if (Globals::config.use_prior){
-		// Process last 3 steps of history
-//		at::Tensor hist_images = SolverPrior::nn_priors[prior_ID]->Process_history(1);
-		SolverPrior::nn_priors[prior_ID]->Process_history(1); // 1 = PARTIAL
-		// collect the current state for all nodes
-		std::vector<State*> node_states;
-		for (map<OBS_TYPE, vector<State*> >::iterator it = partitions.begin();
-		        it != partitions.end(); it++){
-			State* particle = it->second[0];
-			node_states.push_back(particle);
-		}
 
-		// Process into the bach of tensors
-		logd << "INFO: Processing node images " << endl;
-		std::vector<torch::Tensor> nn_nodes_batch = SolverPrior::nn_priors[prior_ID]->Process_nodes_input(node_states);
+	if (!Globals::config.use_prior)
+		InitChildrenBounds(qnode, lb, ub, model, streams, history);
+}
 
-		// Query the nn to initialize the priors
-		logd << "INFO: Querying nn for nodes " << endl;
-		SolverPrior::nn_priors[prior_ID]->Compute(nn_nodes_batch, children);
-	}
+void DESPOT::InitChildrenBounds(QNode* qnode, ScenarioLowerBound* lb,
+                    ScenarioUpperBound* ub, const DSPOMDP* model, RandomStreams& streams,
+                    History& history) {
 
-	for (map<OBS_TYPE, vector<State*> >::iterator it = partitions.begin();
-		        it != partitions.end(); it++) {
+	logd << "[InitChildrenBounds] for all qnodes" << endl;
+
+	bool doPrint = DESPOT::Print_nodes;
+
+	double lower_bound = qnode->step_reward;
+	double upper_bound = qnode->step_reward;
+
+	auto children = qnode->children();
+	for (map<OBS_TYPE, VNode* >::iterator it = children.begin();
+		        it != children.end(); it++) {
 		OBS_TYPE obs = it->first;
 		VNode* vnode = children[obs];
 		auto start1 = Time::now();
 
 		history.Add(qnode->edge(), obs);
-		if (Globals::config.use_prior){
-			SolverPrior::nn_priors[prior_ID]->Add_in_search(qnode->edge(), vnode->particles()[0]);
-		}
 
 		EnableDebugInfo(vnode, qnode);
 
@@ -1934,9 +1974,6 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 		DisableDebugInfo();
 
 		history.RemoveLast();
-		if(Globals::config.use_prior){
-			SolverPrior::nn_priors[prior_ID]->PopLast(true);
-		}
 
 		logd << " New node's bounds: (" << vnode->lower_bound() << ", "
 		     << vnode->upper_bound() << ")" << endl;
@@ -1965,10 +2002,8 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 		InitBoundTime += Globals::ElapsedTime(start1);
 	}
 
-	MakeObsNodeTime += Globals::ElapsedTime(start);
 	qnode->Weight();//just to initialize the weight
 
-	qnode->step_reward = step_reward;
 	qnode->lower_bound(lower_bound);
 	qnode->upper_bound(upper_bound);
 	qnode->utility_upper_bound(upper_bound + Globals::config.pruning_constant);
@@ -1976,15 +2011,13 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 	qnode->default_value = lower_bound; // for debugging
 	if (FIX_SCENARIO == 1 || doPrint) {
 		cout.precision(10);
-		cout << " [CPU Qnode] New qnode's bounds: (d= " << parent->depth() + 1
+		cout << " [CPU Qnode] New qnode's bounds: (d= " << qnode->parent()->depth() + 1
 		     << " ,action=" << qnode->edge() << ", lb= "
 		     << qnode->lower_bound() / qnode->Weight() << " ,ub= "
 		     << qnode->upper_bound() / qnode->Weight() << " ,uub= "
 		     << qnode->utility_upper_bound() / qnode->Weight()
 		     << " ,weight= " << qnode->Weight() << " )" << endl;
 	}
-
-	TotalExpansionTime += Globals::ElapsedTime(totalstart);
 }
 void DESPOT::PrintCPUTime(int num_searches) {
 	cout.precision(5);

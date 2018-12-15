@@ -551,9 +551,12 @@ void PedPomdp::PrintParticles(const vector<State*> particles, ostream& out) cons
 	cout << "Particles for planning:" << endl;
 	double goal_count[ModelParams::N_PED_IN][10] = {{0}};
 	double q_goal_count[ModelParams::N_PED_IN][10] = {{0}}; //without weight, it is q;
+
+	double type_count[ModelParams::N_PED_IN][PED_DIS+1] = {{0}};
+
 	double q_single_weight;
 	q_single_weight = 1.0 / particles.size();
-	cout << "Current Belief" << endl;
+	cout << "Current Belief with " << particles.size() << " particles" << endl;
 	if (particles.size() == 0)
 		return;
 	const PomdpState* pomdp_state = static_cast<const PomdpState*>(particles.at(0));
@@ -570,6 +573,7 @@ void PedPomdp::PrintParticles(const vector<State*> particles, ostream& out) cons
 		for (int j = 0; j < pomdp_state->num; j ++) {
 			goal_count[j][pomdp_state->peds[j].goal] += particles[i]->weight;
 			q_goal_count[j][pomdp_state->peds[j].goal] += q_single_weight;
+			type_count[j][pomdp_state->peds[j].mode] += particles[i]->weight;
 		}
 	}
 
@@ -579,15 +583,19 @@ void PedPomdp::PrintParticles(const vector<State*> particles, ostream& out) cons
 			cout << (goal_count[j][i] + 0.0) << " ";
 		}
 		cout << endl;
-	}
-
-	cout << "<><><> q:" << endl;
-	for (int j = 0; j < 6; j ++) {
-		cout << "Ped " << pomdp_state->peds[j].id << " Belief is ";
-		for (int i = 0; i < world_model->goals.size(); i ++) {
-			cout << (q_goal_count[j][i] + 0.0) << " ";
+		for (int i = 0; i < PED_DIS + 1; i ++) {
+			cout << (type_count[j][i] + 0.0) << " ";
 		}
 		cout << endl;
+	}
+
+	logd << "<><><> q:" << endl;
+	for (int j = 0; j < 6; j ++) {
+		logd << "Ped " << pomdp_state->peds[j].id << " Belief is ";
+		for (int i = 0; i < world_model->goals.size(); i ++) {
+			logd << (q_goal_count[j][i] + 0.0) << " ";
+		}
+		logd << endl;
 	}
 
 	cout << "******** end of scenario belief********" << endl;
@@ -872,6 +880,17 @@ double PedPomdp::GetAcceleration(ACT_TYPE action, bool debug) const{
 		cout<<"[GetAcceleration] (acc_ID, noirmalized_acc, shifted_acc)="
 		<<"("<<acc_ID<<","<<normalized_acc<<","<<shifted_acc<<")"<<endl;
 	return shifted_acc*ModelParams::AccSpeed;
+}
+
+
+double PedPomdp::GetAccelerationNoramlized(ACT_TYPE action, bool debug) const{
+	double acc_ID=(action%((int)(2*ModelParams::NumAcc+1)));
+	double normalized_acc=acc_ID/ModelParams::NumAcc;
+	double shifted_acc=normalized_acc-1;
+	if(debug)
+		cout<<"[GetAcceleration] (acc_ID, noirmalized_acc, shifted_acc)="
+		<<"("<<acc_ID<<","<<normalized_acc<<","<<shifted_acc<<")"<<endl;
+	return shifted_acc;
 }
 
 

@@ -61,7 +61,7 @@ public:
   		else
   			assert(false);
   	}
-  	double prior_value(){assert(prior_value_!=DUMMY_VALUE); return prior_value_;}
+	double prior_value();
   	void prior_value(double v){prior_value_ = v;}
 // lets_drive
 
@@ -192,6 +192,7 @@ public:
 	double prior_probability() const;
 	//
 };
+
 
 } // namespace despot
 

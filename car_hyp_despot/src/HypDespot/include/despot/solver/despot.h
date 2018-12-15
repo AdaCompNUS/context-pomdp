@@ -182,7 +182,7 @@ protected:
 			MsgQueque<Shared_VNode>& node_queue, MsgQueque<Shared_VNode>& print_queue, int threadID);
 
 	static float CalExplorationValue(int depth);
-	static void CalExplorationValue(Shared_QNode* node, int driving_mode = 0);
+	static void CalExplorationValue(Shared_QNode* node);
 	static void CalExplorationValue(Shared_VNode* node);
 
 	/************** HyP-DESPOT ************/
@@ -210,6 +210,11 @@ public:
 	static MemoryPool<VNode> vnode_pool_;
 	static MemoryPool<Shared_VNode> s_vnode_pool_;
 	/************** HyP-DESPOT ************/
+
+public: // lets_drive
+	static void ComputePrior(vector<QNode*>& children, const DSPOMDP * model);
+	static void InitChildrenBounds(QNode* qnode, ScenarioLowerBound* lower_bound,
+		ScenarioUpperBound* upper_bound, const DSPOMDP* model, RandomStreams& streams, History& history);
 
 };
 
