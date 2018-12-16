@@ -14,6 +14,7 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
 
+
 #include "disabled_util.h"
 #include "despot/interface/pomdp.h"
 #include <despot/core/mdp.h>
@@ -43,6 +44,7 @@ using namespace cv;
 
 class PedNeuralSolverPrior:public SolverPrior{
 	WorldModel& world_model;
+	cuda::GpuMat gImage;
 
 	COORD point_to_indices(COORD pos, COORD origin, double resolution, int dim) const;
 	void add_in_map(cv::Mat map_tensor, COORD indices, double map_intensity, double map_intensity_scale);

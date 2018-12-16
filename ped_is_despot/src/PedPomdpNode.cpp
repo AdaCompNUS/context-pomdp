@@ -129,7 +129,7 @@ int main(int argc, char** argv)
 
 	cout << "[Controller] Testing model start" << endl;
 
-	PedNeuralSolverPrior::Test_model("/home/panpan/Unity/DESPOT-Unity/torchscript_version.pt");
+	PedNeuralSolverPrior::Test_model("/home/yuanfu/Unity/DESPOT-Unity/torchscript_version.pt");
 
 	cout << "[Controller] Testing model end" << endl;
 

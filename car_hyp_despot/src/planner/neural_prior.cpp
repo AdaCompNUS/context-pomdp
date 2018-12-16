@@ -7,6 +7,8 @@
 #include "ped_pomdp.h"
 #include "neural_prior.h"
 
+
+
 #undef LOG
 #define LOG(lv) \
 if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
@@ -423,29 +425,29 @@ void PedNeuralSolverPrior::Process_map(cv::Mat& src_image, at::Tensor& des_tenso
 
 	auto rescaled_image = rescale_image(src_image);
 	double image_min, image_max;
-	cv::minMaxLoc(rescaled_image, &image_min, &image_max);
+//	cv::minMaxLoc(rescaled_image, &image_min, &image_max);
 //	logd << "rescaled min, max " <<  image_min << " "<<image_max << endl;
-	logd << __FUNCTION__<<" rescale " << Globals::ElapsedTime(start) << " s" << endl;
-
-	logd << "rescaled to "<< rescaled_image.size[0] << rescaled_image.size[1] << endl;
+//	logd << __FUNCTION__<<" rescale " << Globals::ElapsedTime(start) << " s" << endl;
+//
+//	logd << "rescaled to "<< rescaled_image.size[0] << rescaled_image.size[1] << endl;
 
 	//if(flag.find("map") != std::string::npos){
 	normalize(rescaled_image);
-	cv::minMaxLoc(rescaled_image, &image_min, &image_max);
+/*		cv::minMaxLoc(rescaled_image, &image_min, &image_max);
 	logd << "normalized min, max " <<  image_min << " "<<image_max << endl;
-	logd << __FUNCTION__<<" normalize " << Globals::ElapsedTime(start) << " s" << endl;
+	logd << __FUNCTION__<<" normalize " << Globals::ElapsedTime(start) << " s" << endl;*/
 	//}
 
 	if(flag.find("map") != std::string::npos){
 
-		cv::minMaxLoc(rescaled_map_, &image_min, &image_max);
+//		cv::minMaxLoc(rescaled_map_, &image_min, &image_max);
 //		logd << "raw map min, max " <<  image_min << " "<<image_max << endl;
 
 		merge_images(rescaled_map_, rescaled_image);
 		logd << __FUNCTION__<<" merge " << Globals::ElapsedTime(start) << " s" << endl;
-		cv::minMaxLoc(rescaled_image, &image_min, &image_max);
-		logd << "merged min, max " <<  image_min << " "<<image_max << endl;
-		logd << "after merge "<< rescaled_image.size[0] << rescaled_image.size[1] << endl;
+//		cv::minMaxLoc(rescaled_image, &image_min, &image_max);
+//		logd << "merged min, max " <<  image_min << " "<<image_max << endl;
+//		logd << "after merge "<< rescaled_image.size[0] << rescaled_image.size[1] << endl;
 	}
 
 	copy_to_tensor(rescaled_image, des_tensor);
@@ -516,6 +518,10 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 			}
 		}
 	}
+	logd << __FUNCTION__<<" Process State Images: " << Globals::ElapsedTime(start) << " s" << endl;
+	start = Time::now();
+
+
 	// DONE: Allocate 1 goal image (a tensor)
 	// DONE: Get path and fill into the goal image
 	//       Refer to python codes: bag_2_hdf5.construct_path_data, bag_2_hdf5.fill_image_with_points
@@ -538,6 +544,10 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 			add_in_map(goal_image_,indices, 1.0, 1.0);
 		}
 	}
+	logd << __FUNCTION__<<" Process Goal Image: " << Globals::ElapsedTime(start) << " s" << endl;
+	start = Time::now();
+
+
 	// DONE: Allocate num_history history images, each for a frame of car state
 	//		 Refer to python codes: bag_2_hdf5.get_transformed_car, fill_car_edges, fill_image_with_points
 	// DONE: get_transformed_car apply the current transformation to the car bounding box
@@ -565,6 +575,8 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 			fill_car_edges(car_hist_images_[hist_channel],transformed_car);
 		}
 	}
+	logd << __FUNCTION__<<" Process Car Images: " << Globals::ElapsedTime(start) << " s" << endl;
+	start = Time::now();
 
 	// DONE: Now we have all the high definition images, scale them down to 32x32
 	//		 Refer to python codes bag_2_hdf5.rescale_image
@@ -586,6 +598,8 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 		map_hist_links[hist_channel] = nodes[i];
 		car_hist_links[hist_channel] = nodes[i];
 	}
+
+	logd << __FUNCTION__<<" Scale Images: " << Globals::ElapsedTime(start) << " s" << endl;
 
 	logd << "[Process_states] done " << endl;
 
@@ -655,38 +669,49 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(despot::VNode* cur_node){
 
 	logd << "[Combine_images] map_hist_tensor_ len = " << map_hist_tensor_.size() << endl;
 
+	auto combined = map_hist_tensor_;
+	combined.push_back(goal_tensor);
+	combined.insert(combined.end(), car_hist_tensor_.begin(), car_hist_tensor_.end());
+
+
 	torch::Tensor result;
-	for (int i = 0; i < num_hist_channels; i++) {
+	result = torch::stack(combined, 0);
 
-		logd << "[Combine_images] map_hist_tensor_[" << i << "].unsqueeze(0) dim = "
-				<< map_hist_tensor_[i].unsqueeze(0).sizes()<< endl;
 
-		if (i==0)
-			result = map_hist_tensor_[i].unsqueeze(0);
-		else{
-
-			result = torch::cat({result, map_hist_tensor_[i].unsqueeze(0)}, 0);
-			logd << "[Combine_images] result[" << i << "] dim = "
-								<< result.sizes()<< endl;
-//			result = result.squeeze(0);
+//	auto start1 = Time::now();
+//	for (int i = 0; i < num_hist_channels; i++) {
+//
+//		logd << "[Combine_images] map_hist_tensor_[" << i << "].unsqueeze(0) dim = "
+//				<< map_hist_tensor_[i].unsqueeze(0).sizes()<< endl;
+//
+//		if (i==0)
+//			result = map_hist_tensor_[i].unsqueeze(0);
+//		else{
+//
+//			result = torch::cat({result, map_hist_tensor_[i].unsqueeze(0)}, 0);
 //			logd << "[Combine_images] result[" << i << "] dim = "
 //								<< result.sizes()<< endl;
-		}
-	}
-
-	logd << "[Combine_images] goal_tensor dim = "
-				<< goal_tensor.sizes()<< endl;
-
-	result = torch::cat({result, goal_tensor.unsqueeze(0)}, 0);
-
-	for (int i = 0; i < num_hist_channels; i++) {
-		logd << "[Combine_images] car_hist_tensor_[" << i << "] dim = "
-					<< car_hist_tensor_[i].sizes()<< endl;
-
-		result = torch::cat({result, car_hist_tensor_[i].unsqueeze(0)}, 0);
-		logd << "[Combine_images] result[" << i << "] dim = "
-										<< result.sizes()<< endl;
-	}
+////			result = result.squeeze(0);
+////			logd << "[Combine_images] result[" << i << "] dim = "
+////								<< result.sizes()<< endl;
+//		}
+//	}
+//
+////  logi << __FUNCTION__<<" " << Globals::ElapsedTime(start1) << " s" << endl;
+//
+//	logd << "[Combine_images] goal_tensor dim = "
+//				<< goal_tensor.sizes()<< endl;
+//
+//	result = torch::cat({result, goal_tensor.unsqueeze(0)}, 0);
+//
+//	for (int i = 0; i < num_hist_channels; i++) {
+//		logd << "[Combine_images] car_hist_tensor_[" << i << "] dim = "
+//					<< car_hist_tensor_[i].sizes()<< endl;
+//
+//		result = torch::cat({result, car_hist_tensor_[i].unsqueeze(0)}, 0);
+//		logd << "[Combine_images] result[" << i << "] dim = "
+//										<< result.sizes()<< endl;
+//	}
 
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 
@@ -748,19 +773,19 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 	std::vector<torch::jit::IValue> inputs;
 
 	if(true){
-		torch::Tensor input_tensor = input_batch[0].unsqueeze(0).to(at::kCUDA);
+		torch::Tensor input_tensor;
 
 		logd << "[Compute] input_tensor dim = \n"
 							<< input_tensor.sizes()<< endl;
 
-		for (int node_id = 1; node_id< input_batch.size(); node_id++){
+		/*for (int node_id = 1; node_id< input_batch.size(); node_id++){
 			logd << "here\n";
 			input_tensor = torch::cat( {input_tensor,input_batch[node_id].unsqueeze(0).to(at::kCUDA)}, 0);
 
 			logd << "[Compute] input_tensor dim = "
 								<< input_tensor.sizes()<< endl;
-		}
-
+		}*/
+		input_tensor = torch::stack(input_batch, 0);
 		logd << "[Compute] contiguous \n";
 
 		input_tensor= input_tensor.contiguous();
@@ -803,7 +828,7 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 	value_batch = value_batch.squeeze(1);
     auto value_double = value_batch.accessor<float, 1>();
 
-	logi << "Get value output " << value_batch << endl;
+	logd << "Get value output " << value_batch << endl;
 
     logd << "[Compute] Updating prior with nn outputs " << endl;
 
@@ -1035,7 +1060,7 @@ std::vector<torch::Tensor> PedNeuralSolverPrior::Process_history_input(despot::V
 
 
 void PedNeuralSolverPrior::Test_model(string path){
-	logd << "[Test_model] Testing model" << endl;
+	logi << "[Test_model] Testing model "<< path << endl;
 
 	auto net = torch::jit::load(path);
     net->to(at::kCUDA);
