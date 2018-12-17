@@ -734,7 +734,7 @@ void DESPOT::InitLowerBound(VNode* vnode, ScenarioLowerBound* lower_bound,
 		// Initialize the value
 		logd << "[InitLowerBound] Using prior for lower bound value: node "<<vnode<<" at depth " << vnode->depth()
 				<< " value " << vnode->prior_value() << endl;
-		move.value = vnode->prior_value();
+		move.value = vnode->prior_value() * vnode->Weight();
 		move.action = -1; // fake action
 	}
 	else{
@@ -1713,7 +1713,7 @@ void DESPOT::ComputePrior(vector<QNode*>& qnodes, const DSPOMDP * model){
 		}
 
 
-		VNode* first_vnode = NULL;
+//		VNode* first_vnode = NULL;
 		vector<VNode*> vnode_collect;
 		std::vector<State*> node_states;
 		for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
@@ -1725,13 +1725,13 @@ void DESPOT::ComputePrior(vector<QNode*>& qnodes, const DSPOMDP * model){
 				node_states.push_back(particle);
 				vnode_collect.push_back(it->second);
 
-				if (first_vnode == NULL)
-					first_vnode = it->second;
+//				if (first_vnode == NULL)
+//					first_vnode = it->second;
 			}
 		}
 
 		// Process last 3 steps of history
-		SolverPrior::nn_priors[prior_ID]->Process_history(first_vnode, 1); // 1 = PARTIAL
+		SolverPrior::nn_priors[prior_ID]->Process_history(qnodes[0]->parent(), 1); // 1 = PARTIAL
 
 		// Process into the bach of tensors
 		logd << "INFO: Processing node images " << endl;

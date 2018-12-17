@@ -44,7 +44,7 @@ using namespace cv;
 
 class PedNeuralSolverPrior:public SolverPrior{
 	WorldModel& world_model;
-	cuda::GpuMat gImage;
+//	cuda::GpuMat gImage;
 
 	COORD point_to_indices(COORD pos, COORD origin, double resolution, int dim) const;
 	void add_in_map(cv::Mat map_tensor, COORD indices, double map_intensity, double map_intensity_scale);
@@ -108,7 +108,8 @@ public:
 	torch::Tensor Combine_images(despot::VNode* cur_node);
 
 	void Reuse_history(int new_channel);
-
+	void get_history(int mode, despot::VNode* cur_node, std::vector<despot::VNode*>& parents_to_fix_images,
+			vector<PomdpState*>& hist_states, vector<int>& hist_ids);
 public:
 	void Load_model(std::string);
 	void Init();

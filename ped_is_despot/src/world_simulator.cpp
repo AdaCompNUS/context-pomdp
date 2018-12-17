@@ -21,6 +21,7 @@ else despot::logging::stream(lv)
 WorldStateTracker* SimulatorBase::stateTracker;
 
 WorldModel SimulatorBase::worldModel;
+bool SimulatorBase::ped_data_ready = false;
 
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector);
@@ -190,6 +191,10 @@ State* WorldSimulator::GetCurrentState() const{
 			//current_state.peds[i] = world_state.peds[sorted_peds[i].second.id];
 		}
 	}
+
+	if (logging::level()>=4)
+		static_cast<PedPomdp*>(model_)->PrintWorldState(current_state);
+
 	return &current_state;
 }
 
@@ -632,6 +637,8 @@ void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
 	}
 	//cout<<endl;
 	//pc_pub.publish(pc);
+
+	SimulatorBase::ped_data_ready = true;
 }
 
 void receive_map_callback(nav_msgs::OccupancyGrid map){
@@ -740,7 +747,7 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_T
     p_IL_data.action_reward.linear.y=reward;
     p_IL_data.action_reward.linear.z=cmd_vel;
 
-	p_IL_data.action_reward.linear.x = static_cast<PedPomdp*>(model_)->GetAcceleration(safeAction);
+	p_IL_data.action_reward.linear.x = static_cast<PedPomdp*>(model_)->GetAccelerationID(safeAction);
 	p_IL_data.action_reward.angular.x = static_cast<PedPomdp*>(model_)->GetSteering(safeAction);
 
     IL_pub.publish(p_IL_data);

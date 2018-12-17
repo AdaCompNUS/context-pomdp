@@ -55,7 +55,6 @@ class POMDPSimulator;
 
 class PedPomdpBelief;
 
-
 using namespace std;
 
 class Controller: public Planner
@@ -160,7 +159,7 @@ private:
 	SolverPrior* prior_;
 
 	void CreateNNPriors(DSPOMDP* model);
-
+	bool RunPreStep(Solver* solver, World* world, Logger* logger);
 private:
 	Path path_from_topic;
 };

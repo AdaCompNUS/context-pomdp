@@ -12,6 +12,7 @@ using namespace std;
 using namespace despot;
 struct PedStruct {
 	PedStruct(){
+		id = -1;
         vel = ModelParams::PED_SPEED;
     }
 	PedStruct(COORD a, int b, int c) {

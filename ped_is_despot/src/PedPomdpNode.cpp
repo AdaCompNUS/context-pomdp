@@ -108,8 +108,11 @@ PedPomdpNode::~PedPomdpNode()
     //controller->~ped_momdp();
 }
 
-
-
+bool is_file_exist(string fileName)
+{
+    std::ifstream infile(fileName);
+    return infile.good();
+}
 
 int main(int argc, char** argv)
 {
@@ -129,7 +132,12 @@ int main(int argc, char** argv)
 
 	cout << "[Controller] Testing model start" << endl;
 
-	PedNeuralSolverPrior::Test_model("/home/yuanfu/Unity/DESPOT-Unity/torchscript_version.pt");
+	string test_model_name = "/home/yuanfu/Unity/DESPOT-Unity/torchscript_version.pt";
+	if( !is_file_exist(test_model_name)){
+		test_model_name = "/home/panpan/Unity/DESPOT-Unity/torchscript_version.pt";
+	}
+
+	PedNeuralSolverPrior::Test_model(test_model_name);
 
 	cout << "[Controller] Testing model end" << endl;
 

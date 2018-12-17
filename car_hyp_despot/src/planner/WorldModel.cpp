@@ -550,8 +550,12 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, 
 
 	COORD goal;
 
-	if(ped_mode == PED_ATT)
+	if(ped_mode == PED_ATT){
+
+		assert(ped_id <ped_mean_dirs.size());
+		assert(goal_id <ped_mean_dirs[0].size());
 		goal = ped_mean_dirs[ped_id][goal_id] + prev;
+	}
 	else{
 		goal = goals[goal_id];
 	}
@@ -1061,8 +1065,8 @@ void WorldBeliefTracker::printBelief() const {
 }
 
 PomdpState WorldBeliefTracker::text() const{
-	if (logging::level()>=4){
-		for(int i=0; i < sorted_beliefs.size() && i < ModelParams::N_PED_IN; i++) {
+	if (logging::level()>=3){
+		for(int i=0; i < sorted_beliefs.size() && i < min(6,ModelParams::N_PED_IN); i++) {
 			auto& p = sorted_beliefs[i];
 			cout << "[WorldBeliefTracker::text] " << this << "->p:" << &p << endl;
 			cout << " sorted ped " << i << endl;
@@ -1087,8 +1091,6 @@ PomdpState WorldBeliefTracker::sample() {
 	s.num = 0;
     for(int i=0; i < sorted_beliefs.size() && i < ModelParams::N_PED_IN; i++) {
 		auto& p = sorted_beliefs[i];
-
-
 
 		if (COORD::EuclideanDistance(p.pos, car.pos) < ModelParams::LASER_RANGE) {
 			s.peds[s.num].pos = p.pos;
@@ -1466,6 +1468,8 @@ void WorldModel::PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedSt
 
 			cout << "Att probs: " << endl;
 		    for(int goal_id=0; goal_id<goals.size(); goal_id++) {
+		    	logd <<"ped, goal, ped_mean_dirs.size() =" << cur_ped.id << " "
+		    					<< goal_id <<" "<< ped_mean_dirs.size() << endl;
 				double prob = pedMoveProb(old_ped.pos, cur_ped.pos, cur_ped.id, goal_id, PED_ATT);
 
 				cout <<"prob: "<< goal_id<<","<<prob << endl;

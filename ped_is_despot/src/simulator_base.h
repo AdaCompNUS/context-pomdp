@@ -88,6 +88,8 @@ public:
 	virtual void publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float vel) =0;
 
 
+public:
+	static bool ped_data_ready;
 };
 
 

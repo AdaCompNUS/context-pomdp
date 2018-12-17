@@ -10,7 +10,7 @@ using namespace despot;
 __device__ __managed__ bool GPUDoPrint=false;
 
 bool CPUDoPrint = false;
-int CPUPrintPID = 49;
+int CPUPrintPID = 0;
 
 namespace despot {
 

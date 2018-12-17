@@ -80,10 +80,10 @@ public:
 void PedPomdp::InitRVOSetting() {
 	use_rvo_in_search = false;
 	use_rvo_in_simulation = true;
-	if (use_rvo_in_simulation)
-		ModelParams::LASER_RANGE = 8.0;
-	else
-		ModelParams::LASER_RANGE = 8.0;
+//	if (use_rvo_in_simulation)
+//		ModelParams::LASER_RANGE = 8.0;
+//	else
+//		ModelParams::LASER_RANGE = 8.0;
 }
 
 PedPomdp::PedPomdp(WorldModel &model_) :
@@ -872,6 +872,10 @@ State* PedPomdp::CopyForSearch(const State* particle) const {
 }
 
 
+double PedPomdp::GetAccelerationID(ACT_TYPE action, bool debug) const{
+	return (action%((int)(2*ModelParams::NumAcc+1)));
+}
+
 double PedPomdp::GetAcceleration(ACT_TYPE action, bool debug) const{
 	double acc_ID=(action%((int)(2*ModelParams::NumAcc+1)));
 	double normalized_acc=acc_ID/ModelParams::NumAcc;
@@ -893,6 +897,9 @@ double PedPomdp::GetAccelerationNoramlized(ACT_TYPE action, bool debug) const{
 	return shifted_acc;
 }
 
+double PedPomdp::GetSteeringID(ACT_TYPE action, bool debug) const{
+	return FloorIntRobust(action/(2*ModelParams::NumAcc+1));
+}
 
 double PedPomdp::GetSteering(ACT_TYPE action, bool debug) const{
 	double steer_ID=FloorIntRobust(action/(2*ModelParams::NumAcc+1));

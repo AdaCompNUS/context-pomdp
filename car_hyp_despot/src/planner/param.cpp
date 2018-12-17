@@ -16,7 +16,7 @@ namespace ModelParams {
 
 	double VEL_MAX=1.5;
 
-	double LASER_RANGE = 10.0;
+	double LASER_RANGE = 50.0;
  
 	std::string rosns="";
 	std::string laser_frame="/laser_frame";

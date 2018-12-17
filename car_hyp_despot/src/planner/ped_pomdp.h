@@ -166,9 +166,12 @@ private:
 
 public:
 	// Let's drive
+	double GetAccelerationID(ACT_TYPE action, bool debug=false) const;
 
 	double GetAcceleration(ACT_TYPE action, bool debug=false) const;
 	double GetAccelerationNoramlized(ACT_TYPE action, bool debug=false) const;
+
+	double GetSteeringID(ACT_TYPE action, bool debug=false) const;
 
 	double GetSteering(ACT_TYPE action, bool debug=false) const;
 	static ACT_TYPE GetActionID(double steering, double acc, bool debug=false);

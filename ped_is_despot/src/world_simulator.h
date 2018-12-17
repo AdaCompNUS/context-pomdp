@@ -157,6 +157,5 @@ public:
     
 	void publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float vel);
 
-
 };
 

@@ -382,6 +382,67 @@ bool Controller::getUnityPos(){
 	else
 		sendPathPlanStart(out_pose);
 
+	return true && SimulatorBase::ped_data_ready;
+}
+
+bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
+
+	cerr << "DEBUG: Running step" << endl;
+
+	logger->CheckTargetTime();
+
+	double step_start_t = get_time_second();
+
+	if(simulation_mode_ == UNITY){
+		bool unity_ready = getUnityPos();
+
+		if (!unity_ready)
+			return false;
+	}
+
+	cerr << "DEBUG: Updating belief" << endl;
+
+
+	double start_t = get_time_second();
+//	solver->BeliefUpdate(last_action, last_obs);
+
+	const State* cur_state=world->GetCurrentState();
+	assert(cur_state);
+
+	State* search_state =static_cast<const PedPomdp*>(ped_pomdp_model)->CopyForSearch(cur_state);//create a new state for search
+
+	static_cast<PedPomdpBelief*>(solver->belief())->DeepUpdate(
+			SolverPrior::nn_priors[0]->history_states(),
+			SolverPrior::nn_priors[0]->history_states_for_search(),
+			cur_state,
+			search_state, last_action);
+
+	for(int i=0; i<SolverPrior::nn_priors.size();i++){
+		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
+		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
+	}
+
+	double end_t = get_time_second();
+	double update_time = (end_t - start_t);
+	logi << "[RunStep] Time spent in Update(): " << update_time << endl;
+
+	if(simulation_mode_ == UNITY){
+		unity_driving_simulator_->publishROSState();
+		ped_belief_->publishPedsPrediciton();
+	}
+
+	unity_driving_simulator_->beliefTracker->text();
+
+	if(simulation_mode_ == UNITY){
+		if (path_from_topic.size()==0){
+			logi << "[RunStep] path topic not ready yet..." << endl;
+			return false;
+		}
+		else{
+			WorldSimulator::worldModel.path = path_from_topic;
+		}
+	}
+
 	return true;
 }
 
@@ -411,11 +472,11 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 	// imitation learning: pause update of car info and path info for imitation data
 	switch(simulation_mode_){
 	case UNITY:
-		unity_driving_simulator_->b_update_il = false ; 
+		unity_driving_simulator_->b_update_il = false ;
 
 		break;
 	case POMDP:
-		pomdp_driving_simulator_->b_update_il = false ; 
+		pomdp_driving_simulator_->b_update_il = false ;
 
 		break;
 	}
@@ -441,6 +502,9 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
 	}
+
+	logi << "history len = " << SolverPrior::nn_priors[0]->Size(false) << endl;
+	logi << "history_in_search len = " << SolverPrior::nn_priors[0]->Size(true) << endl;
 
 	double end_t = get_time_second();
 	double update_time = (end_t - start_t);
@@ -485,11 +549,11 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 	// imitation learning: renable data update for imitation data
 	switch(simulation_mode_){
 	case UNITY:
-		unity_driving_simulator_->b_update_il = true ; 
+		unity_driving_simulator_->b_update_il = true ;
 
 		break;
 	case POMDP:
-		pomdp_driving_simulator_->b_update_il = true ; 
+		pomdp_driving_simulator_->b_update_il = true ;
 
 		break;
 	}
@@ -514,22 +578,18 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 void Controller::PlanningLoop(Solver*& solver, World* world, Logger* logger) {
 
-    logi << "Executing first step" << endl;
-    bool ready = RunStep(solver, world, logger);
-
-    while(path_from_topic.size()==0){
+//	sleep(2);
+    while(path_from_topic.size()==0 || SolverPrior::nn_priors[0]->Size(true) < 4){
+    	logi << "Executing pre-step" << endl;
+    	RunPreStep(solver, world, logger);
     	sleep(1);
-		logi << "Executing second step" << endl;
-		RunStep(solver, world, logger);
-//		timer_ = nh.createTimer(ros::Duration(0.1),
-//					(boost::bind(&Controller::RunStep, this, solver, world, logger)), true); // oneshot
-
 		ros::spinOnce();
     }
 
+	logi << "Executing first step" << endl;
+
 	RunStep(solver, world, logger);
 
-    sleep(1);
     cerr <<"DEBUG: before entering controlloop"<<endl;
     timer_ = nh.createTimer(ros::Duration(1.0/control_freq/time_scale_),
 			(boost::bind(&Controller::RunStep, this, solver, world, logger)));
