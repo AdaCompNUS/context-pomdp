@@ -112,6 +112,7 @@ generate_messages(
         geometry_msgs
         # ped_is_despot
         car_hyp_despot
+        query_nn
 )
 
 include_directories(
@@ -131,7 +132,7 @@ FILE(GLOB LIBRVO_SRCS  src/RVO2/src/*.cpp)
 catkin_package(
   INCLUDE_DIRS src/planner/
 #  LIBRARIES ped_path_predictor
-  CATKIN_DEPENDS roscpp #std_msgs
+  CATKIN_DEPENDS roscpp query_nn #std_msgs
   DEPENDS system_lib
 )
 message("@@@@@@@@@@@@@@ before add lib @@@@@@@@@@@@@@")
@@ -328,6 +329,8 @@ message("@@@@@@@@@@@@@@ after add lib @@@@@@@@@@@@@@")
 
 
 add_dependencies("${PROJECT_NAME}" ped_is_despot_generate_messages_cpp)
+add_dependencies("${PROJECT_NAME}" query_nn_generate_messages_cpp)
+
 # add_dependencies("${PROJECT_NAME}" car_hyp_despot_generate_messages_cpp)
 
 #add_compile_options(${PROJECT_NAME}

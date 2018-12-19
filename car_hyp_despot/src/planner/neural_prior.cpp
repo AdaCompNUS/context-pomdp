@@ -7,8 +7,6 @@
 #include "ped_pomdp.h"
 #include "neural_prior.h"
 
-
-
 #undef LOG
 #define LOG(lv) \
 if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
@@ -22,6 +20,10 @@ torch::Device device(torch::kCPU);
 bool use_gpu_for_nn = true;
 
 int init_hist_len = 0;
+
+ros::ServiceClient PedNeuralSolverPrior::nn_client_;
+ros::ServiceClient PedNeuralSolverPrior::nn_client_val_;
+
 
 cv::Mat rescale_image(const cv::Mat& image, double downsample_ratio=0.03125){
 	logd << "[rescale_image]" << endl;
@@ -151,6 +153,12 @@ void print_full(at::Tensor& tensor){
     }
 }
 
+bool is_file_exist(string fileName)
+{
+    std::ifstream infile(fileName);
+    return infile.good();
+}
+
 double value_transform_inverse(double value){
     value = value * value_normalizer;
     return value;
@@ -238,6 +246,7 @@ void PedNeuralSolverPrior::Init(){
 	//		 Init raw_map_ including its properties here
 	//	     Refer to python codes: bag_2_hdf5.parse_map_data_from_dict
 	//		 (map_dict_entry is the raw OccupancyGrid data)
+
 	cerr << "DEBUG: Initializing Map" << endl;
 
 	map_prop_.downsample_ratio = 0.03125;
@@ -333,6 +342,13 @@ PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 
 	map_received = false;
 	drive_net = NULL;
+
+	cerr << "[" << __FUNCTION__<< "] Testing model start" << endl;
+
+	Test_model("");
+
+	cerr << "[" << __FUNCTION__<< "] Testing model end" << endl;
+
 }
 
 void PedNeuralSolverPrior::Load_model(std::string path){
@@ -513,7 +529,7 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 	auto start = Time::now();
 
 	const PedPomdp* pomdp_model = static_cast<const PedPomdp*>(model_);
-	logi << "Processing states, len=" << hist_states.size() << endl;
+	logd << "Processing states, len=" << hist_states.size() << endl;
 
 	for (int i = 0; i < hist_states.size(); i++) {
 
@@ -696,7 +712,7 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(despot::VNode* cur_node){
 
 	try{
 		for (int i=0;i<num_hist_channels; i++){
-			logi << " [Combine_images] hist " << i << " should be depth " << parent->depth() <<
+			logd << " [Combine_images] hist " << i << " should be depth " << parent->depth() <<
 					", get depth "<< car_hist_links[i]->depth()<< endl;
 			assert(car_hist_links[i] == parent || car_hist_links[i] == cur_node);
 			parent = (parent->parent()==NULL)?
@@ -758,7 +774,7 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(despot::VNode* cur_node){
 //										<< result.sizes()<< endl;
 //	}
 
-	logi << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
+	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 
 	return result;
 }
@@ -766,7 +782,8 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(despot::VNode* cur_node){
 int BatchSize = 128;
 
 void PedNeuralSolverPrior::Compute(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
-	cout << "[Compute] get " << vnodes.size() << " nodes" << endl;
+	logi << "[Compute] get " << vnodes.size() << " nodes" << endl;
+	auto start = Time::now();
 
 	if (vnodes.size()>BatchSize){
 		cout << "Executing " << (vnodes.size()-1)/BatchSize << " batches" << endl;
@@ -785,11 +802,18 @@ void PedNeuralSolverPrior::Compute(vector<torch::Tensor>& input_batch, vector<de
 	}
 	else
 		ComputeMiniBatch(input_batch, vnodes);
+
+	logi << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 }
+
+#include "GPU_Car_Drive/GPU_Init.h"
 
 void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
 
 	auto start = Time::now();
+
+	torch::NoGradGuard no_grad;
+//	drive_net->eval();
 
 	// DONE: Send nn_input_images_ to drive_net, and get the policy and value output
 	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
@@ -833,11 +857,14 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 	logd << __FUNCTION__<<" prepare data " << Globals::ElapsedTime(start) << " s" << endl;
 
-	logd << "[Compute] Query " << endl;
+	logi << __FUNCTION__<<" query for "<< input_tensor.sizes() << " data " << endl;
+
+	sync_cuda();
+
+	auto start1 = Time::now();
 
 	auto drive_net_output = drive_net->forward(inputs).toTuple()->elements();
 
-	logd << __FUNCTION__<<" query " << Globals::ElapsedTime(start) << " s" << endl;
 
 	logd << "[Compute] Refracting outputs " << endl;
 
@@ -849,6 +876,8 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 	value_batch = value_batch.squeeze(1);
     auto value_double = value_batch.accessor<float, 1>();
+
+	logi << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
 
 	logd << "Get value output " << value_batch << endl;
 
@@ -1128,31 +1157,308 @@ std::vector<torch::Tensor> PedNeuralSolverPrior::Process_history_input(despot::V
 	return nn_input;
 }
 
+//void PedNeuralSolverPrior::OnDataReady(std::string const& name, sio::message::ptr const& data,bool hasAck, sio::message::ptr &ack_resp){
+//
+//	cout << " [OnDataReady] start" << endl;
+//
+//	auto value = data->get_vector()[0];
+//	auto acc_pi = data->get_vector()[1];
+//	auto acc_mu = data->get_vector()[2];
+//	auto acc_sigma = data->get_vector()[3];
+//
+//	cout << " [OnDataReady] end" << endl;
+//
+//}
 
-void PedNeuralSolverPrior::Test_model(string path){
-	logd << "[Test_model] Testing model "<< path << endl;
 
-	auto net = torch::jit::load(path);
-    net->to(at::kCUDA);
+void PedNeuralSolverPrior::Test_all_srv(int batchsize, int num_guassian_modes, int num_steer_bins){
+	cerr << "Testing all model using ROS service, bs = " << batchsize << endl;
 
-	std::vector<torch::jit::IValue> inputs;
+	ros::NodeHandle n("~");
 
-	auto images = torch::rand({1, 9, 32, 32});
+	nn_client_ = n.serviceClient<query_nn::TensorData>("/query");
 
-    inputs.push_back(images.to(at::kCUDA));
+	cout << "waiting for /query service to be ready" << endl;
 
-	logd << "[Test_model] Query nn for "<< inputs.size() << " tensors of dim" << inputs[0].toTensor().sizes() << endl;
-//	logd << "inputs=\n" << inputs[0] << endl;
+	nn_client_.waitForExistence(ros::DURATION_MAX);
 
+	for (int i =0 ;i< 10 ; i++){
+
+		std::vector<torch::jit::IValue> inputs;
+
+		auto images = torch::ones({batchsize, 9, 32, 32});
+
+		auto start1 = Time::now();
+
+		query_nn::TensorData message;
+
+		message.request.tensor = std::vector<float>(images.data<float>(), images.data<float>() + images.numel());
+
+		message.request.batchsize = batchsize;
+
+		message.request.mode = "all";
+
+		cout << "calling service query" << endl;
+
+
+		if (nn_client_.call(message))
+		{
+			vector<float> value = message.response.value;
+			vector<float> acc_pi = message.response.acc_pi;
+			vector<float> acc_mu = message.response.acc_mu;
+			vector<float> acc_sigma = message.response.acc_sigma;
+			vector<float> ang = message.response.ang;
+
+			logd << "value" << endl;
+			for (int i = 0 ; i< value.size(); i++){
+				logd << value[i] << " ";
+			}
+			logd << endl;
+
+			logd << "acc_pi" << endl;
+			for (int id = 0 ; id< acc_pi.size(); id++){
+				int data_id = id / num_guassian_modes;
+				int mode_id = id % num_guassian_modes;
+				logd << acc_pi[id] << " ";
+				if (mode_id == num_guassian_modes -1){
+					logd << endl;
+				}
+			}
+
+			logd << "acc_mu" << endl;
+			for (int id = 0 ; id< acc_mu.size(); id++){
+				int data_id = id / num_guassian_modes;
+				int mode_id = id % num_guassian_modes;
+				logd << acc_mu[id] << " ";
+				if (mode_id == num_guassian_modes -1){
+					logd << endl;
+				}
+			}
+
+			logd << "ang" << endl;
+			for (int id = 0 ; id< ang.size(); id++){
+				int data_id = id / num_steer_bins;
+				int bin_id = id % num_steer_bins;
+				logd << ang[id] << " ";
+				if (bin_id == num_steer_bins -1){
+					logd << endl;
+				}
+			}
+			logd << endl;
+
+//			ROS_INFO("value: %f", (long int)message.response.value[0]);
+		}
+		else
+		{
+			ROS_ERROR("Failed to call service query");
+			exit(1);
+		}
+
+		cout << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+	}
+}
+
+void PedNeuralSolverPrior::Test_val_srv(int batchsize, int num_guassian_modes, int num_steer_bins){
+
+	batchsize = 128;
+	cerr << "Testing value model via ros service, bs = " << batchsize << endl;
+
+	ros::NodeHandle n("~");
+
+	nn_client_val_ = n.serviceClient<query_nn::TensorData>("/query_val");
+
+	cout << "waiting for /query_val service to be ready" << endl;
+
+	nn_client_val_.waitForExistence(ros::DURATION_MAX);
+
+	for (int i =0 ;i< 10 ; i++){
+
+		std::vector<torch::jit::IValue> inputs;
+
+		auto images = torch::ones({batchsize, 9, 32, 32});
+
+		auto start1 = Time::now();
+
+		query_nn::TensorData message;
+
+		message.request.tensor = std::vector<float>(images.data<float>(), images.data<float>() + images.numel());
+
+		message.request.batchsize = batchsize;
+
+		message.request.mode = "val";
+
+
+		logd << "calling service query" << endl;
+
+		if (nn_client_val_.call(message)){
+			vector<float> value = message.response.value;
+
+			cout << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+
+			logd << "value" << endl;
+			for (int i = 0 ; i< value.size(); i++){
+				logd << value[i] << " ";
+			}
+			logd << endl;
+		}
+		else{
+			ROS_ERROR("Failed to call service /query_val");
+			exit(1);
+		}
+	}
+}
+
+void PedNeuralSolverPrior::Test_all_libtorch(int batchsize, int num_guassian_modes, int num_steer_bins){
+	cerr << "Testing all model using libtorch, bs = " << batchsize << endl;
+	string path = "/home/yuanfu/Unity/DESPOT-Unity/torchscript_version.pt";
+	if( !is_file_exist(path)){
+		path = "/home/panpan/Unity/DESPOT-Unity/torchscript_version.pt";
+	}
+	std::shared_ptr<torch::jit::script::Module> net;
+
+	cout << "[Test_model] Testing model "<< path << endl;
+	net = torch::jit::load(path);
+	net->to(at::kCUDA);
 	assert(net);
 
 	logd << "[Test_model] displaying params\n";
+	Show_params(net);
+	for (int i =0 ;i< 10 ; i++){
 
-//	Show_params(net);
+		std::vector<torch::jit::IValue> inputs;
+
+		auto images = torch::ones({batchsize, 9, 32, 32});
+
+		auto start1 = Time::now();
+
+		inputs.push_back(images.to(at::kCUDA));
+
+		cout << "[Test_model] Query nn for "<< inputs.size() << " tensors of dim" << inputs[0].toTensor().sizes() << endl;
+
+		auto drive_net_output = net->forward(inputs).toTuple()->elements();
+
+		auto value_batch = drive_net_output[VALUE].toTensor().cpu();
+		auto value_batch_double = value_batch.accessor<float,2>();
+		auto acc_pi_batch = drive_net_output[ACC_PI].toTensor().cpu();
+		auto acc_pi_batch_double = acc_pi_batch.accessor<float,2>();
+		auto acc_mu_batch = drive_net_output[ACC_MU].toTensor().cpu();
+		auto acc_mu_batch_double = acc_mu_batch.accessor<float,3>();
+		auto acc_sigma_batch = drive_net_output[ACC_SIGMA].toTensor().cpu();
+		auto acc_sigma_batch_double = acc_sigma_batch.accessor<float,3>();
+		auto ang_batch = drive_net_output[ANG].toTensor().cpu();
+		auto ang_batch_double = ang_batch.accessor<float,2>();
+
+		logd << "value" << endl;
+		for (int i = 0 ; i< value_batch.size(0); i++){
+			logd << value_batch_double[i][0] << " ";
+		}
+		logd << endl;
+
+		logd << "acc_pi" << endl;
+		for (int data_id = 0 ; data_id< acc_pi_batch.size(0); data_id++){
+			for (int mode_id = 0 ; mode_id< acc_pi_batch.size(1); mode_id++){
+				logd << acc_pi_batch_double[data_id][mode_id] << " ";
+				if (mode_id == num_guassian_modes -1){
+					logd << endl;
+				}
+			}
+		}
+
+		logd << "acc_mu" << endl;
+		for (int data_id = 0 ; data_id< acc_mu_batch.size(0); data_id++){
+			for (int mode_id = 0 ; mode_id< acc_mu_batch.size(1); mode_id++){
+				logd << acc_mu_batch_double[data_id][mode_id][0] << " ";
+				if (mode_id == num_guassian_modes -1){
+					logd << endl;
+				}
+			}
+		}
+
+		logd << "ang" << endl;
+		for (int data_id = 0 ; data_id< ang_batch.size(0); data_id++){
+			for (int bin_id = 0 ; bin_id< ang_batch.size(1); bin_id++){
+				logd << ang_batch_double[data_id][bin_id] << " ";
+				if (bin_id == num_steer_bins -1){
+					logd << endl;
+				}
+			}
+		}
+		logd << endl;
+		cout << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+	}
+
+}
+
+void PedNeuralSolverPrior::Test_val_libtorch(int batchsize, int num_guassian_modes, int num_steer_bins){
+	batchsize = 128;
+	cerr << "Testing value model via libtorch, bs = " << batchsize << endl;
+	string path = "/home/yuanfu/Unity/DESPOT-Unity/jit_val.pt";
+	if( !is_file_exist(path)){
+		path = "/home/panpan/Unity/DESPOT-Unity/jit_val.pt";
+	}
+
+	cout << "[Test_model] Loading value model "<< path << endl;
+	auto val_net = torch::jit::load(path);
+	val_net->to(at::kCUDA);
+	assert(net);
+	for (int i =0 ;i< 10 ; i++){
+
+		std::vector<torch::jit::IValue> inputs;
+
+		auto images = torch::ones({batchsize, 9, 32, 32});
+
+		auto start1 = Time::now();
+
+		inputs.push_back(images.to(at::kCUDA));
+
+		cout << "[Test_model] Query nn for "<< inputs.size() << " tensors of dim" << inputs[0].toTensor().sizes() << endl;
+
+		auto drive_net_output = val_net->forward(inputs);
+
+		auto value_batch = drive_net_output.toTensor().cpu();
+		auto value_batch_double = value_batch.accessor<float,2>();
+		cout << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+
+		logd << "value" << endl;
+		for (int i = 0 ; i< value_batch.size(0); i++){
+			logd << value_batch_double[i][0] << " ";
+		}
+		logd << endl;
+	}
+
+}
+
+void PedNeuralSolverPrior::Test_model(string path){
+
+//	sio::client query_client;
+//	query_client.connect("http://127.0.0.1:8080");
+
+
+//	if (drive_net){
+//		cout << "[Test_model] Testing drive_net loaded in prior " << endl;
+//		net = drive_net;
+//	}
+//	else{
+//		cout << "[Test_model]  drive net not ready yet!!!!!!!!!!!!!!!" << endl;
+//		exit(1);
+//	}
 
 	logd << "[Test_model] Query " << endl;
 
-	auto drive_net_output = net->forward(inputs).toTuple()->elements();
+	torch::NoGradGuard no_grad;
+
+	int batchsize = 1;
+
+	int num_guassian_modes = 5;
+	int num_steer_bins = 2*ModelParams::NumSteerAngle;
+
+	Test_all_srv(batchsize, num_guassian_modes, num_steer_bins);
+
+	Test_val_srv(batchsize, num_guassian_modes, num_steer_bins);
+
+	Test_all_libtorch(batchsize, num_guassian_modes, num_steer_bins);
+
+	Test_val_libtorch(batchsize, num_guassian_modes, num_steer_bins);
 
 	logd << "[Test_model] Done " << endl;
 

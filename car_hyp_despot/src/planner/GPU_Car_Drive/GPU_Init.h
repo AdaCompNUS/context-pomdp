@@ -7,5 +7,6 @@
 using namespace std;
 using despot::DSPOMDP;
 
+void sync_cuda();
 
 #endif

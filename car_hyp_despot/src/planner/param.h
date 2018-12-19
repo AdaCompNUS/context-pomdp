@@ -27,8 +27,8 @@ namespace ModelParams {
 
 	extern double NOISE_PED_POS;
 
-	const double pos_rln=0.01; // position resolution
-	const double vel_rln=0.001; // velocity resolution
+	const double pos_rln=0.5; // position resolution
+	const double vel_rln=0.1; // velocity resolution
 
 	const double PATH_STEP = 0.05;
 

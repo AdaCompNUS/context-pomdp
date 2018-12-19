@@ -287,3 +287,7 @@ void UpdateGPUCarGoal(DSPOMDP* Hst_model)
 	}
 	//exit(-1);
 }
+
+void sync_cuda(){
+	cudaDeviceSynchronize();
+}

@@ -36,6 +36,9 @@
 #include <vector>
 #include "despot/core/node.h"
 
+#include <ros/ros.h>
+#include <query_nn/TensorData.h>
+
 using namespace cv;
 
 //class VNode;
@@ -114,7 +117,13 @@ public:
 	void Load_model(std::string);
 	void Init();
 
-	static void Test_model(std::string);
+	void Test_model(std::string);
+	void Test_all_srv(int batchsize, int num_guassian_modes, int num_steer_bins);
+	void Test_val_srv(int batchsize, int num_guassian_modes, int num_steer_bins);
+	void Test_all_libtorch(int batchsize, int num_guassian_modes, int num_steer_bins);
+	void Test_val_libtorch(int batchsize, int num_guassian_modes, int num_steer_bins);
+
+//	static void OnDataReady(std::string const& name, sio::message::ptr const& data,bool hasAck, sio::message::ptr &ack_resp);
 public:
 	int num_hist_channels;
 	int num_peds_in_NN;
@@ -124,6 +133,8 @@ public:
 	map_properties map_prop_;
 	std::string model_file;
 	std::shared_ptr<torch::jit::script::Module> drive_net;
+	static ros::ServiceClient nn_client_;
+	static ros::ServiceClient nn_client_val_;
 
 };
 //#endif
