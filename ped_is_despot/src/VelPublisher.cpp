@@ -113,7 +113,7 @@ class VelPublisher2 : public VelPublisher {
         curr_vel = pomdp_vel->linear.y;
         steering = pomdp_vel->angular.z;
 
-		if(target_vel <= 0.01) {
+		if(target_vel <= 0.0001) {
 
 			target_vel = 0.0;
 		}
@@ -129,7 +129,7 @@ class VelPublisher2 : public VelPublisher {
         target_vel = pomdp_vel->linear.x;
         curr_vel = pomdp_vel->linear.y;
 
-        if(target_vel <= 0.01) {
+        if(target_vel <= 0.0001) {
 
             target_vel = 0.0;
         }

@@ -152,7 +152,8 @@ double PedPomdp::CrashPenalty(const PomdpStateWorld& state) const { // , int clo
 
 // Avoid frequent dec or acc
 double PedPomdp::ActionPenalty(int action) const {
-	return (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
+//	return (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
+	return (action == ACT_DEC) ? -0.1 : 0.0;
 }
 
 // Less penalty for longer distance travelled
@@ -169,6 +170,21 @@ double PedPomdp::MovementPenalty(const PomdpStateWorld& state) const {
 bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0.0;
+
+	////// NOTE: Using true random number to make results in different qnodes different ////
+	rNum = Random::RANDOM.NextDouble();
+
+//	printf("step: scenario%d \n", state_.scenario_id);
+//	printf("action= %d \n",action);
+//	PomdpState* pedpomdp_state=static_cast<PomdpState*>(&state_);
+//	printf("car_pos= %f,%f",pedpomdp_state->car.pos.x, pedpomdp_state->car.pos.y);
+//	printf("car_heading=%f\n",pedpomdp_state->car.heading_dir);
+//	printf("car_vel= %f\n",pedpomdp_state->car.vel);
+//	for(int i=0;i<3;i++)
+//	{
+//		printf("ped %d pox_x= %f pos_y=%f goal=%d\n",i,
+//				pedpomdp_state->peds[i].pos.x,pedpomdp_state->peds[i].pos.y,pedpomdp_state->peds[i].goal);
+//	}
 
 	if(FIX_SCENARIO==1 || DESPOT::Print_nodes){
 		if(CPUDoPrint && state_.scenario_id==CPUPrintPID){
@@ -199,7 +215,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	}
 
 	// Smoothness control
-	reward += ActionPenalty(action);
+	reward += ActionPenalty(GetAccelerationID(action));
 
 	// Speed control: Encourage higher speed
 	reward += MovementPenalty(state);
@@ -217,6 +233,8 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	logd << "[PedPomdp::"<<__FUNCTION__<<"] Refract action"<< endl;
 	double acc = GetAcceleration(action);
 	double steering = GetSteering(action);
+
+//	cout << "car freq " << world_model->freq << endl;
 
 	world_model->RobStep(state.car, steering, rNum/*random*/);
 
@@ -261,6 +279,16 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		}
 	}
 
+//	printf("after step \n");
+//	printf("car_pos= %f,%f",pedpomdp_state->car.pos.x, pedpomdp_state->car.pos.y);
+//	printf("car_heading=%f\n",pedpomdp_state->car.heading_dir);
+//	printf("car_vel= %f\n",pedpomdp_state->car.vel);
+//	for(int i=0;i<3;i++)
+//	{
+//		printf("ped %d pox_x= %f pos_y=%f goal=%d\n",i,
+//				pedpomdp_state->peds[i].pos.x,pedpomdp_state->peds[i].pos.y,pedpomdp_state->peds[i].goal);
+//	}
+
 	// Observation
 	obs = Observe(state);
 	return false;
@@ -281,7 +309,7 @@ bool PedPomdp::Step(PomdpStateWorld& state, double rNum, int action, double& rew
 	}
 
 	// Smoothness control
-	reward += ActionPenalty(action);
+	reward += ActionPenalty(GetAccelerationID(action));
 
 	// Speed control: Encourage higher speed
 	reward += MovementPenalty(state);
@@ -576,6 +604,8 @@ void PedPomdp::PrintParticles(const vector<State*> particles, ostream& out) cons
 			type_count[j][pomdp_state->peds[j].mode] += particles[i]->weight;
 		}
 	}
+
+	cout << "ped 0 vel: " << pomdp_state->peds[0].vel << endl;
 
 	for (int j = 0; j < 6; j ++) {
 		cout << "Ped " << pomdp_state->peds[j].id << " Belief is ";
@@ -878,23 +908,28 @@ double PedPomdp::GetAccelerationID(ACT_TYPE action, bool debug) const{
 
 double PedPomdp::GetAcceleration(ACT_TYPE action, bool debug) const{
 	double acc_ID=(action%((int)(2*ModelParams::NumAcc+1)));
-	double normalized_acc=acc_ID/ModelParams::NumAcc;
-	double shifted_acc=normalized_acc-1;
-	if(debug)
-		cout<<"[GetAcceleration] (acc_ID, noirmalized_acc, shifted_acc)="
-		<<"("<<acc_ID<<","<<normalized_acc<<","<<shifted_acc<<")"<<endl;
-	return shifted_acc*ModelParams::AccSpeed;
+
+	return GetAccfromAccID(acc_ID);
+//	double normalized_acc=acc_ID/ModelParams::NumAcc;
+//	double shifted_acc=normalized_acc-1;
+//	if(debug)
+//		cout<<"[GetAcceleration] (acc_ID, noirmalized_acc, shifted_acc)="
+//		<<"("<<acc_ID<<","<<normalized_acc<<","<<shifted_acc<<")"<<endl;
+//	return shifted_acc*ModelParams::AccSpeed;
 }
 
 
 double PedPomdp::GetAccelerationNoramlized(ACT_TYPE action, bool debug) const{
 	double acc_ID=(action%((int)(2*ModelParams::NumAcc+1)));
-	double normalized_acc=acc_ID/ModelParams::NumAcc;
-	double shifted_acc=normalized_acc-1;
-	if(debug)
-		cout<<"[GetAcceleration] (acc_ID, noirmalized_acc, shifted_acc)="
-		<<"("<<acc_ID<<","<<normalized_acc<<","<<shifted_acc<<")"<<endl;
-	return shifted_acc;
+
+	return GetNormalizeAccfromAccID(acc_ID);
+
+//	double normalized_acc=acc_ID/ModelParams::NumAcc;
+//	double shifted_acc=normalized_acc-1;
+//	if(debug)
+//		cout<<"[GetAcceleration] (acc_ID, noirmalized_acc, shifted_acc)="
+//		<<"("<<acc_ID<<","<<normalized_acc<<","<<shifted_acc<<")"<<endl;
+//	return shifted_acc;
 }
 
 double PedPomdp::GetSteeringID(ACT_TYPE action, bool debug) const{
@@ -933,6 +968,15 @@ double PedPomdp::GetAccfromAccID(int acc){
 		case ACT_CUR: return 0;
 		case ACT_ACC: return ModelParams::AccSpeed;
 		case ACT_DEC: return -ModelParams::AccSpeed;
+	}
+}
+
+
+double PedPomdp::GetNormalizeAccfromAccID(int acc){
+	switch(acc){
+		case ACT_CUR: return 0;
+		case ACT_ACC: return 1.0;
+		case ACT_DEC: return -1.0;
 	}
 }
 

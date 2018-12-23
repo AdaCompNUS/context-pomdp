@@ -145,6 +145,10 @@ public:
 
 
 extern MsgQueque<Shared_VNode> Expand_queue, Print_queue;
+
+#define EMPTY_LB_VALUE -10000.0
+#define EMPTY_UB_VALUE -9900.0
+
 } // namespace despot
 
 

@@ -10,9 +10,9 @@
 
 #include <despot/core/prior.h>
 
-#include "opencv2/imgproc.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/highgui.hpp"
+#include "opencv4/opencv2/imgproc.hpp"
+#include "opencv4/opencv2/imgcodecs.hpp"
+#include "opencv4/opencv2/highgui.hpp"
 
 
 #include "disabled_util.h"
@@ -103,6 +103,12 @@ public:
 	void Compute(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode);
 	void ComputeMiniBatch(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode);
 
+	void ComputeValue(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode);
+	void ComputeMiniBatchValue(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode);
+
+	void ComputePreference(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode);
+	void ComputeMiniBatchPref(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode);
+
 	void Process_history(despot::VNode* cur_node, int);
 	std::vector<torch::Tensor> Process_history_input(despot::VNode* cur_node);
 
@@ -110,11 +116,18 @@ public:
 //	at::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images){return torch::zeros({1,1,1});}
 	torch::Tensor Combine_images(despot::VNode* cur_node);
 
-	void Reuse_history(int new_channel);
+	void Reuse_history(int new_channel, int start_channel);
 	void get_history(int mode, despot::VNode* cur_node, std::vector<despot::VNode*>& parents_to_fix_images,
 			vector<PomdpState*>& hist_states, vector<int>& hist_ids);
+
+	void Record_hist_len();
+
+	void print_prior_actions(ACT_TYPE);
+
 public:
 	void Load_model(std::string);
+	void Load_value_model(std::string);
+
 	void Init();
 
 	void Test_model(std::string);
@@ -132,7 +145,11 @@ public:
 
 	map_properties map_prop_;
 	std::string model_file;
+	std::string value_model_file;
+
 	std::shared_ptr<torch::jit::script::Module> drive_net;
+	std::shared_ptr<torch::jit::script::Module> drive_net_value;
+
 	static ros::ServiceClient nn_client_;
 	static ros::ServiceClient nn_client_val_;
 

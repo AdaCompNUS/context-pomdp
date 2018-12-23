@@ -213,9 +213,14 @@ public:
 
 public: // lets_drive
 	static void ComputePrior(vector<QNode*>& children, const DSPOMDP * model);
+	static void ComputePriorPref(VNode* cur, const DSPOMDP * model);
+	static void ComputePriorValue(QNode* qstar, const DSPOMDP * model);
 	static void InitChildrenBounds(QNode* qnode, ScenarioLowerBound* lower_bound,
 		ScenarioUpperBound* upper_bound, const DSPOMDP* model, RandomStreams& streams, History& history);
-
+	static void InitChildrenUpperBounds(QNode* qnode, ScenarioUpperBound* upper_bound,
+			const DSPOMDP* model, RandomStreams& streams, History& history);
+	static void InitChildrenLowerBounds(QNode* qnode, ScenarioLowerBound* lower_bound,
+			const DSPOMDP* model, RandomStreams& streams, History& history);
 };
 
 

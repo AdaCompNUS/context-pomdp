@@ -63,6 +63,8 @@ public:
 	double real_speed_;
 	double target_speed_;
 
+	double time_scale_;
+
     double steering_;
 
 

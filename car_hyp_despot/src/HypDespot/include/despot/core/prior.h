@@ -102,6 +102,14 @@ public:
 			const std::vector<State*>& vnode_states) = 0;
 //	virtual torch::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images) = 0;
 	virtual void Compute(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode) =0;
+	virtual void ComputePreference(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode) =0;
+
+	virtual void ComputeValue(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode) =0;
+
+	virtual void Record_hist_len() = 0;
+
+	virtual void print_prior_actions(ACT_TYPE) = 0;
+
 //#endif
 
 

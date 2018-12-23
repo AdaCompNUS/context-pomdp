@@ -176,6 +176,7 @@ public:
 	double GetSteering(ACT_TYPE action, bool debug=false) const;
 	static ACT_TYPE GetActionID(double steering, double acc, bool debug=false);
 	static double GetAccfromAccID(int);
+	static double GetNormalizeAccfromAccID(int);
 };
 
 

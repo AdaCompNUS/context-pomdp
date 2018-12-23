@@ -56,17 +56,30 @@ bool InRectangle(double car_dir_x, double car_dir_y, double car_ped_x, double ca
  */
 bool inCollision(double ped_x, double ped_y, double car_x, double car_y, double Ctheta) {
 
-	/// car geometry for pomdp car
+	/// car geometry
 	double car_dir_x = cos(Ctheta), // car direction
 				 car_dir_y = sin(Ctheta);
 	double car_ped_x = ped_x - car_x,
 				 car_ped_y = ped_y - car_y;
 
-	double car_width = CAR_WIDTH,
-				 car_length = CAR_LENGTH;
-	double side_margin = car_width / 2.0 + CAR_SIDE_MARGIN + PED_SIZE,
-		 front_margin = CAR_FRONT_MARGIN + PED_SIZE,
-		 back_margin = car_length + CAR_SIDE_MARGIN + PED_SIZE;
+	double side_margin,front_margin, back_margin;
+	if(ModelParams::car_model == "pomdp_car"){
+		/// pomdp car
+		double car_width = CAR_WIDTH,
+					 car_length = CAR_LENGTH;
+		side_margin = car_width / 2.0 + CAR_SIDE_MARGIN + PED_SIZE;
+		front_margin = CAR_FRONT_MARGIN + PED_SIZE;
+		back_margin = car_length + CAR_SIDE_MARGIN + PED_SIZE;
+	}else if(ModelParams::car_model == "audi_r8"){
+
+		double car_width = 2.0,
+				car_length = 4.4;
+
+		double safe_margin = /*0.8*/0.0, side_safe_margin = 0.1, back_safe_margin = 0.1;
+		side_margin = car_width / 2.0 + side_safe_margin;
+		front_margin = 3.6 + safe_margin;
+		back_margin = 0.8 + back_safe_margin;
+	}
 
 	return InRectangle(car_dir_x, car_dir_y, car_ped_x, car_ped_y, front_margin, back_margin, side_margin);
 }
@@ -95,12 +108,26 @@ bool inRealCollision(double Mx, double My, double Hx, double Hy, double Ctheta) 
 	double HMx = Mx - Hx,
 				 HMy = My - Hy;
 
-	double car_width = CAR_WIDTH,
-				 car_length = CAR_LENGTH;
+	double side_margin,front_margin, back_margin;
 
-	double side_margin = car_width / 2.0 + PED_SIZE,
-	 front_margin = 0.0 + PED_SIZE,
-	 back_margin = car_length + PED_SIZE;
+	if(ModelParams::car_model == "pomdp_car"){
+		/// pomdp car
+		double car_width = CAR_WIDTH,
+					 car_length = CAR_LENGTH;
+
+		side_margin = car_width / 2.0 + PED_SIZE;
+		front_margin = 0.0 + PED_SIZE;
+		back_margin = car_length + PED_SIZE;
+	}else if (ModelParams::car_model == "audi_r8"){
+		/// audi r8
+		double car_width = 1.9,
+				car_length = 4.4;
+
+		double safe_margin = 0.0, side_safe_margin = 0.0, back_safe_margin = 0.0;
+		side_margin = car_width / 2.0 + side_safe_margin;
+		front_margin = 3.6 + safe_margin;
+		back_margin = 0.8 + back_safe_margin;
+	}
 
 	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
 }

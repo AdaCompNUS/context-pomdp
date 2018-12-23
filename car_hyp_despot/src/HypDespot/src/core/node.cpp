@@ -220,6 +220,27 @@ double VNode::prior_value() {
 	}
 }
 
+ACT_TYPE VNode::max_prob_action(){
+	ACT_TYPE astar = -1;
+	double prob = 0;
+	for (int a = 0; a < prior_action_probs_.size(); a++) {
+		if (prior_action_probs(a)>prob){
+			prob = prior_action_probs(a);
+			astar = a;
+		}
+	}
+	return astar;
+}
+
+void VNode::print_action_probs(){
+	logi << "vnode of level " << depth() << " action_probs with " <<
+			prior_action_probs_.size() << " elements:" << endl;
+	for (int a = 0; a < prior_action_probs_.size(); a++) {
+		logi << prior_action_probs_[a] << " ";
+	}
+	logi << endl;
+}
+
 bool VNode::IsLeaf() {
 	return children_.size() == 0;
 }
@@ -417,7 +438,7 @@ int QNode::PolicyTreeSize() const {
 }
 
 double QNode::Weight() /*const*/ {
-	if(weight_>1e-5){
+	if(false/*weight_>1e-5*/){
 		//assert((parent()->depth()==0 && weight_>1-1e-5) ||
 		//		parent()->depth()!=0 && weight_<1+1e-5);
 

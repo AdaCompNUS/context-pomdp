@@ -153,7 +153,7 @@ public: // lets_drive
 	static int gpu_id_;
     static float time_scale_; // scale down the speed of time, value < 1.0
     static std::string model_file_;
-
+    static std::string value_model_file_;
 private:
 
 	SolverPrior* prior_;

@@ -127,9 +127,11 @@ class Pursuit(object):
         if use_steer_from_pomdp:
             global car_steer
             car_steer =msg.angular.z
+            print('Speed from pomdp / drivenet:', car_speed)
             print('Steer from pomdp / drivenet:', car_steer)
 
         elif use_steer_from_path:
+            print('Speed from pomdp:', car_speed)
             pass #do nothing , code in cb_pose_timer
 
     # def cb_pose_timer(self, event):
@@ -276,7 +278,7 @@ def send_vel_to_unity(sid, data):
             sio.emit(
                 "cmd_vel",
                 data={
-                    'car_speed': car_speed.__str__(),
+                    'car_speed': (car_speed*time_scale).__str__(),
                     'car_steer': car_steer.__str__(),
                     'goal_reached': goal_reached.__str__(),
                 },
@@ -313,6 +315,11 @@ if __name__=='__main__':
     elif use_drive_net == LETS_DRIVE:
         use_steer_from_path = False
         use_steer_from_pomdp = True
+
+    if use_steer_from_pomdp:
+        print("Using steer from pomdp")
+    if use_steer_from_path:
+        print("Using steer from path")
 
     rospy.init_node('purepursuit')
     pursuit = Pursuit()

@@ -27,7 +27,7 @@ ros::ServiceClient PedNeuralSolverPrior::nn_client_val_;
 
 cv::Mat rescale_image(const cv::Mat& image, double downsample_ratio=0.03125){
 	logd << "[rescale_image]" << endl;
-
+	auto start = Time::now();
 	Mat result = image;
 	Mat dst;
     for (int i=0; i < (int)log2(1.0 / downsample_ratio); i++){
@@ -35,6 +35,7 @@ cv::Mat rescale_image(const cv::Mat& image, double downsample_ratio=0.03125){
         result = dst;
     }
 
+    logd << __FUNCTION__<<" rescale " << Globals::ElapsedTime(start) << " s" << endl;
     return result;
 }
 
@@ -93,7 +94,7 @@ void export_image(Mat& image, string flag){
 
 //	double image_min, image_max;
 //	cv::minMaxLoc(image, &image_min, &image_max);
-//	logi << "saving image " << img_name << " with min-max values: "
+//	logd << "saving image " << img_name << " with min-max values: "
 //			<< image_min <<", "<< image_max << endl;
 
 //	cv::Mat for_save;
@@ -102,11 +103,11 @@ void export_image(Mat& image, string flag){
 //
 //	imwrite( img_name , for_save);
 
-	imshow( img_name, image );
-
-	char c = (char)waitKey(0);
-
-	cvDestroyWindow((img_name).c_str());
+//	imshow( img_name, image );
+//
+//	char c = (char)waitKey(0);
+//
+//	cvDestroyWindow((img_name).c_str());
 }
 
 void inc_counter(){
@@ -119,21 +120,29 @@ void reset_counter(){
 
 
 void normalize(cv::Mat& image){
+//	auto start = Time::now();
 	logd << "[normalize_image]" << endl;
 
 	double image_min, image_max;
 	cv::minMaxLoc(image, &image_min, &image_max);
     if (image_max > 0)
     	image = image / image_max;
+
+//    logd << __FUNCTION__ << " " << Globals::ElapsedTime(start) << " s" << endl;
+
 }
 
 void merge_images(cv::Mat& image_src, cv::Mat& image_des){
+//	auto start = Time::now();
 	logd << "[merge_images]" << endl;
 
 	image_des = cv::max(image_src, image_des);
+
+//    logd << __FUNCTION__ << " " << Globals::ElapsedTime(start) << " s" << endl;
 }
 
 void copy_to_tensor(cv::Mat& image, at::Tensor& tensor){
+//	auto start = Time::now();
 	logd << "[copy_to_tensor] copying to tensor" << endl;
 
 	tensor = torch::from_blob(image.data, {image.rows, image.cols}, at::kFloat).clone();
@@ -141,6 +150,9 @@ void copy_to_tensor(cv::Mat& image, at::Tensor& tensor){
 	//    for(int i=0; i<image.rows; i++)
 //        for(int j=0; j<image.cols; j++)
 //        	tensor[i][j] = image.at<float>(i,j);
+
+//    logd << __FUNCTION__ << " " << Globals::ElapsedTime(start) << " s" << endl;
+
 }
 
 void print_full(at::Tensor& tensor){
@@ -365,11 +377,14 @@ void PedNeuralSolverPrior::Load_model(std::string path){
 	}
 	device= torch::Device(device_type);
 
+	model_file = path;
+
 	cerr << "DEBUG: Loading model "<< model_file << endl;
 
-	model_file = path;
 	// DONE: Pass the model name through ROS params
 	drive_net = torch::jit::load(model_file);
+
+	assert(drive_net);
 
 	if (use_gpu_for_nn)
 		drive_net->to(at::kCUDA);
@@ -379,6 +394,37 @@ void PedNeuralSolverPrior::Load_model(std::string path){
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 
 
+}
+
+void PedNeuralSolverPrior::Load_value_model(std::string path){
+	auto start = Time::now();
+
+	torch::DeviceType device_type;
+
+	if (torch::cuda::is_available()) {
+		std::cout << "CUDA available! NN on GPU" << std::endl;
+		device_type = torch::kCUDA;
+	} else {
+		std::cout << "NN on CPU" << std::endl;
+		device_type = torch::kCPU;
+	}
+	device= torch::Device(device_type);
+
+	value_model_file = path;
+
+	cerr << "DEBUG: Loading model "<< value_model_file << endl;
+
+	// DONE: Pass the model name through ROS params
+	drive_net_value = torch::jit::load(value_model_file);
+
+	assert(drive_net_value);
+
+	if (use_gpu_for_nn)
+		drive_net_value->to(at::kCUDA);
+
+	cerr << "DEBUG: Loaded model "<< value_model_file << endl;
+
+	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 }
 
 COORD PedNeuralSolverPrior::point_to_indices(COORD pos, COORD origin, double resolution, int dim) const{
@@ -496,21 +542,26 @@ void PedNeuralSolverPrior::Process_map(cv::Mat& src_image, at::Tensor& des_tenso
 	}
 }
 
-void PedNeuralSolverPrior::Reuse_history(int new_channel){
+void PedNeuralSolverPrior::Reuse_history(int new_channel, int start_channel){
 
-	logi << "[Reuse_history] copying data to channel "<< new_channel << endl;
-	assert(new_channel>=1);
-	int old_channel = new_channel - 1;
+	logd << "[Reuse_history] copying data to channel "<< new_channel << endl;
+	assert(new_channel>=start_channel);
+	int old_channel = new_channel - start_channel;
 
-	logi << "[Reuse_history] copying data from "<< old_channel << " to new channel "<< new_channel << endl;
+	logd << "[Reuse_history] copying data from "<< old_channel << " to new channel "<< new_channel << endl;
 
-	map_hist_images_[new_channel] = map_hist_images_[old_channel];
-	car_hist_images_[new_channel] = car_hist_images_[old_channel];
-	map_hist_tensor_[new_channel] = map_hist_tensor_[old_channel];
-	car_hist_tensor_[new_channel] = car_hist_tensor_[old_channel];
+	if(new_channel !=old_channel){
+		map_hist_images_[new_channel] = map_hist_images_[old_channel];
+		car_hist_images_[new_channel] = car_hist_images_[old_channel];
+		map_hist_tensor_[new_channel] = map_hist_tensor_[old_channel];
+		car_hist_tensor_[new_channel] = car_hist_tensor_[old_channel];
 
-	map_hist_links[new_channel] = map_hist_links[old_channel];
-	car_hist_links[new_channel] = car_hist_links[old_channel];
+		map_hist_links[new_channel] = map_hist_links[old_channel];
+		car_hist_links[new_channel] = car_hist_links[old_channel];
+	}
+	else{
+		logd << "skipped" << endl;
+	}
 }
 
 void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, const vector<PomdpState*>& hist_states, const vector<int> hist_ids) {
@@ -522,9 +573,10 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 	//		 add_to_ped_map fills the corresponding entry (with some intensity value)
 
 	if (hist_states.size()==0){
-		logi << "[Process_states] skipping empty state list" << endl;
+		logd << "[Process_states] skipping empty state list" << endl;
 		return;
 	}
+	auto start_total = Time::now();
 
 	auto start = Time::now();
 
@@ -557,13 +609,12 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 				if (ped_indices.x == -1 or ped_indices.y == -1) // ped out of map
 					continue;
 				// put the point in the dynamic map
-				logd << "filling position "<< ped.pos.x << " " << ped.pos.y <<
-						", point " << ped_indices.x << " " <<  ped_indices.y << endl;
-				add_in_map(map_hist_images_[hist_channel], ped_indices, map_prop_.map_intensity, map_prop_.map_intensity_scale);
+				map_hist_images_[hist_channel].at<float>((int)round(ped_indices.y), (int)round(ped_indices.x))
+						= map_prop_.map_intensity * map_prop_.map_intensity_scale;
 			}
 		}
 	}
-	logd << __FUNCTION__<<" Process State Images: " << Globals::ElapsedTime(start) << " s" << endl;
+	logd << __FUNCTION__<<" Process ped images: " << Globals::ElapsedTime(start) << " s" << endl;
 	start = Time::now();
 
 
@@ -586,7 +637,7 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 			if (indices.x == -1 or indices.y == -1) // path point out of map
 				continue;
 			// put the point in the goal map
-			add_in_map(goal_image_,indices, 1.0, 1.0);
+			goal_image_.at<float>((int)round(indices.y), (int)round(indices.x)) = 1.0 * 1.0;
 		}
 	}
 	logd << __FUNCTION__<<" Process Goal Image: " << Globals::ElapsedTime(start) << " s" << endl;
@@ -661,7 +712,7 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 
 	logd << "[Process_states] done " << endl;
 
-	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
+	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start_total) << " s" << endl;
 
 }
 
@@ -719,7 +770,7 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(despot::VNode* cur_node){
 					parent: parent->parent()->parent(); // to handle root node
 		}
 	}catch (Exception e) {
-		logi << " [error] !!!!!!!!!!!!!!!!"  << e.what() << endl;
+		logd << " [error] !!!!!!!!!!!!!!!!"  << e.what() << endl;
 		exit(-1);
 	}
 
@@ -782,7 +833,7 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(despot::VNode* cur_node){
 int BatchSize = 128;
 
 void PedNeuralSolverPrior::Compute(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
-	logi << "[Compute] get " << vnodes.size() << " nodes" << endl;
+	logd << "[Compute] get " << vnodes.size() << " nodes" << endl;
 	auto start = Time::now();
 
 	if (vnodes.size()>BatchSize){
@@ -803,7 +854,7 @@ void PedNeuralSolverPrior::Compute(vector<torch::Tensor>& input_batch, vector<de
 	else
 		ComputeMiniBatch(input_batch, vnodes);
 
-	logi << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
+	logi << __FUNCTION__<< " " << vnodes.size() << " nodes "  << Globals::ElapsedTime(start) << " s" << endl;
 }
 
 #include "GPU_Car_Drive/GPU_Init.h"
@@ -857,7 +908,7 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 	logd << __FUNCTION__<<" prepare data " << Globals::ElapsedTime(start) << " s" << endl;
 
-	logi << __FUNCTION__<<" query for "<< input_tensor.sizes() << " data " << endl;
+	logd << __FUNCTION__<<" query for "<< input_tensor.sizes() << " data " << endl;
 
 	sync_cuda();
 
@@ -877,7 +928,7 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 	value_batch = value_batch.squeeze(1);
     auto value_double = value_batch.accessor<float, 1>();
 
-	logi << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
 
 	logd << "Get value output " << value_batch << endl;
 
@@ -898,8 +949,8 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 		int num_accs = 2*ModelParams::NumAcc+1;
 		at::Tensor acc_candiates = torch::ones({num_accs, 1}, at::kFloat);
-		for (int acc = 0;  acc < num_accs; acc ++){
-			acc_candiates[acc][0] = ped_model->GetAccelerationNoramlized(acc);
+		for (int acc_id = 0;  acc_id < num_accs; acc_id ++){
+			acc_candiates[acc_id][0] = ped_model->GetAccelerationNoramlized(acc_id);
 		}
 
 		int num_modes = acc_pi.size(0);
@@ -929,8 +980,8 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 		double accum_prob = 0;
 		for (int action = 0;  action < ped_model->NumActions(); action ++){
-			int acc_ID=(action%((int)(2*ModelParams::NumAcc+1)));
-			int steerID = FloorIntRobust(action/(2*ModelParams::NumAcc+1));
+			int acc_ID=ped_model->GetAccelerationID(action);
+			int steerID = ped_model->GetSteeringID(action);
 
 			float acc_prob = acc_probs_double[acc_ID];
 			float steer_prob = 0;
@@ -959,7 +1010,7 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 		double prior_value = value_transform_inverse(value_double[node_id]);
 
-		logi << "assigning vnode " << vnode << " value " << prior_value << endl;
+		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
 
 		vnode->prior_value(prior_value);
 	}
@@ -967,58 +1018,357 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 }
 
+void PedNeuralSolverPrior::ComputePreference(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
+	logd << "[ComputePreference] get " << vnodes.size() << " nodes" << endl;
+	auto start = Time::now();
+
+	if (vnodes.size()>BatchSize){
+		cout << "Executing " << (vnodes.size()-1)/BatchSize << " batches" << endl;
+		for (int batch = 0; batch < (vnodes.size()-1)/BatchSize + 1; batch++) {
+
+			int start = batch*BatchSize;
+			int end = ((batch+1) * BatchSize <= vnodes.size()) ?
+					(batch+1) * BatchSize : vnodes.size();
+
+			cout << "start end: " << start << " " << end << endl;
+
+			std::vector<torch::Tensor> mini_batch(&input_batch[start],&input_batch[end]);
+			std::vector<despot::VNode*> sub_vnodes(&vnodes[batch*BatchSize],&vnodes[end]);
+			ComputeMiniBatchPref(mini_batch, sub_vnodes);
+		}
+	}
+	else
+		ComputeMiniBatchPref(input_batch, vnodes);
+
+	logd << __FUNCTION__<< " " << vnodes.size() << " nodes "  << Globals::ElapsedTime(start) << " s" << endl;
+}
+
+void PedNeuralSolverPrior::ComputeMiniBatchPref(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
+
+	auto start = Time::now();
+
+	torch::NoGradGuard no_grad;
+//	drive_net->eval();
+
+	// DONE: Send nn_input_images_ to drive_net, and get the policy and value output
+	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
+
+	logd << "[ComputeMiniBatchPref] node depth " << vnodes[0]->depth() << endl;
+
+	if(logging::level()>=4){
+		logd << "[ComputeMiniBatchPref] vnodes[0]=" << vnodes[0]->depth() << endl;
+		string level = std::to_string(vnodes[0]->depth());
+		logd << "[ComputeMiniBatchPref] exporting images" << endl;
+
+		export_image(goal_image_, "level" + level + "path");
+		for (int i = 0; i < num_hist_channels; i++) {
+			int hist_channel = i;
+			export_image(map_hist_images_[hist_channel],
+					"level" + level + "_map_c" + std::to_string(hist_channel));
+			export_image(car_hist_images_[hist_channel],
+					"level" + level + "_car_c" + std::to_string(hist_channel));
+		}
+		inc_counter();
+	}
+
+	logd << "[ComputeMiniBatchPref] num_nodes = "
+						<< input_batch.size()<< endl;
+
+	std::vector<torch::jit::IValue> inputs;
+
+	torch::Tensor input_tensor;
+
+	input_tensor = torch::stack(input_batch, 0);
+
+	logd << "[ComputeMiniBatchPref] input_tensor dim = \n"
+							<< input_tensor.sizes()<< endl;
+
+	input_tensor= input_tensor.contiguous();
+
+	inputs.push_back(input_tensor.to(at::kCUDA));
+
+	logd << "[ComputeMiniBatchPref] contiguous cuda tensor \n" <<
+			input_tensor<< endl;
+
+	logd << __FUNCTION__<<" prepare data " << Globals::ElapsedTime(start) << " s" << endl;
+
+	logd << __FUNCTION__<<" query for "<< input_tensor.sizes() << " data " << endl;
+
+	sync_cuda();
+
+	auto start1 = Time::now();
+
+	auto drive_net_output = drive_net->forward(inputs).toTuple()->elements();
+
+
+	logd << "[ComputeMiniBatchPref] Refracting outputs " << endl;
+
+//	auto value_batch = drive_net_output[VALUE].toTensor().cpu();
+	auto acc_pi_batch = drive_net_output[ACC_PI].toTensor().cpu();
+	auto acc_mu_batch = drive_net_output[ACC_MU].toTensor().cpu();
+	auto acc_sigma_batch = drive_net_output[ACC_SIGMA].toTensor().cpu();
+	auto ang_batch = drive_net_output[ANG].toTensor().cpu();
+
+//	value_batch = value_batch.squeeze(1);
+//    auto value_double = value_batch.accessor<float, 1>();
+
+	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+
+//	logd << "Get value output " << value_batch << endl;
+
+    logd << "[ComputeMiniBatchPref] Updating prior with nn outputs " << endl;
+
+	int node_id = -1;
+	for (std::vector<despot::VNode* >::iterator it = vnodes.begin();
+		        it != vnodes.end(); it++) {
+		despot::VNode* vnode = *it;
+		node_id ++;
+
+		auto acc_pi = acc_pi_batch[node_id];
+		auto acc_mu = acc_mu_batch[node_id];
+		auto acc_sigma = acc_sigma_batch[node_id];
+		auto ang = ang_batch[node_id];
+
+		// TODO: Send nn_input_images_ to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
+
+		int num_accs = 2*ModelParams::NumAcc+1;
+		at::Tensor acc_candiates = torch::ones({num_accs, 1}, at::kFloat);
+		for (int acc_id = 0;  acc_id < num_accs; acc_id ++){
+			acc_candiates[acc_id][0] = ped_model->GetAccelerationNoramlized(acc_id);
+		}
+
+		int num_modes = acc_pi.size(0);
+
+		auto acc_pi_actions = acc_pi.unsqueeze(0).expand({num_accs, num_modes});
+		auto acc_mu_actions = acc_mu.unsqueeze(0).expand({num_accs, num_modes, 1});
+		auto acc_sigma_actions = acc_sigma.unsqueeze(0).expand({num_accs, num_modes, 1});
+
+		auto acc_probs_Tensor = gm_pdf(acc_pi_actions, acc_sigma_actions, acc_mu_actions, acc_candiates);
+		logd << "rescaling acc probs" << endl;
+
+        auto acc_sum = acc_probs_Tensor.sum();
+        float acc_total_prob = acc_sum.data<float>()[0];
+	    acc_probs_Tensor = acc_probs_Tensor / acc_total_prob;
+
+        auto steer_probs_Tensor = at::_softmax(ang, 0, false);
+
+        assert(2*ModelParams::NumSteerAngle == steer_probs_Tensor.size(0));
+
+		logd << "acc probs = " << acc_probs_Tensor << endl;
+		logd << "steer probs = " << steer_probs_Tensor << endl;
+
+	    auto acc_probs_double = acc_probs_Tensor.accessor<float, 1>();
+	    auto steer_probs_double = steer_probs_Tensor.accessor<float, 1>();
+
+		// Update the values in the vnode
+
+		double accum_prob = 0;
+		for (int action = 0;  action < ped_model->NumActions(); action ++){
+			int acc_ID = ped_model->GetAccelerationID(action);
+			int steerID = ped_model->GetSteeringID(action);
+
+			float acc_prob = acc_probs_double[acc_ID];
+			float steer_prob = 0;
+
+			if (steerID == 0){
+				steer_prob = 0.5 * steer_probs_double[steerID];
+			}
+			else if (steerID == 2*ModelParams::NumSteerAngle){
+				steer_prob = 0.5 * steer_probs_double[steerID-1];
+			}
+			else{
+				steer_prob = 0.5 * steer_probs_double[steerID-1] + 0.5 * steer_probs_double[steerID];
+			}
+
+			float joint_prob = acc_prob * steer_prob;
+			vnode->prior_action_probs(action, joint_prob);
+
+			accum_prob += joint_prob;
+
+			logd << "action "<< acc_ID << " " << steerID <<
+					" joint_prob = " << joint_prob
+					<< " accum_prob = " << accum_prob << endl;
+
+			// get the steering prob from angs
+		}
+
+//		double prior_value = value_transform_inverse(value_double[node_id]);
+
+//		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
+
+//		vnode->prior_value(prior_value);
+	}
+
+	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
+}
+
+void PedNeuralSolverPrior::ComputeValue(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
+	logd << "[ComputeValue] get " << vnodes.size() << " nodes" << endl;
+	auto start = Time::now();
+
+	if (vnodes.size()>BatchSize){
+		cout << "Executing " << (vnodes.size()-1)/BatchSize << " batches" << endl;
+		for (int batch = 0; batch < (vnodes.size()-1)/BatchSize + 1; batch++) {
+
+			int start = batch*BatchSize;
+			int end = ((batch+1) * BatchSize <= vnodes.size()) ?
+					(batch+1) * BatchSize : vnodes.size();
+
+			cout << "start end: " << start << " " << end << endl;
+
+			std::vector<torch::Tensor> mini_batch(&input_batch[start],&input_batch[end]);
+			std::vector<despot::VNode*> sub_vnodes(&vnodes[batch*BatchSize],&vnodes[end]);
+			ComputeMiniBatchValue(mini_batch, sub_vnodes);
+		}
+	}
+	else
+		ComputeMiniBatchValue(input_batch, vnodes);
+
+	logd << __FUNCTION__<< " " << vnodes.size() << " nodes "  << Globals::ElapsedTime(start) << " s" << endl;
+}
+
+void PedNeuralSolverPrior::ComputeMiniBatchValue(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
+
+	auto start = Time::now();
+
+	torch::NoGradGuard no_grad;
+//	drive_net->eval();
+
+	// DONE: Send nn_input_images_ to drive_net, and get the policy and value output
+	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
+
+	logd << "[ComputeValue] node depth " << vnodes[0]->depth() << endl;
+
+	if(logging::level()>=4){
+		logd << "[Combine_images] vnodes[0]=" << vnodes[0]->depth() << endl;
+		string level = std::to_string(vnodes[0]->depth());
+		logd << "[Combine_images] exporting images" << endl;
+
+		export_image(goal_image_, "level" + level + "path");
+		for (int i = 0; i < num_hist_channels; i++) {
+			int hist_channel = i;
+			export_image(map_hist_images_[hist_channel],
+					"level" + level + "_map_c" + std::to_string(hist_channel));
+			export_image(car_hist_images_[hist_channel],
+					"level" + level + "_car_c" + std::to_string(hist_channel));
+		}
+		inc_counter();
+	}
+
+	logd << "[ComputeValue] num_nodes = "
+						<< input_batch.size()<< endl;
+
+	std::vector<torch::jit::IValue> inputs;
+
+	torch::Tensor input_tensor;
+
+	input_tensor = torch::stack(input_batch, 0);
+
+	logd << "[ComputeValue] input_tensor dim = \n"
+							<< input_tensor.sizes()<< endl;
+
+	input_tensor= input_tensor.contiguous();
+
+	inputs.push_back(input_tensor.to(at::kCUDA));
+
+	logd << "[ComputeValue] contiguous cuda tensor \n" <<
+			input_tensor<< endl;
+
+	sync_cuda();
+
+	logd << __FUNCTION__<<" prepare data " << Globals::ElapsedTime(start) << " s" << endl;
+
+
+	logd << __FUNCTION__<<" query for "<< input_tensor.sizes() << " data " << endl;
+
+	auto start1 = Time::now();
+
+	auto drive_net_output = drive_net_value->forward(inputs);
+
+	logd << "[ComputeValue] Refracting outputs " << endl;
+	auto value_batch = drive_net_output.toTensor().cpu();
+
+	value_batch = value_batch.squeeze(1);
+    auto value_double = value_batch.accessor<float, 1>();
+
+	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+
+	logd << "Get value output " << value_batch << endl;
+
+    logd << "[ComputeValue] Updating prior with nn outputs " << endl;
+
+	int node_id = -1;
+	for (std::vector<despot::VNode* >::iterator it = vnodes.begin();
+		        it != vnodes.end(); it++) {
+		despot::VNode* vnode = *it;
+		node_id ++;
+
+		double prior_value = value_transform_inverse(value_double[node_id]);
+
+		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
+
+		vnode->prior_value(prior_value);
+	}
+
+	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
+}
 
 void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::vector<despot::VNode*>& parents_to_fix_images,
 		vector<PomdpState*>& hist_states, vector<int>& hist_ids){
 	int num_history = 0;
+	int start_channel = 0;
 
 	if (mode == FULL){ // Full update of the input channels
 		num_history = num_hist_channels;
-		logi << "Getting FULL history for node "<< cur_node << endl;
+		start_channel = 0;
+		logd << "Getting FULL history for node "<< cur_node << " at depth " << cur_node->depth() << endl;
 
-		for (int i = 0 ; i<num_history ; i++){
-			logi << "add hist id "<< i << endl;
-			hist_ids.push_back(i);
-			parents_to_fix_images.push_back(cur_node);
-		}
+//		for (int i = 0 ; i<num_history ; i++){
+//			logd << "add hist id "<< i << endl;
+//			hist_ids.push_back(i);
+//			parents_to_fix_images.push_back(cur_node);
+//		}
 	}
 	else if (mode == PARTIAL){ // Partial update of input channels and reuse old channels
 		num_history = num_hist_channels - 1;
-		logi << "Getting PARTIAL history for node "<< cur_node << endl;
+		start_channel = 1;
+		logd << "Getting PARTIAL history for node "<< cur_node << " at depth " << cur_node->depth() << endl;
 
 		//[1,2,3]
 		// id = 0 will be filled in the nodes
-		despot::VNode* parent = cur_node;
 
-		vector<int> reuse_ids;
-
-		for (int i = 1 ; i< num_hist_channels ; i++){
-
-			if (i>1)
-				parent = (parent->parent()==NULL)?
-						parent: parent->parent()->parent(); // to handle root node
-
-			if(car_hist_links[i-1] == parent) { // can reuse the previous channel
-				logi << "Reusing channel " << i-1 << " to new channel " << i << " for node "<< cur_node << endl;
-
-				reuse_ids.push_back(i);
-				continue;
-			}
-
-			logi << "add hist id "<< i << endl;
-			logi << "add parent for hist id, depth = "<< parent->depth() << endl;
-
-			hist_ids.push_back(i);
-			parents_to_fix_images.push_back(parent);
-		}
-
-		for (int i = reuse_ids.size()-1 ; i>=0 ; i--){
-			Reuse_history(reuse_ids[i]);
-		}
 	}
 
-	logi << "hist init len " << init_hist_len<< endl;
-	logi << "hist_ids len " << hist_ids.size()<< endl;
+	despot::VNode* parent = cur_node;
+
+	vector<int> reuse_ids;
+
+	for (int i = start_channel ; i< start_channel + num_history ; i++){
+
+		if (i>start_channel)
+			parent = (parent->parent()==NULL)?
+					parent: parent->parent()->parent(); // to handle root node
+
+		if(car_hist_links[i-start_channel] == parent) { // can reuse the previous channel
+			logd << "Reusing channel " << i-start_channel <<
+					" to new channel " << i << " for node "<< cur_node << endl;
+
+			reuse_ids.push_back(i);
+			continue;
+		}
+
+		logd << "add hist id" << i << ", add parent depth = " << parent->depth() << endl;
+
+		hist_ids.push_back(i);
+		parents_to_fix_images.push_back(parent);
+	}
+
+	for (int i = reuse_ids.size()-1 ; i>=0 ; i--){
+		Reuse_history(reuse_ids[i], start_channel);
+	}
+
+	logd << "hist init len " << init_hist_len<< endl;
+	logd << "hist_ids len " << hist_ids.size()<< endl;
 
 	// DONE: get the 4 latest history states
 	int latest=as_history_in_search_.Size()-1;
@@ -1030,21 +1380,21 @@ void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::v
 		else if (mode == PARTIAL)
 			t = latest - hist_ids[i] + 1;
 
-		logi << " Using as_history_in_search_ entry " << t << " as new channel " << hist_ids[i]
+		logd << " Using as_history_in_search_ entry " << t << " as new channel " << hist_ids[i]
 					  << " node at level " << cur_node ->depth()<< endl;
 
-		logi.flush();
+		logd.flush();
 
 		if (parents_to_fix_images[i] && mode == PARTIAL){
 
-			logi << "parents_to_fix_images[i]->depth()= " << parents_to_fix_images[i]->depth()
+			logd << "parents_to_fix_images[i]->depth()= " << parents_to_fix_images[i]->depth()
 							<< ", t - init_hist_len  + hist_ids[i] = " << t - init_hist_len + hist_ids[i] << endl;
 
-			logi << "t, init_hist_len, latest, hist_id = " << t <<", "<< init_hist_len << ", "
+			logd << "t, init_hist_len, latest, hist_id = " << t <<", "<< init_hist_len << ", "
 					<<  latest << ", " << hist_ids[i] << endl;
 
 			if(parents_to_fix_images[i]->depth() != t - init_hist_len + hist_ids[i]){
-				logi.flush();
+				logd.flush();
 				exit(-1);
 			}
 		}
@@ -1057,37 +1407,37 @@ void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::v
 			hist_states.push_back(NULL);
 	}
 
-	logi << "[Get_history] validating history, node " << cur_node << endl;
+	logd << "[Get_history] validating history, node " << cur_node << endl;
 
-	if (mode == PARTIAL){
+//	if (mode == PARTIAL){
 
-		despot::VNode* parent = cur_node;
-//		(cur_node->parent()==NULL)?
-//				cur_node: cur_node->parent()->parent();
+	parent = cur_node;
 
-		try{
-			for (int i=1;i<num_hist_channels; i++){
-				logi << " [Get_history] hist " << i << " should be depth " << parent->depth() <<
-									", get depth "<< car_hist_links[i]->depth() << " node depth " << cur_node->depth()<< endl;
-				if(car_hist_links[i] != parent)
-					logi <<"mismatch!!!!!!!!!!!!!!!!!"<< endl;
-				parent = (parent->parent()==NULL)?
-						parent: parent->parent()->parent(); // to handle root node
-			}
-		}catch (Exception e) {
-			logi << " [error] !!!!!!!!!!!!!!!!"  << e.what() << endl;
+	try{
+		for (int i=start_channel;i<num_hist_channels; i++){
+			logd << " [Get_history] hist " << i << " should be depth " << parent->depth() <<
+								", get depth "<< (car_hist_links[i]?car_hist_links[i]->depth():-1)
+										<< " node depth " << cur_node->depth()<< endl;
+			if(car_hist_links[i] != parent)
+				logd <<"mismatch!!!!!!!!!!!!!!!!!"<< endl;
+			parent = (parent->parent()==NULL)?
+					parent: parent->parent()->parent(); // to handle root node
 		}
-
+	}catch (Exception e) {
+		logd << " [error] !!!!!!!!!!!!!!!!"  << e.what() << endl;
+		exit(-1);
 	}
 
-	logi << "[Get_history] done " << endl;
+//	}
+
+	logd << "[Get_history] done " << endl;
 
 }
 
 void PedNeuralSolverPrior::Process_history(despot::VNode* cur_node, int mode){
 	auto start = Time::now();
 
-	logi << "Processing history, (FULL/PARTIAL) mode=" << mode << endl;
+	logd << "Processing history, (FULL/PARTIAL) mode=" << mode << endl;
 
 	vector<int> hist_ids;
 	vector<PomdpState*> hist_states;
@@ -1097,14 +1447,23 @@ void PedNeuralSolverPrior::Process_history(despot::VNode* cur_node, int mode){
 
 	Process_states(parents_to_fix_images, hist_states, hist_ids);
 
-	logi << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
+	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 
+}
+
+void PedNeuralSolverPrior::Record_hist_len(){
+	init_hist_len = as_history_in_search_.Size();
+}
+
+void PedNeuralSolverPrior::print_prior_actions(ACT_TYPE action){
+	logi << "prior action " << action << " (acc/steer) = " << static_cast<const PedPomdp*>(model_)->GetAcceleration(action) <<
+		"/" << static_cast<const PedPomdp*>(model_)->GetSteering(action)
+		<< endl;
 }
 
 std::vector<torch::Tensor> PedNeuralSolverPrior::Process_history_input(despot::VNode* cur_node){
 	auto start = Time::now();
 
-	init_hist_len = as_history_in_search_.Size();
 
 	logd << "[Process_history_input], len=" << num_hist_channels << endl;
 

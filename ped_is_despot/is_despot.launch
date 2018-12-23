@@ -21,6 +21,8 @@
         <param name = "use_drivenet" value="$(arg net)" />
         <param name = "time_scale" value="$(arg time_scale)" />
         <param name = "model" value="$(arg model_file_name)" />
+        <param name = "val_model" value="$(arg val_model_name)" />
+        
 	 </node>
 
 	 <node name="ped_momdp_local_transform" pkg="ped_is_despot" type="local_frame"  >

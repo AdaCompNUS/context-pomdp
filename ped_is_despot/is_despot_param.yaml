@@ -19,7 +19,7 @@ reward_base_crash_vel: 0.5
 belief_smoothing: 0.05
 noise_robvel: 0.05
 noise_goal_angle_deg: 45
-max_vel: 1.5
+max_vel: 3.0
 #collision_distance: 1.5
 collision_distance: 0.5
 infront_angle_deg: 70

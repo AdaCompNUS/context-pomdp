@@ -34,6 +34,9 @@ Shared_VNode::Shared_VNode(vector<State*>& particles,std::vector<int> particleID
 	value_=0;
 	is_waiting_=false;
 	visit_count_=0;
+
+	upper_bound_ = EMPTY_UB_VALUE;
+	lower_bound_ = EMPTY_LB_VALUE;
 }
 
 Shared_VNode::Shared_VNode(Belief* belief, int depth, Shared_QNode* parent, OBS_TYPE edge){
@@ -340,6 +343,10 @@ float Shared_VNode::GetVirtualLoss()
 
 bool Shared_VNode::check_despot_thread(){
 
+	if(Globals::config.use_prior){
+		return false;
+	}
+
 	if(Globals::config.enable_despot_thread)
 		if (Globals::config.despot_thread_gap == 0)
 			return true;
@@ -363,6 +370,9 @@ Shared_QNode::Shared_QNode(Shared_VNode* parent, ACT_TYPE edge)
 	value_=0;
 	visit_count_=0;
 	weight_=0;
+	lower_bound_ = EMPTY_LB_VALUE;
+	upper_bound_ = EMPTY_UB_VALUE;
+
 }
 
 Shared_QNode::Shared_QNode(int count, double value)

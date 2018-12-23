@@ -233,7 +233,7 @@ void Global_print_node(std::thread::id threadIdx,void* node_address,int depth,fl
 		int threadID=MapThread(threadIdx);
 		if(threadID==ThreadParams::PARAMS.PrintThreadID/*true*/)
 		{
-			cout.precision(4);
+			cout.precision(6);
 			if(weight!=0)
 			{
 				cout<<"thread "<<threadID<<" "<<msg<<" get old node at depth "<<depth

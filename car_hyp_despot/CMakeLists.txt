@@ -96,7 +96,7 @@ set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch")
 
 find_package(Torch REQUIRED)
 
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 4.0.0 REQUIRED)
 
 #add_subdirectory(src/HypDespot/)
 

@@ -63,6 +63,10 @@ public:
   	}
 	double prior_value();
   	void prior_value(double v){prior_value_ = v;}
+
+  	void print_action_probs();
+
+  	ACT_TYPE max_prob_action();
 // lets_drive
 
 public:

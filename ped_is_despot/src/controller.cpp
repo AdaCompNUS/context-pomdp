@@ -24,6 +24,7 @@ int Controller::b_use_drive_net_=0;
 int Controller::gpu_id_=0;
 float Controller::time_scale_ = 1.0;
 std::string Controller::model_file_ = "";
+std::string Controller::value_model_file_ = "";
 
 
 static DSPOMDP* ped_pomdp_model;
@@ -167,6 +168,8 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 		if (Globals::config.use_prior){
 			assert(model_file_ != "");
 			static_cast<PedNeuralSolverPrior*>(SolverPrior::nn_priors[i])->Load_model(model_file_);
+			assert(value_model_file_ != "");
+			static_cast<PedNeuralSolverPrior*>(SolverPrior::nn_priors[i])->Load_value_model(value_model_file_);
 		}
 	}
 
@@ -211,6 +214,7 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model, opti
 	case UNITY:
 		static_cast<PedPomdp*>(model)->world_model=&(WorldSimulator::worldModel);
 		unity_driving_simulator_ = static_cast<WorldSimulator*>(world);
+		unity_driving_simulator_->time_scale_ = time_scale_;
 		break;
 	}
 
@@ -226,7 +230,7 @@ void Controller::InitializeDefaultParameters() {
 
 	Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9 / time_scale_;
 
-	Globals::config.num_scenarios=3;
+	Globals::config.num_scenarios=100;
 	Globals::config.discount=1.0; //0.95;
 	Globals::config.sim_len=200/*180*//*10*/; // this is not used
 
@@ -242,10 +246,10 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.NUM_THREADS=1;
 
 	Globals::config.exploration_mode=UCT;
-	Globals::config.exploration_constant=0.3;
+	Globals::config.exploration_constant=30.0;
 	Globals::config.exploration_constant_o = 1.0;
 
-	Globals::config.search_depth=10;
+	Globals::config.search_depth=5;
 	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/5;
 
 	Globals::config.experiment_mode = true;
@@ -558,8 +562,6 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 		break;
 	}
 
-	cerr << "DEBUG: Executing action" << endl;
-
 	OBS_TYPE obs;
 	start_t = get_time_second();
 	bool terminal = world->ExecuteAction(action, obs);
@@ -582,7 +584,7 @@ void Controller::PlanningLoop(Solver*& solver, World* world, Logger* logger) {
     while(path_from_topic.size()==0 || SolverPrior::nn_priors[0]->Size(true) < 4){
     	logi << "Executing pre-step" << endl;
     	RunPreStep(solver, world, logger);
-    	sleep(1);
+    	sleep(1.0/control_freq/time_scale_);
 		ros::spinOnce();
     }
 

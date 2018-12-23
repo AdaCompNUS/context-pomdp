@@ -492,6 +492,7 @@ void WorldModel::PedStep(PedStruct &ped, double& random) {
 		a += noise;
 
 		//TODO noisy speed
+//		cout << "ped vel = " << ped.vel << endl;
 		MyVector move(a, ped.vel/freq, 0);
 		ped.pos.x += move.dw;
 		ped.pos.y += move.dh;
@@ -746,7 +747,9 @@ void WorldModel::setPath(Path path) {
 }
 
 void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
-    const double ALPHA = 0.8;
+//    const double ALPHA = 0.8;
+    const double ALPHA = 0.1;
+
 	const double SMOOTHING=ModelParams::BELIEF_SMOOTHING;
 
     bool debug=false;
@@ -1198,16 +1201,7 @@ void WorldModel::RVO2PedStep(PomdpStateWorld& state, Random& random){
 	}
 
 	// adding car as a "special" pedestrian
-	double car_x, car_y, car_yaw;
-	car_yaw = car.heading_dir;
-
-	car_x = car.pos.x - CAR_LENGTH/2.0f*cos(car_yaw);
-	car_y = car.pos.y - CAR_LENGTH/2.0f*sin(car_yaw);
-
-	/// for pomdp car
-	double car_radius = sqrt(pow(CAR_WIDTH/2.0f, 2) + pow(CAR_LENGTH/2.0f,2)) + CAR_EXPAND_SIZE;
-	ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-	ped_sim_[threadID]->setAgentPrefVelocity(num_att_pes, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
+	add_car_agents(num_ped, car);
 
 	// Set the preferred velocity for each agent.
 	int agent = 0;
@@ -1254,16 +1248,7 @@ void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarS
     }
 
     // adding car as a "special" pedestrian
-    double car_x, car_y, car_yaw;
-    car_yaw = car.heading_dir;
-
-    car_x = car.pos.x - CAR_LENGTH/2.0f*cos(car_yaw);
-    car_y = car.pos.y - CAR_LENGTH/2.0f*sin(car_yaw);
-
-    /// for pomdp car
-    double car_radius = sqrt(pow(CAR_WIDTH/2.0f, 2) + pow(CAR_LENGTH/2.0f,2)) + CAR_EXPAND_SIZE;
-    ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-    ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
+    add_car_agents(num_ped, car);
 
     // Set the preferred velocity for each agent.
     for (size_t i = 0; i < num_ped; ++i) {
@@ -1304,16 +1289,7 @@ void WorldModel::RVO2PedStep(PedStruct peds[], double& random, int num_ped, CarS
     }
 
     // adding car as a "special" pedestrian
-    double car_x, car_y, car_yaw;
-    car_yaw = car.heading_dir;
-
-	car_x = car.pos.x - CAR_LENGTH/2.0f*cos(car_yaw);
-	car_y = car.pos.y - CAR_LENGTH/2.0f*sin(car_yaw);
-
-    /// for pomdp car
-	double car_radius = sqrt(pow(CAR_WIDTH/2.0f, 2) + pow(CAR_LENGTH/2.0f,2)) + CAR_EXPAND_SIZE;
-	ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-	ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
+	add_car_agents(num_ped, car);
 
     // Set the preferred velocity for each agent.
     for (size_t i = 0; i < num_ped; ++i) {
@@ -1367,6 +1343,43 @@ COORD WorldModel::AttentivePedMeanDir(int ped_id, int goal_id){
 
 #include "Vector2.h"
 
+void WorldModel::add_car_agents(int num_ped, CarStruct& car){
+    int threadID=GetThreadID();
+
+	double car_x, car_y, car_yaw;
+
+	car_yaw = car.heading_dir;
+
+	if(ModelParams::car_model == "pomdp_car"){
+		/// for pomdp car
+		car_x = car.pos.x - CAR_LENGTH/2.0f*cos(car_yaw);
+		car_y = car.pos.y - CAR_LENGTH/2.0f*sin(car_yaw);
+		double car_radius = sqrt(pow(CAR_WIDTH/2.0f, 2) + pow(CAR_LENGTH/2.0f,2)) + CAR_EXPAND_SIZE;
+		ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+		ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
+	} else if(ModelParams::car_model == "audi_r8"){
+		/// for audi r8
+		double car_radius = 1.15f;
+		double car_radius_large = 1.6f;
+
+		ped_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+		ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity
+		ped_sim_[threadID]->setAgentPedID(num_ped,-1);
+
+		ped_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56 * 2.33 * cos(car_yaw), car.pos.y + 1.4* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+		ped_sim_[threadID]->setAgentPrefVelocity(num_ped+1, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity
+		ped_sim_[threadID]->setAgentPedID(num_ped+1,-2);
+
+		ped_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56*3.66 * cos(car_yaw), car.pos.y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+		ped_sim_[threadID]->setAgentPrefVelocity(num_ped+2, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity
+		ped_sim_[threadID]->setAgentPedID(num_ped+2,-3);
+
+		ped_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56*5 * cos(car_yaw), car.pos.y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius_large, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+		ped_sim_[threadID]->setAgentPrefVelocity(num_ped+3, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the num_ped-th pedestrian is the car. set its prefered velocity
+		ped_sim_[threadID]->setAgentPedID(num_ped+3,-4);
+	}
+}
+
 void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarStruct& car){
 	int num_ped = peds.size();
 
@@ -1383,16 +1396,7 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 	}
 
 	// adding car as a "special" pedestrian
-	double car_x, car_y, car_yaw;
-	car_yaw = car.heading_dir;
-
-	car_x = car.pos.x - CAR_LENGTH/2.0f*cos(car_yaw);
-	car_y = car.pos.y - CAR_LENGTH/2.0f*sin(car_yaw);
-
-	/// for pomdp car
-	double car_radius = sqrt(pow(CAR_WIDTH/2.0f, 2) + pow(CAR_LENGTH/2.0f,2)) + CAR_EXPAND_SIZE;
-	ped_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-	ped_sim_[threadID]->setAgentPrefVelocity(num_ped, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
+	add_car_agents(num_ped, car);
 
 	// Set the preferred velocity for each agent.
 

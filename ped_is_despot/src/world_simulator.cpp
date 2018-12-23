@@ -271,8 +271,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 //	publishAction(action, step_reward);
 
 	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Update steering and target speed"<<endl;
-	cout<<"current steering = "<<steering_<<endl;
-	cout<<"current target_speed = "<<target_speed_<<endl;
+
 
 	/* Publish steering and target velocity to Unity */
 	if (goal_reached == true){
@@ -296,14 +295,24 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 		cout<<"--------------------------- emergency ----------------------------" <<endl;
 	}
 	else{
+
+		cout<<"current steering = "<<steering_<<endl;
+		cout<<"current target_speed = "<<target_speed_<<endl;
+		cout<<"last_acc_ = "<<last_acc_<<endl;
+		cout<<"real_speed_ = "<<real_speed_<<endl;
+
 		/* Do look-ahead to adress the latency in real_speed_ */
 		double predicted_speed = min(max(real_speed_+last_acc_ , 0.0), ModelParams::VEL_MAX);
 		double last_speed = predicted_speed;
-		cout<<"real speed: "<<real_speed_<<endl;
 		cout<<"predicted real speed: "<<real_speed_+last_acc_<<endl;
 
 		float acc=static_cast<PedPomdp*>(model_)->GetAcceleration(action);
 		last_acc_=acc/ModelParams::control_freq;
+
+		cout<<"applying step acc: "<< last_acc_<<endl;
+
+		cout<<"trunc to max car vel: "<< ModelParams::VEL_MAX<<endl;
+
 		target_speed_ = min(predicted_speed + last_acc_, ModelParams::VEL_MAX);
 		target_speed_ = max(target_speed_, 0.0);
 
@@ -324,6 +333,9 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 		steering_=static_cast<PedPomdp*>(model_)->GetSteering(action);
 
+		cerr << "DEBUG: Executing action:" << action << " steer/acc = " << steering_ << "/" << acc << endl;
+		cout<<"cmd steering = "<<steering_<<endl;
+		cout<<"cmd target_speed = "<<target_speed_<<endl;
 	}
 
 	publishImitationData(*curr_state, action, step_reward, target_speed_);
@@ -592,7 +604,7 @@ bool WorldSimulator::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& i
 
 void WorldSimulator::speedCallback(nav_msgs::Odometry odo)
 {
-	//cout<<"update real speed "<<odo.twist.twist.linear.x<<endl;
+//	cout<<"update real speed "<<odo.twist.twist.linear.x<<endl;
 	real_speed_=odo.twist.twist.linear.x;
 }
 

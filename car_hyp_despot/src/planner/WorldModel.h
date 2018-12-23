@@ -93,6 +93,9 @@ public:
     vector<vector<COORD>> ped_mean_dirs;
     COORD DistractedPedMeanDir(COORD& ped, int goal_id);
     COORD AttentivePedMeanDir(int ped_id, int goal_id);
+
+    void add_car_agents(int num_peds, CarStruct& car);
+
     void PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarStruct& car);
 
     void PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedStruct>& curr_peds);

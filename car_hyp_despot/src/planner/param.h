@@ -27,14 +27,12 @@ namespace ModelParams {
 
 	extern double NOISE_PED_POS;
 
-	const double pos_rln=0.5; // position resolution
-	const double vel_rln=0.1; // velocity resolution
-
 	const double PATH_STEP = 0.05;
-
 	const double GOAL_TOLERANCE = 2;
-
 	const double PED_SPEED = 1.0;
+
+	const double pos_rln=0.4; // position resolution
+	const double vel_rln=0.3; // velocity resolution
 
 	const bool debug=false;
 
@@ -48,6 +46,8 @@ namespace ModelParams {
 
 	extern std::string rosns;
 	extern std::string laser_frame;
+
+	extern std::string car_model;
 
     inline void init_params(bool in_simulation) {
         if(in_simulation) {
@@ -68,16 +68,19 @@ namespace ModelParams {
 };
 
 
-#define CAR_WIDTH 1.2f
-#define CAR_LENGTH 2.2f
-/*
+//#define CAR_WIDTH 1.2f
+//#define CAR_LENGTH 2.2f
+//#define CAR_SIDE_MARGIN 1.2f
+//#define CAR_FRONT_MARGIN 1.5f
+//#define PED_SIZE 0.25f
+//#define CAR_EXPAND_SIZE 0.2f
+
 #define CAR_WIDTH 2.0f
-#define CAR_LENGTH 4.0f
-*/
+#define CAR_LENGTH 1.68f
 #define CAR_SIDE_MARGIN 1.2f
 #define CAR_FRONT_MARGIN 1.5f
 #define PED_SIZE 0.25f
-#define CAR_EXPAND_SIZE 0.2f
+#define CAR_EXPAND_SIZE 0.0f
 
 
 #endif
