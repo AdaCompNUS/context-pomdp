@@ -177,6 +177,9 @@ public:
 	static ACT_TYPE GetActionID(double steering, double acc, bool debug=false);
 	static double GetAccfromAccID(int);
 	static double GetNormalizeAccfromAccID(int);
+
+	static int GetAccIDfromAcc(float acc);
+	static int GetSteerIDfromSteering(float steering);
 };
 
 

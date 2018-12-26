@@ -56,7 +56,7 @@ class SimulatorBase  {
 public:
 
 	SimulatorBase(ros::NodeHandle& _nh, std::string obstacle_file_name):
-		nh(_nh), obstacle_file_name_(obstacle_file_name){
+		nh(_nh), obstacle_file_name_(obstacle_file_name), speed_in_search_state_(0){
 		;
 	}
 
@@ -66,6 +66,10 @@ public:
 	double time_scale_;
 
     double steering_;
+
+    ACT_TYPE buffered_action_;
+
+    double speed_in_search_state_;
 
 
    	static WorldStateTracker* stateTracker;

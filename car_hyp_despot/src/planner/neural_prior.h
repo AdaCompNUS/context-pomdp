@@ -84,6 +84,8 @@ private:
 
 	std::vector<const despot::VNode*> map_hist_links;
 	std::vector<const despot::VNode*> car_hist_links;
+	std::vector<double> hist_time_stamps;
+
 	const despot::VNode* goal_link;
 
 	cv::Mat map_image_;
@@ -152,6 +154,7 @@ public:
 
 	static ros::ServiceClient nn_client_;
 	static ros::ServiceClient nn_client_val_;
+
 
 };
 //#endif

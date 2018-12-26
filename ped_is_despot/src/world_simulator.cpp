@@ -22,7 +22,7 @@ WorldStateTracker* SimulatorBase::stateTracker;
 
 WorldModel SimulatorBase::worldModel;
 bool SimulatorBase::ped_data_ready = false;
-
+double pub_frequency = 9.0;
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector);
 void receive_map_callback(nav_msgs::OccupancyGrid map);
@@ -98,6 +98,8 @@ bool WorldSimulator::Connect(){
 
     timer_speed = nh.createTimer(ros::Duration(0.05), &WorldSimulator::publishCmdAction, this);
 
+    timer_cmd_update = nh.createTimer(ros::Duration(1.0/pub_frequency), &WorldSimulator::update_cmds_buffered, this);
+
     return true;
 }
 
@@ -168,7 +170,6 @@ State* WorldSimulator::GetCurrentState() const{
 	updated_car.vel=real_speed_;
 	updated_car.heading_dir = poseToHeadingDir(out_pose);
 
-
 	stateTracker->updateCar(updated_car);
 
 	/* Update car info for current_state */
@@ -194,6 +195,10 @@ State* WorldSimulator::GetCurrentState() const{
 
 	if (logging::level()>=4)
 		static_cast<PedPomdp*>(model_)->PrintWorldState(current_state);
+
+	current_state.time_stamp = SolverPrior::get_timestamp();
+
+	logi << " current state time stamp " <<  current_state.time_stamp << endl;
 
 	return &current_state;
 }
@@ -272,7 +277,6 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Update steering and target speed"<<endl;
 
-
 	/* Publish steering and target velocity to Unity */
 	if (goal_reached == true){
 		//ros::shutdown();
@@ -295,47 +299,9 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 		cout<<"--------------------------- emergency ----------------------------" <<endl;
 	}
 	else{
-
-		cout<<"current steering = "<<steering_<<endl;
-		cout<<"current target_speed = "<<target_speed_<<endl;
-		cout<<"last_acc_ = "<<last_acc_<<endl;
-		cout<<"real_speed_ = "<<real_speed_<<endl;
-
-		/* Do look-ahead to adress the latency in real_speed_ */
-		double predicted_speed = min(max(real_speed_+last_acc_ , 0.0), ModelParams::VEL_MAX);
-		double last_speed = predicted_speed;
-		cout<<"predicted real speed: "<<real_speed_+last_acc_<<endl;
-
-		float acc=static_cast<PedPomdp*>(model_)->GetAcceleration(action);
-		last_acc_=acc/ModelParams::control_freq;
-
-		cout<<"applying step acc: "<< last_acc_<<endl;
-
-		cout<<"trunc to max car vel: "<< ModelParams::VEL_MAX<<endl;
-
-		target_speed_ = min(predicted_speed + last_acc_, ModelParams::VEL_MAX);
-		target_speed_ = max(target_speed_, 0.0);
-
-	    /*if(acc==0) {
-	    	last_acc_=0;
-	    	target_speed_=predicted_speed;
-	    }
-		else if(acc==1) {
-			last_acc_= ModelParams::AccSpeed/ModelParams::control_freq;
-			target_speed_ = min(predicted_speed + last_acc_, ModelParams::VEL_MAX);
-		}
-		else if(acc==-1) {
-			last_acc_=- ModelParams::AccSpeed/ModelParams::control_freq;
-			target_speed_ = max(predicted_speed + last_acc_ , 0.0);
-		}*/
-
-		last_acc_=target_speed_-last_speed;
-
-		steering_=static_cast<PedPomdp*>(model_)->GetSteering(action);
-
-		cerr << "DEBUG: Executing action:" << action << " steer/acc = " << steering_ << "/" << acc << endl;
-		cout<<"cmd steering = "<<steering_<<endl;
-		cout<<"cmd target_speed = "<<target_speed_<<endl;
+//		get_action_fix_latency(action);
+//		update_cmds_naive(action);
+		buffered_action_ = action;
 	}
 
 	publishImitationData(*curr_state, action, step_reward, target_speed_);
@@ -356,6 +322,101 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	return goal_reached;
 }
 
+//void WorldSimulator::update_cmds_fix_latency(ACT_TYPE action){
+//	buffered_action_ = action;
+//	cout<<"current steering = "<<steering_<<endl;
+//	cout<<"current target_speed = "<<target_speed_<<endl;
+//	cout<<"last_acc_ = "<<last_acc_<<endl;
+//	cout<<"real_speed_ = "<<real_speed_<<endl;
+//
+//	/* Do look-ahead to adress the latency in real_speed_ */
+//	double predicted_speed = min(max(real_speed_+last_acc_ , 0.0), ModelParams::VEL_MAX);
+//	double last_speed = predicted_speed;
+//	cout<<"predicted real speed: "<<real_speed_+last_acc_<<endl;
+//
+//	float acc=static_cast<PedPomdp*>(model_)->GetAcceleration(action);
+//	last_acc_=acc/ModelParams::control_freq;
+//
+//	cout<<"applying step acc: "<< last_acc_<<endl;
+//
+//	cout<<"trunc to max car vel: "<< ModelParams::VEL_MAX<<endl;
+//
+//	target_speed_ = min(predicted_speed + last_acc_, ModelParams::VEL_MAX);
+//	target_speed_ = max(target_speed_, 0.0);
+//
+//	last_acc_=target_speed_-last_speed;
+//
+//	steering_=static_cast<PedPomdp*>(model_)->GetSteering(action);
+//
+//	cerr << "DEBUG: Executing action:" << action << " steer/acc = " << steering_ << "/" << acc << endl;
+//	cerr << "action IDs steer/acc = " << static_cast<PedPomdp*>(model_)->GetSteeringID(action)
+//			<< "/" << static_cast<PedPomdp*>(model_)->GetAccfromAccID(action) << endl;
+//
+//	cout<<"cmd steering = "<<steering_<<endl;
+//	cout<<"cmd target_speed = "<<target_speed_<<endl;
+//}
+
+void WorldSimulator::update_cmds_fix_latency(ACT_TYPE action, bool buffered){
+//	buffered_action_ = action;
+
+	cout<<"real_speed_ = "<<real_speed_<<endl;
+	cout<<"speed_in_search_state_ = "<<speed_in_search_state_<<endl;
+
+	float acc=static_cast<PedPomdp*>(model_)->GetAcceleration(action);
+
+	float accelaration;
+	if (!buffered)
+		accelaration=acc/ModelParams::control_freq;
+	else if (buffered)
+		accelaration=acc/pub_frequency;
+
+	cout<<"applying step acc: "<< accelaration<<endl;
+	cout<<"trunc to max car vel: "<< ModelParams::VEL_MAX<<endl;
+
+	target_speed_ = min(speed_in_search_state_ + accelaration, ModelParams::VEL_MAX);
+	target_speed_ = max(target_speed_, 0.0);
+
+	steering_=static_cast<PedPomdp*>(model_)->GetSteering(action);
+
+	cerr << "DEBUG: Executing action:" << action << " steer/acc = " << steering_ << "/" << acc << endl;
+	cerr << "action IDs steer/acc = " << static_cast<PedPomdp*>(model_)->GetSteeringID(action)
+				<< "/" << static_cast<PedPomdp*>(model_)->GetAccelerationID(action) << endl;
+	cout<<"cmd steering = "<<steering_<<endl;
+	cout<<"cmd target_speed = "<<target_speed_<<endl;
+}
+
+void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
+//	buffered_action_ = action;
+
+	cout<<"real_speed_ = "<<real_speed_<<endl;
+
+	float acc=static_cast<PedPomdp*>(model_)->GetAcceleration(action);
+
+	float accelaration;
+	if (!buffered)
+		accelaration=acc/ModelParams::control_freq;
+	else if (buffered)
+		accelaration=acc/pub_frequency;
+
+	cout<<"applying step acc: "<< accelaration<<endl;
+	cout<<"trunc to max car vel: "<< ModelParams::VEL_MAX<<endl;
+
+	target_speed_ = min(real_speed_ + accelaration, ModelParams::VEL_MAX);
+	target_speed_ = max(target_speed_, 0.0);
+
+	steering_=static_cast<PedPomdp*>(model_)->GetSteering(action);
+
+	cerr << "DEBUG: Executing action:" << action << " steer/acc = " << steering_ << "/" << acc << endl;
+	cerr << "action IDs steer/acc = " << static_cast<PedPomdp*>(model_)->GetSteeringID(action)
+				<< "/" << static_cast<PedPomdp*>(model_)->GetAccelerationID(action) << endl;
+	cout<<"cmd steering = "<<steering_<<endl;
+	cout<<"cmd target_speed = "<<target_speed_<<endl;
+}
+
+void WorldSimulator::update_cmds_buffered(const ros::TimerEvent &e){
+//	update_cmds_naive(buffered_action_, true);
+	update_cmds_fix_latency(buffered_action_, true);
+}
 
 void WorldSimulator::AddObstacle(){
 
@@ -448,7 +509,7 @@ void WorldSimulator::publishCmdAction(const ros::TimerEvent &e)
 	geometry_msgs::Twist cmd;
 	cmd.linear.x = target_speed_;
 	cmd.linear.y = real_speed_;
-	cmd.angular.z = steering_;
+	cmd.angular.z = steering_; // GetSteering returns radii value
 	//cout<<"publishing cmd speed "<<target_speed_<<endl;
 	cmdPub_.publish(cmd);
 }

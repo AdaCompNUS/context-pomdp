@@ -24,7 +24,18 @@ int init_hist_len = 0;
 ros::ServiceClient PedNeuralSolverPrior::nn_client_;
 ros::ServiceClient PedNeuralSolverPrior::nn_client_val_;
 
+std::chrono::time_point<std::chrono::system_clock> SolverPrior::init_time_;
 
+
+double SolverPrior::get_timestamp(){
+	return Globals::ElapsedTime(init_time_);
+}
+
+void SolverPrior::record_init_time(){
+	SolverPrior::init_time_ = Time::now();
+
+	cout << " SolverPrior init_time recorded" << endl;
+}
 cv::Mat rescale_image(const cv::Mat& image, double downsample_ratio=0.03125){
 	logd << "[rescale_image]" << endl;
 	auto start = Time::now();
@@ -325,6 +336,7 @@ void PedNeuralSolverPrior::Init(){
 
 		map_hist_links.push_back(NULL);
 		car_hist_links.push_back(NULL);
+		hist_time_stamps.push_back(-1);
 	}
 
 	goal_link = NULL;
@@ -548,7 +560,7 @@ void PedNeuralSolverPrior::Reuse_history(int new_channel, int start_channel){
 	assert(new_channel>=start_channel);
 	int old_channel = new_channel - start_channel;
 
-	logd << "[Reuse_history] copying data from "<< old_channel << " to new channel "<< new_channel << endl;
+	logi << "[Reuse_history] copying data from "<< old_channel << " to new channel "<< new_channel << endl;
 
 	if(new_channel !=old_channel){
 		map_hist_images_[new_channel] = map_hist_images_[old_channel];
@@ -558,6 +570,8 @@ void PedNeuralSolverPrior::Reuse_history(int new_channel, int start_channel){
 
 		map_hist_links[new_channel] = map_hist_links[old_channel];
 		car_hist_links[new_channel] = car_hist_links[old_channel];
+
+		hist_time_stamps[new_channel] = hist_time_stamps[old_channel];
 	}
 	else{
 		logd << "skipped" << endl;
@@ -581,7 +595,7 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 	auto start = Time::now();
 
 	const PedPomdp* pomdp_model = static_cast<const PedPomdp*>(model_);
-	logd << "Processing states, len=" << hist_states.size() << endl;
+	logi << "Processing states, len=" << hist_states.size() << endl;
 
 	for (int i = 0; i < hist_states.size(); i++) {
 
@@ -703,6 +717,7 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 
 		map_hist_links[hist_channel] = nodes[i];
 		car_hist_links[hist_channel] = nodes[i];
+		hist_time_stamps[hist_channel] = hist_states[i]->time_stamp;
 	}
 
 //	logd << "[Process_states]  map_hist_tensor_["<<0<<"], address " << &map_hist_tensor_[0]<< endl;
@@ -712,7 +727,7 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 
 	logd << "[Process_states] done " << endl;
 
-	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start_total) << " s" << endl;
+	logi << __FUNCTION__<<" " << Globals::ElapsedTime(start_total) << " s" << endl;
 
 }
 
@@ -730,6 +745,8 @@ std::vector<torch::Tensor> PedNeuralSolverPrior::Process_nodes_input(
 
 		logd << "[Process_nodes_input] node " << i << endl;
 		cur_state[0]= static_cast<PomdpState*>(vnode_states[i]);
+
+		logi << "Using current state of node " << i << " as channel 0" << endl;
 
 		Process_states(vector<despot::VNode*>({vnodes[i]}), cur_state, hist_ids);
 
@@ -762,6 +779,13 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(despot::VNode* cur_node){
 	despot::VNode* parent = cur_node;
 
 	try{
+		logi << __FUNCTION__ << " node depth " << cur_node->depth()<< endl;
+
+		for (int i=0;i<num_hist_channels; i++){
+			logi << "channel " << i << " ts " << hist_time_stamps[i] <<
+					" linked node depth " <<  car_hist_links[i]->depth() << endl;
+		}
+
 		for (int i=0;i<num_hist_channels; i++){
 			logd << " [Combine_images] hist " << i << " should be depth " << parent->depth() <<
 					", get depth "<< car_hist_links[i]->depth()<< endl;
@@ -928,7 +952,7 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 	value_batch = value_batch.squeeze(1);
     auto value_double = value_batch.accessor<float, 1>();
 
-	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+	logi << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
 
 	logd << "Get value output " << value_batch << endl;
 
@@ -945,12 +969,27 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 		auto acc_sigma = acc_sigma_batch[node_id];
 		auto ang = ang_batch[node_id];
 
+		if (logging::level()>=3){
+			cout << "large net raw acc output:" << endl;
+			auto acc_pi_float = acc_pi.accessor<float, 1>();
+			auto acc_mu_float = acc_mu.accessor<float, 2>();
+
+			for (int mode = 0; mode < acc_pi.size(0); mode ++){
+				cout << "mu[" << mode <<"]=" << acc_mu_float[mode][0] << endl;
+			}
+			for (int mode = 0; mode < acc_pi.size(0); mode ++){
+				cout << "pi[" << mode <<"]=" << acc_pi_float[mode] << endl;
+			}
+		}
+
 		// TODO: Send nn_input_images_ to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
 
 		int num_accs = 2*ModelParams::NumAcc+1;
 		at::Tensor acc_candiates = torch::ones({num_accs, 1}, at::kFloat);
 		for (int acc_id = 0;  acc_id < num_accs; acc_id ++){
-			acc_candiates[acc_id][0] = ped_model->GetAccelerationNoramlized(acc_id);
+			double query_acc = ped_model->GetAccelerationNoramlized(acc_id);
+			acc_candiates[acc_id][0] = query_acc;
+			cout << "adding query acc: "<< acc_id <<"="<< query_acc << endl;
 		}
 
 		int num_modes = acc_pi.size(0);
@@ -974,6 +1013,15 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 		logd << "steer probs = " << steer_probs_Tensor << endl;
 
 	    auto acc_probs_double = acc_probs_Tensor.accessor<float, 1>();
+
+	    if (logging::level()>=3){
+	    	cout << "printing acc probs, acc_probs_Tensor dim=" << acc_probs_Tensor.sizes() << endl;
+	    	for (int acc_id =0; acc_id < acc_probs_Tensor.sizes()[0]; acc_id++){
+				double query_acc = ped_model->GetAccelerationNoramlized(acc_id);
+				cout << "query acc "<< acc_id <<"=" <<  query_acc << ", prob=" << acc_probs_double[acc_id] << endl;
+			}
+	    }
+
 	    auto steer_probs_double = steer_probs_Tensor.accessor<float, 1>();
 
 		// Update the values in the vnode
@@ -1040,7 +1088,7 @@ void PedNeuralSolverPrior::ComputePreference(vector<torch::Tensor>& input_batch,
 	else
 		ComputeMiniBatchPref(input_batch, vnodes);
 
-	logd << __FUNCTION__<< " " << vnodes.size() << " nodes "  << Globals::ElapsedTime(start) << " s" << endl;
+	logi << __FUNCTION__<< " " << vnodes.size() << " nodes "  << Globals::ElapsedTime(start) << " s" << endl;
 }
 
 void PedNeuralSolverPrior::ComputeMiniBatchPref(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
@@ -1224,7 +1272,7 @@ void PedNeuralSolverPrior::ComputeValue(vector<torch::Tensor>& input_batch, vect
 	else
 		ComputeMiniBatchValue(input_batch, vnodes);
 
-	logd << __FUNCTION__<< " " << vnodes.size() << " nodes "  << Globals::ElapsedTime(start) << " s" << endl;
+	logi << __FUNCTION__<< " " << vnodes.size() << " nodes "  << Globals::ElapsedTime(start) << " s" << endl;
 }
 
 void PedNeuralSolverPrior::ComputeMiniBatchValue(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
@@ -1321,7 +1369,7 @@ void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::v
 	if (mode == FULL){ // Full update of the input channels
 		num_history = num_hist_channels;
 		start_channel = 0;
-		logd << "Getting FULL history for node "<< cur_node << " at depth " << cur_node->depth() << endl;
+		logi << "Getting FULL history for node "<< cur_node << " at depth " << cur_node->depth() << endl;
 
 //		for (int i = 0 ; i<num_history ; i++){
 //			logd << "add hist id "<< i << endl;
@@ -1332,7 +1380,7 @@ void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::v
 	else if (mode == PARTIAL){ // Partial update of input channels and reuse old channels
 		num_history = num_hist_channels - 1;
 		start_channel = 1;
-		logd << "Getting PARTIAL history for node "<< cur_node << " at depth " << cur_node->depth() << endl;
+		logi << "Getting PARTIAL history for node "<< cur_node << " at depth " << cur_node->depth() << endl;
 
 		//[1,2,3]
 		// id = 0 will be filled in the nodes
@@ -1349,13 +1397,31 @@ void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::v
 			parent = (parent->parent()==NULL)?
 					parent: parent->parent()->parent(); // to handle root node
 
-		if(car_hist_links[i-start_channel] == parent) { // can reuse the previous channel
-			logd << "Reusing channel " << i-start_channel <<
-					" to new channel " << i << " for node "<< cur_node << endl;
+		if (mode == FULL && cur_node->depth()==0){// root node initialization and expansion
+//			cout << "Checking reuse" << endl;
+//			assert(cur_node->depth()==0);
+			double cur_ts = static_cast<PomdpState*>(cur_node->particles()[0])->time_stamp;
+			double hist_ts = cur_ts - i*1.0/ModelParams::control_freq;
 
-			reuse_ids.push_back(i);
-			continue;
+			cout << "Comparing recorded ts "<< hist_time_stamps[i-start_channel] <<
+					" with calculated ts " << hist_ts << endl;
+			if(abs(hist_time_stamps[i-start_channel] - hist_ts) <=1e-2) { // can reuse the previous channel
+				logd << "Reusing channel " << i-start_channel <<
+						" to new channel " << i << " for node "<< cur_node << endl;
+
+				reuse_ids.push_back(i);
+				continue;
+			}
 		}
+		else{
+			if(car_hist_links[i-start_channel] == parent) { // can reuse the previous channel
+				logd << "Reusing channel " << i-start_channel <<
+									" to new channel " << i << " for node "<< cur_node << endl;
+				reuse_ids.push_back(i);
+				continue;
+			}
+		}
+
 
 		logd << "add hist id" << i << ", add parent depth = " << parent->depth() << endl;
 
@@ -1380,21 +1446,17 @@ void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::v
 		else if (mode == PARTIAL)
 			t = latest - hist_ids[i] + 1;
 
-		logd << " Using as_history_in_search_ entry " << t << " as new channel " << hist_ids[i]
-					  << " node at level " << cur_node ->depth()<< endl;
-
-		logd.flush();
-
 		if (parents_to_fix_images[i] && mode == PARTIAL){
 
-			logd << "parents_to_fix_images[i]->depth()= " << parents_to_fix_images[i]->depth()
-							<< ", t - init_hist_len  + hist_ids[i] = " << t - init_hist_len + hist_ids[i] << endl;
-
-			logd << "t, init_hist_len, latest, hist_id = " << t <<", "<< init_hist_len << ", "
-					<<  latest << ", " << hist_ids[i] << endl;
-
 			if(parents_to_fix_images[i]->depth() != t - init_hist_len + hist_ids[i]){
-				logd.flush();
+
+				logi << "parents_to_fix_images[i]->depth()= " << parents_to_fix_images[i]->depth()
+								<< ", t - init_hist_len  + hist_ids[i] = " << t - init_hist_len + hist_ids[i] << endl;
+
+				logi << "t, init_hist_len, latest, hist_id = " << t <<", "<< init_hist_len << ", "
+						<<  latest << ", " << hist_ids[i] << endl;
+
+				logi.flush();
 				exit(-1);
 			}
 		}
@@ -1402,9 +1464,17 @@ void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::v
 		if (t >=0){
 			PomdpState* car_peds_state = static_cast<PomdpState*>(as_history_in_search_.state(t));
 			hist_states.push_back(car_peds_state);
+
+			logi << " Using as_history_in_search_ entry " << t <<
+					" ts " << car_peds_state->time_stamp <<
+					" as new channel " << hist_ids[i] <<
+					" node at level " << cur_node ->depth()<< endl;
 		}
-		else
+		else{
 			hist_states.push_back(NULL);
+			logi << " Using NULL state as new channel " << hist_ids[i]
+					  << " node at level " << cur_node ->depth()<< endl;
+		}
 	}
 
 	logd << "[Get_history] validating history, node " << cur_node << endl;
@@ -1415,11 +1485,11 @@ void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::v
 
 	try{
 		for (int i=start_channel;i<num_hist_channels; i++){
-			logd << " [Get_history] hist " << i << " should be depth " << parent->depth() <<
+			logi << " [Get_history] hist " << i << " should be depth " << parent->depth() <<
 								", get depth "<< (car_hist_links[i]?car_hist_links[i]->depth():-1)
 										<< " node depth " << cur_node->depth()<< endl;
 			if(car_hist_links[i] != parent)
-				logd <<"mismatch!!!!!!!!!!!!!!!!!"<< endl;
+				logi <<"mismatch!!!!!!!!!!!!!!!!!"<< endl;
 			parent = (parent->parent()==NULL)?
 					parent: parent->parent()->parent(); // to handle root node
 		}
@@ -1822,6 +1892,7 @@ void PedNeuralSolverPrior::Test_model(string path){
 	logd << "[Test_model] Done " << endl;
 
 }
+
 
 ///*
 // * query the policy network to provide prior probability for PUCT

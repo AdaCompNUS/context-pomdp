@@ -153,6 +153,8 @@ DSPOMDP* Controller::InitializeModel(option::Option* options) {
 void Controller::CreateNNPriors(DSPOMDP* model) {
 	cerr << "DEBUG: Creating solver prior " << endl;
 
+	SolverPrior::record_init_time();
+
 	if (Globals::config.use_multi_thread_) {
 		SolverPrior::nn_priors.resize(Globals::config.NUM_THREADS);
 	} else
@@ -230,7 +232,7 @@ void Controller::InitializeDefaultParameters() {
 
 	Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9 / time_scale_;
 
-	Globals::config.num_scenarios=100;
+	Globals::config.num_scenarios=3;
 	Globals::config.discount=1.0; //0.95;
 	Globals::config.sim_len=200/*180*//*10*/; // this is not used
 
@@ -424,6 +426,8 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 	for(int i=0; i<SolverPrior::nn_priors.size();i++){
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
+		logi << __FUNCTION__ << " add history search state of ts " <<
+				static_cast<PomdpState*>(search_state)->time_stamp << endl;
 	}
 
 	double end_t = get_time_second();
@@ -492,6 +496,8 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 //	solver->BeliefUpdate(last_action, last_obs);
 
 	const State* cur_state=world->GetCurrentState();
+	unity_driving_simulator_->speed_in_search_state_ = unity_driving_simulator_->real_speed_;
+
 	assert(cur_state);
 
 	State* search_state =static_cast<const PedPomdp*>(ped_pomdp_model)->CopyForSearch(cur_state);//create a new state for search
@@ -505,6 +511,8 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 	for(int i=0; i<SolverPrior::nn_priors.size();i++){
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
+		logi << __FUNCTION__ << " add history search state of ts " <<
+				static_cast<PomdpState*>(search_state)->time_stamp << endl;
 	}
 
 	logi << "history len = " << SolverPrior::nn_priors[0]->Size(false) << endl;
@@ -584,8 +592,10 @@ void Controller::PlanningLoop(Solver*& solver, World* world, Logger* logger) {
     while(path_from_topic.size()==0 || SolverPrior::nn_priors[0]->Size(true) < 4){
     	logi << "Executing pre-step" << endl;
     	RunPreStep(solver, world, logger);
-    	sleep(1.0/control_freq/time_scale_);
 		ros::spinOnce();
+
+		logi << "sleeping for "<< 1.0/control_freq/time_scale_ << "s"<< endl;
+    	Globals::sleep_ms(1000.0/control_freq/time_scale_);
     }
 
 	logi << "Executing first step" << endl;

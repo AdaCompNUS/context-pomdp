@@ -140,6 +140,8 @@ void Global_print_GPUuse(std::thread::id threadIdx);
 void Global_print_message(std::thread::id threadIdx, char* msg);
 void Global_print_value(std::thread::id threadIdx, double value, char* msg);
 
+
+void sleep_ms(int milliseconds); // cross-platform sleep function
 }//namespace Globals
 
 } // namespace despot

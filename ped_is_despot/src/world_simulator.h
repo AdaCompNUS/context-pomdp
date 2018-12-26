@@ -136,6 +136,7 @@ public:
     ros::Subscriber speedSub_, pedSub_, mapSub_, scanSub_, move_base_speed_;
 
     ros::Timer timer_speed;
+    ros::Timer timer_cmd_update;
 
     tf::TransformListener tf_;
 
@@ -157,5 +158,10 @@ public:
     
 	void publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float vel);
 
+	void update_cmds_fix_latency(ACT_TYPE action, bool buffered = false);
+
+	void update_cmds_naive(ACT_TYPE action, bool buffered = false);
+
+	void update_cmds_buffered(const ros::TimerEvent &e);
 };
 

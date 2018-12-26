@@ -61,7 +61,10 @@ public:
 	CarStruct car;
 	int num;
 	PedStruct peds[ModelParams::N_PED_IN];
-	PomdpState() {}
+
+	float time_stamp;
+
+	PomdpState() {time_stamp = -1;}
 
 	string text() const {
 		return concat(car.vel);
@@ -74,8 +77,11 @@ public:
 	CarStruct car;
 	int num;
 	PedStruct peds[ModelParams::N_PED_WORLD];
+
+	float time_stamp;
+
 //	int peds_mode[ModelParams::N_PED_WORLD];
-	PomdpStateWorld() {}
+	PomdpStateWorld() {time_stamp = -1;}
 
 	string text() const {
 		return concat(car.vel);

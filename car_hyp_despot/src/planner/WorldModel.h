@@ -153,6 +153,10 @@ public:
     void printBelief() const;
 
     PomdpState text() const;
+
+public:
+    double cur_time_stamp;
+
 };
 
 enum PED_MODES{

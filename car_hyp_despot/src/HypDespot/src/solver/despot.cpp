@@ -38,7 +38,7 @@ double DESPOT::Initial_root_gap;
 bool DESPOT::Debug_mode = false;
 bool DESPOT::Print_nodes = false;
 
-int max_trial = 10000;
+int max_trial = 100000;
 
 MemoryPool<QNode> DESPOT::qnode_pool_;
 MemoryPool<Shared_QNode> DESPOT::s_qnode_pool_;
@@ -178,6 +178,8 @@ VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
 		if (Globals::config.use_prior){
 			State* cur_sample_state = cur->particles()[0];
 			SolverPrior::nn_priors[0]->Add_in_search(qstar->edge(), cur_sample_state);
+			logi << __FUNCTION__ << " add history search state of ts " <<
+					static_cast<PomdpState*>(cur_sample_state)->time_stamp << endl;
 		}
 
 		weu = WEU(cur);
@@ -307,6 +309,8 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		if (Globals::config.use_prior){
 			State* cur_sample_state = cur->particles()[0];
 			SolverPrior::nn_priors[threadID]->Add_in_search(qstar->edge(), cur_sample_state);
+			logi << __FUNCTION__ << " add history search state of ts " <<
+					static_cast<PomdpState*>(cur_sample_state)->time_stamp << endl;
 		}
 	} while (cur->depth() < Globals::config.search_depth
 	         && WEU((VNode*) cur) > 0 &&
@@ -556,7 +560,7 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		vector<despot::VNode*> single_node_map;
 		single_node_map.push_back(root);
 
-		logi << "INFO: Querying nn for root " << endl;
+		logi << "Querying nn for root " << endl;
 		// Initialize the root node by querying the nn
 		SolverPrior::nn_priors[prior_ID]->Compute(hist_images, single_node_map);
 	}
@@ -591,91 +595,97 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 
 	Globals::ResetSerialTime();
 
-	if (Globals::config.use_multi_thread_) {
+	if (Globals::config.search_depth > 0){
+		if (Globals::config.use_multi_thread_) {
 
-		//cout << "Start!" << endl << endl;
-		double thread_used_time[Globals::config.NUM_THREADS];
-		double thread_explore_time[Globals::config.NUM_THREADS];
-		double thread_backup_time[Globals::config.NUM_THREADS];
-		int num_trials_t[Globals::config.NUM_THREADS];
-		for (int i = 0; i < Globals::config.NUM_THREADS; i++) {
-			Expand_queue.send(static_cast<Shared_VNode*>(root));
-			thread_used_time[i] = used_time;
-			thread_explore_time[i] = 0;
-			thread_backup_time[i] = 0;
-		}
-
-		vector<future<void>> futures;
-		for (int i = 0; i < Globals::config.NUM_THREADS; i++) {
-			RandomStreams local_stream(streams);
-			History local_history(history);
-			futures.push_back(
-			    async(launch::async, &ExpandTreeServer, local_stream,
-			          lower_bound, upper_bound, model, local_history,
-			          static_cast<Shared_SearchStatistics*>(statistics),
-			          ref(thread_used_time[i]),
-			          ref(thread_explore_time[i]),
-			          ref(thread_backup_time[i]), ref(num_trials_t[i]),
-			          timeout, ref(Expand_queue), ref(Print_queue), i));
-		}
-
-		futures.push_back(
-		    async(launch::async, &PrintServer, ref(Print_queue), timeout));
-
-		double passed_time = Globals::ElapsedTime();
-		cout << std::setprecision(5) << Globals::config.NUM_THREADS << " threads started at the "
-		     << passed_time << "'th second" << endl;
-		try {
-			while (!futures.empty()) {
-				auto ftr = std::move(futures.back());
-				futures.pop_back();
-				ftr.get();
-			}
+			//cout << "Start!" << endl << endl;
+			double thread_used_time[Globals::config.NUM_THREADS];
+			double thread_explore_time[Globals::config.NUM_THREADS];
+			double thread_backup_time[Globals::config.NUM_THREADS];
+			int num_trials_t[Globals::config.NUM_THREADS];
 			for (int i = 0; i < Globals::config.NUM_THREADS; i++) {
-				used_time = max(used_time, thread_used_time[i]);
-				explore_time = max(explore_time, thread_explore_time[i]);
-				backup_time = max(backup_time, thread_backup_time[i]);
-				num_trials += num_trials_t[i];
+				Expand_queue.send(static_cast<Shared_VNode*>(root));
+				thread_used_time[i] = used_time;
+				thread_explore_time[i] = 0;
+				thread_backup_time[i] = 0;
 			}
-		} catch (exception & e) {
-			cout << "Exception" << e.what() << endl;
-		}
 
-		passed_time = Globals::ElapsedTime();
-		cout << std::setprecision(5) << "Tree expansion in "
-		     << passed_time << " s" << endl;
-
-	} else {
-
-		do {
-			if (statistics->num_expanded_nodes > 100000)
-				break;
-			double start = clock();
-			VNode* cur = Trial(root, streams, lower_bound, upper_bound, model,
-			                   history, statistics);
-			used_time += double(clock() - start) / CLOCKS_PER_SEC;
-			explore_time += double(clock() - start) / CLOCKS_PER_SEC;
-			//model->Debug();
-			start = clock();
-			Backup(cur, true);
-			if (statistics != NULL) {
-				statistics->time_backup += double(
-				                               clock() - start) / CLOCKS_PER_SEC;
+			vector<future<void>> futures;
+			for (int i = 0; i < Globals::config.NUM_THREADS; i++) {
+				RandomStreams local_stream(streams);
+				History local_history(history);
+				futures.push_back(
+					async(launch::async, &ExpandTreeServer, local_stream,
+						  lower_bound, upper_bound, model, local_history,
+						  static_cast<Shared_SearchStatistics*>(statistics),
+						  ref(thread_used_time[i]),
+						  ref(thread_explore_time[i]),
+						  ref(thread_backup_time[i]), ref(num_trials_t[i]),
+						  timeout, ref(Expand_queue), ref(Print_queue), i));
 			}
-			used_time += double(clock() - start) / CLOCKS_PER_SEC;
-			backup_time += double(clock() - start) / CLOCKS_PER_SEC;
-			//model->Debug();
-			num_trials++;
-			Globals::AddSerialTime(used_time);
 
-//			if (DESPOT::Debug_mode || FIX_SCENARIO == 1)
-				if (num_trials == max_trial){
-					cout << "Reaching max trials, stopping search" << endl;
-					break;
+			futures.push_back(
+				async(launch::async, &PrintServer, ref(Print_queue), timeout));
+
+			double passed_time = Globals::ElapsedTime();
+			cout << std::setprecision(5) << Globals::config.NUM_THREADS << " threads started at the "
+				 << passed_time << "'th second" << endl;
+			try {
+				while (!futures.empty()) {
+					auto ftr = std::move(futures.back());
+					futures.pop_back();
+					ftr.get();
 				}
-		} while (used_time * (num_trials + 1.0) / num_trials < timeout
-		         && !Globals::Timeout(Globals::config.time_per_move)
-		         && (root->upper_bound() - root->lower_bound()) > 1e-6);
+				for (int i = 0; i < Globals::config.NUM_THREADS; i++) {
+					used_time = max(used_time, thread_used_time[i]);
+					explore_time = max(explore_time, thread_explore_time[i]);
+					backup_time = max(backup_time, thread_backup_time[i]);
+					num_trials += num_trials_t[i];
+				}
+			} catch (exception & e) {
+				cout << "Exception" << e.what() << endl;
+			}
+
+			passed_time = Globals::ElapsedTime();
+			cout << std::setprecision(5) << "Tree expansion in "
+				 << passed_time << " s" << endl;
+
+		} else {
+
+			do {
+				if (statistics->num_expanded_nodes > 100000)
+					break;
+				double start = clock();
+				VNode* cur = Trial(root, streams, lower_bound, upper_bound, model,
+								   history, statistics);
+				used_time += double(clock() - start) / CLOCKS_PER_SEC;
+				explore_time += double(clock() - start) / CLOCKS_PER_SEC;
+				//model->Debug();
+				start = clock();
+				Backup(cur, true);
+				if (statistics != NULL) {
+					statistics->time_backup += double(
+												   clock() - start) / CLOCKS_PER_SEC;
+				}
+				used_time += double(clock() - start) / CLOCKS_PER_SEC;
+				backup_time += double(clock() - start) / CLOCKS_PER_SEC;
+				//model->Debug();
+				num_trials++;
+				Globals::AddSerialTime(used_time);
+
+	//			if (DESPOT::Debug_mode || FIX_SCENARIO == 1)
+					if (num_trials == max_trial){
+						cout << "Reaching max trials, stopping search" << endl;
+						break;
+					}
+			} while (used_time * (num_trials + 1.0) / num_trials < timeout
+					 && !Globals::Timeout(Globals::config.time_per_move)
+					 && (root->upper_bound() - root->lower_bound()) > 1e-6);
+		}
+	}
+	else{
+		cout << "sleeping for " << Globals::config.time_per_move << "s" << endl;
+		Globals::sleep_ms(1000*Globals::config.time_per_move);
 	}
 
 	logi << "[DESPOT::Search] Time for EXPLORE: " << explore_time << "s"
@@ -1301,6 +1311,9 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 		     << setprecision(5) << "(" << vnode->default_move().value << "), ";		//Debug
 		SolverPrior::nn_priors[0]->print_prior_actions(vnode->default_move().action);
 	}
+	else{
+		cout <<" default move is the same as searched move" << endl;
+	}
 
 	if (vnode->lower_bound() < -200/*false*/) {
 		logi.precision(3);
@@ -1478,7 +1491,7 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 				CalExplorationValue(qnode);
 		}
 
-		if(Globals::config.use_prior){
+		if(Globals::config.use_prior && vnode->depth()==0){
 //			logi << "comparing level "<< qnode->parent()->depth() << " qnode->upper_bound()= "
 //					<< qnode->upper_bound(false) << " " << qnode->exploration_bonus << ", ";
 //			SolverPrior::nn_priors[0]->print_prior_actions(action);

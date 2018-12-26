@@ -22,6 +22,9 @@ DSPOMDP* DrivingController::InitializeModel(option::Option* options) {
 }
 
 void DrivingController::CreateNNPriors(DSPOMDP* model) {
+
+	SolverPrior::record_init_time();
+
 	if (Globals::config.use_multi_thread_) {
 		SolverPrior::nn_priors.resize(Globals::config.NUM_THREADS);
 	} else
@@ -126,6 +129,8 @@ bool DrivingController::RunStep(Solver* solver, World* world, Logger* logger) {
 	for(int i=0; i<SolverPrior::nn_priors.size();i++){
 		SolverPrior::nn_priors[i]->Add(action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
+		logi << __FUNCTION__ << " add history search state of ts " <<
+				static_cast<PomdpState*>(search_state)->time_stamp << endl;
 	}
 
 	end_t = get_time_second();

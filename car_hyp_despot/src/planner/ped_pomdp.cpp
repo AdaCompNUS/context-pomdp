@@ -241,6 +241,8 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	world_model->RobVelStep(state.car, acc, rNum/*random*/);
 
 
+	state.time_stamp = state.time_stamp + 1.0/ModelParams::control_freq;
+
 	if(use_rvo_in_search){
 		// Attentive pedestrians
 		world_model->RVO2PedStep(state.peds,rNum, state.num, state.car);
@@ -881,6 +883,8 @@ SolverPrior* PedPomdp::CreateSolverPrior(World* world, std::string name, bool up
 		prior->Add(-1, init_state);
 		State* init_search_state_=CopyForSearch(init_state);//the state is used in search
 		prior->Add_in_search(-1, init_search_state_);
+		logi << __FUNCTION__ << " add history search state of ts " <<
+			static_cast<PomdpState*>(init_search_state_)->time_stamp << endl;
 	}
 
 	return prior;
@@ -896,6 +900,7 @@ State* PedPomdp::CopyForSearch(const State* particle) const {
 	for (int i=0;i<new_particle->num; i++){
 		new_particle->peds[i]=world_state->peds[i];
 	}
+	new_particle->time_stamp = world_state->time_stamp;
 
 	new_particle->SetAllocated();
 	return new_particle;
@@ -949,18 +954,12 @@ double PedPomdp::GetSteering(ACT_TYPE action, bool debug) const{
 
 ACT_TYPE PedPomdp::GetActionID(double steering, double acc, bool debug){
 	if(debug){
-		cout<<"[GetActionID] (shifted_steer, normalized_steer, steer_ID)="
-				<<"("<<steering/ModelParams::MaxSteerAngle<<","
-				<<(steering/ModelParams::MaxSteerAngle+1)<<","
-				<<(ACT_TYPE)ClosestInt((steering/ModelParams::MaxSteerAngle+1)*(ModelParams::NumSteerAngle))<<")"<<endl;
-		cout<<"[GetActionID] (shifted_acc, noirmalized_acc, acc_ID)="
-				<<"("<<acc/ModelParams::AccSpeed<<","
-				<<acc/ModelParams::AccSpeed+1<<","
-				<<(ACT_TYPE)ClosestInt((acc/ModelParams::AccSpeed+1)*ModelParams::NumAcc)<<")"<<endl;
+		cout<<"[GetActionID] steer_ID=" << GetSteerIDfromSteering(steering) <<endl;
+		cout<<"[GetActionID] acc_ID=" << GetAccIDfromAcc(acc) <<endl;
 	}
-	return (ACT_TYPE)ClosestInt((steering/ModelParams::MaxSteerAngle+1)*(ModelParams::NumSteerAngle))
-			*(ACT_TYPE)ClosestInt(2*ModelParams::NumAcc+1)
-			+(ACT_TYPE)ClosestInt((acc/ModelParams::AccSpeed+1)*ModelParams::NumAcc);
+
+	return (ACT_TYPE)(GetSteerIDfromSteering(steering)*ClosestInt(2*ModelParams::NumAcc+1)
+			+ GetAccIDfromAcc(acc));
 }
 
 double PedPomdp::GetAccfromAccID(int acc){
@@ -978,5 +977,18 @@ double PedPomdp::GetNormalizeAccfromAccID(int acc){
 		case ACT_ACC: return 1.0;
 		case ACT_DEC: return -1.0;
 	}
+}
+
+int PedPomdp::GetAccIDfromAcc(float acc){
+	if (fabs(acc-0)<1e-5)
+		return ACT_CUR;
+	else if (fabs(acc - ModelParams::AccSpeed) < 1e-5)
+		return ACT_ACC;
+	else if (fabs(acc - (-ModelParams::AccSpeed)) < 1e-5)
+		return ACT_DEC;
+}
+
+int PedPomdp::GetSteerIDfromSteering(float steering){
+	return ClosestInt((steering/ModelParams::MaxSteerAngle+1)*(ModelParams::NumSteerAngle));
 }
 

@@ -501,6 +501,7 @@ void WorldModel::PedStep(PedStruct &ped, double& random) {
     return;
 }
 
+
 double gaussian_prob(double x, double stddev) {
     double a = 1.0 / stddev / sqrt(2 * M_PI);
     double b = - x * x / 2.0 / (stddev * stddev);
@@ -546,20 +547,32 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 
 double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, int ped_mode) {
 	const double K = 0.001;
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 	double move_dist = Norm(curr.x-prev.x, curr.y-prev.y);
 
 	COORD goal;
 
 	if(ped_mode == PED_ATT){
-
-		assert(ped_id <ped_mean_dirs.size());
-		assert(goal_id <ped_mean_dirs[0].size());
+		if(ped_id >= ped_mean_dirs.size()){
+			cout << "Encountering overflowed ped id " << ped_id;
+			while (ped_mean_dirs.size() < ped_id + 1){
+				cout << "adding init mean dir for ped " << ped_mean_dirs.size()<< endl;
+				vector<COORD> dirs(goals.size());
+				ped_mean_dirs.push_back(dirs);
+			}
+//			exit(-1);
+		}
+		if(goal_id >= ped_mean_dirs[0].size()){
+			cout << "Encountering overflowed goal id " << goal_id;
+			exit(-1);
+		}
 		goal = ped_mean_dirs[ped_id][goal_id] + prev;
 	}
 	else{
 		goal = goals[goal_id];
 	}
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 	double goal_dist = Norm(goal.x-prev.x, goal.y-prev.y);
 
@@ -574,6 +587,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, 
 
 		return (move_dist < sensor_noise) ? 0.4 : 0;
 	} else {
+//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 		double angle = 0;
 		if (goal_dist > 1e-5 && move_dist > sensor_noise){
@@ -584,6 +598,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, 
 		}
 		else
 			logd <<"goal_dist=" << goal_dist << " move_dist " << move_dist << endl;
+//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 		double angle_prob = gaussian_prob(angle, ModelParams::NOISE_GOAL_ANGLE) + K;
 
@@ -603,6 +618,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, 
 			logd <<"DIS vel_error=" << vel_error << endl;
 
 		}
+//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 		double vel_prob = gaussian_prob(vel_error, ModelParams::NOISE_PED_VEL/freq) + K;
 		return angle_prob* vel_prob;
@@ -748,6 +764,7 @@ void WorldModel::setPath(Path path) {
 
 void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 //    const double ALPHA = 0.8;
+
     const double ALPHA = 0.1;
 
 	const double SMOOTHING=ModelParams::BELIEF_SMOOTHING;
@@ -772,6 +789,9 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 		// Important: Keep the belief noisy to avoid aggressive policies
 		b.prob_modes_goals[PED_DIS][i] += SMOOTHING / goals.size()/2.0; // CHECK: decrease or increase noise
 	}
+
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
+
 	if(debug) {
         for(double w: b.prob_modes_goals[PED_ATT]) {
             cout << w << " ";
@@ -795,9 +815,14 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 		w /= total_weight;
 	}
 
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
+
     double moved_dist = COORD::EuclideanDistance(b.pos, curr_ped.pos);
     b.vel = ALPHA * b.vel + (1-ALPHA) * moved_dist * ModelParams::control_freq;
 	b.pos = curr_ped.pos;
+
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
+
 }
 
 PedBelief WorldModel::initPedBelief(const PedStruct& ped) {
@@ -950,6 +975,8 @@ void WorldBeliefTracker::update() {
         newpeds[p.id] = ped;
     }
 
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
+
     // remove disappeared peds
     vector<int> peds_to_remove;
     for(const auto& p: peds) {
@@ -958,15 +985,26 @@ void WorldBeliefTracker::update() {
             logi << "["<<__FUNCTION__<< "]" << " removing ped "<< p.first << endl;
         }
     }
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
+
     for(const auto& i: peds_to_remove) {
         peds.erase(i);
     }
+
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
+
 
     // Run ORCA for all possible hidden variable combinations
 
     model.PrepareAttentivePedMeanDirs(peds, car);
 
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
+
+
     model.PrintMeanDirs(peds, newpeds);
+
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
+
 
     // update car
     car.pos = stateTracker.carpos;
@@ -976,8 +1014,15 @@ void WorldBeliefTracker::update() {
 
     // update existing peds
     for(auto& kv : peds) {
+
+    	if (newpeds.find(kv.first) == newpeds.end()){
+    		cerr << "error !!" << " updating non existing id in new ped list"<< endl;
+    		exit(-1);
+    	}
         model.updatePedBelief(kv.second, newpeds[kv.first]);
     }
+
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
     // add new peds
     for(const auto& kv: newpeds) {
@@ -987,12 +1032,19 @@ void WorldBeliefTracker::update() {
         }
     }
 
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
+
 	sorted_beliefs.clear();
 	for(const auto& dp: sorted_peds) {
 		auto& p = dp.second;
 		sorted_beliefs.push_back(peds[p.id]);
 	}
 
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
+
+	cur_time_stamp = SolverPrior::get_timestamp();
+
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
     return;
 }
@@ -1104,6 +1156,8 @@ PomdpState WorldBeliefTracker::sample() {
 			s.num ++;
 		}
     }
+
+    s.time_stamp  = cur_time_stamp;
 
 //	logd << "[WorldBeliefTracker::sample] done" << endl;
 

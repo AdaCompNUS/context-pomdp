@@ -72,7 +72,7 @@ public:
         cmd.linear.x = emergency_break? 0 : curr_vel;
 
         cmd_pub.publish(cmd);
-		//std::cout<<"vel publisher cmd "<<cmd.linear.x<<std::endl;
+		std::cout<<"vel publisher cmd steer "<<cmd.angular.z<<std::endl;
     }
 
     double curr_vel, target_vel, init_curr_vel, steering;

@@ -115,6 +115,13 @@ public:
 
 public:
 	static std::vector<SolverPrior*> nn_priors;
+
+public:
+    static std::chrono::time_point<std::chrono::system_clock> init_time_;
+
+	static double get_timestamp();
+	static void record_init_time();
+
 };
 
 
