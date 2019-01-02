@@ -24,8 +24,10 @@ protected:
 	VariableActionStateHistory as_history_in_search_;
 	std::vector<double> action_probs_;
 
+	int prior_id_;
+
 public:
-	SolverPrior(const DSPOMDP* model):model_(model){;}
+	SolverPrior(const DSPOMDP* model):model_(model){searched_action = -1; default_action = -1;}
 	virtual ~SolverPrior(){;}
 
 	inline virtual int SmartCount(ACT_TYPE action) const {
@@ -110,6 +112,10 @@ public:
 
 	virtual void print_prior_actions(ACT_TYPE) = 0;
 
+	virtual void Clear_hist_timestamps() = 0;
+
+	virtual void DebugHistory(string msg)=0;
+
 //#endif
 
 
@@ -122,8 +128,25 @@ public:
 	static double get_timestamp();
 	static void record_init_time();
 
+	virtual void record_cur_history()=0;
+	virtual void compare_history_with_recorded()=0;
+
+	void prior_id(int id){
+		prior_id_ = id;
+	}
+
+	int prior_id(){
+		return prior_id_;
+	}
+
+public:
+	ACT_TYPE searched_action;
+	ACT_TYPE default_action;
+
+	virtual void root_car_pos(double x, double y) = 0;
 };
 
-
+void Debug_state(State* state, std::string msg, const DSPOMDP* model);
+void Record_debug_state(State* state);
 
 #endif

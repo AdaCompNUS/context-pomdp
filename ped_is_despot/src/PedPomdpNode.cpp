@@ -40,7 +40,7 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 
 	bool fixed_path;
 	double pruning_constant, pathplan_ahead;
-    n.param("pruning_constant", pruning_constant, 0.0);
+    n.param("pruning_constant", pruning_constant, 0.001);
 	n.param("fixed_path", fixed_path, false);
 	n.param("pathplan_ahead", pathplan_ahead, 4.0);
 

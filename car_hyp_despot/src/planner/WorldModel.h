@@ -58,6 +58,8 @@ public:
     void RVO2PedStep(PedStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
     void RVO2PedStep(PomdpStateWorld& state, Random& random);
     void PedStepDeterministic(PedStruct& ped, int step);
+    void PedStepCurVel(PedStruct& ped, COORD vel);
+
     void FixGPUVel(CarStruct &car);
 	void RobStep(CarStruct &car, double steering, Random& random);
 	void RobStep(CarStruct &car, double steering, double& random);
@@ -66,6 +68,9 @@ public:
     void RobVelStep(CarStruct &car, double acc, Random& random);
     void RobVelStep(CarStruct &car, double acc, double& random);
     double ISRobVelStep(CarStruct &car, double acc, Random& random);//importance sampling RobvelStep
+
+    void RobStepCurVel(CarStruct &car);
+    void RobStepCurAction(CarStruct &car, double acc, double steering);
 
     double pedMoveProb(COORD p0, COORD p1, int goal_id);
     double pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, int ped_mode);
@@ -99,7 +104,6 @@ public:
     void PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarStruct& car);
 
     void PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedStruct>& curr_peds);
-
 };
 
 class WorldStateTracker {
@@ -123,6 +127,8 @@ public:
 
     PomdpState getPomdpState();
 
+    COORD getPedVel(int ped_id);
+
     // Car state
     COORD carpos;
     double carvel;
@@ -139,9 +145,10 @@ public:
     WorldBeliefTracker(WorldModel& _model, WorldStateTracker& _stateTracker): model(_model), stateTracker(_stateTracker) {}
 
     void update();
-    PomdpState sample();
-    vector<PomdpState> sample(int num);
+    PomdpState sample(bool predict = false);
+    vector<PomdpState> sample(int num, bool predict = false);
     vector<PedStruct> predictPeds();
+    PomdpState predictPedsCurVel(PomdpState*, double acc, double steering);
 
     WorldModel& model;
     WorldStateTracker& stateTracker;
@@ -157,6 +164,8 @@ public:
 public:
     double cur_time_stamp;
 
+    double cur_acc;
+    double cur_steering;
 };
 
 enum PED_MODES{

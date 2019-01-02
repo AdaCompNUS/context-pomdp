@@ -31,6 +31,7 @@ struct Config {
 	bool experiment_mode;
 	int despot_thread_gap;
 	int expanstion_switch_thresh;
+	double time_scale;
 
 	Config() :
 		search_depth(90),
@@ -57,7 +58,8 @@ struct Config {
 	    enable_despot_thread(false),
 	    experiment_mode(false),
 		despot_thread_gap(10000000),
-		expanstion_switch_thresh(2)
+		expanstion_switch_thresh(2),
+		time_scale(1.0)
 	{
 		rollout_type = "INDEPENDENT";
 	}

@@ -167,6 +167,8 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 				static_cast<PedPomdp*>(model)->CreateSolverPrior(
 						unity_driving_simulator_, "NEURAL", false);
 
+		SolverPrior::nn_priors[i]->prior_id(i);
+
 		if (Globals::config.use_prior){
 			assert(model_file_ != "");
 			static_cast<PedNeuralSolverPrior*>(SolverPrior::nn_priors[i])->Load_model(model_file_);
@@ -231,8 +233,8 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.root_seed=time(NULL);
 
 	Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9 / time_scale_;
-
-	Globals::config.num_scenarios=3;
+	Globals::config.time_scale = time_scale_;
+	Globals::config.num_scenarios=5;
 	Globals::config.discount=1.0; //0.95;
 	Globals::config.sim_len=200/*180*//*10*/; // this is not used
 
@@ -245,13 +247,14 @@ void Controller::InitializeDefaultParameters() {
 
 	Globals::config.GPUid=1;//default GPU
 	Globals::config.use_multi_thread_=true;
-	Globals::config.NUM_THREADS=1;
+	Globals::config.NUM_THREADS=10;
 
 	Globals::config.exploration_mode=UCT;
-	Globals::config.exploration_constant=30.0;
+	Globals::config.exploration_constant = 300.0;
+//	Globals::config.exploration_constant=0.0;
 	Globals::config.exploration_constant_o = 1.0;
 
-	Globals::config.search_depth=5;
+	Globals::config.search_depth=8;
 	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/5;
 
 	Globals::config.experiment_mode = true;
@@ -426,8 +429,10 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 	for(int i=0; i<SolverPrior::nn_priors.size();i++){
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
-		logi << __FUNCTION__ << " add history search state of ts " <<
+		logd << __FUNCTION__ << " add history search state of ts " <<
 				static_cast<PomdpState*>(search_state)->time_stamp << endl;
+
+		SolverPrior::nn_priors[i]->record_cur_history();
 	}
 
 	double end_t = get_time_second();
@@ -457,6 +462,8 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 	cerr << "DEBUG: Running step" << endl;
+
+//	SolverPrior::nn_priors[0]->DebugHistory("Start step");
 
 	logger->CheckTargetTime();
 
@@ -491,7 +498,6 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 	cerr << "DEBUG: Updating belief" << endl;
 
-
 	double start_t = get_time_second();
 //	solver->BeliefUpdate(last_action, last_obs);
 
@@ -500,7 +506,13 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 	assert(cur_state);
 
+//	SolverPrior::nn_priors[0]->DebugHistory("After get current step");
+
+	cout << "current state address" << cur_state << endl;
+
 	State* search_state =static_cast<const PedPomdp*>(ped_pomdp_model)->CopyForSearch(cur_state);//create a new state for search
+
+//	SolverPrior::nn_priors[0]->DebugHistory("After copy for search");
 
 	static_cast<PedPomdpBelief*>(solver->belief())->DeepUpdate(
 			SolverPrior::nn_priors[0]->history_states(),
@@ -508,11 +520,32 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 			cur_state,
 			search_state, last_action);
 
+//	SolverPrior::nn_priors[0]->DebugHistory("After Deep update");
+
 	for(int i=0; i<SolverPrior::nn_priors.size();i++){
+
+		// make sure the history has not corrupted
+		SolverPrior::nn_priors[i]->compare_history_with_recorded();
+
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
-		logi << __FUNCTION__ << " add history search state of ts " <<
-				static_cast<PomdpState*>(search_state)->time_stamp << endl;
+		logd << __FUNCTION__ << " add history search state of ts " <<
+				static_cast<PomdpState*>(search_state)->time_stamp <<
+				" hist len " << SolverPrior::nn_priors[i]->Size(true) << endl;
+
+//		bool mode = DESPOT::Debug_mode;
+//		DESPOT::Debug_mode = false;
+//		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(*search_state, "history state");
+//		DESPOT::Debug_mode = mode;
+
+		if (SolverPrior::nn_priors[i]->Size(true)==10)
+			Record_debug_state(search_state);
+
+//		Debug_state(search_state, "Add history", model_);
+//		SolverPrior::nn_priors[0]->DebugHistory("Add history " +
+//				std::to_string(SolverPrior::nn_priors[i]->Size(true)-1));
+
+		SolverPrior::nn_priors[i]->record_cur_history();
 	}
 
 	logi << "history len = " << SolverPrior::nn_priors[0]->Size(false) << endl;
@@ -529,7 +562,44 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 	unity_driving_simulator_->beliefTracker->text();
 
-	//ped_belief>_->publishBelief();// replaced by publishImitationData
+	int cur_search_hist_len = 0;
+	cur_search_hist_len = SolverPrior::nn_priors[0]->Size(true);
+
+	// predict state using last action
+	if (last_action < 0 || last_action > model_->NumActions()){
+		cerr  << "ERROR: wrong last action for prediction "<< last_action << endl;
+	}
+	else{
+
+		unity_driving_simulator_->beliefTracker->cur_acc =
+				static_cast<const PedPomdp*>(ped_pomdp_model)->GetAcceleration(last_action);
+		unity_driving_simulator_->beliefTracker->cur_steering =
+				static_cast<const PedPomdp*>(ped_pomdp_model)->GetSteering(last_action);
+
+		cerr << "DEBUG: Prediction with last action:" << last_action <<
+				" steer/acc = " << unity_driving_simulator_->beliefTracker->cur_steering
+				<< "/" << unity_driving_simulator_->beliefTracker->cur_acc << endl;
+
+		auto predicted = unity_driving_simulator_->beliefTracker->predictPedsCurVel(
+				static_cast<PomdpState*>(search_state),
+				unity_driving_simulator_->beliefTracker->cur_acc,
+				unity_driving_simulator_->beliefTracker->cur_steering);
+
+		PomdpState* predicted_state = static_cast<PomdpState*>(
+				static_cast<const PedPomdp*>(ped_pomdp_model)->Copy(&predicted));
+
+		for(int i=0; i<SolverPrior::nn_priors.size();i++){
+			SolverPrior::nn_priors[i]->Add_in_search(-1, predicted_state);
+			logd << __FUNCTION__ << " add predicted search state of ts " <<
+					predicted_state->time_stamp <<
+					" predicted from search state of ts "
+					<<static_cast<PomdpState*>(search_state)->time_stamp<<
+					" hist len " << SolverPrior::nn_priors[i]->Size(true) << endl;
+
+	//		SolverPrior::nn_priors[i]->DebugHistory("Add prediction " +
+	//			std::to_string(SolverPrior::nn_priors[i]->Size(true)-1));
+		}
+	}
 
 	start_t = get_time_second();
 	ACT_TYPE action;
@@ -546,6 +616,9 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(static_cast<const PedPomdp*>(ped_pomdp_model));
 		cerr << "DEBUG: Launch search with NN prior" << endl;
 		action = solver->Search().action;
+
+		cout << "recording SolverPrior::nn_priors[0]->searched_action" << endl;
+		SolverPrior::nn_priors[0]->searched_action = action;
 	}
 	else if (b_use_drive_net_ == IMITATION){
 		// Query the drive_net for actions, do nothing here
@@ -557,6 +630,15 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 	double search_time = (end_t - start_t);
 	logi << "[RunStep] Time spent in " << typeid(*solver).name()
 			<< "::Search(): " << search_time << endl;
+
+	for(int i=0; i<SolverPrior::nn_priors.size();i++){
+		SolverPrior::nn_priors[i]->Truncate(cur_search_hist_len, true);
+		logi << __FUNCTION__ << " truncating search history length to " <<
+				cur_search_hist_len << endl;
+
+		SolverPrior::nn_priors[i]->compare_history_with_recorded();
+//		SolverPrior::nn_priors[i]->DebugHistory("Trunc history");
+	}
 
 	// imitation learning: renable data update for imitation data
 	switch(simulation_mode_){
@@ -580,6 +662,8 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 	last_action=action;
 	last_obs=obs;
 
+//	SolverPrior::nn_priors[0]->DebugHistory("After execute action");
+
 	cerr << "DEBUG: Ending step" << endl;
 
 	return logger->SummarizeStep(step_++, round_, terminal, action, obs,
@@ -596,6 +680,9 @@ void Controller::PlanningLoop(Solver*& solver, World* world, Logger* logger) {
 
 		logi << "sleeping for "<< 1.0/control_freq/time_scale_ << "s"<< endl;
     	Globals::sleep_ms(1000.0/control_freq/time_scale_);
+
+    	logi << "Pre-step sleep end" << endl;
+
     }
 
 	logi << "Executing first step" << endl;

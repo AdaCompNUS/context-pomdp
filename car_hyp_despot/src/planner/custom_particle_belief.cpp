@@ -100,14 +100,17 @@ Belief* PedPomdpBelief::MakeCopy() const{
 void PedPomdpBelief::UpdateState(const PomdpStateWorld* src_world_state, WorldModel& world_model){
 
 //	stateTracker->removePeds();
-	stateTracker->updateCar(src_world_state->car);
-
-	cout << "[UpdateState] \n";
-	//update the peds in stateTracker
-	for(int i=0; i<src_world_state->num; i++) {
-		Pedestrian p(src_world_state->peds[i].pos.x, src_world_state->peds[i].pos.y, src_world_state->peds[i].id);
-		stateTracker->updatePed(p, false); // true: print debug info
-	}
+//	stateTracker->updateCar(src_world_state->car);
+//
+//	cout << "[UpdateState] \n";
+//
+//	raise(SIGABRT);
+//
+//	//update the peds in stateTracker
+//	for(int i=0; i<src_world_state->num; i++) {
+//		Pedestrian p(src_world_state->peds[i].pos.x, src_world_state->peds[i].pos.y, src_world_state->peds[i].id);
+//		stateTracker->updatePed(p, false); // true: print debug info
+//	}
 }
 
 void PedPomdpBelief::SortPeds(PomdpState* sorted_search_state, const PomdpStateWorld* src_world_state){
@@ -167,45 +170,33 @@ bool PedPomdpBelief::DeepUpdate(const std::vector<const State*>& state_history,
 		ACT_TYPE action){
 	//Update current belief
 
-//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
-
 	try{
-		const PomdpStateWorld* cur_world_state = static_cast<const PomdpStateWorld*>(cur_state);
-//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 		PomdpState* cur_state_search = static_cast<PomdpState*>(cur_state_for_search);
 
-//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
+		bool reorder = false;
 
-		//Sort pedestrians in the current state and update the current search state
-		UpdateState(cur_world_state, world_model_);
-		//SortPeds(cur_state_search,cur_world_state);
-//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
+		if (reorder){
+			const PomdpStateWorld* cur_world_state = static_cast<const PomdpStateWorld*>(cur_state);
 
-		for (int hi=0;hi< state_history.size(); hi++){
-		   const PomdpStateWorld* hist_state =
-				   static_cast<const PomdpStateWorld*>(state_history[hi]);
-		   PomdpState* hist_state_search =
-				   static_cast<PomdpState*>(state_history_for_search[hi]);
-//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
-		   ReorderPeds(hist_state_search, cur_state_search, hist_state);
+			for (int hi=0;hi< state_history.size(); hi++){
+			   const PomdpStateWorld* hist_state =
+					   static_cast<const PomdpStateWorld*>(state_history[hi]);
+			   PomdpState* hist_state_search =
+					   static_cast<PomdpState*>(state_history_for_search[hi]);
+
+			   ReorderPeds(hist_state_search, cur_state_search, hist_state);
+			}
 		}
-
-//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 		//Update and reorder the belief distributions for peds
 		beliefTracker->update();
-//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 		if (Globals::config.silence == false && DESPOT::Debug_mode)
 			beliefTracker->printBelief();
-//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 		publishPlannerPeds(*cur_state_search);
-
-//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
-
 	}
 	catch (exception e) {
 		cerr << "Exception caught in " << __FUNCTION__ << " " << e.what() << endl;
@@ -221,7 +212,7 @@ bool PedPomdpBelief::DeepUpdate(const State* cur_state){
 	const PomdpStateWorld* cur_world_state = static_cast<const PomdpStateWorld*>(cur_state);
 
 	//Sort pedestrians in the current state and update the current search state
-	UpdateState(cur_world_state, world_model_);
+//	UpdateState(cur_world_state, world_model_);
 
 	//Update and reorder the belief distributions for peds
 	beliefTracker->update();
@@ -235,7 +226,8 @@ void PedPomdpBelief::ResampleParticles(const PedPomdp* model){
 
 	assert(beliefTracker);
 
-	vector<PomdpState> samples = beliefTracker->sample(max(2000,5*Globals::config.num_scenarios));
+	bool do_prediction = true;
+	vector<PomdpState> samples = beliefTracker->sample(max(2000,5*Globals::config.num_scenarios), do_prediction);
 
 	logd << "[PedPomdpBelief::ResampleParticles] Construct raw particles" << endl;
 

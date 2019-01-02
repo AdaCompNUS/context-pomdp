@@ -178,7 +178,7 @@ VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
 		if (Globals::config.use_prior){
 			State* cur_sample_state = cur->particles()[0];
 			SolverPrior::nn_priors[0]->Add_in_search(qstar->edge(), cur_sample_state);
-			logi << __FUNCTION__ << " add history search state of ts " <<
+			logd << __FUNCTION__ << " add history search state of ts " <<
 					static_cast<PomdpState*>(cur_sample_state)->time_stamp << endl;
 		}
 
@@ -252,6 +252,8 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		Shared_VNode* next;
 		try {
 			if (!cur->IsLeaf()) {
+				lock_guard < mutex > lck(cur->GetMutex());
+
 				qstar = SelectBestUpperBoundNode(cur, despot_thread);
 				if (qstar)
 					Globals::Global_print_node(this_thread::get_id(), qstar,
@@ -274,8 +276,19 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 
 		// lets_drive
 		if (Globals::config.use_prior){
-			ComputePriorValue(qstar, model);
-			InitChildrenLowerBounds(qstar, lower_bound, model, streams, history);
+
+			lock_guard < mutex > lck(qstar->GetMutex());
+
+			if (!qstar->prior_values_ready()){
+
+				ComputePriorValue(qstar, model);
+
+				qstar->prior_values_ready(true);
+
+	//			return cur; // Debugging
+
+				InitChildrenLowerBounds(qstar, lower_bound, model, streams, history);
+			}
 		}
 
 		try {
@@ -309,7 +322,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		if (Globals::config.use_prior){
 			State* cur_sample_state = cur->particles()[0];
 			SolverPrior::nn_priors[threadID]->Add_in_search(qstar->edge(), cur_sample_state);
-			logi << __FUNCTION__ << " add history search state of ts " <<
+			logd << __FUNCTION__ << " add history search state of ts " <<
 					static_cast<PomdpState*>(cur_sample_state)->time_stamp << endl;
 		}
 	} while (cur->depth() < Globals::config.search_depth
@@ -423,7 +436,7 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 	Shared_VNode* root = node_queue.receive(true, timeout);
 
 
-	logi << "time_out = "<< timeout << endl;
+	logd << "time_out = "<< timeout << endl;
 
 	do {
 		if (root == NULL || Globals::Timeout(timeout)) {
@@ -546,23 +559,26 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 
 	if(Globals::config.use_prior){
 
-		int prior_ID = 0;
-		if (Globals::config.use_multi_thread_){
-			prior_ID=MapThread(this_thread::get_id());
+		logi << "INFO: Clearing hisoty timestamps " << endl;
+
+		for(int prior_ID = 0 ; prior_ID < SolverPrior::nn_priors.size(); prior_ID++){
+			SolverPrior::nn_priors[prior_ID]->Clear_hist_timestamps();
+			SolverPrior::nn_priors[prior_ID]->Record_hist_len();
+			auto& car_pos = static_cast<PomdpState*>(particles[0])->car.pos;
+			SolverPrior::nn_priors[prior_ID]->root_car_pos(car_pos.x, car_pos.y);
 		}
 
 		logi << "INFO: Processing root images " << endl;
 		// Convert the current history to nn input images
 
-		SolverPrior::nn_priors[prior_ID]->Record_hist_len();
-		std::vector<torch::Tensor> hist_images = SolverPrior::nn_priors[prior_ID]->Process_history_input(root);
+		std::vector<torch::Tensor> hist_images = SolverPrior::nn_priors[0]->Process_history_input(root);
 
 		vector<despot::VNode*> single_node_map;
 		single_node_map.push_back(root);
 
 		logi << "Querying nn for root " << endl;
 		// Initialize the root node by querying the nn
-		SolverPrior::nn_priors[prior_ID]->Compute(hist_images, single_node_map);
+		SolverPrior::nn_priors[0]->Compute(hist_images, single_node_map);
 	}
 
 //	used_time = Globals::ElapsedTime();
@@ -683,9 +699,11 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 					 && (root->upper_bound() - root->lower_bound()) > 1e-6);
 		}
 	}
-	else{
-		cout << "sleeping for " << Globals::config.time_per_move << "s" << endl;
-		Globals::sleep_ms(1000*Globals::config.time_per_move);
+
+	if(Globals::ElapsedTime()<Globals::config.time_per_move * 0.9){
+		double sleep_time = Globals::config.time_per_move * 0.9 - Globals::ElapsedTime();
+		cout << "Sleeping for " << sleep_time << "s" << endl;
+		Globals::sleep_ms(1000*sleep_time);
 	}
 
 	logi << "[DESPOT::Search] Time for EXPLORE: " << explore_time << "s"
@@ -761,10 +779,18 @@ void DESPOT::InitLowerBound(VNode* vnode, ScenarioLowerBound* lower_bound,
 		move.value = vnode->prior_value() * vnode->Weight();
 		move.action =vnode->max_prob_action();
 
-		if (vnode->depth()==0){
-			logi << "vnode at level "<< vnode->depth() << " prior value=" << move.value << ", ";
-			SolverPrior::nn_priors[0]->print_prior_actions(move.action);
+		int prior_id = 0;
+		if (Globals::config.use_multi_thread_){
+			prior_id=MapThread(this_thread::get_id());
 		}
+
+		if (vnode->depth()==0){
+			logd << "recording SolverPrior::nn_priors[prior_id]->default_action" << endl;
+			SolverPrior::nn_priors[prior_id]->default_action = vnode->max_prob_action();
+		}
+
+		logd << "vnode "<< vnode << " at level "<< vnode->depth() << " prior value=" << move.value << ", ";
+		SolverPrior::nn_priors[prior_id]->print_prior_actions(move.action);
 	}
 	else{
 		streams.position(vnode->depth());
@@ -885,7 +911,7 @@ ValuedAction DESPOT::Search() {
 		model_->PrintParticles(particles);
 	else{
 		if (Globals::config.silence != true) {
-			model_->PrintParticles(particles);
+			;//model_->PrintParticles(particles);
 		}
 	}
 	statistics_ = Shared_SearchStatistics();
@@ -1281,6 +1307,10 @@ void DESPOT::OptimalAction2(VNode* vnode) {
 }
 
 ValuedAction DESPOT::OptimalAction(VNode* vnode) {
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! debug code !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//	cout << "[OptimalAction] Debug only: returning default move of node " << vnode << endl;
+//	return vnode->default_move();
+
 	ValuedAction astar(-1, Globals::NEG_INFTY);
 	QNode * best_qnode = NULL;
 
@@ -1299,20 +1329,23 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 	if (vnode->default_move().value > astar.value + 1e-5) {
 		logi.precision(5);
-		logi << "Searched value worse than default move: " << astar.value << "(act " << astar.action << ")<" << vnode->default_move().value << endl;		//Debug
+		logi << "Searched value "<< astar.value << "(act " << astar.action << ") worse than default move " <<
+				vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug
 		astar = vnode->default_move();
 		logi << "Execute default move: " << astar.action << endl;		//Debug
 		best_qnode = NULL;		//Debug
 	}
-	else if (astar.action != vnode->default_move().action )
+	else if (astar.action != vnode->default_move().action)
 	{
-		//logi.precision(5);
+		logi << "Searched value "<< astar.value << "(act " << astar.action << ") better than default move " <<
+			    vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug		//logi.precision(5);
 		cout << "unused default action: " << vnode->default_move().action
 		     << setprecision(5) << "(" << vnode->default_move().value << "), ";		//Debug
 		SolverPrior::nn_priors[0]->print_prior_actions(vnode->default_move().action);
 	}
 	else{
-		cout <<" default move is the same as searched move" << endl;
+		logi << "Searched value "<< astar.value << "(act " << astar.action << ") is the same than default move " <<
+			   vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug
 	}
 
 	if (vnode->lower_bound() < -200/*false*/) {
@@ -1477,9 +1510,14 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 	int astar = -1;
 	double upperstar = Globals::NEG_INFTY;
 
+	double prob_star = Globals::NEG_INFTY;
+
 	bool use_exploration_value = true;
 	if (despot_thread)
 		use_exploration_value = false;
+
+	if (Globals::config.use_prior)
+		use_exploration_value = true;
 
 	for (int action = 0; action < vnode->children().size(); action++) {
 		Shared_QNode* qnode =
@@ -1492,21 +1530,34 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 		}
 
 		if(Globals::config.use_prior && vnode->depth()==0){
-//			logi << "comparing level "<< qnode->parent()->depth() << " qnode->upper_bound()= "
-//					<< qnode->upper_bound(false) << " " << qnode->exploration_bonus << ", ";
-//			SolverPrior::nn_priors[0]->print_prior_actions(action);
+			logd << "comparing level "<< qnode->parent()->depth() << " qnode " << qnode << " , upper_bound()= "
+					<< qnode->upper_bound(false) << " bonus " << qnode->exploration_bonus << ", ";
+
+			int prior_ID = 0;
+			if (Globals::config.use_multi_thread_){
+				prior_ID=MapThread(this_thread::get_id());
+			}
+
+			SolverPrior::nn_priors[prior_ID]->print_prior_actions(action);
 		}
 
-		if (qnode->upper_bound(use_exploration_value) > upperstar + 1e-5) {
-			upperstar = qnode->upper_bound(use_exploration_value);
-			astar = action;
-		}
+//		if(Globals::config.use_prior && vnode->depth()==0){
+//			if (qnode->exploration_bonus > prob_star + 1e-5) {
+//				prob_star = qnode->exploration_bonus;
+//				astar = action;
+//			}
+//		}
+//		else{
+			if (qnode->upper_bound(use_exploration_value) > upperstar + 1e-5) {
+				upperstar = qnode->upper_bound(use_exploration_value);
+				astar = action;
+			}
+//		}
 	}
 
 	assert(astar >= 0);
 
-	Shared_QNode* qstar = static_cast<Shared_QNode*>(((VNode*) vnode)->Child(
-	                          astar));
+	Shared_QNode* qstar = static_cast<Shared_QNode*>(((VNode*) vnode)->Child(astar));
 	if (Globals::config.exploration_mode == VIRTUAL_LOSS)
 		qstar->exploration_bonus -= CalExplorationValue(((VNode*) vnode)->depth() + 1);
 	else if (Globals::config.exploration_mode == UCT)
@@ -1872,6 +1923,8 @@ void DESPOT::ComputePriorValue(QNode* qnode, const DSPOMDP * model){
 		// Process last 3 steps of history
 		SolverPrior::nn_priors[prior_ID]->Process_history(qnode->parent(), 1); // 1 = PARTIAL
 
+//		return; // Debugging
+
 		// Process into the bach of tensors
 		logd << "INFO: Processing node images " << endl;
 
@@ -1926,7 +1979,8 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 			qnode = new QNode(vnode, action);
 
 		if (Globals::config.use_prior){
-			logd << "[Expand Vnode] Using prior for children qnode "<< qnode << " action "<< action
+			logd << "[Expand Vnode] Using prior "<< vnode->prior_action_probs(action) <<
+					" for children qnode "<< qnode << " action "<< action
 					<< ": vnode at depth " << vnode->depth() << endl;
 
 			qnode->prior_probability(vnode->prior_action_probs(action)/*action_probs[action]*/);
@@ -2022,6 +2076,7 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 	auto start = Time::now();
 	int NumParticles = particles.size();
 
+	logd << "qnode "<< qnode << " has " << NumParticles << " particles" << endl;
 
 	for (int i = 0; i < NumParticles; i++) {
 
@@ -2040,7 +2095,6 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 		DisableDebugInfo();
 
 		step_reward += reward * copy->weight;
-
 
 		logd << " After step: " << *copy << " " << (reward * copy->weight)
 		     << " " << reward << " " << copy->weight << endl;
@@ -2183,6 +2237,8 @@ void DESPOT::InitChildrenUpperBounds(QNode* qnode, ScenarioUpperBound* ub,
 
 	double upper_bound = qnode->step_reward;
 
+	logd << " New node's step_reward: " << qnode->step_reward << endl;
+
 	auto children = qnode->children();
 	for (map<OBS_TYPE, VNode* >::iterator it = children.begin();
 		        it != children.end(); it++) {
@@ -2207,6 +2263,8 @@ void DESPOT::InitChildrenUpperBounds(QNode* qnode, ScenarioUpperBound* ub,
 	}
 
 	qnode->Weight();//just to initialize the weight
+
+	logd << " Qnode's upper bound: " << upper_bound << endl;
 
 	qnode->upper_bound(upper_bound);
 	qnode->utility_upper_bound(upper_bound + Globals::config.pruning_constant);
@@ -2244,7 +2302,7 @@ void DESPOT::InitChildrenLowerBounds(QNode* qnode, ScenarioLowerBound* lb,
 				// close gap because no more search can be done on leaf node
 				|| vnode->depth() == Globals::config.search_depth - 1) {
 
-			logi << "New node rewriting original upper bound " << vnode->upper_bound() <<
+			logd << "New node rewriting original upper bound " << vnode->upper_bound() <<
 				" to lower bound " << vnode->lower_bound() << endl;
 
 			vnode->upper_bound(vnode->lower_bound());

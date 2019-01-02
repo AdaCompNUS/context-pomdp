@@ -51,6 +51,8 @@ protected:
   	std::vector<double> prior_action_probs_;
   	double prior_value_;
 
+  	bool prior_initialized_;
+
 public:
   	double prior_action_probs(int i){return prior_action_probs_[i];}
   	void prior_action_probs(int i, double v){
@@ -66,11 +68,17 @@ public:
 
   	void print_action_probs();
 
+  	void prior_initialized(bool v){
+  		prior_initialized_ = v;
+  	}
+  	bool prior_initialized(){
+  		return prior_initialized_;
+  	}
   	ACT_TYPE max_prob_action();
 // lets_drive
 
 public:
-	VNode():prior_value_(DUMMY_VALUE){;}
+	VNode():prior_value_(DUMMY_VALUE){	prior_initialized_ = false; }
 	VNode(std::vector<State*>& particles, std::vector<int> particleIDs, int depth = 0, QNode* parent = NULL,
 		OBS_TYPE edge = (OBS_TYPE)-1);
 	VNode(Belief* belief, int depth = 0, QNode* parent = NULL, OBS_TYPE edge =
@@ -149,6 +157,11 @@ protected:
 	int count_; // Number of visits on the node
 	double value_; // Value of the node
 
+	// Let's drive
+	bool prior_values_ready_;
+	//
+
+
 public:
 	double default_value;
 	double utility_upper_bound_;
@@ -194,6 +207,9 @@ public:
 	// Let's drive
 	void prior_probability(double p);
 	double prior_probability() const;
+
+	void prior_values_ready(bool v){prior_values_ready_ = v; };
+	bool prior_values_ready() const {return prior_values_ready_;};
 	//
 };
 

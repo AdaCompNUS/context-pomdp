@@ -339,34 +339,42 @@ float DESPOT::CalExplorationValue(int depth) {
 
 void DESPOT::CalExplorationValue(Shared_QNode* node){
 
+	double node_weight = ((QNode*)node)->Weight();
+
+	double parent_weight = ((QNode*)node)->parent()->Weight();
+
 	if(Globals::config.exploration_constant>0){
 		if(!Globals::config.use_prior){// UCT
 			node->exploration_bonus = Globals::config.exploration_constant *
 				sqrt(log(static_cast<Shared_VNode*>(((QNode*)node)->parent())->visit_count_*
-						max(((QNode*)node)->parent()->Weight()*
-						Globals::config.num_scenarios,1.1))
-				/(node->visit_count_*max(((QNode*)node)->Weight()*
-						Globals::config.num_scenarios,1.1)));
+						max( parent_weight * Globals::config.num_scenarios,1.1))
+				/(node->visit_count_*max( node_weight * Globals::config.num_scenarios,1.1)));
 
 		}else if (Globals::config.use_prior) {// PUCT
 
-//			logi << "PUCT for qnode at level " << node->parent()->depth() << endl;
+			logd << "PUCT for qnode at level " << node->parent()->depth() << endl;
 
+//			double num_visiting_scenarios =
 			node->exploration_bonus= Globals::config.exploration_constant *
 					node->prior_probability() *
 				sqrt(static_cast<Shared_VNode*>(((QNode*)node)->parent())->visit_count_*
-						max(((QNode*)node)->parent()->Weight()*
-						Globals::config.num_scenarios,1.1)) /
-				((node->visit_count_*max(((QNode*)node)->Weight()*
-						Globals::config.num_scenarios,1.1)) + 1);
+						max( parent_weight * Globals::config.num_scenarios,1.1)) /
+				((node->visit_count_* max( node_weight * Globals::config.num_scenarios,1.1)) + 1);
 
-//			cout << "PUCT for node " << node << " c_o=" << Globals::config.exploration_constant <<
-//					" visit " << static_cast<Shared_VNode*>(((QNode*)node)->parent())->visit_count_ <<
-//					" num_scenarios " << max(((QNode*)node)->parent()->Weight()*Globals::config.num_scenarios,1.1) <<
+//			cout << "PUCT for qnode " << node << " c_o=" << Globals::config.exploration_constant <<
+//					" parent visit " << static_cast<Shared_VNode*>(((QNode*)node)->parent())->visit_count_ <<
+//					" visit " << node->visit_count_ <<
+//					" parent num_particles " << max(((QNode*)node)->parent()->Weight()*Globals::config.num_scenarios,1.1) <<
+//					" num_particles " << max(((QNode*)node)->Weight()*Globals::config.num_scenarios,1.1) <<
 //					" prior " << node->prior_probability() << endl;
 		}
 
-		node->exploration_bonus*=((QNode*)node)->Weight();
+		if(node_weight > 0)
+			node->exploration_bonus*= node_weight;
+		else if (parent_weight > 0)
+			node->exploration_bonus*= parent_weight;
+		else
+			raise(SIGABRT);
 	}
 }
 
@@ -1182,6 +1190,8 @@ void DESPOT::GPU_Expand_Action(VNode* vnode, ScenarioLowerBound* lb,
 	free(fake);
 	free(fake);*/
 
+	raise(SIGABRT);
+
 	int ThreadID = 0;
 	if (Globals::config.use_multi_thread_)
 		ThreadID = Globals::MapThread(this_thread::get_id());
@@ -1466,6 +1476,8 @@ void DESPOT::ReadBackData(int ThreadID) {
 void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 		ScenarioUpperBound* upper_bound,const DSPOMDP* model, RandomStreams& streams,
 		History& history) {
+
+	raise(SIGABRT);
 
 	int ThreadID = 0;
 	logi << "Thread " << ThreadID << ": [" << __FUNCTION__ << "]" << " Start" << endl;

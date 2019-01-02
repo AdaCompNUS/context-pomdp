@@ -92,6 +92,7 @@ public:
 	void publishPedsPrediciton();
 	void publishAction(int action, double reward);
 	void publishCmdAction(const ros::TimerEvent &e);
+	void publishCmdAction();
 	void publishROSState();
 
 	void robotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
@@ -163,5 +164,8 @@ public:
 	void update_cmds_naive(ACT_TYPE action, bool buffered = false);
 
 	void update_cmds_buffered(const ros::TimerEvent &e);
+
+public:
+	void Debug_action();
 };
 

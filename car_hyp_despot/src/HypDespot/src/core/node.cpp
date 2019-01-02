@@ -29,6 +29,7 @@ VNode::VNode(vector<State*>& particles,std::vector<int> particleIDs, int depth, 
 		logd << " " << i << " = " <<"("<< particleIDs_[i]<<")"<< *particles_[i] << endl;
 	}
 	weight_=0;
+	prior_initialized_ = false;
 }
 
 void VNode::Initialize(vector<State*>& particles,std::vector<int> particleIDs, int depth, QNode* parent,
@@ -44,6 +45,7 @@ void VNode::Initialize(vector<State*>& particles,std::vector<int> particleIDs, i
 	vstar=this;
 	likelihood=1;
 	weight_=0;
+	prior_initialized_ = false;
 }
 
 VNode::VNode(Belief* belief, int depth, QNode* parent, OBS_TYPE edge) :
@@ -57,6 +59,8 @@ VNode::VNode(Belief* belief, int depth, QNode* parent, OBS_TYPE edge) :
 	likelihood(1),
 	prior_value_(DUMMY_VALUE) {
 	weight_=0;
+	prior_initialized_ = false;
+
 }
 
 VNode::VNode(int count, double value, int depth, QNode* parent, OBS_TYPE edge) :
@@ -70,6 +74,7 @@ VNode::VNode(int count, double value, int depth, QNode* parent, OBS_TYPE edge) :
 	value_(value),
 	prior_value_(DUMMY_VALUE) {
 	weight_=0;
+	prior_initialized_ = false;
 }
 
 
@@ -369,6 +374,7 @@ QNode::QNode() :
 	vstar(NULL),
 	prior_probability_(-1){
 	weight_=0;
+	prior_values_ready_ = false;
 	//lower_bound_=0;upper_bound_=0;
 }
 
@@ -378,6 +384,7 @@ QNode::QNode(VNode* parent, int edge) :
 	vstar(NULL),
 	prior_probability_(-1) {
 	weight_=0;
+	prior_values_ready_ = false;
 }
 
 QNode::QNode(int count, double value) :
@@ -385,6 +392,7 @@ QNode::QNode(int count, double value) :
 	value_(value),
 	prior_probability_(-1) {
 	weight_=0;
+	prior_values_ready_ = false;
 }
 
 QNode::~QNode() {

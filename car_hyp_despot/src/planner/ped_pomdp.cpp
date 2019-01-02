@@ -78,7 +78,7 @@ public:
 };
 
 void PedPomdp::InitRVOSetting() {
-	use_rvo_in_search = false;
+	use_rvo_in_search = true;
 	use_rvo_in_simulation = true;
 //	if (use_rvo_in_simulation)
 //		ModelParams::LASER_RANGE = 8.0;
@@ -154,6 +154,7 @@ double PedPomdp::CrashPenalty(const PomdpStateWorld& state) const { // , int clo
 double PedPomdp::ActionPenalty(int action) const {
 //	return (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
 	return (action == ACT_DEC) ? -0.1 : 0.0;
+//	return 0.0;
 }
 
 // Less penalty for longer distance travelled
@@ -205,12 +206,16 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	// Terminate upon reaching goal
 	if (world_model->isGlobalGoal(state.car)) {
         reward = ModelParams::GOAL_REWARD;
+
+        cout << "assigning goal reward " << reward << endl;
 		return true;
 	}
 
  	// Safety control: collision; Terminate upon collision
     if(state.car.vel > 0.001 && world_model->inCollision(state) ) { /// collision occurs only when car is moving
 		reward = CrashPenalty(state);
+
+        logd << "assigning collision reward" << reward << endl;
 		return true;
 	}
 
@@ -504,18 +509,39 @@ ScenarioUpperBound* PedPomdp::CreateScenarioUpperBound(string name,
 	return ub;
 }
 
+void PedPomdp::PrintState(const State& s, string msg, ostream& out) const {
+
+	if (DESPOT::Debug_mode)
+		return;
+
+	if (msg == "")
+		out << "Search state:\n";
+	else
+		cout << msg << endl;
+
+	PrintState(s, out);
+}
+
+
 void PedPomdp::PrintState(const State& s, ostream& out) const {
 
 	if (DESPOT::Debug_mode)
 		return;
 
+	out << "Address: " << &s << endl;
+
 	if (static_cast<const PomdpStateWorld*> (&s)!=NULL){
-		PrintWorldState(static_cast<const PomdpStateWorld&> (s), out);
-		return;
+
+		if (static_cast<const PomdpStateWorld*> (&s)->num > ModelParams::N_PED_IN){
+			PrintWorldState(static_cast<const PomdpStateWorld&> (s), out);
+			return;
+		}
 	}
 
 	const PomdpState & state = static_cast<const PomdpState&> (s);
 	auto& carpos = state.car.pos;
+
+	out << "Distance to goal: " << (world_model->car_goal-carpos).Length() << endl;
 
 	out << "car pos / heading / vel = " << "(" << carpos.x << ", " << carpos.y << ") / "
 	    << state.car.heading_dir << " / "
@@ -534,10 +560,13 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 		min_dist = COORD::EuclideanDistance(carpos, state.peds[0].pos);
 	out << "MinDist: " << min_dist << endl;
 }
+
 void PedPomdp::PrintWorldState(const PomdpStateWorld& state, ostream& out) const {
 
 	out << "World state:\n";
 	auto& carpos = state.car.pos;
+
+	out << "Distance to goal: " << (world_model->car_goal-carpos).Length() << endl;
 
 	out << "car pos / heading / vel = " << "(" << carpos.x << ", " << carpos.y << ") / "
 	    << state.car.heading_dir << " / "
@@ -905,7 +934,6 @@ State* PedPomdp::CopyForSearch(const State* particle) const {
 	new_particle->SetAllocated();
 	return new_particle;
 }
-
 
 double PedPomdp::GetAccelerationID(ACT_TYPE action, bool debug) const{
 	return (action%((int)(2*ModelParams::NumAcc+1)));

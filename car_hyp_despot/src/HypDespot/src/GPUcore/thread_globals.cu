@@ -26,7 +26,7 @@ mutex global_mutex;
 //Thread ID mapping
 map<std::thread::id, int > ThreadIdMap;
 
-bool force_print = true;
+bool force_print = false;
 
 #ifdef WIN32
 #include <windows.h>
@@ -52,7 +52,7 @@ void sleep_ms(int milliseconds) // cross-platform sleep function
 
 // Parameters for serialized printing in HyP-DESPOT. Typicallly used for debugging purposes.
 ThreadParams::ThreadParams(int dummy){
-	PrintThreadID=0;
+	PrintThreadID=-1;
 	PrintParentEdge=18;
 	PrintEdge=2;
 	PrintDepth=1;
@@ -252,7 +252,7 @@ void Global_print_node(std::thread::id threadIdx,void* node_address,int depth,fl
 	{
 		lock_guard<mutex> lck(global_mutex);
 		int threadID=MapThread(threadIdx);
-		if(threadID==ThreadParams::PARAMS.PrintThreadID/*true*/)
+		if(threadID==ThreadParams::PARAMS.PrintThreadID || ThreadParams::PARAMS.PrintThreadID == -1 /*true*/)
 		{
 			cout.precision(6);
 			if(weight!=0)

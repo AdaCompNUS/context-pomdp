@@ -20,6 +20,7 @@ else despot::logging::stream(lv)
 #include <despot/util/logging.h>
 
 using namespace std;
+std::chrono::time_point<std::chrono::system_clock> init_time;
 
 double cap_angle(double angle){
 
@@ -54,6 +55,8 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
 
 	if (DESPOT::Debug_mode)
 		ModelParams::NOISE_GOAL_ANGLE = 0.000001;
+
+    init_time = Time::now();
 }
 
 void WorldModel::InitPedGoals(){
@@ -521,6 +524,16 @@ void WorldModel::PedStepDeterministic(PedStruct& ped, int step) {
     ped.pos.y += goal_vec.dh;
 }
 
+void WorldModel::PedStepCurVel(PedStruct& ped, COORD vel) {
+
+//	if (vel.Length()>=1e-3){
+//		cout << "recaling vel with "<< (1.0/freq) << endl;
+//	}
+//	vel = vel * (1.0/freq);
+    ped.pos.x += vel.x * (1.0/freq);
+    ped.pos.y += vel.y * (1.0/freq);
+}
+
 double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 	const double K = 0.001;
     const COORD& goal = goals[goal_id];
@@ -561,10 +574,9 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, 
 				vector<COORD> dirs(goals.size());
 				ped_mean_dirs.push_back(dirs);
 			}
-//			exit(-1);
 		}
 		if(goal_id >= ped_mean_dirs[0].size()){
-			cout << "Encountering overflowed goal id " << goal_id;
+			cerr << "Encountering overflowed goal id " << goal_id;
 			exit(-1);
 		}
 		goal = ped_mean_dirs[ped_id][goal_id] + prev;
@@ -738,6 +750,24 @@ void WorldModel::RobVelStep(CarStruct &car, double acc, double& random) {
 
 	return;
 }
+
+void WorldModel::RobStepCurVel(CarStruct &car) {
+	car.pos.x+=(car.vel/freq) * cos(car.heading_dir);
+	car.pos.y+=(car.vel/freq) * sin(car.heading_dir);
+}
+
+void WorldModel::RobStepCurAction(CarStruct &car, double acc, double steering) {
+	bool fix_scenario = CPUDoPrint;
+	CPUDoPrint = true;  // to block the random number generation
+
+	double det_prob=1;
+
+	RobStep(car, steering, det_prob);
+	RobVelStep(car, acc, det_prob);
+
+	CPUDoPrint = fix_scenario;
+}
+
 double WorldModel::ISRobVelStep(CarStruct &car, double acc, Random& random) {
     const double N = 4 * ModelParams::NOISE_ROBVEL;
     double weight = 1;
@@ -835,6 +865,7 @@ PedBelief WorldModel::initPedBelief(const PedStruct& ped) {
     for(int i =0 ; i < num_types; i++){
     	b.prob_modes_goals.push_back(vector<double>(goals.size(), 1.0/goals.size()/num_types));
     }
+
     return b;
 }
 
@@ -867,15 +898,47 @@ void WorldStateTracker::cleanPed() {
     ped_list=ped_list_new;
 }
 
+double get_timestamp(){
+	return Globals::ElapsedTime(init_time);
+}
+
 void WorldStateTracker::updatePed(const Pedestrian& ped, bool doPrint){
     int i=0;
+
+//    raise(SIGABRT);
+
+    bool no_move = true;
     for(;i<ped_list.size();i++) {
         if (ped_list[i].id==ped.id) {
+
+//        	cout <<"[updatePed] updating existing ped" << ped.id << endl;
             //found the corresponding ped,update the pose
-            ped_list[i].w=ped.w;
+        	double duration =  get_timestamp()-ped_list[i].last_update;
+
+        	if (duration < 0.1 / Globals::config.time_scale){
+        		no_move = false;
+//				cout << "ped update skipped: duration "<< duration << endl;
+				return;
+//        		raise(SIGABRT);
+        	}
+
+        	ped_list[i].vel.x = (ped.w - ped_list[i].w) / duration;
+			ped_list[i].vel.y = (ped.h - ped_list[i].h) / duration;
+
+			if (ped_list[i].vel.Length()>3.0){
+				cerr << "WARNING: Unusual ped " << i << " speed: " << ped_list[i].vel.Length() << endl;
+				raise(SIGABRT);
+			}
+
+			if (ped_list[i].vel.Length()>1e-4){
+				no_move = false;
+			}
+
+        	ped_list[i].w=ped.w;
             ped_list[i].h=ped.h;
-            ped_list[i].last_update = timestamp();
-            if (doPrint) cout <<"[updatePed] existing ped updated" << ped.id << endl;
+
+            ped_list[i].last_update = get_timestamp();
+//            cout <<"[updatePed] existing ped updated" << ped.id << endl;
             break;
         }
         if (abs(ped_list[i].w-ped.w)<=0.1 && abs(ped_list[i].h-ped.h)<=0.1)   //overlap
@@ -884,12 +947,37 @@ void WorldStateTracker::updatePed(const Pedestrian& ped, bool doPrint){
             //return;
         }
     }
+
     if (i==ped_list.size()) {
+    	no_move = false;
         //not found, new ped
+//    	cout <<"[updatePed] updating new ped" << ped.id << endl;
+
         ped_list.push_back(ped);
-        ped_list.back().last_update = timestamp();
-        if (doPrint) cout <<"[updatePed] new ped added" << ped.id << endl;
+
+        ped_list.back().vel.x = 0;
+        ped_list.back().vel.y = 0;
+        ped_list.back().last_update = get_timestamp();
+//        cout <<"[updatePed] new ped added" << ped.id << endl;
     }
+
+    if (no_move){
+		cout << __FUNCTION__ << " no_move ped "<< ped.id <<
+				" caught: vel " << ped_list[i].vel.x <<" "<< ped_list[i].vel.y << endl;
+//		raise(SIGABRT);
+    }
+}
+
+COORD WorldStateTracker::getPedVel( int ped_id ){
+	int i=0;
+	for(;i<ped_list.size();i++) {
+		if (ped_list[i].id == ped_id){
+
+			return ped_list[i].vel;
+		}
+	}
+	cout << __FUNCTION__ << " no matching ped found for vel" << endl;
+	raise(SIGABRT);
 }
 
 void WorldStateTracker::removePeds() {
@@ -1120,7 +1208,7 @@ void WorldBeliefTracker::printBelief() const {
 }
 
 PomdpState WorldBeliefTracker::text() const{
-	if (logging::level()>=3){
+	if (logging::level()>=4){
 		for(int i=0; i < sorted_beliefs.size() && i < min(6,ModelParams::N_PED_IN); i++) {
 			auto& p = sorted_beliefs[i];
 			cout << "[WorldBeliefTracker::text] " << this << "->p:" << &p << endl;
@@ -1139,7 +1227,7 @@ PomdpState WorldBeliefTracker::text() const{
 		}
 	}
 }
-PomdpState WorldBeliefTracker::sample() {
+PomdpState WorldBeliefTracker::sample(bool predict) {
     PomdpState s;
     s.car = car;
 
@@ -1160,11 +1248,15 @@ PomdpState WorldBeliefTracker::sample() {
     s.time_stamp  = cur_time_stamp;
 
 //	logd << "[WorldBeliefTracker::sample] done" << endl;
+    if (predict){
+    	PomdpState predicted_s = predictPedsCurVel(&s, cur_acc, cur_steering);
+    	return predicted_s;
+    }
 
     return s;
 }
 
-vector<PomdpState> WorldBeliefTracker::sample(int num) {
+vector<PomdpState> WorldBeliefTracker::sample(int num, bool predict) {
 
 	if(DESPOT::Debug_mode)
 		Random::RANDOM.seed(0);
@@ -1173,7 +1265,7 @@ vector<PomdpState> WorldBeliefTracker::sample(int num) {
 	logd << "[WorldBeliefTracker::sample] Sampling" << endl;
 
     for(int i=0; i<num; i++) {
-        particles.push_back(sample());
+        particles.push_back(sample(predict));
     }
 
     cout << "Num peds for planning: " << particles[0].num << endl;
@@ -1203,6 +1295,46 @@ vector<PedStruct> WorldBeliefTracker::predictPeds() {
     return prediction;
 }
 
+PomdpState WorldBeliefTracker::predictPedsCurVel(PomdpState* ped_state, double acc, double steering) {
+
+//	cout << __FUNCTION__ << "applying action " << acc <<"/"<< steering << endl;
+
+	PomdpState predicted_state = *ped_state;
+
+//	if (acc >0){
+//		cout << "source ped list addr "<< ped_state->peds << endl;
+//		cout << "des ped list addr "<< predicted_state.peds << endl;
+//		cout << predicted_state.num << " peds active" << endl;
+//		raise(SIGABRT);
+//	}
+
+//	model.RobStepCurVel(predicted_state.car);
+	model.RobStepCurAction(predicted_state.car, acc, steering);
+
+	for(int i =0 ; i< predicted_state.num ; i++) {
+		auto & p = predicted_state.peds[i];
+		COORD ped_vel = stateTracker.getPedVel(p.id);
+
+//		if (acc >0 ){
+//			if (ped_vel.Length()<1e-3){
+//				cout << "ped " << p.id << " vel = " << ped_vel.Length() << endl;
+//				cout.flush();
+//				raise(SIGABRT);
+//			}
+//			else{
+//				cout << "ped " << p.id << " vel = " << ped_vel.x <<" "<< ped_vel.y << endl;
+//			}
+//		}
+
+		model.PedStepCurVel(p, ped_vel);
+    }
+
+    predicted_state.time_stamp = ped_state->time_stamp + 1.0 / ModelParams::control_freq;
+
+//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
+
+    return predicted_state;
+}
 
 double GenerateGaussian(double rNum)
 {
@@ -1347,32 +1479,35 @@ void WorldModel::RVO2PedStep(PedStruct peds[], double& random, int num_ped, CarS
 
     // Set the preferred velocity for each agent.
     for (size_t i = 0; i < num_ped; ++i) {
-        int goal_id = peds[i].goal;
-        if (goal_id >= goals.size()-1) { /// stop intention
-            ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
-        } else{
-            RVO::Vector2 goal(goals[goal_id].x, goals[goal_id].y);
-            if ( absSq(goal - ped_sim_[threadID]->getAgentPosition(i)) < ped_sim_[threadID]->getAgentRadius(i) * ped_sim_[threadID]->getAgentRadius(i) ) {
-                // Agent is within one radius of its goal, set preferred velocity to zero
-                ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
-            } else {
-                // Agent is far away from its goal, set preferred velocity as unit vector towards agent's goal.
-                ped_sim_[threadID]->setAgentPrefVelocity(i, normalize(goal - ped_sim_[threadID]->getAgentPosition(i))*ModelParams::PED_SPEED);
-            }
-        }
-        
+
+    	if(peds[i].mode==PED_ATT){
+			int goal_id = peds[i].goal;
+			if (goal_id >= goals.size()-1) { /// stop intention
+				ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
+			} else{
+				RVO::Vector2 goal(goals[goal_id].x, goals[goal_id].y);
+				if ( absSq(goal - ped_sim_[threadID]->getAgentPosition(i)) < ped_sim_[threadID]->getAgentRadius(i) * ped_sim_[threadID]->getAgentRadius(i) ) {
+					// Agent is within one radius of its goal, set preferred velocity to zero
+					ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
+				} else {
+					// Agent is far away from its goal, set preferred velocity as unit vector towards agent's goal.
+					ped_sim_[threadID]->setAgentPrefVelocity(i, normalize(goal - ped_sim_[threadID]->getAgentPosition(i))*ModelParams::PED_SPEED);
+				}
+			}
+    	}
     }
 
     ped_sim_[threadID]->doStep();
 
     for(int i=0; i<num_ped; i++){
-        double rNum=GenerateGaussian(random);
-        peds[i].pos.x=ped_sim_[threadID]->getAgentPosition(i).x();// + rNum * (ped_sim_[threadID]->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
-        rNum=GenerateGaussian(rNum);
-        peds[i].pos.y=ped_sim_[threadID]->getAgentPosition(i).y();// + rNum * (ped_sim_[threadID]->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
-      
-    }
 
+    	if(peds[i].mode==PED_ATT){
+			double rNum=GenerateGaussian(random);
+			peds[i].pos.x=ped_sim_[threadID]->getAgentPosition(i).x();// + rNum * (ped_sim_[threadID]->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+			rNum=GenerateGaussian(rNum);
+			peds[i].pos.y=ped_sim_[threadID]->getAgentPosition(i).y();// + rNum * (ped_sim_[threadID]->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+    	}
+    }
 }
 
 COORD WorldModel::DistractedPedMeanDir(COORD& ped, int goal_id) {
@@ -1455,6 +1590,16 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 	// Set the preferred velocity for each agent.
 
 	ped_sim_[threadID]->doPreStep();// build kd tree and find neighbors for peds
+
+
+	if(num_ped > ped_mean_dirs.size()){
+		cout << "Encountering overflowed peds list of size " << num_ped;
+		while (ped_mean_dirs.size() < num_ped){
+			cout << "adding init mean dir for ped " << ped_mean_dirs.size()<< endl;
+			vector<COORD> dirs(goals.size());
+			ped_mean_dirs.push_back(dirs);
+		}
+	}
 
 	for (size_t i = 0; i < num_ped; ++i) {
 		// For each ego ped

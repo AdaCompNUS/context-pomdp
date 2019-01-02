@@ -38,14 +38,17 @@ class Pedestrian
 {
 public:
 	Pedestrian() {
+		last_update = -1;
     }
 	Pedestrian(double _w,double _h,int _id) {
-        w=_w;h=_h;id=_id;
+        w=_w;h=_h;id=_id;last_update = -1;
     }
 	Pedestrian(double _w,double _h) {w=_w;h=_h;
+	last_update = -1;
     }
 
 	double w,h;
+	COORD vel;
 	int id;   //each pedestrian has a unique identity
 	double last_update;
 };

@@ -34,6 +34,7 @@ void DrivingController::CreateNNPriors(DSPOMDP* model) {
 		SolverPrior::nn_priors[i] =
 				static_cast<PedPomdp*>(model)->CreateSolverPrior(
 						driving_simulator_, "NEURAL", false);
+		SolverPrior::nn_priors[i]->prior_id(i);
 	}
 	prior_ = SolverPrior::nn_priors[0];
 	logi << "Created solver prior " << typeid(*prior_).name() << endl;

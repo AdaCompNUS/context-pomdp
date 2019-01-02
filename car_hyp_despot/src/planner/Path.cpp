@@ -93,6 +93,19 @@ Path Path::interpolate() {
 	return p;
 }
 
+Path Path::copy_without_travelled_points(double dist_to_remove){
+	float d = 0;
+	auto iter = begin();
+	while (d< dist_to_remove && size() > 0){
+		iter = iter + 1;
+		d += ModelParams::PATH_STEP;
+	}
+
+	Path new_path;
+	new_path.assign(iter, end());
+	return new_path;
+}
+
 void Path::cutjoin(const Path& p) {
 	int i = max(0, nearest(p[0])-1);
 	erase(begin()+i, end());

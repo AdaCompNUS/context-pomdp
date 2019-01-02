@@ -96,9 +96,9 @@ bool WorldSimulator::Connect(){
   	carSub_ = nh.subscribe("IL_car_info", 1, &WorldSimulator::update_il_car, this);
    	//steerSub_ = nh.subscribe("IL_steer_cmd", 1, &WorldSimulator::update_il_steering, this);
 
-    timer_speed = nh.createTimer(ros::Duration(0.05), &WorldSimulator::publishCmdAction, this);
+//    timer_speed = nh.createTimer(ros::Duration(0.05), &WorldSimulator::publishCmdAction, this);
 
-    timer_cmd_update = nh.createTimer(ros::Duration(1.0/pub_frequency), &WorldSimulator::update_cmds_buffered, this);
+//    timer_cmd_update = nh.createTimer(ros::Duration(1.0/pub_frequency), &WorldSimulator::update_cmds_buffered, this);
 
     return true;
 }
@@ -237,6 +237,12 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 	if(action ==-1) return false;
 
+	cout << "[ExecuteAction]" << endl;
+
+	ros::spinOnce();
+
+	cout << "[ExecuteAction] after spin" << endl;
+
 	/* Update state */
 	PomdpStateWorld* curr_state = static_cast<PomdpStateWorld*>(GetCurrentState());
 	double acc;
@@ -256,7 +262,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 	/* Collision: slow down the car */
 	int collision_peds_id;
-	if( curr_state->car.vel > 0.001 && worldModel.inCollision(*curr_state,collision_peds_id) ) {
+	if( curr_state->car.vel > 0.001 * time_scale_ && worldModel.inCollision(*curr_state,collision_peds_id) ) {
 		cout << "--------------------------- collision = 1 ----------------------------" << endl;
 		cout << "collision ped: " << collision_peds_id<<endl;
 		
@@ -282,12 +288,14 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 		//ros::shutdown();
 		steering_ = 0;
 		target_speed_=real_speed_;
-	    target_speed_ -= 0.5;
+	    target_speed_ -= ModelParams::AccSpeed;
 		if(target_speed_<=0.0) target_speed_ = 0.0;
+
+		buffered_action_ = static_cast<PedPomdp*>(model_)->GetActionID(0, -ModelParams::AccSpeed);
 
         // shutdown the node after reaching goal
         // TODO consider do this in simulaiton only for safety
-        if(real_speed_ <= 0.01) {
+        if(real_speed_ <= 0.01 * time_scale_) {
         	cout<<"After reaching goal: real_spead is already zero"<<endl;
             ros::shutdown();
         }
@@ -296,6 +304,9 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	else if(stateTracker->emergency()){
 		steering_ = 0;
 		target_speed_=-1;
+
+		buffered_action_ = static_cast<PedPomdp*>(model_)->GetActionID(0, -ModelParams::AccSpeed);
+
 		cout<<"--------------------------- emergency ----------------------------" <<endl;
 	}
 	else{
@@ -304,17 +315,19 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 		buffered_action_ = action;
 	}
 
+	Debug_action();
+
+	// Updating cmd steering and speed. They will be send to vel_pulisher by timer
+	update_cmds_naive(buffered_action_, false);
+
+	publishCmdAction();
+
 	publishImitationData(*curr_state, action, step_reward, target_speed_);
-
-
-	/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Need to send steering here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-	cout<<"--------------------------- TODO: send steering here ----------------------------" <<endl;
-	
-	/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Need to send steering here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 
 	/* Receive observation.
 	 * Caution: obs info is not up-to-date here. Don't use it
 	 */
+
 	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Generate obs"<<endl;
 	obs=static_cast<PedPomdp*>(model_)->StateToIndex(GetCurrentState());
 
@@ -388,7 +401,9 @@ void WorldSimulator::update_cmds_fix_latency(ACT_TYPE action, bool buffered){
 void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 //	buffered_action_ = action;
 
-	cout<<"real_speed_ = "<<real_speed_<<endl;
+	cout << "[update_cmds_naive] Buffering action " << action << endl;
+
+//	cout<<"real_speed_ = "<<real_speed_<<endl;
 
 	float acc=static_cast<PedPomdp*>(model_)->GetAcceleration(action);
 
@@ -398,8 +413,8 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 	else if (buffered)
 		accelaration=acc/pub_frequency;
 
-	cout<<"applying step acc: "<< accelaration<<endl;
-	cout<<"trunc to max car vel: "<< ModelParams::VEL_MAX<<endl;
+//	cout<<"applying step acc: "<< accelaration<<endl;
+//	cout<<"trunc to max car vel: "<< ModelParams::VEL_MAX<<endl;
 
 	target_speed_ = min(real_speed_ + accelaration, ModelParams::VEL_MAX);
 	target_speed_ = max(target_speed_, 0.0);
@@ -407,16 +422,18 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 	steering_=static_cast<PedPomdp*>(model_)->GetSteering(action);
 
 	cerr << "DEBUG: Executing action:" << action << " steer/acc = " << steering_ << "/" << acc << endl;
-	cerr << "action IDs steer/acc = " << static_cast<PedPomdp*>(model_)->GetSteeringID(action)
-				<< "/" << static_cast<PedPomdp*>(model_)->GetAccelerationID(action) << endl;
-	cout<<"cmd steering = "<<steering_<<endl;
-	cout<<"cmd target_speed = "<<target_speed_<<endl;
+//	cerr << "action IDs steer/acc = " << static_cast<PedPomdp*>(model_)->GetSteeringID(action)
+//				<< "/" << static_cast<PedPomdp*>(model_)->GetAccelerationID(action) << endl;
+//	cout<<"cmd steering = "<<steering_<<endl;
+//	cout<<"cmd target_speed = "<<target_speed_<<endl;
 }
 
-void WorldSimulator::update_cmds_buffered(const ros::TimerEvent &e){
+//void WorldSimulator::update_cmds_buffered(const ros::TimerEvent &e){
 //	update_cmds_naive(buffered_action_, true);
-	update_cmds_fix_latency(buffered_action_, true);
-}
+////	update_cmds_fix_latency(buffered_action_, true);
+//
+//	cout<<"[update_cmds_buffered] time stamp" << SolverPrior::nn_priors[0]->get_timestamp() <<endl;
+//}
 
 void WorldSimulator::AddObstacle(){
 
@@ -506,11 +523,16 @@ void WorldSimulator::AddObstacle(){
 
 void WorldSimulator::publishCmdAction(const ros::TimerEvent &e)
 {
+	publishCmdAction();
+}
+
+void WorldSimulator::publishCmdAction()
+{
 	geometry_msgs::Twist cmd;
 	cmd.linear.x = target_speed_;
 	cmd.linear.y = real_speed_;
 	cmd.angular.z = steering_; // GetSteering returns radii value
-	//cout<<"publishing cmd speed "<<target_speed_<<endl;
+	cout<<"[publishCmdAction] time stamp" << SolverPrior::nn_priors[0]->get_timestamp() <<endl;
 	cmdPub_.publish(cmd);
 }
 
@@ -667,6 +689,11 @@ void WorldSimulator::speedCallback(nav_msgs::Odometry odo)
 {
 //	cout<<"update real speed "<<odo.twist.twist.linear.x<<endl;
 	real_speed_=odo.twist.twist.linear.x;
+
+	if (real_speed_ > ModelParams::VEL_MAX*1.2){
+		cerr << "ERROR: Unusual car vel (too large): " << real_speed_ << endl;
+		raise(SIGABRT);
+	}
 }
 
 
@@ -677,6 +704,9 @@ bool sortFn(Pedestrian p1,Pedestrian p2)
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
 {
+    logd << "======================[ pedPoseCallback ]= ts "<<
+    		Globals::ElapsedTime()<< " ==================" << endl;
+
    // cout<<"pedestrians received size = "<<lPedLocal.ped_local.size()<<endl;
 	if(lPedLocal.ped_local.size()==0) return;
 
@@ -703,11 +733,14 @@ void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
 		ped_list.push_back(world_ped);
     }
 	//std::sort(ped_list.begin(),ped_list.end(),sortFn);
+
 	for(int i=0;i<ped_list.size();i++)
 	{
 		WorldSimulator::stateTracker->updatePed(ped_list[i]);
 		//cout<<ped_list[i].id<<" ";
 	}
+    logd << "====================[ pedPoseCallback end ]=================" << endl;
+
 	//cout<<endl;
 	//pc_pub.publish(pc);
 
@@ -723,6 +756,9 @@ void receive_map_callback(nav_msgs::OccupancyGrid map){
 		nn_prior->map_received = true;
 		nn_prior->Init();
 	}
+
+
+	logi << "[receive_map_callback] end " << endl;
 }
 
 geometry_msgs::PoseStamped WorldSimulator::getPoseAhead(const tf::Stamped<tf::Pose>& carpose) {
@@ -825,4 +861,16 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_T
 
     IL_pub.publish(p_IL_data);
 
+}
+
+void WorldSimulator::Debug_action(){
+//	if (SolverPrior::nn_priors[0]->default_action != SolverPrior::nn_priors[0]->searched_action){
+//		cerr << "ERROR: Default prior action modified!!!!" << endl;
+//		raise(SIGABRT);
+//	}
+//
+//	if (buffered_action_ != SolverPrior::nn_priors[0]->searched_action){
+//		cerr << "ERROR: Searched action modified!!!!" << endl;
+//		raise(SIGABRT);
+//	}
 }

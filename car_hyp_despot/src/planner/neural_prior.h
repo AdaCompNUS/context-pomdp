@@ -95,6 +95,16 @@ private:
 	cv::Mat goal_image_;
 
 	vector<cv::Point3f> car_shape;
+
+	COORD root_car_pos_;
+
+	COORD root_car_pos(){return root_car_pos_;}
+
+	void root_car_pos(double x, double y){
+		root_car_pos_.x = x;
+		root_car_pos_.y = y;
+	}
+
 public:
 
 	PedNeuralSolverPrior(const DSPOMDP* model, WorldModel& world);
@@ -118,7 +128,7 @@ public:
 //	at::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images){return torch::zeros({1,1,1});}
 	torch::Tensor Combine_images(despot::VNode* cur_node);
 
-	void Reuse_history(int new_channel, int start_channel);
+	void Reuse_history(int new_channel, int start_channel, int mode);
 	void get_history(int mode, despot::VNode* cur_node, std::vector<despot::VNode*>& parents_to_fix_images,
 			vector<PomdpState*>& hist_states, vector<int>& hist_ids);
 
@@ -126,17 +136,30 @@ public:
 
 	void print_prior_actions(ACT_TYPE);
 
+	float cal_steer_prob(at::TensorAccessor<float, 1> steer_probs_double, int steerID);
 public:
 	void Load_model(std::string);
 	void Load_value_model(std::string);
 
 	void Init();
 
+	void Clear_hist_timestamps();
+
 	void Test_model(std::string);
 	void Test_all_srv(int batchsize, int num_guassian_modes, int num_steer_bins);
 	void Test_val_srv(int batchsize, int num_guassian_modes, int num_steer_bins);
 	void Test_all_libtorch(int batchsize, int num_guassian_modes, int num_steer_bins);
 	void Test_val_libtorch(int batchsize, int num_guassian_modes, int num_steer_bins);
+
+
+public:
+
+	void DebugHistory(string msg);
+
+	VariableActionStateHistory as_history_in_search_recorded;
+
+	void record_cur_history();
+	void compare_history_with_recorded();
 
 //	static void OnDataReady(std::string const& name, sio::message::ptr const& data,bool hasAck, sio::message::ptr &ack_resp);
 public:
