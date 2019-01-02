@@ -379,6 +379,7 @@ PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 	map_received = false;
 	drive_net = NULL;
 
+
 //	cerr << "[" << __FUNCTION__<< "] Testing model start" << endl;
 //
 //	Test_model("");
