@@ -29,6 +29,8 @@ static int InitialSearch = true;
 
 
 std::vector<SolverPrior*> SolverPrior::nn_priors; // to be assigned in Controller.cpp
+std::string SolverPrior::history_mode="track"; // "track" or "re-process"
+
 #include "ped_pomdp.h"
 
 namespace despot {
@@ -245,6 +247,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			}
 		} catch (exception &e) {
 			cout << "Locking error: " << e.what() << endl;
+			raise(SIGABRT);
 		}
 
 		auto start = Time::now();
@@ -272,6 +275,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 
 		} catch (exception &e) {
 			cout << "Locking error: " << e.what() << endl;
+			raise(SIGABRT);
 		}
 
 		// lets_drive
@@ -307,6 +311,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			}
 		} catch (exception &e) {
 			cout << "Locking error: " << e.what() << endl;
+			raise(SIGABRT);
 		}
 
 		if (statistics != NULL) {
@@ -322,6 +327,10 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		if (Globals::config.use_prior){
 			State* cur_sample_state = cur->particles()[0];
 			SolverPrior::nn_priors[threadID]->Add_in_search(qstar->edge(), cur_sample_state);
+
+//			cur->car_tensor = SolverPrior::nn_priors[threadID]->Process_state_to_car_tensor(cur_sample_state);
+//			cur->map_tensor = SolverPrior::nn_priors[threadID]->Process_state_to_map_tensor(cur_sample_state);
+
 			logd << __FUNCTION__ << " add history search state of ts " <<
 					static_cast<PomdpState*>(cur_sample_state)->time_stamp << endl;
 		}
@@ -332,6 +341,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 	history.Truncate(hist_size);
 	if(Globals::config.use_prior){
 		SolverPrior::nn_priors[threadID]->Truncate(prior_hist_size, true);
+		SolverPrior::nn_priors[threadID]->Trunc_tensor_hist(prior_hist_size);
 	}
 
 	return cur;
@@ -1327,25 +1337,35 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 		}
 	}
 
-	if (vnode->default_move().value > astar.value + 1e-5) {
-		logi.precision(5);
-		logi << "Searched value "<< astar.value << "(act " << astar.action << ") worse than default move " <<
-				vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug
-		astar = vnode->default_move();
-		logi << "Execute default move: " << astar.action << endl;		//Debug
-		best_qnode = NULL;		//Debug
-	}
-	else if (astar.action != vnode->default_move().action)
-	{
-		logi << "Searched value "<< astar.value << "(act " << astar.action << ") better than default move " <<
-			    vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug		//logi.precision(5);
-		cout << "unused default action: " << vnode->default_move().action
-		     << setprecision(5) << "(" << vnode->default_move().value << "), ";		//Debug
-		SolverPrior::nn_priors[0]->print_prior_actions(vnode->default_move().action);
+	if (!Globals::config.use_prior || astar.action == -1){
+		if (vnode->default_move().value > astar.value + 1e-5) {
+			logi.precision(5);
+			logi << "Searched value "<< astar.value << "(act " << astar.action << ") worse than default move " <<
+					vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug
+			astar = vnode->default_move();
+			logi << "Execute default move: " << astar.action << endl;		//Debug
+			best_qnode = NULL;		//Debug
+		}
+		else if (astar.action != vnode->default_move().action)
+		{
+			logi << "Searched value "<< astar.value << "(act " << astar.action << ") better than default move " <<
+					vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug		//logi.precision(5);
+			cout << "unused default action: " << vnode->default_move().action
+				 << setprecision(5) << "(" << vnode->default_move().value << "), ";		//Debug
+			SolverPrior::nn_priors[0]->print_prior_actions(vnode->default_move().action);
+		}
+		else{
+			logi << "Searched value "<< astar.value << "(act " << astar.action << ") is the same as default move " <<
+				   vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug
+		}
 	}
 	else{
-		logi << "Searched value "<< astar.value << "(act " << astar.action << ") is the same than default move " <<
-			   vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug
+		if (astar.action != vnode->default_move().action){
+			logi << "Searched value "<< astar.value << "(act " << astar.action << "), default value " <<
+					vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;
+			cout << "unused default action: " << vnode->default_move().action
+					<< setprecision(5) << "(" << vnode->default_move().value << "), ";
+		}
 	}
 
 	if (vnode->lower_bound() < -200/*false*/) {
@@ -1822,48 +1842,48 @@ VNode* DESPOT::FindBlocker(VNode* vnode) {
 	return cur;
 }
 
-void DESPOT::ComputePrior(vector<QNode*>& qnodes, const DSPOMDP * model){
-	if (Globals::config.use_prior){
-
-		logi << "[ComputePrior] for children qnodes" << endl;
-
-		int prior_ID = 0;
-		if (Globals::config.use_prior){
-			if (Globals::config.use_multi_thread_){
-				prior_ID=MapThread(this_thread::get_id());
-			}
-		}
-
-//		VNode* first_vnode = NULL;
-		vector<VNode*> vnode_collect;
-		std::vector<State*> node_states;
-		for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
-			QNode* qnode = qnodes[action];
-			map<OBS_TYPE, VNode*>& children = qnode->children();
-			for (map<OBS_TYPE, VNode* >::iterator it = children.begin();
-						it != children.end(); it++) {
-				int rand_id = Random::RANDOM.NextInt(it->second->particles().size());
-				State* particle = it->second->particles()[rand_id];
-				node_states.push_back(particle);
-				vnode_collect.push_back(it->second);
-
-//				if (first_vnode == NULL)
-//					first_vnode = it->second;
-			}
-		}
-
-		// Process last 3 steps of history
-		SolverPrior::nn_priors[prior_ID]->Process_history(qnodes[0]->parent(), 1); // 1 = PARTIAL
-
-		// Process into the bach of tensors
-		logd << "INFO: Processing node images " << endl;
-		std::vector<torch::Tensor> nn_nodes_batch = SolverPrior::nn_priors[prior_ID]->Process_nodes_input(vnode_collect, node_states);
-
-		// Query the nn and initialize the priors in colleccted nodes
-		logd << "INFO: Querying nn for nodes " << endl;
-		SolverPrior::nn_priors[prior_ID]->Compute(nn_nodes_batch, vnode_collect);
-	}
-}
+//void DESPOT::ComputePrior(vector<QNode*>& qnodes, const DSPOMDP * model){
+//	if (Globals::config.use_prior){
+//
+//		logi << "[ComputePrior] for children qnodes" << endl;
+//
+//		int prior_ID = 0;
+//		if (Globals::config.use_prior){
+//			if (Globals::config.use_multi_thread_){
+//				prior_ID=MapThread(this_thread::get_id());
+//			}
+//		}
+//
+////		VNode* first_vnode = NULL;
+//		vector<VNode*> vnode_collect;
+//		std::vector<State*> node_states;
+//		for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
+//			QNode* qnode = qnodes[action];
+//			map<OBS_TYPE, VNode*>& children = qnode->children();
+//			for (map<OBS_TYPE, VNode* >::iterator it = children.begin();
+//						it != children.end(); it++) {
+//				int rand_id = Random::RANDOM.NextInt(it->second->particles().size());
+//				State* particle = it->second->particles()[rand_id];
+//				node_states.push_back(particle);
+//				vnode_collect.push_back(it->second);
+//
+////				if (first_vnode == NULL)
+////					first_vnode = it->second;
+//			}
+//		}
+//
+//		// Process last 3 steps of history
+//		SolverPrior::nn_priors[prior_ID]->Process_history(qnodes[0]->parent(), 1); // 1 = PARTIAL
+//
+//		// Process into the bach of tensors
+//		logd << "INFO: Processing node images " << endl;
+//		std::vector<torch::Tensor> nn_nodes_batch = SolverPrior::nn_priors[prior_ID]->Process_nodes_input(vnode_collect, node_states);
+//
+//		// Query the nn and initialize the priors in colleccted nodes
+//		logd << "INFO: Querying nn for nodes " << endl;
+//		SolverPrior::nn_priors[prior_ID]->Compute(nn_nodes_batch, vnode_collect);
+//	}
+//}
 
 void DESPOT::ComputePriorPref(VNode* vnode, const DSPOMDP * model){
 	if (Globals::config.use_prior){
@@ -1918,7 +1938,6 @@ void DESPOT::ComputePriorValue(QNode* qnode, const DSPOMDP * model){
 			node_states.push_back(particle);
 			vnode_collect.push_back(it->second);
 		}
-
 
 		// Process last 3 steps of history
 		SolverPrior::nn_priors[prior_ID]->Process_history(qnode->parent(), 1); // 1 = PARTIAL

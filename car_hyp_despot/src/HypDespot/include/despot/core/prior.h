@@ -121,6 +121,7 @@ public:
 
 public:
 	static std::vector<SolverPrior*> nn_priors;
+	static std::string history_mode;
 
 public:
     static std::chrono::time_point<std::chrono::system_clock> init_time_;
@@ -144,6 +145,20 @@ public:
 	ACT_TYPE default_action;
 
 	virtual void root_car_pos(double x, double y) = 0;
+
+	virtual at::Tensor Process_state_to_map_tensor(const State* s) = 0;
+	virtual at::Tensor Process_state_to_car_tensor(const State* s) = 0;
+
+	virtual at::Tensor last_car_tensor() = 0;
+	virtual void add_car_tensor(at::Tensor) = 0;
+
+	virtual at::Tensor last_map_tensor() = 0;
+	virtual void add_map_tensor(at::Tensor) = 0;
+
+	virtual void Add_tensor_hist(const State* s) = 0;
+	virtual void Trunc_tensor_hist(int size) = 0;
+
+	virtual int Tensor_hist_size() = 0;
 };
 
 void Debug_state(State* state, std::string msg, const DSPOMDP* model);

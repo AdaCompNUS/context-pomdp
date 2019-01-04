@@ -188,13 +188,28 @@ Solver *PlannerBase::InitializeSolver(DSPOMDP *model, Belief* belief,
 		ScenarioLowerBound *lower_bound = model->CreateScenarioLowerBound(
 				lbtype, blbtype);
 
-		logi << "Created lower bound " << typeid(*lower_bound).name() << endl;
+		try{
+			logi << "Created lower bound " << typeid(*lower_bound).name() << endl;
+		}catch (std::exception e) {
+			cerr << e.what() << endl;
+		}
+
+		logi << "after typeid"<< endl;
 
 		if (solver_type == "DESPOT") {
-			string bubtype =
-					options[E_BUBTYPE] ? options[E_BUBTYPE].arg : "DEFAULT";
-			string ubtype =
-					options[E_UBTYPE] ? options[E_UBTYPE].arg : "DEFAULT";
+
+			string bubtype, ubtype;
+			try{
+				bubtype =
+						options[E_BUBTYPE] ? options[E_BUBTYPE].arg : "DEFAULT";
+				ubtype =
+						options[E_UBTYPE] ? options[E_UBTYPE].arg : "DEFAULT";
+			}
+			catch (std::exception e) {
+				cerr << e.what() << endl;
+			}
+
+			logi << "before CreateScenarioUpperBound" << endl;
 			ScenarioUpperBound *upper_bound = model->CreateScenarioUpperBound(
 					ubtype, bubtype);
 

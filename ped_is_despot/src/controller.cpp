@@ -187,7 +187,6 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model, opti
 
 	cerr << "DEBUG: Initializing world" << endl;
 
-
    //Create a custom world as defined and implemented by the user
 	World* world;
 	switch(simulation_mode_){
@@ -254,7 +253,7 @@ void Controller::InitializeDefaultParameters() {
 //	Globals::config.exploration_constant=0.0;
 	Globals::config.exploration_constant_o = 1.0;
 
-	Globals::config.search_depth=8;
+	Globals::config.search_depth=8/*0*/;
 	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/5;
 
 	Globals::config.experiment_mode = true;
@@ -426,9 +425,20 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 			cur_state,
 			search_state, last_action);
 
+	if (SolverPrior::history_mode == "track"){
+		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
+		for(int i=0; i<SolverPrior::nn_priors.size();i++){
+			if (i > 0){
+				SolverPrior::nn_priors[i]->add_car_tensor(SolverPrior::nn_priors[0]->last_car_tensor());
+				SolverPrior::nn_priors[i]->add_map_tensor(SolverPrior::nn_priors[0]->last_map_tensor());
+			}
+		}
+	}
+
 	for(int i=0; i<SolverPrior::nn_priors.size();i++){
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
+
 		logd << __FUNCTION__ << " add history search state of ts " <<
 				static_cast<PomdpState*>(search_state)->time_stamp << endl;
 
@@ -522,28 +532,29 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 //	SolverPrior::nn_priors[0]->DebugHistory("After Deep update");
 
-	for(int i=0; i<SolverPrior::nn_priors.size();i++){
+	if (SolverPrior::history_mode=="track"){
+		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
+		for(int i=0; i<SolverPrior::nn_priors.size();i++){
+			if (i > 0){
+				SolverPrior::nn_priors[i]->add_car_tensor(SolverPrior::nn_priors[0]->last_car_tensor());
+				SolverPrior::nn_priors[i]->add_map_tensor(SolverPrior::nn_priors[0]->last_map_tensor());
+			}
+		}
+	}
 
+	for(int i=0; i<SolverPrior::nn_priors.size();i++){
 		// make sure the history has not corrupted
 		SolverPrior::nn_priors[i]->compare_history_with_recorded();
 
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
+
 		logd << __FUNCTION__ << " add history search state of ts " <<
 				static_cast<PomdpState*>(search_state)->time_stamp <<
 				" hist len " << SolverPrior::nn_priors[i]->Size(true) << endl;
 
-//		bool mode = DESPOT::Debug_mode;
-//		DESPOT::Debug_mode = false;
-//		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(*search_state, "history state");
-//		DESPOT::Debug_mode = mode;
-
 		if (SolverPrior::nn_priors[i]->Size(true)==10)
 			Record_debug_state(search_state);
-
-//		Debug_state(search_state, "Add history", model_);
-//		SolverPrior::nn_priors[0]->DebugHistory("Add history " +
-//				std::to_string(SolverPrior::nn_priors[i]->Size(true)-1));
 
 		SolverPrior::nn_priors[i]->record_cur_history();
 	}
@@ -564,6 +575,13 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 	int cur_search_hist_len = 0;
 	cur_search_hist_len = SolverPrior::nn_priors[0]->Size(true);
+	int cur_tensor_hist_len = SolverPrior::nn_priors[0]->Tensor_hist_size();
+
+	if( SolverPrior::history_mode=="track" && cur_search_hist_len != cur_tensor_hist_len){
+		cerr << "State hist length "<< cur_search_hist_len <<
+				" mismatch with tensor hist length " << cur_tensor_hist_len << endl;
+		raise(SIGABRT);
+	}
 
 	// predict state using last action
 	if (last_action < 0 || last_action > model_->NumActions()){
@@ -588,8 +606,20 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 		PomdpState* predicted_state = static_cast<PomdpState*>(
 				static_cast<const PedPomdp*>(ped_pomdp_model)->Copy(&predicted));
 
+		if (SolverPrior::history_mode=="track"){
+			SolverPrior::nn_priors[0]->Add_tensor_hist(predicted_state);
+
+			for(int i=0; i<SolverPrior::nn_priors.size();i++){
+				if (i > 0){
+					SolverPrior::nn_priors[i]->add_car_tensor(SolverPrior::nn_priors[0]->last_car_tensor());
+					SolverPrior::nn_priors[i]->add_map_tensor(SolverPrior::nn_priors[0]->last_map_tensor());
+				}
+			}
+		}
+
 		for(int i=0; i<SolverPrior::nn_priors.size();i++){
 			SolverPrior::nn_priors[i]->Add_in_search(-1, predicted_state);
+
 			logd << __FUNCTION__ << " add predicted search state of ts " <<
 					predicted_state->time_stamp <<
 					" predicted from search state of ts "
@@ -635,9 +665,14 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 		SolverPrior::nn_priors[i]->Truncate(cur_search_hist_len, true);
 		logi << __FUNCTION__ << " truncating search history length to " <<
 				cur_search_hist_len << endl;
-
 		SolverPrior::nn_priors[i]->compare_history_with_recorded();
 //		SolverPrior::nn_priors[i]->DebugHistory("Trunc history");
+	}
+
+	if (SolverPrior::history_mode == "track"){
+		for(int i=0; i<SolverPrior::nn_priors.size();i++){
+			SolverPrior::nn_priors[i]->Trunc_tensor_hist(cur_tensor_hist_len);
+		}
 	}
 
 	// imitation learning: renable data update for imitation data

@@ -51,7 +51,7 @@ class PedNeuralSolverPrior:public SolverPrior{
 
 	COORD point_to_indices(COORD pos, COORD origin, double resolution, int dim) const;
 	void add_in_map(cv::Mat map_tensor, COORD indices, double map_intensity, double map_intensity_scale);
-	std::vector<COORD> get_transformed_car(CarStruct car, COORD origin, double resolution);
+	std::vector<COORD> get_transformed_car(const CarStruct car, COORD origin, double resolution);
 	void Process_states(std::vector<despot::VNode*> nodes, const vector<PomdpState*>& hist_states, const vector<int> hist_ids);
 
 	void Process_map(cv::Mat& src_image, at::Tensor& des_tensor, std::string flag);
@@ -98,12 +98,43 @@ private:
 
 	COORD root_car_pos_;
 
+	std::vector<at::Tensor> map_hist_;
+	std::vector<at::Tensor> car_hist_;
+
+	cv::Mat map_hist_image_;
+	cv::Mat car_hist_image_;
+public:
+
 	COORD root_car_pos(){return root_car_pos_;}
 
 	void root_car_pos(double x, double y){
 		root_car_pos_.x = x;
 		root_car_pos_.y = y;
 	}
+
+	at::Tensor Process_state_to_map_tensor(const State* s);
+	at::Tensor Process_state_to_car_tensor(const State* s);
+	at::Tensor Process_path_tensor(const State* s);
+
+	at::Tensor last_car_tensor(){
+		return car_hist_.back();
+	}
+
+	void add_car_tensor(at::Tensor t){
+		car_hist_.push_back(t);
+	}
+
+	at::Tensor last_map_tensor(){
+		return map_hist_.back();
+	}
+
+	void add_map_tensor(at::Tensor t){
+		map_hist_.push_back(t);
+	}
+
+	void Add_tensor_hist(const State* s);
+	void Trunc_tensor_hist(int size);
+	int Tensor_hist_size();
 
 public:
 
@@ -161,7 +192,10 @@ public:
 	void record_cur_history();
 	void compare_history_with_recorded();
 
-//	static void OnDataReady(std::string const& name, sio::message::ptr const& data,bool hasAck, sio::message::ptr &ack_resp);
+	void get_history_settings(despot::VNode* cur_node, int mode, int &num_history, int &start_channel);
+
+	void get_history_tensors(int mode, despot::VNode* cur_node);
+
 public:
 	int num_hist_channels;
 	int num_peds_in_NN;
@@ -177,8 +211,6 @@ public:
 
 	static ros::ServiceClient nn_client_;
 	static ros::ServiceClient nn_client_val_;
-
-
 };
 //#endif
 
