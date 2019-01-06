@@ -1370,10 +1370,13 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 			float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
 
-			logi << "Children of root node: action: " << qnode->edge() << "  visit_count: "
-						 << visit << endl;
-
 			float score = qnode->lower_bound() + Globals::config.exploration_constant * sqrt(visit/root_visit);
+
+			logi << "Children of root node: action: " << qnode->edge() <<
+					" visit_count: " << visit <<
+					" lower_bound: " << qnode->lower_bound() <<
+					" score: " << score << endl;
+
 			if (score > score_max) {
 				astar = ValuedAction(action, qnode->lower_bound());
 				best_qnode = qnode;		//Debug
