@@ -331,6 +331,13 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Generate obs"<<endl;
 	obs=static_cast<PedPomdp*>(model_)->StateToIndex(GetCurrentState());
 
+	if (stateTracker->carvel < 0.01){
+		SolverPrior::prior_discount_optact -= 0.1;
+	}
+	else{
+		SolverPrior::prior_discount_optact = 1.0;
+	}
+
 	//worldModel.ped_sim_[0] -> OutputTime();
 	return goal_reached;
 }

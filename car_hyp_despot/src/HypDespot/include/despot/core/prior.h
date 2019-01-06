@@ -122,6 +122,7 @@ public:
 public:
 	static std::vector<SolverPrior*> nn_priors;
 	static std::string history_mode;
+	static double prior_discount_optact;
 
 public:
     static std::chrono::time_point<std::chrono::system_clock> init_time_;

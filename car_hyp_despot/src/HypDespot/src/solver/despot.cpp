@@ -30,6 +30,7 @@ static int InitialSearch = true;
 
 std::vector<SolverPrior*> SolverPrior::nn_priors; // to be assigned in Controller.cpp
 std::string SolverPrior::history_mode="track"; // "track" or "re-process"
+double SolverPrior::prior_discount_optact = 1.0;
 
 #include "ped_pomdp.h"
 
@@ -41,6 +42,8 @@ bool DESPOT::Debug_mode = false;
 bool DESPOT::Print_nodes = false;
 
 int max_trial = 100000;
+
+int stop_count=0;
 
 MemoryPool<QNode> DESPOT::qnode_pool_;
 MemoryPool<Shared_QNode> DESPOT::s_qnode_pool_;
@@ -1021,7 +1024,6 @@ ValuedAction DESPOT::Search() {
 
 	delete root_;
 
-
 	logi << "[DESPOT::Search] Time for deleting tree: "
 	     << (get_time_second() - start) << "s" << endl;
 
@@ -1370,7 +1372,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 			float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
 
-			float score = qnode->lower_bound() + 0.2 * sqrt(visit/root_visit);
+			float score = qnode->lower_bound() + 0.3 * SolverPrior::prior_discount_optact * sqrt(visit/root_visit);
 
 			logi << "Children of root node: action: " << qnode->edge() <<
 					" visit_count: " << visit <<
