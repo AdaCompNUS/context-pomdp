@@ -502,7 +502,7 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 			}
 
 			COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos - COORD(goalx_, goaly_);
-			if (car_pos_from_goal.Length() < 4.0 && unity_driving_simulator_->stateTracker->carvel > 0.01)
+			if (car_pos_from_goal.Length() < 6.0 && unity_driving_simulator_->stateTracker->carvel > 0.01)
 			{
 				SolverPrior::prior_discount_optact = 100.0;
 			}

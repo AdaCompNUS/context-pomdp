@@ -288,6 +288,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 		//ros::shutdown();
 		steering_ = 0;
 		target_speed_=real_speed_;
+
 	    target_speed_ -= ModelParams::AccSpeed;
 		if(target_speed_<=0.0) target_speed_ = 0.0;
 
@@ -416,17 +417,29 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 
 	float acc=static_cast<PedPomdp*>(model_)->GetAcceleration(action);
 
-	float accelaration;
-	if (!buffered)
-		accelaration=acc/ModelParams::control_freq;
-	else if (buffered)
-		accelaration=acc/pub_frequency;
+//	float accelaration;
+//	if (!buffered)
+//		accelaration=acc/ModelParams::control_freq;
+//	else if (buffered)
+//		accelaration=acc/pub_frequency;
+//
+//	target_speed_ = min(real_speed_ + accelaration, ModelParams::VEL_MAX);
+//	target_speed_ = max(target_speed_, 0.0);
 
-//	cout<<"applying step acc: "<< accelaration<<endl;
-//	cout<<"trunc to max car vel: "<< ModelParams::VEL_MAX<<endl;
 
-	target_speed_ = min(real_speed_ + accelaration, ModelParams::VEL_MAX);
-	target_speed_ = max(target_speed_, 0.0);
+	float speed_step = ModelParams::AccSpeed / ModelParams::control_freq;
+	int level = real_speed_/speed_step;
+	if (std::abs(real_speed_ - (level+1) * speed_step) < speed_step * 0.3){
+		level = level + 1;
+	}
+
+	int next_level = level;
+	if (acc > 0.0)
+		next_level = level + 1;
+	else if (acc < 0.0)
+		next_level = max(0, level - 1);
+
+	target_speed_ = min(next_level * speed_step, ModelParams::VEL_MAX);
 
 	steering_=static_cast<PedPomdp*>(model_)->GetSteering(action);
 
