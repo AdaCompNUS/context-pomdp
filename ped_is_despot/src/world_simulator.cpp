@@ -333,6 +333,8 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 	if (stateTracker->carvel < 0.01){
 		SolverPrior::prior_discount_optact -= 0.1;
+		if (SolverPrior::prior_discount_optact < 0.0)
+			SolverPrior::prior_discount_optact = 0.0;
 	}
 	else{
 		SolverPrior::prior_discount_optact = 1.0;
