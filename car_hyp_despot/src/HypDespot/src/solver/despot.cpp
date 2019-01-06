@@ -1324,20 +1324,21 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 	ValuedAction astar(-1, Globals::NEG_INFTY);
 	QNode * best_qnode = NULL;
 
-	for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
-		QNode* qnode = vnode->Child(action);
+	if (!Globals::config.use_prior){
 
-		logi << "Children of root node: action: " << qnode->edge() << "  lowerbound: "
-				     << qnode->lower_bound() << endl;
+		for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
+			QNode* qnode = vnode->Child(action);
+
+			logi << "Children of root node: action: " << qnode->edge() << "  lowerbound: "
+					     << qnode->lower_bound() << endl;
 
 
-		if (qnode->lower_bound() > astar.value) {
-			astar = ValuedAction(action, qnode->lower_bound());
-			best_qnode = qnode;		//Debug
+			if (qnode->lower_bound() > astar.value) {
+				astar = ValuedAction(action, qnode->lower_bound());
+				best_qnode = qnode;		//Debug
+			}
 		}
-	}
 
-	if (!Globals::config.use_prior || astar.action == -1){
 		if (vnode->default_move().value > astar.value + 1e-5) {
 			logi.precision(5);
 			logi << "Searched value "<< astar.value << "(act " << astar.action << ") worse than default move " <<
@@ -1359,7 +1360,25 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 				   vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug
 		}
 	}
-	else{
+	else{ // lets drive
+
+		int visit_max = 0;
+
+		for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
+			QNode* qnode = vnode->Child(action);
+
+			int visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
+
+			logi << "Children of root node: action: " << qnode->edge() << "  visit_count: "
+						 << visit << endl;
+
+			if (visit > visit_max) {
+				astar = ValuedAction(action, qnode->lower_bound());
+				best_qnode = qnode;		//Debug
+				visit_max = visit;
+			}
+		}
+
 		if (astar.action != vnode->default_move().action){
 			logi << "Searched value "<< astar.value << "(act " << astar.action << "), default value " <<
 					vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;
