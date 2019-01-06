@@ -427,7 +427,7 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 //	target_speed_ = max(target_speed_, 0.0);
 
 
-	float speed_step = ModelParams::AccSpeed / ModelParams::control_freq;
+	double speed_step = ModelParams::AccSpeed / ModelParams::control_freq;
 	int level = real_speed_/speed_step;
 	if (std::abs(real_speed_ - (level+1) * speed_step) < speed_step * 0.3){
 		level = level + 1;
