@@ -494,7 +494,7 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 			COORD path_end_from_goal = path_from_topic.back() - COORD(goalx_, goaly_);
 
-			if (path_end_from_goal > 2.0f + 1e-3){
+			if (path_end_from_goal.Length() > 2.0f + 1e-3){
 				cerr << "Path end mismatch with car goal: path end = " <<
 						"(" << path_from_topic.back().x << "," << path_from_topic.back().x << ")" <<
 						", car goal=(" << goalx_ << "," << goaly_ << ")" << endl;
