@@ -1362,20 +1362,22 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 	}
 	else{ // lets drive
 
-		int visit_max = 0;
+		float root_visit = static_cast<Shared_VNode*>(vnode)->visit_count_;
+		float score_max = 0;
 
 		for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
 			QNode* qnode = vnode->Child(action);
 
-			int visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
+			float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
 
 			logi << "Children of root node: action: " << qnode->edge() << "  visit_count: "
 						 << visit << endl;
 
-			if (visit > visit_max) {
+			float score = qnode->lower_bound() + Globals::config.exploration_constant * sqrt(visit/root_visit);
+			if (score > score_max) {
 				astar = ValuedAction(action, qnode->lower_bound());
 				best_qnode = qnode;		//Debug
-				visit_max = visit;
+				score_max = score;
 			}
 		}
 
@@ -1548,6 +1550,7 @@ QNode* DESPOT::SelectBestUpperBoundNode(VNode* vnode) {
 Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_thread) {
 	int astar = -1;
 	double upperstar = Globals::NEG_INFTY;
+	double lowerstar = Globals::NEG_INFTY;
 
 	double prob_star = Globals::NEG_INFTY;
 
@@ -1569,8 +1572,10 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 		}
 
 		if(Globals::config.use_prior && vnode->depth()==0){
-			logd << "comparing level "<< qnode->parent()->depth() << " qnode " << qnode << " , upper_bound()= "
-					<< qnode->upper_bound(false) << " bonus " << qnode->exploration_bonus << ", ";
+			logd << "comparing level "<< qnode->parent()->depth() << " qnode " << qnode <<
+					" , upper_bound()= " << qnode->upper_bound(false) <<
+					" , lower_bound()= " << qnode->lower_bound() <<
+					" bonus " << qnode->exploration_bonus << ", ";
 
 			int prior_ID = 0;
 			if (Globals::config.use_multi_thread_){
@@ -1580,18 +1585,10 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 			SolverPrior::nn_priors[prior_ID]->print_prior_actions(action);
 		}
 
-//		if(Globals::config.use_prior && vnode->depth()==0){
-//			if (qnode->exploration_bonus > prob_star + 1e-5) {
-//				prob_star = qnode->exploration_bonus;
-//				astar = action;
-//			}
-//		}
-//		else{
-			if (qnode->upper_bound(use_exploration_value) > upperstar + 1e-5) {
-				upperstar = qnode->upper_bound(use_exploration_value);
-				astar = action;
-			}
-//		}
+		if (qnode->upper_bound(use_exploration_value) > upperstar + 1e-5) {
+			upperstar = qnode->upper_bound(use_exploration_value);
+			astar = action;
+		}
 	}
 
 	assert(astar >= 0);

@@ -470,6 +470,10 @@ double Shared_QNode::lower_bound() const {
 	return lower_bound_/*+exploration_bonus*/;
 }
 
+double Shared_QNode::lower_bound_with_bonus() const {
+	return lower_bound_+exploration_bonus;
+}
+
 void Shared_QNode::upper_bound(double value) {
 	lock_guard<mutex> lck(_mutex);
 	upper_bound_ = value;

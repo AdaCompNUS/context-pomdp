@@ -140,6 +140,7 @@ public:
 
 	void lower_bound(double value);
 	double lower_bound() const;
+	double lower_bound_with_bonus() const;
 	void upper_bound(double value);
 	double upper_bound(bool use_Vloss) const;
 	void utility_upper_bound(double value);
