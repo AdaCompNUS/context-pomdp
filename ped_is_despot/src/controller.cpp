@@ -498,7 +498,6 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 				cerr << "Path end mismatch with car goal: path end = " <<
 						"(" << path_from_topic.back().x << "," << path_from_topic.back().x << ")" <<
 						", car goal=(" << goalx_ << "," << goaly_ << ")" << endl;
-
 				raise(SIGABRT);
 			}
 
