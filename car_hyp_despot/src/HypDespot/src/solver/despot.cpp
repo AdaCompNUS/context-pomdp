@@ -1370,7 +1370,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 			float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
 
-			float score = qnode->lower_bound() + 0.15 * sqrt(visit/root_visit);
+			float score = qnode->lower_bound() + 0.2 * sqrt(visit/root_visit);
 
 			logi << "Children of root node: action: " << qnode->edge() <<
 					" visit_count: " << visit <<
