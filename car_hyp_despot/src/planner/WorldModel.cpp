@@ -1014,6 +1014,13 @@ vector<WorldStateTracker::PedDistPair> WorldStateTracker::getSortedPeds(bool doP
     for(const auto& p: ped_list) {
         COORD cp(p.w, p.h);
         float dist = COORD::EuclideanDistance(cp, carpos);
+
+        COORD ped_dir = COORD(p.w, p.h) - carpos;
+        COORD car_dir = (cos(car_heading_dir), sin(car_heading_dir));
+        bool infront = ped_dir.x*car_dir.x + ped_dir.y*car_dir.y;
+        if (infront > 3)
+        	dist -= 3.0;
+
         sorted_peds.push_back(PedDistPair(dist, p));
 
 		if(doPrint) cout << "[getSortedPeds] ped id:"<< p.id << endl;
