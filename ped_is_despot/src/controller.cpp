@@ -492,12 +492,12 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 		else{
 			WorldSimulator::worldModel.path = path_from_topic;
 
-			COORD path_end_from_goal = path_from_topic.back() - COORD(goal_x, goal_y);
+			COORD path_end_from_goal = path_from_topic.back() - COORD(goalx_, goaly_);
 
 			if (path_end_from_goal > 2.0f + 1e-3){
 				cerr << "Path end mismatch with car goal: path end = " <<
 						"(" << path_from_topic.back().x << "," << path_from_topic.back().x << ")" <<
-						", car goal=(" << v << "," << goal_y << ")" << endl;
+						", car goal=(" << goalx_ << "," << goaly_ << ")" << endl;
 
 				raise(SIGABRT);
 			}
