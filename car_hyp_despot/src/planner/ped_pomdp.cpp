@@ -152,8 +152,8 @@ double PedPomdp::CrashPenalty(const PomdpStateWorld& state) const { // , int clo
 
 // Avoid frequent dec or acc
 double PedPomdp::ActionPenalty(int action) const {
-	return (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
-//	return (action == ACT_DEC) ? -0.1 : 0.0;
+//	return (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
+	return (action == ACT_DEC) ? -0.1 : 0.0;
 //	return 0.0;
 }
 
