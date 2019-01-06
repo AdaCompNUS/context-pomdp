@@ -1363,7 +1363,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 	else{ // lets drive
 
 		float root_visit = static_cast<Shared_VNode*>(vnode)->visit_count_;
-		float score_max = 0;
+		float score_max = Globals::NEG_INFTY;
 
 		for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
 			QNode* qnode = vnode->Child(action);
