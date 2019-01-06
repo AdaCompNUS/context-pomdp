@@ -253,7 +253,7 @@ void Controller::InitializeDefaultParameters() {
 //	Globals::config.exploration_constant=0.0;
 	Globals::config.exploration_constant_o = 1.0;
 
-	Globals::config.search_depth=8/*0*/;
+	Globals::config.search_depth=11/*0*/;
 	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/5;
 
 	Globals::config.experiment_mode = true;
