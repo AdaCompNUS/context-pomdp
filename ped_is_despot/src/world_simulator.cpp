@@ -434,7 +434,7 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 		dir_diff = 2 * M_PI - dir_diff;
 	}
 
-	if ( dir_diff > M_PI / 3.0){ // 60 degree difference with path
+	if ( dir_diff > M_PI / 6.0){ // 60 degree difference with path
 		cout << "resetting to default action: " << default_action << ", ";
 		SolverPrior::nn_priors[0]->print_prior_actions(default_action);
 
