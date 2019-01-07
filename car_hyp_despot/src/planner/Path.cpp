@@ -127,8 +127,8 @@ double Path::getlength(){
 double Path::getCurDir(){
     auto& path = *this;
 
-    if (path.size() <= 1)
+    if (path.size() <= 100)
     	return 0.0;
 
-	return COORD::SlopAngle(path[0], path[3]);
+	return COORD::SlopAngle(path[0], path[100]);
 }
