@@ -1375,7 +1375,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 			float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
 			float score = qnode->lower_bound() + 1.0 * SolverPrior::prior_discount_optact * sqrt(visit/root_visit);
 
-			if (astar.value > -1000 && qnode->lower_bound() > astar.value * 0.8) // wrong value
+			if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
 				score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
 
 			logi << "Children of root node: action: " << qnode->edge() <<

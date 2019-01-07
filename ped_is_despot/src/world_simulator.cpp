@@ -338,7 +338,9 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 			SolverPrior::prior_discount_optact = 0.0;
 	}
 	else{
-		SolverPrior::prior_discount_optact = 1.0;
+		SolverPrior::prior_discount_optact += 0.3;
+		if (SolverPrior::prior_discount_optact > 1.0)
+			SolverPrior::prior_discount_optact = 1.0;
 	}
 
 	//worldModel.ped_sim_[0] -> OutputTime();

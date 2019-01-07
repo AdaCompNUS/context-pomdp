@@ -1020,7 +1020,8 @@ vector<WorldStateTracker::PedDistPair> WorldStateTracker::getSortedPeds(bool doP
         double proj = (ped_dir.x*car_dir.x + ped_dir.y*car_dir.y)/ ped_dir.Length();
         if (proj > 0.7)
         	dist -= 2.0;
-
+        if (proj < 0.7)
+            dist += 2.0;
         sorted_peds.push_back(PedDistPair(dist, p));
 
 		if(doPrint) cout << "[getSortedPeds] ped id:"<< p.id << endl;
