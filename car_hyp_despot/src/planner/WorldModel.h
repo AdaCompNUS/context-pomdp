@@ -96,8 +96,8 @@ public:
     std::string goal_file_name_;
     void InitPedGoals();
     void AddObstacle(std::vector<RVO::Vector2> obstacles);
-    bool CheckCarWithObstacles(CarStruct& car);
-    bool CheckCarWithObsLine(CarStruct& car, COORD& obs_last_point, COORD& obs_first_point);
+    bool CheckCarWithObstacles(const CarStruct& car);
+    bool CheckCarWithObsLine(const CarStruct& car, COORD& obs_last_point, COORD& obs_first_point);
 
     /// lets drive
     vector<vector<COORD>> ped_mean_dirs;

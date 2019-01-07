@@ -1722,7 +1722,7 @@ void WorldModel::AddObstacle(std::vector<RVO::Vector2> obs){
 	obstacles.push_back(COORD(Globals::NEG_INFTY, Globals::NEG_INFTY));
 }
 
-bool WorldModel::CheckCarWithObstacles(CarStruct& car){
+bool WorldModel::CheckCarWithObstacles(const CarStruct& car){
 	COORD obs_first_point(Globals::NEG_INFTY, Globals::NEG_INFTY);
 	COORD obs_last_point;
 
@@ -1745,7 +1745,7 @@ bool WorldModel::CheckCarWithObstacles(CarStruct& car){
 	return false;
 }
 
-bool WorldModel::CheckCarWithObsLine(CarStruct& car, COORD& start_point, COORD& end_point){
+bool WorldModel::CheckCarWithObsLine(const CarStruct& car, COORD& start_point, COORD& end_point){
 	const double step = ModelParams::PATH_STEP;
 
 	double d = COORD::EuclideanDistance(start_point, end_point);
