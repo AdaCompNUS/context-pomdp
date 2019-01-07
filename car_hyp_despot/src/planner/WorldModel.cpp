@@ -1042,7 +1042,7 @@ vector<WorldStateTracker::PedDistPair> WorldStateTracker::getSortedPeds(bool doP
         COORD ped_dir = COORD(p.w, p.h) - carpos;
         COORD car_dir = COORD(cos(car_heading_dir), sin(car_heading_dir));
         double proj = (ped_dir.x*car_dir.x + ped_dir.y*car_dir.y)/ ped_dir.Length();
-        if (proj > 0.7)
+        if (proj > 0.6)
         	dist -= 2.0;
         if (proj < 0.7)
             dist += 2.0;

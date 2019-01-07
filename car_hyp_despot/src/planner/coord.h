@@ -93,7 +93,13 @@ inline double COORD::ManhattanDistance(COORD lhs, COORD rhs) {
 }
 
 inline double COORD::SlopAngle(COORD start, COORD end){
-	return atan2(end.y - start.y, end.x - start.x) + M_PI;
+
+	double angle = atan2(end.y - start.y, end.x - start.x);
+
+	if (angle < 0)
+		angle += 2 * M_PI;
+
+	return angle;
 }
 
 
