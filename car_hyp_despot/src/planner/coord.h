@@ -93,8 +93,7 @@ inline double COORD::ManhattanDistance(COORD lhs, COORD rhs) {
 }
 
 inline double COORD::SlopAngle(COORD start, COORD end){
-	double tangent = (end.y - start.y) / (end.x - start.x);
-	return std::atan2(tangent) + M_PI;
+	return atan2(end.y - start.y, end.x - start.x) + M_PI;
 }
 
 
