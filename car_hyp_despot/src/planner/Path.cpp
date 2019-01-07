@@ -134,8 +134,9 @@ double Path::getCurDir(){
 }
 
 void Path::text(){
-	cout << "path: " << endl;
     auto& path = *this;
+
+	cout << "Path: ";
 
     for (auto point: path){
     	cout << point.x << " " << point.y << " ";
