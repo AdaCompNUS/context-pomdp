@@ -1100,7 +1100,6 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 	auto drive_net_output = drive_net->forward(inputs).toTuple()->elements();
 
-
 	logd << "[Compute] Refracting outputs " << endl;
 
 	auto value_batch = drive_net_output[VALUE].toTensor().cpu();
@@ -1197,7 +1196,7 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 			float joint_prob = acc_prob * steer_prob;
 			vnode->prior_action_probs(action, joint_prob);
 
-			if (vnode->depth()==0){
+			if (vnode->depth()==0 && acc_ID == 0){
 				vnode->prior_steer_probs(action, steer_prob);
 			}
 
@@ -2272,6 +2271,8 @@ void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt
 
 	opt_act_start = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id, 0);
 	opt_act_end = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id + 1, 0);
+
+	cout << "Vnode steering prob size: " << vnode->prior_steer_probs().size() << endl;
 
 	cout << "Optimal prior steering: " << opt_steer_id << "(" <<
 			static_cast<const PedPomdp*>(model_)->GetSteering(opt_act_start)
