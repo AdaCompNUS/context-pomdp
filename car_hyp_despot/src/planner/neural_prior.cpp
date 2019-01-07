@@ -1196,8 +1196,8 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 			float joint_prob = acc_prob * steer_prob;
 			vnode->prior_action_probs(action, joint_prob);
 
-			if (vnode->depth()==0 && acc_ID == 0){
-				vnode->prior_steer_probs(action, steer_prob);
+			if (acc_ID == 0){
+				vnode->prior_steer_probs(steerID, steer_prob);
 			}
 
 			accum_prob += joint_prob;
