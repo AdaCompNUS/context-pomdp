@@ -1716,7 +1716,7 @@ void WorldModel::PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedSt
 
 void WorldModel::AddObstacle(std::vector<RVO::Vector2> obs){
 	for (auto& point:obs){
-		obstacles.push_back(COORD(obs[0], obs[1]));
+		obstacles.push_back(COORD(point.x(), point.y()));
 	}
 	// to seperate different obstacles
 	obstacles.push_back(COORD(Globals::NEG_INFTY, Globals::NEG_INFTY));
