@@ -1399,11 +1399,22 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 			}
 		}
 
+		if (abs(astar.action - vnode->default_move().action)> 3*6){
+			astar = vnode->default_move();
+
+			logi << "Searched value "<< astar.value << "(act " << astar.action << "), default value " <<
+				vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;
+			cout << "resetting to default action: " << vnode->default_move().action
+				<< setprecision(5) << "(" << vnode->default_move().value << "), ";
+			SolverPrior::nn_priors[0]->print_prior_actions(vnode->default_move().action);
+		}
+
 		if (astar.action != vnode->default_move().action){
 			logi << "Searched value "<< astar.value << "(act " << astar.action << "), default value " <<
 					vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;
 			cout << "unused default action: " << vnode->default_move().action
 					<< setprecision(5) << "(" << vnode->default_move().value << "), ";
+			SolverPrior::nn_priors[0]->print_prior_actions(vnode->default_move().action);
 		}
 	}
 
