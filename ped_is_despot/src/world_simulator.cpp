@@ -541,6 +541,8 @@ void WorldSimulator::AddObstacle(){
 			 	worldModel.ped_sim_[tid]->addObstacle(obstacles[obst_num]);			
 			}
 
+	        worldModel.AddObstacle(obstacles[obst_num]);
+
 	        obst_num++;
 	        if(obst_num > 99) break;
 	    }

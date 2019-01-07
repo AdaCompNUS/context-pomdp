@@ -90,9 +90,14 @@ public:
     const double in_front_angle_cos;
     std::vector<RVO::RVOSimulator*> ped_sim_;
 
+    std::vector<COORD> obstacles;
+
 public:
     std::string goal_file_name_;
     void InitPedGoals();
+    void AddObstacle(std::vector<RVO::Vector2> obstacles);
+    bool CheckCarWithObstacles(CarStruct& car);
+    bool CheckCarWithObsLine(CarStruct& car, COORD& obs_last_point, COORD& obs_first_point);
 
     /// lets drive
     vector<vector<COORD>> ped_mean_dirs;
@@ -136,7 +141,6 @@ public:
 
     //Ped states
     std::vector<Pedestrian> ped_list;
-
     WorldModel& model;
 };
 
