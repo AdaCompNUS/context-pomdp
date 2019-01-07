@@ -253,7 +253,7 @@ void Controller::InitializeDefaultParameters() {
 //	Globals::config.exploration_constant=0.0;
 	Globals::config.exploration_constant_o = 1.0;
 
-	Globals::config.search_depth=11/*0*/;
+	Globals::config.search_depth=9/*0*/;
 	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/5;
 
 	Globals::config.experiment_mode = true;
@@ -504,7 +504,7 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 			COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos - COORD(goalx_, goaly_);
 			if (car_pos_from_goal.Length() < 8.0 && unity_driving_simulator_->stateTracker->carvel > 0.01)
 			{
-				SolverPrior::prior_discount_optact = 5.0;
+				SolverPrior::prior_discount_optact = 10.0;
 			}
 		}
 	}
