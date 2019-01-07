@@ -442,6 +442,8 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 		cout << "path dir: "<< worldModel.path.getCurDir() << endl;
 
 		action = default_action;
+
+		worldModel.path.text();
 	}
 
 	cout << "[update_cmds_naive] Buffering action " << action << endl;

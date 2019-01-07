@@ -13,6 +13,8 @@ struct Path : std::vector<COORD> {
 	double getlength();
 	double getCurDir();
 
+	void text();
+
 	Path copy_without_travelled_points(double dist_to_remove);
 
 	void copy_to(Path& des){

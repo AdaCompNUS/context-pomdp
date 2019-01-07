@@ -132,3 +132,13 @@ double Path::getCurDir(){
 
 	return COORD::SlopAngle(path[0], path[100]);
 }
+
+void Path::text(){
+	cout << "path: " << endl;
+    auto& path = *this;
+
+    for (auto point: path){
+    	cout << point.x << " " << point.y << " ";
+    }
+    cout << endl;
+}
