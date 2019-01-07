@@ -1000,7 +1000,7 @@ int BatchSize = 128;
 
 float PedNeuralSolverPrior::cal_steer_prob(at::TensorAccessor<float, 1> steer_probs_double, int steerID){
 
-	float smoothing = 0.3;
+	float smoothing = 0.1;
 	float steer_prob = smoothing/2.0/ModelParams::NumSteerAngle;
 
 	if (steerID == 0){
