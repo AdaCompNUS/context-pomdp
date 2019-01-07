@@ -334,19 +334,23 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	obs=static_cast<PedPomdp*>(model_)->StateToIndex(GetCurrentState());
 
 	if (stateTracker->carvel < 0.01){
-		SolverPrior::prior_discount_optact -= 0.2;
-		if (SolverPrior::prior_discount_optact < 0.0)
-			SolverPrior::prior_discount_optact = 0.0;
+//		SolverPrior::prior_discount_optact -= 0.2;
+//		if (SolverPrior::prior_discount_optact < 0.0)
+//			SolverPrior::prior_discount_optact = 0.0;
 		SolverPrior::prior_force_steer = true;
 		keep_count = 0;
+		SolverPrior::prior_discount_optact = 0.0;
 	}
 	else{
-		SolverPrior::prior_discount_optact += 0.2;
-		if (SolverPrior::prior_discount_optact > 1.0)
-			SolverPrior::prior_discount_optact = 1.0;
+//		SolverPrior::prior_discount_optact += 0.2;
+//		if (SolverPrior::prior_discount_optact > 1.0)
+//			SolverPrior::prior_discount_optact = 1.0;
 		keep_count ++;
-		if (keep_count == 4)
+		if (keep_count == 3){
 			SolverPrior::prior_force_steer = false;
+			SolverPrior::prior_discount_optact = 1.0;
+			keep_count = 0;
+		}
 	}
 
 	//worldModel.ped_sim_[0] -> OutputTime();
