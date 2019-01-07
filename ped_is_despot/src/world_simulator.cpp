@@ -292,7 +292,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	    target_speed_ -= ModelParams::AccSpeed;
 		if(target_speed_<=0.0) target_speed_ = 0.0;
 
-		buffered_action_ = static_cast<PedPomdp*>(model_)->GetActionID(0, -ModelParams::AccSpeed);
+		buffered_action_ = static_cast<PedPomdp*>(model_)->GetActionID(0.0, -ModelParams::AccSpeed);
 
         // shutdown the node after reaching goal
         // TODO consider do this in simulaiton only for safety
@@ -306,7 +306,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 		steering_ = 0;
 		target_speed_=-1;
 
-		buffered_action_ = static_cast<PedPomdp*>(model_)->GetActionID(0, -ModelParams::AccSpeed);
+		buffered_action_ = static_cast<PedPomdp*>(model_)->GetActionID(0.0, -ModelParams::AccSpeed);
 
 		cout<<"--------------------------- emergency ----------------------------" <<endl;
 	}

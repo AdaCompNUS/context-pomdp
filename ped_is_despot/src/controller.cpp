@@ -503,7 +503,7 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 			COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos - COORD(goalx_, goaly_);
 
-			if (car_pos_from_goal.Length() < 5.0)
+			if (car_pos_from_goal.Length() < 6.0)
 			{
 				SolverPrior::prior_force_steer = true;
 			}
