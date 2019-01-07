@@ -11,6 +11,8 @@ struct Path : std::vector<COORD> {
 	Path interpolate();
 	void cutjoin(const Path& p);
 	double getlength();
+	double getCurDir();
+
 	Path copy_without_travelled_points(double dist_to_remove);
 
 	void copy_to(Path& des){

@@ -423,6 +423,23 @@ void WorldSimulator::update_cmds_fix_latency(ACT_TYPE action, bool buffered){
 void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 //	buffered_action_ = action;
 
+	int default_action = SolverPrior::nn_priors[0]->default_action;
+
+	double dir_diff = abs(stateTracker->car_heading_dir - worldModel.path.getCurDir());
+
+	if (dir_diff > 2* M_PI){
+		cerr << "[update_cmds_naive] Angle error" << endl;
+		raise(SIGABRT);
+	} else if (dir_diff > M_PI){
+		dir_diff = 2 * M_PI - dir_diff;
+	}
+
+	if ( dir_diff > M_PI / 3.0){ // 60 degree difference with path
+		cout << "resetting to default action: " << default_action << ", ";
+		SolverPrior::nn_priors[0]->print_prior_actions(default_action);
+		action = default_action;
+	}
+
 	cout << "[update_cmds_naive] Buffering action " << action << endl;
 
 //	cout<<"real_speed_ = "<<real_speed_<<endl;

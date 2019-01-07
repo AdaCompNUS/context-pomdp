@@ -123,3 +123,12 @@ double Path::getlength(){
 	}
 	return path_len;
 }
+
+double Path::getCurDir(){
+    auto& path = *this;
+
+    if (path.size() > 1)
+    	return 0.0;
+
+	return COORD::SlopAngle(path[0], path[1]);
+}

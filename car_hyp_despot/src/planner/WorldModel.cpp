@@ -1727,13 +1727,13 @@ bool WorldModel::CheckCarWithObstacles(const CarStruct& car){
 	COORD obs_last_point;
 
 	for (auto& point: obstacles){
-		if (point.x == Globals::NEG_INFTY){ // stop point of an obstacle
+		if (obs_first_point.x == Globals::NEG_INFTY){ // first point of an obstacle
+			obs_first_point = point;
+		}
+		else if (point.x == Globals::NEG_INFTY){ // stop point of an obstacle
 			if(CheckCarWithObsLine(car, obs_last_point, obs_first_point))
 				return true;
 			obs_first_point = COORD(Globals::NEG_INFTY, Globals::NEG_INFTY);
-		}
-		else if (obs_first_point.x == Globals::NEG_INFTY){ // first point of an obstacle
-			obs_first_point = point;
 		}
 		else{ // normal obstacle points
 			if(CheckCarWithObsLine(car, obs_last_point, point))

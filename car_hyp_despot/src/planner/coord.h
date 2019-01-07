@@ -52,6 +52,8 @@ struct COORD
   static double EuclideanDistance(COORD lhs, COORD rhs);
   static double ManhattanDistance(COORD lhs, COORD rhs);
   
+  static double SlopAngle(COORD start, COORD end);
+
   double Length(){
 	  return sqrt(x*x + y*y);
   }
@@ -89,6 +91,12 @@ inline double COORD::EuclideanDistance(COORD lhs, COORD rhs) {
 inline double COORD::ManhattanDistance(COORD lhs, COORD rhs) {
   return fabs(lhs.x - rhs.x) + fabs(lhs.y - rhs.y);
 }
+
+inline double COORD::SlopAngle(COORD start, COORD end){
+	double tangent = (end.y - start.y) / (end.x - start.x);
+	return std::atan2(tangent) + M_PI;
+}
+
 
 /*
 inline int COORD::DirectionalDistance(COORD lhs, COORD rhs, int direction) {
