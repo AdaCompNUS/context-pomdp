@@ -196,6 +196,8 @@ public:
 
 	void get_history_tensors(int mode, despot::VNode* cur_node);
 
+	void Get_force_steer_action(despot::VNode* vnode, int& opt_act_start, int& opt_act_end);
+
 public:
 	int num_hist_channels;
 	int num_peds_in_NN;

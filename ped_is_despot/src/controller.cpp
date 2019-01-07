@@ -502,7 +502,12 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 			}
 
 			COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos - COORD(goalx_, goaly_);
-			if (car_pos_from_goal.Length() < 8.0 && unity_driving_simulator_->stateTracker->carvel
+
+			if (car_pos_from_goal.Length() < 5.0)
+			{
+				SolverPrior::prior_force_steer = true;
+			}
+			else if (car_pos_from_goal.Length() < 8.0 && unity_driving_simulator_->stateTracker->carvel
 					>= ModelParams::AccSpeed/ModelParams::control_freq)
 			{
 				SolverPrior::prior_discount_optact = 10.0;

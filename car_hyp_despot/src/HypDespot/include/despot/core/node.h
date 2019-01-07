@@ -49,6 +49,7 @@ public:
 protected:
   	const double DUMMY_VALUE = 10000000;
   	std::vector<double> prior_action_probs_;
+  	std::vector<double> prior_steer_probs_;
   	double prior_value_;
 
   	bool prior_initialized_;
@@ -63,6 +64,18 @@ public:
   		else
   			assert(false);
   	}
+
+  	double prior_steer_probs(int i){return prior_steer_probs_[i];}
+  	std::vector<double>& prior_steer_probs(){return prior_steer_probs_;}
+
+  	void prior_steer_probs(int i, double v){
+		if (prior_steer_probs_.size() > i)
+			prior_steer_probs_[i]=v;
+		else if (prior_steer_probs_.size() == i)
+			prior_steer_probs_.push_back(v);
+		else
+			assert(false);
+	}
 	double prior_value();
   	void prior_value(double v){prior_value_ = v;}
 

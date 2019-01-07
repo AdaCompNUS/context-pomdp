@@ -1197,6 +1197,10 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 			float joint_prob = acc_prob * steer_prob;
 			vnode->prior_action_probs(action, joint_prob);
 
+			if (vnode->depth()==0){
+				vnode->prior_steer_probs(action, steer_prob);
+			}
+
 			accum_prob += joint_prob;
 
 			logd << "action "<< acc_ID << " " << steerID <<
@@ -2247,5 +2251,32 @@ void PedNeuralSolverPrior::compare_history_with_recorded(){
 			raise(SIGABRT);
 		}
 	}
+}
+
+void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt_act_start, int& opt_act_end){
+
+	int opt_steer_id = -1;
+	float max_prob = Globals::NEG_INFTY;
+
+	for (int steer_id = 0; steer_id < vnode->prior_steer_probs().size(); steer_id++){
+		if (vnode->prior_steer_probs(steer_id) > max_prob){
+			max_prob = vnode->prior_steer_probs(steer_id);
+			opt_steer_id = steer_id;
+		}
+	}
+
+	if (opt_steer_id == -1){
+		cerr << "[Get_force_steer_action] No steer_prob data" << endl;
+		raise(SIGABRT);
+	}
+
+	opt_act_start = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id, 0);
+	opt_act_end = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id + 1, 0);
+
+	cout << "Optimal prior steering: " << opt_steer_id << "(" <<
+			static_cast<const PedPomdp*>(model_)->GetSteering(opt_act_start)
+			<< ")" << endl;
+
+	cout << "Optimal steering id range: " << opt_act_start << "-" << opt_act_end << endl;
 }
 

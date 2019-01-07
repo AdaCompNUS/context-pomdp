@@ -116,6 +116,8 @@ public:
 
 	virtual void DebugHistory(string msg)=0;
 
+	virtual void Get_force_steer_action(despot::VNode* vnode, int& opt_act_start, int& opt_act_end) = 0;
+
 //#endif
 
 
@@ -123,6 +125,7 @@ public:
 	static std::vector<SolverPrior*> nn_priors;
 	static std::string history_mode;
 	static double prior_discount_optact;
+	static bool prior_force_steer;
 
 public:
     static std::chrono::time_point<std::chrono::system_clock> init_time_;

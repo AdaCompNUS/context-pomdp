@@ -990,6 +990,10 @@ ACT_TYPE PedPomdp::GetActionID(double steering, double acc, bool debug){
 			+ GetAccIDfromAcc(acc));
 }
 
+ACT_TYPE PedPomdp::GetActionID(int steer_id, int acc_id){
+	return (ACT_TYPE)(steer_id * ClosestInt(2*ModelParams::NumAcc+1) + acc_id);
+}
+
 double PedPomdp::GetAccfromAccID(int acc){
 	switch(acc){
 		case ACT_CUR: return 0;

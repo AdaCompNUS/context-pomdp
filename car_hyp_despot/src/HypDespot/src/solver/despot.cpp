@@ -31,6 +31,7 @@ static int InitialSearch = true;
 std::vector<SolverPrior*> SolverPrior::nn_priors; // to be assigned in Controller.cpp
 std::string SolverPrior::history_mode="track"; // "track" or "re-process"
 double SolverPrior::prior_discount_optact = 1.0;
+bool SolverPrior::prior_force_steer = false;
 
 #include "ped_pomdp.h"
 
@@ -1368,8 +1369,16 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 		float score_max = Globals::NEG_INFTY;
 
 		logi << "prior_discount_optact="<< SolverPrior::prior_discount_optact << endl;
+		logi << "prior_force_steer="<< SolverPrior::prior_force_steer << endl;
 
-		for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
+		int opt_act_start = 0, opt_act_end = vnode->children().size();
+
+		if (SolverPrior::prior_force_steer){
+			// get the action ids corresponding to the optimal prior steering
+			SolverPrior::nn_priors[0]->Get_force_steer_action(vnode, opt_act_start, opt_act_end);
+		}
+
+		for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++) {
 			QNode* qnode = vnode->Child(action);
 
 			float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
