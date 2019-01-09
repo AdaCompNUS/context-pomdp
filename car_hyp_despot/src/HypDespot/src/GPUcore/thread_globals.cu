@@ -52,7 +52,7 @@ void sleep_ms(int milliseconds) // cross-platform sleep function
 
 // Parameters for serialized printing in HyP-DESPOT. Typicallly used for debugging purposes.
 ThreadParams::ThreadParams(int dummy){
-	PrintThreadID=-1;
+	PrintThreadID=0;
 	PrintParentEdge=18;
 	PrintEdge=2;
 	PrintDepth=1;

@@ -1394,6 +1394,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 				logi << "Children of root node: action: " << qnode->edge() <<
 						" visit_count: " << visit <<
+						" upper_bound: " << qnode->upper_bound() <<		
 						" lower_bound: " << qnode->lower_bound() <<
 						" score: " << score << endl;
 
@@ -1410,7 +1411,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 			if (SolverPrior::prior_force_steer){
 
-				cout << "Recalculating action with fixed steering" << ednl;
+				cout << "Recalculating action with fixed steering" << endl;
 				// Second round, prior steering
 				score_max = Globals::NEG_INFTY;
 
@@ -1429,6 +1430,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 					logi << "Children of root node: action: " << qnode->edge() <<
 							" visit_count: " << visit <<
+							" upper_bound: " << qnode->upper_bound() <<
 							" lower_bound: " << qnode->lower_bound() <<
 							" score: " << score << endl;
 
@@ -1710,8 +1712,14 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 	if (((VNode*) vnode)->IsLeaf()) {
 		return;
 	}
+
 	double lower = ((VNode*) vnode)->default_move().value;
 	double upper = ((VNode*) vnode)->default_move().value;
+
+	if (Globals::config.use_prior){
+		lower = Globals::NEG_INFTY;
+		upper = Globals::NEG_INFTY;
+	}
 
 //	logi << "[Backup] vnode default lb == ub: " << lower << endl;
 
@@ -1728,6 +1736,18 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 //		logi << "[Backup] child qnode utility_upper_bound: " <<
 //				((QNode*) qnode)->utility_upper_bound() << endl;
 
+		Globals::Global_print_node<int>(this_thread::get_id(), qnode,
+            static_cast<Shared_VNode*>(vnode)->depth(),
+            static_cast<Shared_QNode*>(qnode)->step_reward,
+            static_cast<Shared_QNode*>(qnode)->lower_bound(),
+            static_cast<Shared_QNode*>(qnode)->upper_bound(false),
+            -1000,
+            static_cast<Shared_QNode*>(qnode)->GetVirtualLoss(),
+            static_cast<Shared_QNode*>(qnode)->Weight(),
+            static_cast<Shared_QNode*>(qnode)->edge(),
+            -1000,
+            "Update Vnode");
+
 		lower = max(lower, ((QNode*) qnode)->lower_bound());
 		upper = max(upper, ((QNode*) qnode)->upper_bound());
 		utility_upper = max(utility_upper,
@@ -1735,8 +1755,13 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 
 	}
 
-	if (lower > ((VNode*) vnode)->lower_bound()) {
+	if (Globals::config.use_prior){
 		((VNode*) vnode)->lower_bound(lower);
+ 	}
+ 	else{
+		if (lower > ((VNode*) vnode)->lower_bound()) {
+			((VNode*) vnode)->lower_bound(lower);
+		}
 	}
 	if (upper < ((VNode*) vnode)->upper_bound()) {
 		((VNode*) vnode)->upper_bound(upper);
@@ -1772,11 +1797,13 @@ void DESPOT::Update(QNode* qnode, bool real) {
 		qnode->utility_upper_bound(utility_upper);
 	}
 }
+
 void DESPOT::Update(Shared_QNode* qnode, bool real) {
 	lock_guard < mutex > lck(qnode->GetMutex());//lock v_node during updation
 
 	double lower = qnode->step_reward;
 	double upper = qnode->step_reward;
+
 	double utility_upper = qnode->step_reward
 	                       + Globals::config.pruning_constant;
 
@@ -1785,6 +1812,17 @@ void DESPOT::Update(Shared_QNode* qnode, bool real) {
 	for (map<OBS_TYPE, VNode*>::iterator it = children.begin();
 	        it != children.end(); it++) {
 		Shared_VNode* vnode = static_cast<Shared_VNode*>(it->second);
+
+		Globals::Global_print_node(this_thread::get_id(), vnode,
+		   static_cast<Shared_VNode*>(vnode)->depth(), 0,
+		   static_cast<Shared_VNode*>(vnode)->lower_bound(),
+		   static_cast<Shared_VNode*>(vnode)->upper_bound(false),
+		   -1000,
+		   static_cast<Shared_VNode*>(vnode)->GetVirtualLoss(),
+		   static_cast<Shared_VNode*>(vnode)->Weight(),
+		   static_cast<Shared_VNode*>(vnode)->edge(),
+		   -1000,
+		   "Update Qnode");
 
 //		logi << "[Backup] child vnode bounds: " << ((VNode*) vnode)->lower_bound() << ", "
 //				<< ((VNode*) vnode)->upper_bound() << ", "
@@ -1804,9 +1842,16 @@ void DESPOT::Update(Shared_QNode* qnode, bool real) {
 			qnode->exploration_bonus = 0;
 	}
 
-	if (lower > ((QNode*) qnode)->lower_bound()) {
-		((QNode*) qnode)->lower_bound(lower);
+
+ 	if (Globals::config.use_prior){
+ 		((QNode*) qnode)->lower_bound(lower);
+ 	}
+ 	else{
+		if (lower > ((QNode*) qnode)->lower_bound()) {
+			((QNode*) qnode)->lower_bound(lower);
+		}
 	}
+
 	if (upper < ((QNode*) qnode)->upper_bound()) {
 		((QNode*) qnode)->upper_bound(upper);
 	}

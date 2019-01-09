@@ -78,7 +78,7 @@ public:
 };
 
 void PedPomdp::InitRVOSetting() {
-	use_rvo_in_search = false;
+	use_rvo_in_search = true;
 	use_rvo_in_simulation = true;
 //	if (use_rvo_in_simulation)
 //		ModelParams::LASER_RANGE = 8.0;
