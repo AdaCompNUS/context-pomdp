@@ -2292,13 +2292,13 @@ void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt
 
 		cout << "Vnode steering prob size: " << vnode->prior_steer_probs().size() << endl;
 
-		cout << "Optimal prior steering: " << opt_steer_id << "(" <<
-				static_cast<const PedPomdp*>(model_)->GetSteering(opt_act_start)
-				<< ")" << endl;
+		// cout << "Optimal prior steering: " << opt_steer_id << "(" <<
+		// 		static_cast<const PedPomdp*>(model_)->GetSteering(opt_act_start)
+		// 		<< ")" << endl;
 
-		cout << "Optimal steering id range: " << opt_act_start << "-" << opt_act_end << endl;
+		// cout << "Optimal steering id range: " << opt_act_start << "-" << opt_act_end << endl;
 	
-		cout << "returning" << endl;
+		// cout << "returning" << endl;
 	}catch(std::exception e){
 		cerr << "Error: " << e.what() << endl;
 		raise(SIGABRT);
@@ -2309,7 +2309,8 @@ void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt
 void PedNeuralSolverPrior::Check_force_steer(int action, int default_action){
 
 	if (abs(action - default_action) > 3 * 8){ // steering to different direction
-		prior_force_steer = true;
+		cout << "Searched steering too far away from default" << endl;
+		prior_force_steer = true; 
 	}
 }
 
@@ -2326,12 +2327,12 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 		dir_diff = 2 * M_PI - dir_diff;
 	}
 
-	if ( dir_diff > M_PI / 6.0){ // 60 degree difference with path
+	if ( dir_diff > M_PI / 6.0){ // 30 degree difference with path
 		// cout << "resetting to default action: " << default_action << ", ";
 		// SolverPrior::nn_priors[0]->print_prior_actions(default_action);
 		// action = default_action;
 
-		cout << "resetting to default steering: " << endl;
+		cout << "car_heading and path_heading diff > 30 degree: resetting to default steering: " << endl;
 		SolverPrior::prior_force_steer = true;
 
 		cout << "car dir: "<< car_heading  << endl;

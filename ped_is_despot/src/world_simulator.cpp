@@ -402,8 +402,6 @@ void WorldSimulator::update_cmds_fix_latency(ACT_TYPE action, bool buffered){
 void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 //	buffered_action_ = action;
 
-	int default_action = SolverPrior::nn_priors[0]->default_action;
-
 	SolverPrior::nn_priors[0]->Check_force_steer(stateTracker->car_heading_dir, 
 		worldModel.path.getCurDir(), stateTracker->carvel);
 

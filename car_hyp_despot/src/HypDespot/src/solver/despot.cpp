@@ -1409,6 +1409,8 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 			logi << "prior_force_steer="<< SolverPrior::prior_force_steer << endl;
 
 			if (SolverPrior::prior_force_steer){
+
+				cout << "Recalculating action with fixed steering" << ednl;
 				// Second round, prior steering
 				score_max = Globals::NEG_INFTY;
 
