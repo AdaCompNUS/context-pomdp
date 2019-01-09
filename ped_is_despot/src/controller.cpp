@@ -246,14 +246,14 @@ void Controller::InitializeDefaultParameters() {
 
 	Globals::config.GPUid=1;//default GPU
 	Globals::config.use_multi_thread_=true;
-	Globals::config.NUM_THREADS=10;
+	Globals::config.NUM_THREADS=1;
 
 	Globals::config.exploration_mode=UCT;
 	Globals::config.exploration_constant = 2.0;
 //	Globals::config.exploration_constant=0.0;
 	Globals::config.exploration_constant_o = 1.0;
 
-	Globals::config.search_depth=9/*0*/;
+	Globals::config.search_depth=9;
 	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/5;
 
 	Globals::config.experiment_mode = true;

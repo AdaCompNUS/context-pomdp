@@ -2258,6 +2258,10 @@ void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt
 		return;
 
 	try{
+
+		// if(prior_id_ == 0)
+		// 	cout  << "1" << endl;
+
 		int opt_steer_id = -1;
 		float max_prob = Globals::NEG_INFTY;
 
@@ -2267,19 +2271,23 @@ void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt
 				int dec_action = 
 						static_cast<const PedPomdp*>(model_)->GetActionID(steer_id, 2);
 
-				if(vnode->children()[dec_action]->lower_bound() > -100){ // no collision 
+				if(vnode->children()[dec_action]->upper_bound() > -100){ // no collision 
 					max_prob = vnode->prior_steer_probs(steer_id);
 					opt_steer_id = steer_id;
 				}
-				else{
+				else if(vnode->depth() == 0){
 					cout << "[Get_force_steer_action] skipping collision steering id "
 					 	<< steer_id << endl;
 				}
 			}
 		}
 
+		// if(prior_id_ == 0)
+		// 	cout  << "2" << endl;
+
 		if (opt_steer_id == -1){
-			cerr << "[Get_force_steer_action] all steering colliding, use default" << endl;
+			if(vnode->depth() == 0)
+				cerr << "[Get_force_steer_action] all steering colliding, use default" << endl;
 
 			// all steering colliding, use default steering
 			opt_steer_id = static_cast<const PedPomdp*>(model_)->GetSteeringID(
@@ -2287,10 +2295,25 @@ void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt
 			// raise(SIGABRT);
 		}
 
-		opt_act_start = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id, 0);
-		opt_act_end = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id + 1, 0);
+		// if(prior_id_ == 0)
+		// cout  << "3" << endl;
 
-		cout << "Vnode steering prob size: " << vnode->prior_steer_probs().size() << endl;
+		PomdpState * cur_state = static_cast<PomdpState*>(vnode->particles()[0]);
+		double car_vel = cur_state->car.vel;
+
+		if(car_vel >0){
+			opt_act_start = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id, 0);
+			opt_act_end = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id + 1, 0);
+		}
+		else{ // exclude dece;aration
+			opt_act_start = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id, 0);
+			opt_act_end = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id, 2);
+		}
+
+		// if(prior_id_ == 0)
+		// 	cout  << "4" << endl;
+		
+		// cout << "Vnode steering prob size: " << vnode->prior_steer_probs().size() << endl;
 
 		// cout << "Optimal prior steering: " << opt_steer_id << "(" <<
 		// 		static_cast<const PedPomdp*>(model_)->GetSteering(opt_act_start)
@@ -2308,7 +2331,7 @@ void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt
 
 void PedNeuralSolverPrior::Check_force_steer(int action, int default_action){
 
-	if (abs(action - default_action) > 3 * 8){ // steering to different direction
+	if (abs(action - default_action) > 3 * 100){ // steering to different direction
 		cout << "Searched steering too far away from default" << endl;
 		prior_force_steer = true; 
 	}
@@ -2327,6 +2350,8 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 		dir_diff = 2 * M_PI - dir_diff;
 	}
 
+	bool keep_count_modified = false;
+
 	if ( dir_diff > M_PI / 6.0){ // 30 degree difference with path
 		// cout << "resetting to default action: " << default_action << ", ";
 		// SolverPrior::nn_priors[0]->print_prior_actions(default_action);
@@ -2334,12 +2359,19 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 
 		cout << "car_heading and path_heading diff > 30 degree: resetting to default steering: " << endl;
 		SolverPrior::prior_force_steer = true;
+		keep_count = 0;
 
 		cout << "car dir: "<< car_heading  << endl;
 		cout << "path dir: "<< path_heading << endl;
 	}
 	else{
-		SolverPrior::prior_force_steer = false;
+		keep_count ++;
+		keep_count_modified = true;
+		
+		if (keep_count == 3){
+			SolverPrior::prior_force_steer = false;
+			keep_count = 0;
+		}
 	}
 
 	if (car_vel < 0.01){
@@ -2348,7 +2380,9 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 		SolverPrior::prior_discount_optact = 0.0;
 	}
 	else{
-		keep_count ++;
+
+		if (!keep_count_modified)
+			keep_count ++;
 		if (keep_count == 3){
 			SolverPrior::prior_force_steer = false;
 			SolverPrior::prior_discount_optact = 1.0;

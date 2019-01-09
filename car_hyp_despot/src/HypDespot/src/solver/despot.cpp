@@ -217,6 +217,9 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		prior_hist_size = SolverPrior::nn_priors[threadID]->Size(true);
 
 	do {
+
+		cout << "trial 1" << endl;
+
 		if (statistics != NULL
 		        && cur->depth() > statistics->Get_longest_trial_len()) {
 			statistics->Update_longest_trial_len(cur->depth());
@@ -231,6 +234,9 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			                            "debug trial end blocker found");
 			break;
 		}
+
+		cout << "trial 2" << endl;
+
 		try {
 			lock_guard < mutex > lck(cur->GetMutex());
 			if (((VNode*) cur)->IsLeaf()) {
@@ -253,6 +259,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			cout << "Locking error: " << e.what() << endl;
 			raise(SIGABRT);
 		}
+		cout << "trial 3" << endl;
 
 		auto start = Time::now();
 		Shared_QNode* qstar;
@@ -281,6 +288,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			cout << "Locking error: " << e.what() << endl;
 			raise(SIGABRT);
 		}
+		cout << "trial 4" << endl;
 
 		// lets_drive
 		if (Globals::config.use_prior){
@@ -1389,8 +1397,8 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 				// logi << "3" << endl;
 
-				if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
-					score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
+				// if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
+				// 	score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
 
 				logi << "Children of root node: action: " << qnode->edge() <<
 						" visit_count: " << visit <<
@@ -1425,8 +1433,8 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 					// logi << "3" << endl;
 
-					if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
-						score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
+					// if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
+					// 	score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
 
 					logi << "Children of root node: action: " << qnode->edge() <<
 							" visit_count: " << visit <<
@@ -1512,71 +1520,79 @@ VNode* DESPOT::SelectBestWEUNode(QNode* qnode, bool despot_thread) {
 	if (despot_thread)
 		use_exploration_value = false;
 
-	map<OBS_TYPE, VNode*>& children = qnode->children();
-	for (map<OBS_TYPE, VNode*>::iterator it = children.begin();
-	        it != children.end(); it++) {
-		VNode* vnode = it->second;
+	if(Globals::config.use_prior){
+		cout << "here" << endl;
+		int num_vnodes = qnode->children().size();
+		int node_id = Random::RANDOM.NextInt(num_vnodes);
+		vstar = qnode->children()[node_id];
+	} else{
 
-		double weu;
-		if (Globals::config.use_multi_thread_)
-			if (use_exploration_value)
-				weu = WEU(static_cast<Shared_VNode*>(vnode));
+		map<OBS_TYPE, VNode*>& children = qnode->children();
+		for (map<OBS_TYPE, VNode*>::iterator it = children.begin();
+		        it != children.end(); it++) {
+			VNode* vnode = it->second;
+
+			double weu;
+			if (Globals::config.use_multi_thread_)
+				if (use_exploration_value)
+					weu = WEU(static_cast<Shared_VNode*>(vnode));
+				else
+					weu = WEU(vnode);
 			else
 				weu = WEU(vnode);
-		else
-			weu = WEU(vnode);
-		if (weu >= weustar) {
-			weustar = weu;
-			vstar = vnode->vstar;
-		}
-
-		if (FIX_SCENARIO == 1) {
-			if (!Globals::config.use_multi_thread_)
-			{
-				cout.precision(4);
-				cout << "thread " << 0 << " " << "   Compare children vnode" << " get old node"
-				     << " at depth " << vnode->depth()
-				     << ": weight=" << vnode->Weight() << ", reward=-"
-				     << ", lb=" << vnode->lower_bound() / vnode->Weight() <<
-				     ", ub=" << vnode->upper_bound() / vnode->Weight() <<
-				     ", uub=" << vnode->utility_upper_bound() / vnode->Weight() <<
-				     ", edge=" << vnode->edge() <<
-				     ", v_loss=" << 0;
-				if (vnode->Weight() == 1.0 / Globals::config.num_scenarios) cout << ", particle_id=" << "-"/*vnode->particles()[0]->scenario_id*/;
-				cout << ", WEU=" << WEU(vnode);
-				cout << endl;
+			if (weu >= weustar) {
+				weustar = weu;
+				vstar = vnode->vstar;
 			}
-			else
-			{
-				float weight = ((VNode*) vnode)->Weight();
 
-				Globals::Global_print_node(this_thread::get_id(), vnode,
-						   ((VNode*) vnode)->depth(), 0,
-						   ((VNode*) vnode)->lower_bound(),
-						   ((VNode*) vnode)->upper_bound(),
-						   ((VNode*) vnode)->utility_upper_bound(),
-						   static_cast<Shared_VNode*>(vnode)->exploration_bonus,
-						   ((VNode*) vnode)->Weight(),
-						   ((VNode*) vnode)->edge(),
-						   WEU(((VNode*) vnode)),
-						   "  Compare children vnode");
+			if (FIX_SCENARIO == 1) {
+				if (!Globals::config.use_multi_thread_)
+				{
+					cout.precision(4);
+					cout << "thread " << 0 << " " << "   Compare children vnode" << " get old node"
+					     << " at depth " << vnode->depth()
+					     << ": weight=" << vnode->Weight() << ", reward=-"
+					     << ", lb=" << vnode->lower_bound() / vnode->Weight() <<
+					     ", ub=" << vnode->upper_bound() / vnode->Weight() <<
+					     ", uub=" << vnode->utility_upper_bound() / vnode->Weight() <<
+					     ", edge=" << vnode->edge() <<
+					     ", v_loss=" << 0;
+					if (vnode->Weight() == 1.0 / Globals::config.num_scenarios) cout << ", particle_id=" << "-"/*vnode->particles()[0]->scenario_id*/;
+					cout << ", WEU=" << WEU(vnode);
+					cout << endl;
+				}
+				else
+				{
+					float weight = ((VNode*) vnode)->Weight();
+
+					Globals::Global_print_node(this_thread::get_id(), vnode,
+							   ((VNode*) vnode)->depth(), 0,
+							   ((VNode*) vnode)->lower_bound(),
+							   ((VNode*) vnode)->upper_bound(),
+							   ((VNode*) vnode)->utility_upper_bound(),
+							   static_cast<Shared_VNode*>(vnode)->exploration_bonus,
+							   ((VNode*) vnode)->Weight(),
+							   ((VNode*) vnode)->edge(),
+							   WEU(((VNode*) vnode)),
+							   "  Compare children vnode");
+				}
 			}
-		}
 
 
-		if(Globals::config.use_prior){
-//			float weight = ((VNode*) vnode)->Weight();
-//
-//			Globals::Global_print_node(this_thread::get_id(), vnode,
-//				   ((VNode*) vnode)->depth(), 0,
-//				   ((VNode*) vnode)->lower_bound(),
-//				   ((VNode*) vnode)->upper_bound(),
-//				   ((VNode*) vnode)->utility_upper_bound(),
-//				   static_cast<Shared_VNode*>(vnode)->exploration_bonus,
-//				   ((VNode*) vnode)->Weight(),
-//				   ((VNode*) vnode)->edge(),
-//				   WEU(((VNode*) vnode)),
-//				   "  Compare children vnode");
+			if(Globals::config.use_prior){
+	//			float weight = ((VNode*) vnode)->Weight();
+	//
+	//			Globals::Global_print_node(this_thread::get_id(), vnode,
+	//				   ((VNode*) vnode)->depth(), 0,
+	//				   ((VNode*) vnode)->lower_bound(),
+	//				   ((VNode*) vnode)->upper_bound(),
+	//				   ((VNode*) vnode)->utility_upper_bound(),
+	//				   static_cast<Shared_VNode*>(vnode)->exploration_bonus,
+	//				   ((VNode*) vnode)->Weight(),
+	//				   ((VNode*) vnode)->edge(),
+	//				   WEU(((VNode*) vnode)),
+	//				   "  Compare children vnode");
+			}
 		}
 	}
 
@@ -1628,9 +1644,28 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 	if (Globals::config.use_prior)
 		use_exploration_value = true;
 
-	for (int action = 0; action < vnode->children().size(); action++) {
+	int opt_act_start = 0;
+	int opt_act_end = vnode->children().size();
+
+	int prior_ID = 0;
+	if (Globals::config.use_multi_thread_){
+		prior_ID=MapThread(this_thread::get_id());
+	}
+
+	if (Globals::config.use_prior && /*vnode->depth()==0 &&*/ SolverPrior::nn_priors[0]->prior_force_steer){
+		cout << "best upper 1" << endl;
+		SolverPrior::nn_priors[prior_ID]->Get_force_steer_action(vnode, opt_act_start, opt_act_end);
+	}
+
+	cout << "best upper 2" << endl;
+
+
+	for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++) {	
+		cout << "best upper 3" << endl;
+
 		Shared_QNode* qnode =
 		    static_cast<Shared_QNode*>(((VNode*) vnode)->Child(action));
+		cout << "best upper 4, action, qnode" <<action << " "<< qnode<<  endl;
 
 		if (qnode && Globals::config.use_multi_thread_ && Globals::config.exploration_mode == UCT)
 		{
@@ -1638,16 +1673,14 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 				CalExplorationValue(qnode);
 		}
 
+
+		cout << "best upper 5" << endl;
+
 		if(Globals::config.use_prior && vnode->depth()==0){
-			logd << "comparing level "<< qnode->parent()->depth() << " qnode " << qnode <<
+			logi << "comparing level "<< qnode->parent()->depth() << " qnode " << qnode <<
 					" , upper_bound()= " << qnode->upper_bound(false) <<
 					" , lower_bound()= " << qnode->lower_bound() <<
 					" bonus " << qnode->exploration_bonus << ", ";
-
-			int prior_ID = 0;
-			if (Globals::config.use_multi_thread_){
-				prior_ID=MapThread(this_thread::get_id());
-			}
 
 			SolverPrior::nn_priors[prior_ID]->print_prior_actions(action);
 		}
@@ -1658,7 +1691,10 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 		}
 	}
 
+
 	assert(astar >= 0);
+
+
 
 	Shared_QNode* qstar = static_cast<Shared_QNode*>(((VNode*) vnode)->Child(astar));
 	if (Globals::config.exploration_mode == VIRTUAL_LOSS)
@@ -1721,6 +1757,8 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 		upper = Globals::NEG_INFTY;
 	}
 
+
+	cout << "1" << endl;
 //	logi << "[Backup] vnode default lb == ub: " << lower << endl;
 
 	double utility_upper = Globals::NEG_INFTY;
@@ -1736,17 +1774,17 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 //		logi << "[Backup] child qnode utility_upper_bound: " <<
 //				((QNode*) qnode)->utility_upper_bound() << endl;
 
-		Globals::Global_print_node<int>(this_thread::get_id(), qnode,
-            static_cast<Shared_VNode*>(vnode)->depth(),
-            static_cast<Shared_QNode*>(qnode)->step_reward,
-            static_cast<Shared_QNode*>(qnode)->lower_bound(),
-            static_cast<Shared_QNode*>(qnode)->upper_bound(false),
-            -1000,
-            static_cast<Shared_QNode*>(qnode)->GetVirtualLoss(),
-            static_cast<Shared_QNode*>(qnode)->Weight(),
-            static_cast<Shared_QNode*>(qnode)->edge(),
-            -1000,
-            "Update Vnode");
+		// Globals::Global_print_node<int>(this_thread::get_id(), qnode,
+  //           static_cast<Shared_VNode*>(vnode)->depth(),
+  //           static_cast<Shared_QNode*>(qnode)->step_reward,
+  //           static_cast<Shared_QNode*>(qnode)->lower_bound(),
+  //           static_cast<Shared_QNode*>(qnode)->upper_bound(false),
+  //           -1000,
+  //           static_cast<Shared_QNode*>(qnode)->GetVirtualLoss(),
+  //           static_cast<Shared_QNode*>(qnode)->Weight(),
+  //           static_cast<Shared_QNode*>(qnode)->edge(),
+  //           -1000,
+  //           "Update Vnode");
 
 		lower = max(lower, ((QNode*) qnode)->lower_bound());
 		upper = max(upper, ((QNode*) qnode)->upper_bound());
@@ -1754,6 +1792,9 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 		                    ((QNode*) qnode)->utility_upper_bound());
 
 	}
+
+	cout << "2" << endl;
+
 
 	if (Globals::config.use_prior){
 		((VNode*) vnode)->lower_bound(lower);
@@ -1769,6 +1810,9 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 	if (utility_upper < ((VNode*) vnode)->utility_upper_bound()) {
 		((VNode*) vnode)->utility_upper_bound(utility_upper);
 	}
+
+	cout << "3" << endl;
+
 }
 void DESPOT::Update(QNode* qnode, bool real) {
 
@@ -1813,16 +1857,16 @@ void DESPOT::Update(Shared_QNode* qnode, bool real) {
 	        it != children.end(); it++) {
 		Shared_VNode* vnode = static_cast<Shared_VNode*>(it->second);
 
-		Globals::Global_print_node(this_thread::get_id(), vnode,
-		   static_cast<Shared_VNode*>(vnode)->depth(), 0,
-		   static_cast<Shared_VNode*>(vnode)->lower_bound(),
-		   static_cast<Shared_VNode*>(vnode)->upper_bound(false),
-		   -1000,
-		   static_cast<Shared_VNode*>(vnode)->GetVirtualLoss(),
-		   static_cast<Shared_VNode*>(vnode)->Weight(),
-		   static_cast<Shared_VNode*>(vnode)->edge(),
-		   -1000,
-		   "Update Qnode");
+		// Globals::Global_print_node(this_thread::get_id(), vnode,
+		//    static_cast<Shared_VNode*>(vnode)->depth(), 0,
+		//    static_cast<Shared_VNode*>(vnode)->lower_bound(),
+		//    static_cast<Shared_VNode*>(vnode)->upper_bound(false),
+		//    -1000,
+		//    static_cast<Shared_VNode*>(vnode)->GetVirtualLoss(),
+		//    static_cast<Shared_VNode*>(vnode)->Weight(),
+		//    static_cast<Shared_VNode*>(vnode)->edge(),
+		//    -1000,
+		//    "Update Qnode");
 
 //		logi << "[Backup] child vnode bounds: " << ((VNode*) vnode)->lower_bound() << ", "
 //				<< ((VNode*) vnode)->upper_bound() << ", "

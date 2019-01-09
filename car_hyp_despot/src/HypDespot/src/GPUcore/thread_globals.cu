@@ -26,7 +26,7 @@ mutex global_mutex;
 //Thread ID mapping
 map<std::thread::id, int > ThreadIdMap;
 
-bool force_print = false;
+bool force_print = true;
 
 #ifdef WIN32
 #include <windows.h>
