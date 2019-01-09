@@ -198,6 +198,10 @@ public:
 
 	void Get_force_steer_action(despot::VNode* vnode, int& opt_act_start, int& opt_act_end);
 
+	void Check_force_steer(int action, int default_action);
+
+	void Check_force_steer(double car_heading, double path_heading, double car_vel);
+
 public:
 	int num_hist_channels;
 	int num_peds_in_NN;

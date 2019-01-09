@@ -1365,46 +1365,90 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 	}
 	else{ // lets drive
 
-		float root_visit = static_cast<Shared_VNode*>(vnode)->visit_count_;
-		float score_max = Globals::NEG_INFTY;
+		try{
 
-		logi << "prior_discount_optact="<< SolverPrior::prior_discount_optact << endl;
-		logi << "prior_force_steer="<< SolverPrior::prior_force_steer << endl;
+			float root_visit = static_cast<Shared_VNode*>(vnode)->visit_count_;
+			float score_max = Globals::NEG_INFTY;
 
-		int opt_act_start = 0, opt_act_end = vnode->children().size();
+			int opt_act_start = 0, opt_act_end = vnode->children().size();
 
-		if (SolverPrior::prior_force_steer){
-			// get the action ids corresponding to the optimal prior steering
-			SolverPrior::nn_priors[0]->Get_force_steer_action(vnode, opt_act_start, opt_act_end);
-		}
-
-		for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++) {
-			QNode* qnode = vnode->Child(action);
-
-			float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
-			float score = qnode->lower_bound() + 0.5 * SolverPrior::prior_discount_optact * sqrt(visit/root_visit);
-
-			if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
-				score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
-
-			logi << "Children of root node: action: " << qnode->edge() <<
-					" visit_count: " << visit <<
-					" lower_bound: " << qnode->lower_bound() <<
-					" score: " << score << endl;
-
-			if (score > score_max) {
-				astar = ValuedAction(action, qnode->lower_bound());
-				best_qnode = qnode;		//Debug
-				score_max = score;
+			if (opt_act_end == 0 ){ // no node expanded
+				cout << "No node expanded !!" << endl;
+				astar = vnode->default_move();
+				return astar;
 			}
-		}
 
-		if (astar.action != vnode->default_move().action){
-			logi << "Searched value "<< astar.value << "(act " << astar.action << "), default value " <<
-					vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;
-			cout << "unused default action: " << vnode->default_move().action
-					<< setprecision(5) << "(" << vnode->default_move().value << "), ";
-			SolverPrior::nn_priors[0]->print_prior_actions(vnode->default_move().action);
+			logi << "prior_discount_optact="<< SolverPrior::prior_discount_optact << endl;
+
+			// first round, free steering
+			for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++) {
+				QNode* qnode = vnode->Child(action);
+
+				float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
+				float score = qnode->lower_bound() + 0.5 * SolverPrior::prior_discount_optact * sqrt(visit/root_visit);
+
+				// logi << "3" << endl;
+
+				if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
+					score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
+
+				logi << "Children of root node: action: " << qnode->edge() <<
+						" visit_count: " << visit <<
+						" lower_bound: " << qnode->lower_bound() <<
+						" score: " << score << endl;
+
+				if (score > score_max) {
+					astar = ValuedAction(action, qnode->lower_bound());
+					best_qnode = qnode;		//Debug
+					score_max = score;
+				}
+			}
+
+			SolverPrior::nn_priors[0]->Check_force_steer(astar.action, vnode->default_move().action);
+
+			logi << "prior_force_steer="<< SolverPrior::prior_force_steer << endl;
+
+			if (SolverPrior::prior_force_steer){
+				// Second round, prior steering
+				score_max = Globals::NEG_INFTY;
+
+				// get the action ids corresponding to the optimal prior steering
+				SolverPrior::nn_priors[0]->Get_force_steer_action(vnode, opt_act_start, opt_act_end);
+				for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++) {
+					QNode* qnode = vnode->Child(action);
+
+					float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
+					float score = qnode->lower_bound() + 0.5 * SolverPrior::prior_discount_optact * sqrt(visit/root_visit);
+
+					// logi << "3" << endl;
+
+					if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
+						score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
+
+					logi << "Children of root node: action: " << qnode->edge() <<
+							" visit_count: " << visit <<
+							" lower_bound: " << qnode->lower_bound() <<
+							" score: " << score << endl;
+
+					if (score > score_max) {
+						astar = ValuedAction(action, qnode->lower_bound());
+						best_qnode = qnode;		//Debug
+						score_max = score;
+					}
+				}
+			} 
+
+			if (astar.action != vnode->default_move().action){
+				logi << "Searched value "<< astar.value << "(act " << astar.action << "), default value " <<
+						vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;
+				cout << "unused default action: " << vnode->default_move().action
+						<< setprecision(5) << "(" << vnode->default_move().value << "), ";
+				SolverPrior::nn_priors[0]->print_prior_actions(vnode->default_move().action);
+			}
+		} 
+		catch(std::exception e){
+			cerr << "Error: " << e.what() << endl;
+			raise(SIGABRT);
 		}
 	}
 

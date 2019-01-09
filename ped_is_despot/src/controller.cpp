@@ -336,6 +336,10 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
+	if (b_use_drive_net_ == LETS_DRIVE){
+		pathplan_ahead_ = 0;
+	}
+
 	if(pathplan_ahead_>0 && path_from_topic.size()>0) {
 		path_from_topic.cutjoin(p);
 		path_from_topic = path_from_topic.interpolate();

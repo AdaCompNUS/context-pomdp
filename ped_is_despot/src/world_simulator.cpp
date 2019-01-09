@@ -23,7 +23,6 @@ WorldStateTracker* SimulatorBase::stateTracker;
 WorldModel SimulatorBase::worldModel;
 bool SimulatorBase::ped_data_ready = false;
 double pub_frequency = 9.0;
-int keep_count = 0;
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector);
 void receive_map_callback(nav_msgs::OccupancyGrid map);
@@ -333,26 +332,6 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Generate obs"<<endl;
 	obs=static_cast<PedPomdp*>(model_)->StateToIndex(GetCurrentState());
 
-	if (stateTracker->carvel < 0.01){
-//		SolverPrior::prior_discount_optact -= 0.2;
-//		if (SolverPrior::prior_discount_optact < 0.0)
-//			SolverPrior::prior_discount_optact = 0.0;
-		SolverPrior::prior_force_steer = true;
-		keep_count = 0;
-		SolverPrior::prior_discount_optact = 0.0;
-	}
-	else{
-//		SolverPrior::prior_discount_optact += 0.2;
-//		if (SolverPrior::prior_discount_optact > 1.0)
-//			SolverPrior::prior_discount_optact = 1.0;
-		keep_count ++;
-		if (keep_count == 3){
-			SolverPrior::prior_force_steer = false;
-			SolverPrior::prior_discount_optact = 1.0;
-			keep_count = 0;
-		}
-	}
-
 	//worldModel.ped_sim_[0] -> OutputTime();
 	return goal_reached;
 }
@@ -425,26 +404,10 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 
 	int default_action = SolverPrior::nn_priors[0]->default_action;
 
-	double dir_diff = abs(stateTracker->car_heading_dir - worldModel.path.getCurDir());
+	SolverPrior::nn_priors[0]->Check_force_steer(stateTracker->car_heading_dir, 
+		worldModel.path.getCurDir(), stateTracker->carvel);
 
-	if (dir_diff > 2* M_PI){
-		cerr << "[update_cmds_naive] Angle error" << endl;
-		raise(SIGABRT);
-	} else if (dir_diff > M_PI){
-		dir_diff = 2 * M_PI - dir_diff;
-	}
-
-	if ( dir_diff > M_PI / 6.0){ // 60 degree difference with path
-		cout << "resetting to default action: " << default_action << ", ";
-		SolverPrior::nn_priors[0]->print_prior_actions(default_action);
-
-		cout << "car dir: "<< stateTracker->car_heading_dir  << endl;
-		cout << "path dir: "<< worldModel.path.getCurDir() << endl;
-
-		action = default_action;
-
-		worldModel.path.text();
-	}
+	worldModel.path.text();
 
 	cout << "[update_cmds_naive] Buffering action " << action << endl;
 
@@ -555,10 +518,12 @@ void WorldSimulator::AddObstacle(){
 	        
 	        double x;
 	        double y;
-	        while (iss >> x >>y){
-	            cout << x <<" "<< y<<endl;
+	        cout << "obstacle shape: ";
+	        while (iss >> x >> y){
+	            cout << x <<" "<< y << " ";
 	            obstacles[obst_num].push_back(RVO::Vector2(x, y));
 	        }
+	        cout << endl;
 
 	        for(int tid=0; tid<NumThreads;tid++){
 			 	worldModel.ped_sim_[tid]->addObstacle(obstacles[obst_num]);			

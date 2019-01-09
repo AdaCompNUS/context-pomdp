@@ -163,6 +163,10 @@ public:
 	virtual void Trunc_tensor_hist(int size) = 0;
 
 	virtual int Tensor_hist_size() = 0;
+
+	virtual	void Check_force_steer(int action, int default_action) = 0;
+
+	virtual void Check_force_steer(double car_heading, double path_heading, double car_vel) = 0;
 };
 
 void Debug_state(State* state, std::string msg, const DSPOMDP* model);

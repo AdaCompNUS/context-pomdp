@@ -72,8 +72,10 @@ void segfault_sigaction(int sig, siginfo_t *info, void *c)
 	for(int i = 0; i < 19; i++)
 		fprintf(stderr, "\t%7s: 0x%x\n", gregs[i], context->uc_mcontext.gregs[i]);
 
-	std::terminate();
-	exit(-1);
+    raise(SIGABRT);
+
+	// std::terminate();
+	// exit(-1);
 }
 
 
@@ -185,7 +187,8 @@ void my_terminate() {
     char** messages = print_exeption();
     free(messages);
 
-    abort();
+    // abort();
+    raise(SIGABRT);
 }
 
 

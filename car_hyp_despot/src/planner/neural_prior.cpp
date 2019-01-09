@@ -2254,30 +2254,105 @@ void PedNeuralSolverPrior::compare_history_with_recorded(){
 
 void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt_act_start, int& opt_act_end){
 
-	int opt_steer_id = -1;
-	float max_prob = Globals::NEG_INFTY;
+	if (vnode->children().size() == 0)
+		return;
 
-	for (int steer_id = 0; steer_id < vnode->prior_steer_probs().size(); steer_id++){
-		if (vnode->prior_steer_probs(steer_id) > max_prob){
-			max_prob = vnode->prior_steer_probs(steer_id);
-			opt_steer_id = steer_id;
+	try{
+		int opt_steer_id = -1;
+		float max_prob = Globals::NEG_INFTY;
+
+		for (int steer_id = 0; steer_id < vnode->prior_steer_probs().size(); steer_id++){
+			if (vnode->prior_steer_probs(steer_id) > max_prob){
+
+				int dec_action = 
+						static_cast<const PedPomdp*>(model_)->GetActionID(steer_id, 2);
+
+				if(vnode->children()[dec_action]->lower_bound() > -100){ // no collision 
+					max_prob = vnode->prior_steer_probs(steer_id);
+					opt_steer_id = steer_id;
+				}
+				else{
+					cout << "[Get_force_steer_action] skipping collision steering id "
+					 	<< steer_id << endl;
+				}
+			}
+		}
+
+		if (opt_steer_id == -1){
+			cerr << "[Get_force_steer_action] all steering colliding, use default" << endl;
+
+			// all steering colliding, use default steering
+			opt_steer_id = static_cast<const PedPomdp*>(model_)->GetSteeringID(
+				vnode->default_move().action);
+			// raise(SIGABRT);
+		}
+
+		opt_act_start = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id, 0);
+		opt_act_end = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id + 1, 0);
+
+		cout << "Vnode steering prob size: " << vnode->prior_steer_probs().size() << endl;
+
+		cout << "Optimal prior steering: " << opt_steer_id << "(" <<
+				static_cast<const PedPomdp*>(model_)->GetSteering(opt_act_start)
+				<< ")" << endl;
+
+		cout << "Optimal steering id range: " << opt_act_start << "-" << opt_act_end << endl;
+	
+		cout << "returning" << endl;
+	}catch(std::exception e){
+		cerr << "Error: " << e.what() << endl;
+		raise(SIGABRT);
+	}
+}
+
+
+void PedNeuralSolverPrior::Check_force_steer(int action, int default_action){
+
+	if (abs(action - default_action) > 3 * 8){ // steering to different direction
+		prior_force_steer = true;
+	}
+}
+
+int keep_count = 0;
+
+void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_heading, double car_vel){
+
+	double dir_diff = abs(car_heading - path_heading);
+
+	if (dir_diff > 2* M_PI){
+		cerr << "[update_cmds_naive] Angle error" << endl;
+		raise(SIGABRT);
+	} else if (dir_diff > M_PI){
+		dir_diff = 2 * M_PI - dir_diff;
+	}
+
+	if ( dir_diff > M_PI / 6.0){ // 60 degree difference with path
+		// cout << "resetting to default action: " << default_action << ", ";
+		// SolverPrior::nn_priors[0]->print_prior_actions(default_action);
+		// action = default_action;
+
+		cout << "resetting to default steering: " << endl;
+		SolverPrior::prior_force_steer = true;
+
+		cout << "car dir: "<< car_heading  << endl;
+		cout << "path dir: "<< path_heading << endl;
+	}
+	else{
+		SolverPrior::prior_force_steer = false;
+	}
+
+	if (car_vel < 0.01){
+		SolverPrior::prior_force_steer = true;
+		keep_count = 0;
+		SolverPrior::prior_discount_optact = 0.0;
+	}
+	else{
+		keep_count ++;
+		if (keep_count == 3){
+			SolverPrior::prior_force_steer = false;
+			SolverPrior::prior_discount_optact = 1.0;
+			keep_count = 0;
 		}
 	}
 
-	if (opt_steer_id == -1){
-		cerr << "[Get_force_steer_action] No steer_prob data" << endl;
-		raise(SIGABRT);
-	}
-
-	opt_act_start = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id, 0);
-	opt_act_end = static_cast<const PedPomdp*>(model_)->GetActionID(opt_steer_id + 1, 0);
-
-	cout << "Vnode steering prob size: " << vnode->prior_steer_probs().size() << endl;
-
-	cout << "Optimal prior steering: " << opt_steer_id << "(" <<
-			static_cast<const PedPomdp*>(model_)->GetSteering(opt_act_start)
-			<< ")" << endl;
-
-	cout << "Optimal steering id range: " << opt_act_start << "-" << opt_act_end << endl;
 }
-
