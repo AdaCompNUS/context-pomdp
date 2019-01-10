@@ -3,9 +3,9 @@
 	 <node name="ped_momdp" pkg="ped_is_despot" type="ped-momdp-sarsop" respawn="false" output="screen" ns="/scooter">
 
 	 -->
-	<!-- <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp"  launch-prefix="gdb -ex run - -args" respawn="false" output="screen" required="true">  --> 
+	<!-- <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp"  launch-prefix="gdb -ex run - -args" respawn="false" output="screen" required="true"> --> 
 	 <!-- <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp"  launch-prefix="cuda-gdb args" respawn="false" output="screen" required="true"> -->
-	<node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp" respawn="false" output="screen" required="true"> 
+	<node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp" respawn="false" output="screen" required="true">
 
 	<!--  <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp" launch-prefix="valgrind - -tool=callgrind" respawn="false" output="screen" required="true"> -->
 	    <rosparam file="$(find ped_is_despot)/is_despot_param.yaml" command="load" />

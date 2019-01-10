@@ -273,12 +273,25 @@ void VNode::Free(const DSPOMDP& model) {
 		if(particles_[i])model.Free(particles_[i]);
 	}
 
+//	cout << "free 1" << endl;
+
 	for (int a = 0; a < children().size(); a++) {
 		QNode* qnode = Child(a);
-		map<OBS_TYPE, VNode*>& children = qnode->children();
-		for (map<OBS_TYPE, VNode*>::iterator it = children.begin();
-			it != children.end(); it++) {
-			it->second->Free(model);
+
+		if(qnode){
+			map<OBS_TYPE, VNode*>& children = qnode->children();
+			for (map<OBS_TYPE, VNode*>::iterator it = children.begin();
+				it != children.end(); it++) {
+
+				if (it->second)
+					it->second->Free(model);
+				else{
+					cout <<"free: NULL vnode" << endl;
+				}
+			}
+		}
+		else{
+			cout <<"free: NULL qnode" << endl;
 		}
 	}
 }
@@ -398,11 +411,12 @@ QNode::QNode(int count, double value) :
 QNode::~QNode() {
 	for (map<OBS_TYPE, VNode*>::iterator it = children_.begin();
 		it != children_.end(); it++) {
-		assert(it->second != NULL);
-		if(it->second->IsAllocated())//allocated by memory pool
-			DESPOT::vnode_pool_.Free(it->second);
-		else
-			delete it->second;
+		if(it->second){
+			if(it->second->IsAllocated())//allocated by memory pool
+				DESPOT::vnode_pool_.Free(it->second);
+			else
+				delete it->second;
+		}
 	}
 	children_.clear();
 }
@@ -431,7 +445,8 @@ int QNode::Size() const {
 	int size = 0;
 	for (map<OBS_TYPE, VNode*>::const_iterator it = children_.begin();
 		it != children_.end(); it++) {
-		size += it->second->Size();
+		if(it->second)
+			size += it->second->Size();
 	}
 	return size;
 }
@@ -440,7 +455,8 @@ int QNode::PolicyTreeSize() const {
 	int size = 0;
 	for (map<OBS_TYPE, VNode*>::const_iterator it = children_.begin();
 		it != children_.end(); it++) {
-		size += it->second->PolicyTreeSize();
+		if (it->second)
+			size += it->second->PolicyTreeSize();
 	}
 	return 1 + size;
 }
@@ -459,16 +475,26 @@ double QNode::Weight() /*const*/ {
 	}
 	else
 	{
-		weight_=0;
-		for (map<OBS_TYPE, VNode*>::const_iterator it = children_.begin();
-			it != children_.end(); it++) {
-			weight_ += it->second->Weight();
+		try{
+			weight_=0;
+			for (map<OBS_TYPE, VNode*>::const_iterator it = children_.begin();
+				it != children_.end(); it++) {
+				if (it->second)
+					weight_ += it->second->Weight();
+				else
+					;//cout << "[weight] NULL vnode" << endl;
+			}
+		} catch (std::exception e) {
+			cout << "Error: " << e.what() << endl;
+			raise(SIGABRT);
 		}
 
 		/*if(parent()->depth()==0 && weight_<=1-1e-5){
 			cout<<"Wrong calcuated weight as depth 1 " << this << " "<<weight_<<endl;
 			//exit(-1);
 		}*/
+
+//		cout << __FUNCTION__ << " return" << endl;
 		return weight_;
 	}
 }
