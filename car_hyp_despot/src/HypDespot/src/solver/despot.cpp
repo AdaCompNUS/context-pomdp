@@ -2097,11 +2097,11 @@ void DESPOT::ComputePriorValue(QNode* qnode, const DSPOMDP * model){
 	if (Globals::config.use_prior){
 
 		if (qnode->Weight()==0){
-			cout << "all particles terminal" << endl;
+//			cout << "all particles terminal" << endl;
 			return;
 		}
 
-		logi << "[ComputePriorValue] for chilren vnodes of qstar " << qnode << endl;
+		logd << "[ComputePriorValue] for chilren vnodes of qstar " << qnode << endl;
 
 		int prior_ID = 0;
 		if (Globals::config.use_prior){
