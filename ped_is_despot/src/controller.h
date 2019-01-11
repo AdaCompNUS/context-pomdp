@@ -133,9 +133,9 @@ public:
 	std::string ChooseSolver();
 
 public:
-	bool RunStep(Solver* solver, World* world, Logger* logger);
+	bool RunStep(despot::Solver* solver, World* world, Logger* logger);
 	int RunPlanning(int argc, char* argv[]);
-	void PlanningLoop(Solver*& solver, World* world, Logger* logger);
+	void PlanningLoop(despot::Solver*& solver, World* world, Logger* logger);
 
 public:
 	WorldSimulator* unity_driving_simulator_;
@@ -144,7 +144,7 @@ public:
 	//World* world_;
 	Logger *logger_;
 	DSPOMDP* model_;
-	Solver* solver_;
+	despot::Solver* solver_;
 
 	SIM_MODE simulation_mode_;
 	
@@ -159,7 +159,12 @@ private:
 	SolverPrior* prior_;
 
 	void CreateNNPriors(DSPOMDP* model);
-	bool RunPreStep(Solver* solver, World* world, Logger* logger);
+	bool RunPreStep(despot::Solver* solver, World* world, Logger* logger);
+	void PredictPedsForSearch(State* search_state);
+	void UpdatePriors(const State* cur_state, State* search_state);
+
+	void TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len);
+	void CheckCurPath();
 private:
 	Path path_from_topic;
 };

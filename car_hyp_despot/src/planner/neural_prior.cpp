@@ -171,11 +171,13 @@ void copy_to_tensor(cv::Mat& image, at::Tensor& tensor){
 void print_full(at::Tensor& tensor, std::string msg){
 
 	Globals::lock_process();
-	logi << "Tensor " << msg << endl;
+//	logi << "Tensor " << msg << endl;
     auto tensor_double = tensor.accessor<float, 2>();
     for (int i =0;i<tensor.size(0);i++){
+		logi << msg << " ";
+
     	for (int j =0;j<tensor.size(1);j++){
-    		logi << tensor_double[i][j] << " ";
+    		logi << std::setprecision(2)<< tensor_double[i][j] << " ";
     	}
     	logi << endl;
     }
@@ -295,8 +297,8 @@ void PedNeuralSolverPrior::Init(){
 	int index = 0;
 	for (std::vector<int8_t>::const_reverse_iterator iterator = raw_map_.data.rbegin();
 		  iterator != raw_map_.data.rend(); ++iterator) {
-		int x = (size_t)(index / map_prop_.dim);
-		int y = (size_t)(index % map_prop_.dim);
+		int x = (map_prop_.dim - 1) - (size_t)(index / map_prop_.dim);
+		int y = (map_prop_.dim - 1) - (size_t)(index % map_prop_.dim);
 		assert(*iterator != -1);
 		map_image_.at<float>(x,y) = (float)(*iterator);
 		index++;
@@ -1602,7 +1604,7 @@ void PedNeuralSolverPrior::get_history_tensors(int mode, despot::VNode* cur_node
 //	if (cur_node->depth()==0){
 //		for (int i = start_channel ; i< start_channel + num_history ; i++){
 //			print_full(car_hist_tensor_[i], "get_history_tensor_car_" + std::to_string(i));
-//			print_full(map_hist_tensor_[i], "get_history_tensor_car_" + std::to_string(i));
+//			print_full(map_hist_tensor_[i], "get_history_tensor_map_" + std::to_string(i));
 //		}
 //		print_full(goal_tensor, "get_history_tensor_goal");
 //	}

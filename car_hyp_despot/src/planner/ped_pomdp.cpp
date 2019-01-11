@@ -561,6 +561,20 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 	out << "MinDist: " << min_dist << endl;
 }
 
+void PedPomdp::PrintStatePeds(const State& s, std::string msg, ostream& out) const {
+
+	if (DESPOT::Debug_mode)
+		return;
+
+	const PomdpState & state = static_cast<const PomdpState&> (s);
+
+	out << msg << " ";
+	for (int i = 0; i < state.num; i ++) {
+		out << state.peds[i].pos.x << " " << state.peds[i].pos.y << " ";
+	}
+	out << endl;
+}
+
 void PedPomdp::PrintWorldState(const PomdpStateWorld& state, ostream& out) const {
 
 	out << "World state:\n";

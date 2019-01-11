@@ -26,10 +26,11 @@ float Controller::time_scale_ = 1.0;
 std::string Controller::model_file_ = "";
 std::string Controller::value_model_file_ = "";
 
-
 static DSPOMDP* ped_pomdp_model;
 static ACT_TYPE action = (ACT_TYPE)(-1);
 static OBS_TYPE obs =(OBS_TYPE)(-1);
+
+bool predict_peds = true;
 
 
 struct my_sig_action {
@@ -473,7 +474,105 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 	return true;
 }
 
-bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
+void Controller::PredictPedsForSearch(State* search_state) {
+	if (predict_peds) {
+		// predict state using last action
+		if (last_action < 0 || last_action > model_->NumActions()) {
+			cerr << "ERROR: wrong last action for prediction " << last_action
+					<< endl;
+		} else {
+
+			unity_driving_simulator_->beliefTracker->cur_acc =
+					static_cast<const PedPomdp*>(ped_pomdp_model)->GetAcceleration(
+							last_action);
+			unity_driving_simulator_->beliefTracker->cur_steering =
+					static_cast<const PedPomdp*>(ped_pomdp_model)->GetSteering(
+							last_action);
+
+			cerr << "DEBUG: Prediction with last action:" << last_action
+					<< " steer/acc = "
+					<< unity_driving_simulator_->beliefTracker->cur_steering
+					<< "/" << unity_driving_simulator_->beliefTracker->cur_acc
+					<< endl;
+
+			auto predicted =
+					unity_driving_simulator_->beliefTracker->predictPedsCurVel(
+							static_cast<PomdpState*>(search_state),
+							unity_driving_simulator_->beliefTracker->cur_acc,
+							unity_driving_simulator_->beliefTracker->cur_steering);
+
+			PomdpState* predicted_state =
+					static_cast<PomdpState*>(static_cast<const PedPomdp*>(ped_pomdp_model)->Copy(
+							&predicted));
+
+			static_cast<const PedPomdp*>(ped_pomdp_model)->PrintStatePeds(*predicted_state, string("predicted_peds"));
+
+			if (SolverPrior::history_mode == "track") {
+				SolverPrior::nn_priors[0]->Add_tensor_hist(predicted_state);
+
+				for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+					if (i > 0) {
+						SolverPrior::nn_priors[i]->add_car_tensor(
+								SolverPrior::nn_priors[0]->last_car_tensor());
+						SolverPrior::nn_priors[i]->add_map_tensor(
+								SolverPrior::nn_priors[0]->last_map_tensor());
+					}
+				}
+			}
+
+			for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+				SolverPrior::nn_priors[i]->Add_in_search(-1, predicted_state);
+
+				logd << __FUNCTION__ << " add predicted search state of ts "
+						<< predicted_state->time_stamp
+						<< " predicted from search state of ts "
+						<< static_cast<PomdpState*>(search_state)->time_stamp
+						<< " hist len " << SolverPrior::nn_priors[i]->Size(true)
+						<< endl;
+
+				//		SolverPrior::nn_priors[i]->DebugHistory("Add prediction " +
+				//			std::to_string(SolverPrior::nn_priors[i]->Size(true)-1));
+			}
+		}
+	}
+}
+
+void Controller::UpdatePriors(const State* cur_state, State* search_state) {
+	//	SolverPrior::nn_priors[0]->DebugHistory("After Deep update");
+	if (SolverPrior::history_mode == "track") {
+		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
+		for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+			if (i > 0) {
+				SolverPrior::nn_priors[i]->add_car_tensor(
+						SolverPrior::nn_priors[0]->last_car_tensor());
+				SolverPrior::nn_priors[i]->add_map_tensor(
+						SolverPrior::nn_priors[0]->last_map_tensor());
+			}
+		}
+	}
+	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+		// make sure the history has not corrupted
+		SolverPrior::nn_priors[i]->compare_history_with_recorded();
+
+		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
+		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
+
+		logd << __FUNCTION__ << " add history search state of ts "
+				<< static_cast<PomdpState*>(search_state)->time_stamp
+				<< " hist len " << SolverPrior::nn_priors[i]->Size(true)
+				<< endl;
+
+		if (SolverPrior::nn_priors[i]->Size(true) == 10)
+			Record_debug_state(search_state);
+
+		SolverPrior::nn_priors[i]->record_cur_history();
+	}
+	logi << "history len = " << SolverPrior::nn_priors[0]->Size(false) << endl;
+	logi << "history_in_search len = " << SolverPrior::nn_priors[0]->Size(true)
+			<< endl;
+}
+
+bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 
 	cerr << "DEBUG: Running step" << endl;
 
@@ -494,28 +593,7 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 			return false;
 		}
 		else{
-			WorldSimulator::worldModel.path = path_from_topic;
-
-			COORD path_end_from_goal = path_from_topic.back() - COORD(goalx_, goaly_);
-
-			if (path_end_from_goal.Length() > 2.0f + 1e-3){
-				cerr << "Path end mismatch with car goal: path end = " <<
-						"(" << path_from_topic.back().x << "," << path_from_topic.back().x << ")" <<
-						", car goal=(" << goalx_ << "," << goaly_ << ")" << endl;
-				raise(SIGABRT);
-			}
-
-			COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos - COORD(goalx_, goaly_);
-
-			if (car_pos_from_goal.Length() < 8.0)
-			{
-				SolverPrior::prior_force_steer = true;
-			}
-			else if (car_pos_from_goal.Length() < 8.0 && unity_driving_simulator_->stateTracker->carvel
-					>= ModelParams::AccSpeed/ModelParams::control_freq)
-			{
-				SolverPrior::prior_discount_optact = 10.0;
-			}
+			CheckCurPath();
 		}
 	}
 
@@ -557,35 +635,7 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 //	SolverPrior::nn_priors[0]->DebugHistory("After Deep update");
 
-	if (SolverPrior::history_mode=="track"){
-		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
-		for(int i=0; i<SolverPrior::nn_priors.size();i++){
-			if (i > 0){
-				SolverPrior::nn_priors[i]->add_car_tensor(SolverPrior::nn_priors[0]->last_car_tensor());
-				SolverPrior::nn_priors[i]->add_map_tensor(SolverPrior::nn_priors[0]->last_map_tensor());
-			}
-		}
-	}
-
-	for(int i=0; i<SolverPrior::nn_priors.size();i++){
-		// make sure the history has not corrupted
-		SolverPrior::nn_priors[i]->compare_history_with_recorded();
-
-		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
-		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
-
-		logd << __FUNCTION__ << " add history search state of ts " <<
-				static_cast<PomdpState*>(search_state)->time_stamp <<
-				" hist len " << SolverPrior::nn_priors[i]->Size(true) << endl;
-
-		if (SolverPrior::nn_priors[i]->Size(true)==10)
-			Record_debug_state(search_state);
-
-		SolverPrior::nn_priors[i]->record_cur_history();
-	}
-
-	logi << "history len = " << SolverPrior::nn_priors[0]->Size(false) << endl;
-	logi << "history_in_search len = " << SolverPrior::nn_priors[0]->Size(true) << endl;
+	UpdatePriors(cur_state, search_state);
 
 	double end_t = get_time_second();
 	double update_time = (end_t - start_t);
@@ -598,9 +648,9 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 
 	unity_driving_simulator_->beliefTracker->text();
 
-	int cur_search_hist_len = 0;
+	int cur_search_hist_len = 0, cur_tensor_hist_len = 0;
 	cur_search_hist_len = SolverPrior::nn_priors[0]->Size(true);
-	int cur_tensor_hist_len = SolverPrior::nn_priors[0]->Tensor_hist_size();
+	cur_tensor_hist_len = SolverPrior::nn_priors[0]->Tensor_hist_size();
 
 	if( SolverPrior::history_mode=="track" && cur_search_hist_len != cur_tensor_hist_len){
 		cerr << "State hist length "<< cur_search_hist_len <<
@@ -608,53 +658,7 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 		raise(SIGABRT);
 	}
 
-	// predict state using last action
-	if (last_action < 0 || last_action > model_->NumActions()){
-		cerr  << "ERROR: wrong last action for prediction "<< last_action << endl;
-	}
-	else{
-
-		unity_driving_simulator_->beliefTracker->cur_acc =
-				static_cast<const PedPomdp*>(ped_pomdp_model)->GetAcceleration(last_action);
-		unity_driving_simulator_->beliefTracker->cur_steering =
-				static_cast<const PedPomdp*>(ped_pomdp_model)->GetSteering(last_action);
-
-		cerr << "DEBUG: Prediction with last action:" << last_action <<
-				" steer/acc = " << unity_driving_simulator_->beliefTracker->cur_steering
-				<< "/" << unity_driving_simulator_->beliefTracker->cur_acc << endl;
-
-		auto predicted = unity_driving_simulator_->beliefTracker->predictPedsCurVel(
-				static_cast<PomdpState*>(search_state),
-				unity_driving_simulator_->beliefTracker->cur_acc,
-				unity_driving_simulator_->beliefTracker->cur_steering);
-
-		PomdpState* predicted_state = static_cast<PomdpState*>(
-				static_cast<const PedPomdp*>(ped_pomdp_model)->Copy(&predicted));
-
-		if (SolverPrior::history_mode=="track"){
-			SolverPrior::nn_priors[0]->Add_tensor_hist(predicted_state);
-
-			for(int i=0; i<SolverPrior::nn_priors.size();i++){
-				if (i > 0){
-					SolverPrior::nn_priors[i]->add_car_tensor(SolverPrior::nn_priors[0]->last_car_tensor());
-					SolverPrior::nn_priors[i]->add_map_tensor(SolverPrior::nn_priors[0]->last_map_tensor());
-				}
-			}
-		}
-
-		for(int i=0; i<SolverPrior::nn_priors.size();i++){
-			SolverPrior::nn_priors[i]->Add_in_search(-1, predicted_state);
-
-			logd << __FUNCTION__ << " add predicted search state of ts " <<
-					predicted_state->time_stamp <<
-					" predicted from search state of ts "
-					<<static_cast<PomdpState*>(search_state)->time_stamp<<
-					" hist len " << SolverPrior::nn_priors[i]->Size(true) << endl;
-
-	//		SolverPrior::nn_priors[i]->DebugHistory("Add prediction " +
-	//			std::to_string(SolverPrior::nn_priors[i]->Size(true)-1));
-		}
-	}
+	PredictPedsForSearch(search_state);
 
 	start_t = get_time_second();
 	ACT_TYPE action;
@@ -686,19 +690,7 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 	logi << "[RunStep] Time spent in " << typeid(*solver).name()
 			<< "::Search(): " << search_time << endl;
 
-	for(int i=0; i<SolverPrior::nn_priors.size();i++){
-		SolverPrior::nn_priors[i]->Truncate(cur_search_hist_len, true);
-		logi << __FUNCTION__ << " truncating search history length to " <<
-				cur_search_hist_len << endl;
-		SolverPrior::nn_priors[i]->compare_history_with_recorded();
-//		SolverPrior::nn_priors[i]->DebugHistory("Trunc history");
-	}
-
-	if (SolverPrior::history_mode == "track"){
-		for(int i=0; i<SolverPrior::nn_priors.size();i++){
-			SolverPrior::nn_priors[i]->Trunc_tensor_hist(cur_tensor_hist_len);
-		}
-	}
+	TruncPriors(cur_search_hist_len, cur_tensor_hist_len);
 
 	// imitation learning: renable data update for imitation data
 	switch(simulation_mode_){
@@ -730,7 +722,48 @@ bool Controller::RunStep(Solver* solver, World* world, Logger* logger) {
 			step_start_t);
 }
 
-void Controller::PlanningLoop(Solver*& solver, World* world, Logger* logger) {
+void Controller::CheckCurPath(){
+	WorldSimulator::worldModel.path = path_from_topic;
+
+	COORD path_end_from_goal = path_from_topic.back() - COORD(goalx_, goaly_);
+
+	if (path_end_from_goal.Length() > 2.0f + 1e-3){
+		cerr << "Path end mismatch with car goal: path end = " <<
+				"(" << path_from_topic.back().x << "," << path_from_topic.back().x << ")" <<
+				", car goal=(" << goalx_ << "," << goaly_ << ")" << endl;
+		raise(SIGABRT);
+	}
+
+	COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos - COORD(goalx_, goaly_);
+
+	if (car_pos_from_goal.Length() < 8.0)
+	{
+		SolverPrior::prior_force_steer = true;
+	}
+	else if (car_pos_from_goal.Length() < 8.0 && unity_driving_simulator_->stateTracker->carvel
+			>= ModelParams::AccSpeed/ModelParams::control_freq)
+	{
+		SolverPrior::prior_discount_optact = 10.0;
+	}
+}
+
+void Controller::TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len){
+	for(int i=0; i<SolverPrior::nn_priors.size();i++){
+		SolverPrior::nn_priors[i]->Truncate(cur_search_hist_len, true);
+		logi << __FUNCTION__ << " truncating search history length to " <<
+				cur_search_hist_len << endl;
+		SolverPrior::nn_priors[i]->compare_history_with_recorded();
+//		SolverPrior::nn_priors[i]->DebugHistory("Trunc history");
+	}
+
+	if (SolverPrior::history_mode == "track"){
+		for(int i=0; i<SolverPrior::nn_priors.size();i++){
+			SolverPrior::nn_priors[i]->Trunc_tensor_hist(cur_tensor_hist_len);
+		}
+	}
+}
+
+void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* logger) {
 
 //	sleep(2);
     while(path_from_topic.size()==0 || SolverPrior::nn_priors[0]->Size(true) < 4){

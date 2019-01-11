@@ -113,9 +113,11 @@ VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
 			statistics->longest_trial_length = cur->depth();
 		}
 
-		double start1 = clock();
-		ExploitBlockers(cur);
-		BlockerCheckTime += double(clock() - start1) / CLOCKS_PER_SEC;
+		if (!Globals::config.use_prior){
+			double start1 = clock();
+			ExploitBlockers(cur);
+			BlockerCheckTime += double(clock() - start1) / CLOCKS_PER_SEC;
+		}
 
 		if (Gap(cur) == 0) {
 			break;
@@ -224,10 +226,12 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		        && cur->depth() > statistics->Get_longest_trial_len()) {
 			statistics->Update_longest_trial_len(cur->depth());
 		}
-		auto start1 = Time::now();
-		ExploitBlockers(cur);
 
-		BlockerCheckTime += Globals::ElapsedTime(start1);
+		if (!Globals::config.use_prior){
+			auto start1 = Time::now();
+			ExploitBlockers(cur);
+			BlockerCheckTime += Globals::ElapsedTime(start1);
+		}
 
 		if (Gap(cur) == 0) {
 			Globals::Global_print_value(this_thread::get_id(), 1,
@@ -405,6 +409,7 @@ void DESPOT::ExploitBlockers(VNode* vnode) {
 		}
 	}
 }
+
 void DESPOT::ExploitBlockers(Shared_VNode* vnode) {
 	if (Globals::config.pruning_constant <= 0) {
 		logd << "Return: small pruning " << Globals::config.pruning_constant
@@ -1497,9 +1502,11 @@ double DESPOT::Gap(Shared_VNode* vnode, bool use_Vloss) {
 double DESPOT::WEU(VNode* vnode) {
 	return WEU(vnode, Globals::config.xi);
 }
+
 double DESPOT::WEU(Shared_VNode* vnode) {
 	return WEU(vnode, Globals::config.xi);
 }
+
 // Can pass root as an argument, but will not affect performance much
 double DESPOT::WEU(VNode* vnode, double xi) {
 	VNode* root = vnode;

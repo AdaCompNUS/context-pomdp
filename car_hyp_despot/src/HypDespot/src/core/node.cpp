@@ -286,12 +286,12 @@ void VNode::Free(const DSPOMDP& model) {
 				if (it->second)
 					it->second->Free(model);
 				else{
-					cout <<"free: NULL vnode" << endl;
+					;//cout <<"free: NULL vnode" << endl;
 				}
 			}
 		}
 		else{
-			cout <<"free: NULL qnode" << endl;
+			;//cout <<"free: NULL qnode" << endl;
 		}
 	}
 }
