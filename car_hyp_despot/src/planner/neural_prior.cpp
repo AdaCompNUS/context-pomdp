@@ -2330,7 +2330,6 @@ void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt
 	}
 }
 
-
 void PedNeuralSolverPrior::Check_force_steer(int action, int default_action){
 
 	if (abs(action - default_action) > 3 * 100){ // steering to different direction
@@ -2361,6 +2360,7 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 
 		cout << "car_heading and path_heading diff > 30 degree: resetting to default steering: " << endl;
 		SolverPrior::prior_force_steer = true;
+		SolverPrior::prior_force_acc = true;
 		keep_count = 0;
 
 		cout << "car dir: "<< car_heading  << endl;
@@ -2372,6 +2372,7 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 		
 		if (keep_count == 3){
 			SolverPrior::prior_force_steer = false;
+			SolverPrior::prior_force_acc = false;
 			keep_count = 0;
 		}
 	}
@@ -2387,6 +2388,7 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 			keep_count ++;
 		if (keep_count == 3){
 			SolverPrior::prior_force_steer = false;
+			SolverPrior::prior_force_acc = false;
 			SolverPrior::prior_discount_optact = 1.0;
 			keep_count = 0;
 		}

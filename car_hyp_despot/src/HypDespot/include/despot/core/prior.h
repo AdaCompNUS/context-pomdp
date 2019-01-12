@@ -126,6 +126,7 @@ public:
 	static std::string history_mode;
 	static double prior_discount_optact;
 	static bool prior_force_steer;
+	static bool prior_force_acc;
 
 public:
     static std::chrono::time_point<std::chrono::system_clock> init_time_;
