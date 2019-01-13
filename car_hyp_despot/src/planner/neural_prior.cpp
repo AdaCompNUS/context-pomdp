@@ -390,11 +390,11 @@ PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 	drive_net = NULL;
 
 
-//	cerr << "[" << __FUNCTION__<< "] Testing model start" << endl;
-//
-//	Test_model("");
-//
-//	cerr << "[" << __FUNCTION__<< "] Testing model end" << endl;
+	cerr << "[" << __FUNCTION__<< "] Testing model start" << endl;
+
+	Test_model("");
+
+	cerr << "[" << __FUNCTION__<< "] Testing model end" << endl;
 
 }
 
@@ -2157,9 +2157,9 @@ void PedNeuralSolverPrior::Test_model(string path){
 	int num_guassian_modes = 5;
 	int num_steer_bins = 2*ModelParams::NumSteerAngle;
 
-	Test_all_srv(batchsize, num_guassian_modes, num_steer_bins);
+//	Test_all_srv(batchsize, num_guassian_modes, num_steer_bins);
 
-	Test_val_srv(batchsize, num_guassian_modes, num_steer_bins);
+//	Test_val_srv(batchsize, num_guassian_modes, num_steer_bins);
 
 	Test_all_libtorch(batchsize, num_guassian_modes, num_steer_bins);
 
