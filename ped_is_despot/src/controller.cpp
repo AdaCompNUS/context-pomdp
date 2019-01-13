@@ -736,7 +736,12 @@ void Controller::CheckCurPath(){
 
 	COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos - COORD(goalx_, goaly_);
 
-	if (car_pos_from_goal.Length() < 8.0)
+	if (car_pos_from_goal.Length() < 4.0)
+	{
+		SolverPrior::prior_force_steer = true;
+//		SolverPrior::prior_force_acc = true;
+	}
+	else if (car_pos_from_goal.Length() < 10.0)
 	{
 		SolverPrior::prior_force_steer = true;
 		SolverPrior::prior_force_acc = true;
