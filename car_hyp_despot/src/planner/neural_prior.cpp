@@ -2028,7 +2028,7 @@ void PedNeuralSolverPrior::Test_all_libtorch(int batchsize, int num_guassian_mod
 
 	logd << "[Test_model] displaying params\n";
 	Show_params(net);
-	for (int i =0 ;i< 10 ; i++){
+	for (int i =0 ;i< 1 ; i++){
 
 		std::vector<torch::jit::IValue> inputs;
 
@@ -2053,11 +2053,13 @@ void PedNeuralSolverPrior::Test_all_libtorch(int batchsize, int num_guassian_mod
 		auto ang_batch = drive_net_output[ANG].toTensor().cpu();
 		auto ang_batch_double = ang_batch.accessor<float,2>();
 
-		logd << "value" << endl;
+		logi << "value 0: " << value_batch_double[0][0] << " ";
+
+		logi << "value" << endl;
 		for (int i = 0 ; i< value_batch.size(0); i++){
-			logd << value_batch_double[i][0] << " ";
+			logi << value_batch_double[i][0] << " ";
 		}
-		logd << endl;
+		logi << endl;
 
 		logd << "acc_pi" << endl;
 		for (int data_id = 0 ; data_id< acc_pi_batch.size(0); data_id++){
@@ -2089,7 +2091,7 @@ void PedNeuralSolverPrior::Test_all_libtorch(int batchsize, int num_guassian_mod
 			}
 		}
 		logd << endl;
-		logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+		logi << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
 	}
 
 }
@@ -2106,7 +2108,7 @@ void PedNeuralSolverPrior::Test_val_libtorch(int batchsize, int num_guassian_mod
 	auto val_net = torch::jit::load(path);
 	val_net->to(at::kCUDA);
 	assert(net);
-	for (int i =0 ;i< 10 ; i++){
+	for (int i =0 ;i< 1 ; i++){
 
 		std::vector<torch::jit::IValue> inputs;
 
@@ -2122,7 +2124,9 @@ void PedNeuralSolverPrior::Test_val_libtorch(int batchsize, int num_guassian_mod
 
 		auto value_batch = drive_net_output.toTensor().cpu();
 		auto value_batch_double = value_batch.accessor<float,2>();
-		logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+		logi << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+
+		logi << "value 0: " << value_batch_double[0][0] << " ";
 
 		logd << "value" << endl;
 		for (int i = 0 ; i< value_batch.size(0); i++){
