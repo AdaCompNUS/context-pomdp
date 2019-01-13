@@ -2028,6 +2028,9 @@ void PedNeuralSolverPrior::Test_all_libtorch(int batchsize, int num_guassian_mod
 
 	logd << "[Test_model] displaying params\n";
 	Show_params(net);
+
+	Globals::lock_process();
+
 	for (int i =0 ;i< 1 ; i++){
 
 		std::vector<torch::jit::IValue> inputs;
@@ -2053,13 +2056,13 @@ void PedNeuralSolverPrior::Test_all_libtorch(int batchsize, int num_guassian_mod
 		auto ang_batch = drive_net_output[ANG].toTensor().cpu();
 		auto ang_batch_double = ang_batch.accessor<float,2>();
 
-		logi << "value 0: " << value_batch_double[0][0] << " ";
+		logi << "value 0: " << value_batch_double[0][0] << endl;
 
-		logi << "value" << endl;
+		logd << "value" << endl;
 		for (int i = 0 ; i< value_batch.size(0); i++){
-			logi << value_batch_double[i][0] << " ";
+			logd << value_batch_double[i][0] << " ";
 		}
-		logi << endl;
+		logd << endl;
 
 		logd << "acc_pi" << endl;
 		for (int data_id = 0 ; data_id< acc_pi_batch.size(0); data_id++){
@@ -2093,6 +2096,7 @@ void PedNeuralSolverPrior::Test_all_libtorch(int batchsize, int num_guassian_mod
 		logd << endl;
 		logi << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
 	}
+	Globals::unlock_process();
 
 }
 
@@ -2108,6 +2112,8 @@ void PedNeuralSolverPrior::Test_val_libtorch(int batchsize, int num_guassian_mod
 	auto val_net = torch::jit::load(path);
 	val_net->to(at::kCUDA);
 	assert(net);
+
+	Globals::lock_process();
 	for (int i =0 ;i< 1 ; i++){
 
 		std::vector<torch::jit::IValue> inputs;
@@ -2124,9 +2130,9 @@ void PedNeuralSolverPrior::Test_val_libtorch(int batchsize, int num_guassian_mod
 
 		auto value_batch = drive_net_output.toTensor().cpu();
 		auto value_batch_double = value_batch.accessor<float,2>();
-		logi << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
 
-		logi << "value 0: " << value_batch_double[0][0] << " ";
+		logi << "value 0: " << value_batch_double[0][0] << endl;
+		logi << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
 
 		logd << "value" << endl;
 		for (int i = 0 ; i< value_batch.size(0); i++){
@@ -2134,7 +2140,7 @@ void PedNeuralSolverPrior::Test_val_libtorch(int batchsize, int num_guassian_mod
 		}
 		logd << endl;
 	}
-
+	Globals::unlock_process();
 }
 
 void PedNeuralSolverPrior::Test_model(string path){
