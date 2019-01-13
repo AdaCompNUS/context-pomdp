@@ -731,9 +731,15 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 
 void Controller::CheckCurPath(){
 	if (path_missing){
+		cerr << "Path missing, fixing steering" << endl;
 		// use default move
 		SolverPrior::prior_force_steer = true;
-		SolverPrior::prior_force_acc = true;
+		if (unity_driving_simulator_->stateTracker->carvel>0.01){
+			cerr << "Path missing, fixing acc" << endl;
+			SolverPrior::prior_force_acc = true;
+		}
+		else
+			SolverPrior::prior_force_acc = false;
 	}
 	else{
 		WorldSimulator::worldModel.path = path_from_topic;

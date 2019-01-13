@@ -34,6 +34,8 @@ double SolverPrior::prior_discount_optact = 1.0;
 bool SolverPrior::prior_force_steer = false;
 bool SolverPrior::prior_force_acc = false;
 
+#define COL_VALUE_THREAD -35
+
 #include "ped_pomdp.h"
 
 namespace despot {
@@ -1426,18 +1428,27 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 					best_qnode = qnode;		//Debug
 					score_max = score;
 				}
+
+			}
+
+			if (astar.value <= COL_VALUE_THREAD){
+				cerr << "All actions colliding, using default move" << endl;
+				astar = vnode->default_move();
 			}
 
 			SolverPrior::nn_priors[0]->Check_force_steer(astar.action, vnode->default_move().action);
 
 			logi << "prior_force_steer="<< SolverPrior::prior_force_steer << endl;
+			logi << "prior_force_acc="<< SolverPrior::prior_force_acc << endl;
 
 			if (SolverPrior::prior_force_steer){
 
 				if (SolverPrior::prior_force_acc){
+					cout << "Fixing acceleration, using default move" << endl;
 					astar = vnode->default_move();
 				} else {
 					cout << "Recalculating action with fixed steering" << endl;
+
 					// Second round, prior steering
 					score_max = Globals::NEG_INFTY;
 
@@ -1451,7 +1462,6 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 						// logi << "3" << endl;
 
-						// if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
 						// 	score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
 
 						logi << "Children of root node: action: " << qnode->edge() <<
@@ -1465,6 +1475,12 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 							best_qnode = qnode;		//Debug
 							score_max = score;
 						}
+					}
+
+					if (astar.value <= COL_VALUE_THREAD)
+					{
+						cerr << "All actions colliding, using default move" << endl;
+						astar = vnode->default_move();
 					}
 				}
 			} 
