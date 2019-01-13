@@ -2389,6 +2389,8 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 
 	if (car_vel < 0.01){
 		SolverPrior::prior_force_steer = true;
+		SolverPrior::prior_force_acc = false;
+
 		keep_count = 0;
 		SolverPrior::prior_discount_optact = 0.0;
 	}

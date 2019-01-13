@@ -26,6 +26,8 @@ float Controller::time_scale_ = 1.0;
 std::string Controller::model_file_ = "";
 std::string Controller::value_model_file_ = "";
 
+bool path_missing = false;
+
 static DSPOMDP* ped_pomdp_model;
 static ACT_TYPE action = (ACT_TYPE)(-1);
 static OBS_TYPE obs =(OBS_TYPE)(-1);
@@ -324,7 +326,12 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 
 	if(fixed_path_ && path_from_topic.size()>0) return;
 
-	if(path->poses.size()==0) return;
+	if(path->poses.size()==0) {
+		path_missing = true;
+		return;
+	}else{
+		path_missing = false;
+	}
 
 	if (simulation_mode_ == UNITY && unity_driving_simulator_->b_update_il == true)
 		unity_driving_simulator_->p_IL_data.plan = *path; // record to be further published for imitation learning
@@ -723,34 +730,47 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 }
 
 void Controller::CheckCurPath(){
-	WorldSimulator::worldModel.path = path_from_topic;
-
-	COORD path_end_from_goal = path_from_topic.back() - COORD(goalx_, goaly_);
-
-	if (path_end_from_goal.Length() > 2.0f + 1e-3){
-		cerr << "Path end mismatch with car goal: path end = " <<
-				"(" << path_from_topic.back().x << "," << path_from_topic.back().x << ")" <<
-				", car goal=(" << goalx_ << "," << goaly_ << ")" << endl;
-		raise(SIGABRT);
-	}
-
-	COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos - COORD(goalx_, goaly_);
-
-	if (car_pos_from_goal.Length() < 5.0)
-	{
-		SolverPrior::prior_force_steer = true;
-//		SolverPrior::prior_force_acc = true;
-	}
-	else if (car_pos_from_goal.Length() < 10.0)
-	{
+	if (path_missing){
+		// use default move
 		SolverPrior::prior_force_steer = true;
 		SolverPrior::prior_force_acc = true;
 	}
-	else if (car_pos_from_goal.Length() < 8.0 && unity_driving_simulator_->stateTracker->carvel
-			>= ModelParams::AccSpeed/ModelParams::control_freq)
-	{
-		SolverPrior::prior_discount_optact = 10.0;
+	else{
+		WorldSimulator::worldModel.path = path_from_topic;
+
+		COORD path_end_from_goal = path_from_topic.back() - COORD(goalx_, goaly_);
+
+		if (path_end_from_goal.Length() > 2.0f + 1e-3){
+			cerr << "Path end mismatch with car goal: path end = " <<
+					"(" << path_from_topic.back().x << "," << path_from_topic.back().x << ")" <<
+					", car goal=(" << goalx_ << "," << goaly_ << ")" << endl;
+			raise(SIGABRT);
+		}
+
+		COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos - COORD(goalx_, goaly_);
+
+	//	if (car_pos_from_goal.Length() < 5.0)
+	//	{
+	//		SolverPrior::prior_force_steer = true;
+	////		SolverPrior::prior_force_acc = true;
+	//	}
+		if (car_pos_from_goal.Length() < 10.0)
+		{
+			SolverPrior::prior_force_steer = true;
+
+			if (unity_driving_simulator_->stateTracker->carvel>0.01)
+				SolverPrior::prior_force_acc = true;
+			else
+				SolverPrior::prior_force_acc = false;
+		}
+		else if (car_pos_from_goal.Length() < 8.0 && unity_driving_simulator_->stateTracker->carvel
+				>= ModelParams::AccSpeed/ModelParams::control_freq)
+		{
+			SolverPrior::prior_discount_optact = 10.0;
+		}
 	}
+
+
 }
 
 void Controller::TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len){
