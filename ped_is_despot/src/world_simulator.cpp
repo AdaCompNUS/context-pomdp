@@ -262,7 +262,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 	/* Collision: slow down the car */
 	int collision_peds_id;
-	if( curr_state->car.vel > 0.001 * time_scale_ && worldModel.inCollision(*curr_state,collision_peds_id) ) {
+	if( curr_state->car.vel > 0.001 * time_scale_ && worldModel.inRealCollision(*curr_state,collision_peds_id) ) {
 		cout << "--------------------------- collision = 1 ----------------------------" << endl;
 		cout << "collision ped: " << collision_peds_id<<endl;
 		

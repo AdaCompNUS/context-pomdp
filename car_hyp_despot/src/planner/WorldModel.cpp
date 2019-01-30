@@ -298,7 +298,7 @@ bool WorldModel::inCollision(const PomdpState& state) {
         }
     }
 
-    if(CheckCarWithObstacles(state.car))
+    if(CheckCarWithObstacles(state.car,0))
     	return true;
 
     return false;
@@ -319,7 +319,7 @@ bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id) {
         }
     }
 
-    if(CheckCarWithObstacles(state.car))
+    if(CheckCarWithObstacles(state.car,1))
     	return true;
 
     return false;
@@ -335,7 +335,7 @@ bool WorldModel::inRealCollision(const PomdpStateWorld& state) {
         }
     }
 
-    if(CheckCarWithObstacles(state.car))
+    if(CheckCarWithObstacles(state.car,1))
     	return true;
 
     return false;
@@ -351,7 +351,7 @@ bool WorldModel::inCollision(const PomdpStateWorld& state) {
         }
     }
 
-    if(CheckCarWithObstacles(state.car))
+    if(CheckCarWithObstacles(state.car,0))
     	return true;
 
     return false;
@@ -369,7 +369,7 @@ bool WorldModel::inCollision(const PomdpState& state, int &id) {
         }
     }
 
-    if(CheckCarWithObstacles(state.car))
+    if(CheckCarWithObstacles(state.car,0))
     	return true;
 
     return false;
@@ -390,7 +390,7 @@ bool WorldModel::inCollision(const PomdpStateWorld& state, int &id) {
         }
     }
 
-    if(CheckCarWithObstacles(state.car))
+    if(CheckCarWithObstacles(state.car,0))
     	return true;
 
     return false;
@@ -1722,7 +1722,7 @@ void WorldModel::AddObstacle(std::vector<RVO::Vector2> obs){
 	obstacles.push_back(COORD(Globals::NEG_INFTY, Globals::NEG_INFTY));
 }
 
-bool WorldModel::CheckCarWithObstacles(const CarStruct& car){
+bool WorldModel::CheckCarWithObstacles(const CarStruct& car, int flag){
 	COORD obs_first_point(Globals::NEG_INFTY, Globals::NEG_INFTY);
 	COORD obs_last_point;
 
@@ -1731,12 +1731,12 @@ bool WorldModel::CheckCarWithObstacles(const CarStruct& car){
 			obs_first_point = point;
 		}
 		else if (point.x == Globals::NEG_INFTY){ // stop point of an obstacle
-			if(CheckCarWithObsLine(car, obs_last_point, obs_first_point))
+			if(CheckCarWithObsLine(car, obs_last_point, obs_first_point, flag))
 				return true;
 			obs_first_point = COORD(Globals::NEG_INFTY, Globals::NEG_INFTY);
 		}
 		else{ // normal obstacle points
-			if(CheckCarWithObsLine(car, obs_last_point, point))
+			if(CheckCarWithObsLine(car, obs_last_point, point, flag))
 				return true;
 		}
 		obs_last_point = point;
@@ -1745,7 +1745,7 @@ bool WorldModel::CheckCarWithObstacles(const CarStruct& car){
 	return false;
 }
 
-bool WorldModel::CheckCarWithObsLine(const CarStruct& car, COORD& start_point, COORD& end_point){
+bool WorldModel::CheckCarWithObsLine(const CarStruct& car, COORD& start_point, COORD& end_point, int flag){
 	const double step = ModelParams::PATH_STEP;
 
 	double d = COORD::EuclideanDistance(start_point, end_point);
@@ -1762,8 +1762,16 @@ bool WorldModel::CheckCarWithObsLine(const CarStruct& car, COORD& start_point, C
 		double nx = sx + dx*u;
 		double ny = sy + dy*u;
 
-		if(::inCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir))
-			return true;
+		if (flag ==0){
+			if(::inCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir))
+				return true;
+		}
+		else{
+			if(::inRealCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir))
+				return true;
+		}
+		//if(::inCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir))
+		//	return true;
 
 		t += step;
 	}
