@@ -310,6 +310,10 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 		cout<<"--------------------------- emergency ----------------------------" <<endl;
 	}
+	else if (worldModel.path.size()>0 && COORD::EuclideanDistance(stateTracker->carpos, worldModel.path[0])>4.0){
+		cerr << "=================== Path offset too high !!! Node shutting down" << endl;
+		ros::shutdown();
+	}
 	else{
 //		get_action_fix_latency(action);
 //		update_cmds_naive(action);
