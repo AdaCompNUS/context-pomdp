@@ -1915,7 +1915,7 @@ void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 		logi << "value" << endl;
 		for (int i = 0 ; i< value.size(); i++){
 			logi << value[i] << " ";
-			t_value[i]= -20.0; //value[i];
+			t_value[i]= -2.5; //value[i];
 		}
 		logi << endl;
 
@@ -2444,12 +2444,16 @@ void PedNeuralSolverPrior::Check_force_steer(int action, int default_action){
 bool PedNeuralSolverPrior::Check_high_uncertainty(despot::VNode* vnode){
 	return false;
 	double max_prob = Globals::NEG_INFTY;
+	double prob2 = 0.0;
 	for (int steer_id = 0; steer_id < vnode->prior_steer_probs().size(); steer_id++){
-		if ( vnode->prior_steer_probs(steer_id) > max_prob){
-			max_prob = vnode->prior_steer_probs(steer_id);
+		prob2 = vnode->prior_steer_probs(steer_id);
+		if (steer_id + 1 < vnode->prior_steer_probs().size())
+			prob2 += vnode->prior_steer_probs(steer_id+1);
+		if ( prob2 > max_prob){
+			max_prob = prob2;
 		}
 	}
-	if (max_prob < 0.5)
+	if (max_prob < 0.6)
 		return true; // uncertainty too high
 
 //	if (abs(static_cast<const PedPomdp*>(model_)->GetSteering(vnode->default_move().action)) > 15)
