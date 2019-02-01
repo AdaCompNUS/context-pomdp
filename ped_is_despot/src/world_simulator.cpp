@@ -171,6 +171,7 @@ State* WorldSimulator::GetCurrentState() const{
 	updated_car.heading_dir = poseToHeadingDir(out_pose);
 
 	stateTracker->updateCar(updated_car);
+	stateTracker->cleanPed();
 
 	/* Update car info for current_state */
 	current_state.car.pos = stateTracker->carpos;

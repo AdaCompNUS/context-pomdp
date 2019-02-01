@@ -168,6 +168,9 @@ public:
 	virtual	void Check_force_steer(int action, int default_action) = 0;
 
 	virtual void Check_force_steer(double car_heading, double path_heading, double car_vel) = 0;
+
+	virtual bool Check_high_uncertainty(despot::VNode* node) = 0 ;
+
 };
 
 void Debug_state(State* state, std::string msg, const DSPOMDP* model);

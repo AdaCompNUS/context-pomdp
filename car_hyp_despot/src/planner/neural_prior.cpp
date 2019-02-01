@@ -1100,17 +1100,22 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 	auto start1 = Time::now();
 
-	auto drive_net_output = drive_net->forward(inputs).toTuple()->elements();
+//	auto drive_net_output = drive_net->forward(inputs).toTuple()->elements();
+//
+//	auto value_batch = drive_net_output[VALUE].toTensor().cpu();
+//	auto acc_pi_batch = drive_net_output[ACC_PI].toTensor().cpu();
+//	auto acc_mu_batch = drive_net_output[ACC_MU].toTensor().cpu();
+//	auto acc_sigma_batch = drive_net_output[ACC_SIGMA].toTensor().cpu();
+//	auto ang_batch = drive_net_output[ANG].toTensor().cpu();
+//
+//	value_batch = value_batch.squeeze(1);
+
+	at::Tensor value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch;
+
+	query_srv(vnodes.size(), input_tensor, value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
 
 	logd << "[Compute] Refracting outputs " << endl;
 
-	auto value_batch = drive_net_output[VALUE].toTensor().cpu();
-	auto acc_pi_batch = drive_net_output[ACC_PI].toTensor().cpu();
-	auto acc_mu_batch = drive_net_output[ACC_MU].toTensor().cpu();
-	auto acc_sigma_batch = drive_net_output[ACC_SIGMA].toTensor().cpu();
-	auto ang_batch = drive_net_output[ANG].toTensor().cpu();
-
-	value_batch = value_batch.squeeze(1);
     auto value_double = value_batch.accessor<float, 1>();
 
 	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
@@ -1303,21 +1308,24 @@ void PedNeuralSolverPrior::ComputeMiniBatchPref(vector<torch::Tensor>& input_bat
 
 	auto start1 = Time::now();
 
-	auto drive_net_output = drive_net->forward(inputs).toTuple()->elements();
+//	auto drive_net_output = drive_net->forward(inputs).toTuple()->elements();
+//
+////	auto value_batch = drive_net_output[VALUE].toTensor().cpu();
+//	auto acc_pi_batch = drive_net_output[ACC_PI].toTensor().cpu();
+//	auto acc_mu_batch = drive_net_output[ACC_MU].toTensor().cpu();
+//	auto acc_sigma_batch = drive_net_output[ACC_SIGMA].toTensor().cpu();
+//	auto ang_batch = drive_net_output[ANG].toTensor().cpu();
+//
+////	value_batch = value_batch.squeeze(1);
+////    auto value_double = value_batch.accessor<float, 1>();
 
+	at::Tensor value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch;
 
-	logd << "[ComputeMiniBatchPref] Refracting outputs " << endl;
-
-//	auto value_batch = drive_net_output[VALUE].toTensor().cpu();
-	auto acc_pi_batch = drive_net_output[ACC_PI].toTensor().cpu();
-	auto acc_mu_batch = drive_net_output[ACC_MU].toTensor().cpu();
-	auto acc_sigma_batch = drive_net_output[ACC_SIGMA].toTensor().cpu();
-	auto ang_batch = drive_net_output[ANG].toTensor().cpu();
-
-//	value_batch = value_batch.squeeze(1);
-//    auto value_double = value_batch.accessor<float, 1>();
+	query_srv(vnodes.size(), input_tensor, value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
 
 	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+
+	logd << "[ComputeMiniBatchPref] Refracting outputs " << endl;
 
 //	logd << "Get value output " << value_batch << endl;
 
@@ -1875,6 +1883,91 @@ std::vector<torch::Tensor> PedNeuralSolverPrior::Process_history_input(despot::V
 //
 //}
 
+void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tensor& t_value, at::Tensor& t_acc_pi,
+		at::Tensor& t_acc_mu, at::Tensor& t_acc_sigma, at::Tensor& t_ang){
+	int num_guassian_modes = 5;
+	int num_steer_bins = 2*ModelParams::NumSteerAngle;
+
+	t_value=torch::zeros({batchsize});
+	t_acc_pi=torch::zeros({batchsize, num_guassian_modes});
+	t_acc_mu=torch::zeros({batchsize, num_guassian_modes, 1});
+	t_acc_sigma=torch::zeros({batchsize, num_guassian_modes, 1});
+	t_ang=torch::zeros({batchsize, num_steer_bins});
+
+	query_nn::TensorData message;
+
+	message.request.tensor = std::vector<float>(images.data<float>(), images.data<float>() + images.numel());
+
+	message.request.batchsize = batchsize;
+
+	message.request.mode = "all";
+
+	logd << "calling service query" << endl;
+
+	if (nn_client_.call(message))
+	{
+		vector<float> value = message.response.value;
+		vector<float> acc_pi = message.response.acc_pi;
+		vector<float> acc_mu = message.response.acc_mu;
+		vector<float> acc_sigma = message.response.acc_sigma;
+		vector<float> ang = message.response.ang;
+
+		logi << "value" << endl;
+		for (int i = 0 ; i< value.size(); i++){
+			logi << value[i] << " ";
+			t_value[i]= -20.0; //value[i];
+		}
+		logi << endl;
+
+		logd << "acc_pi" << endl;
+		for (int id = 0 ; id< acc_pi.size(); id++){
+			int data_id = id / num_guassian_modes;
+			int mode_id = id % num_guassian_modes;
+			logd << acc_pi[id] << " ";
+			if (mode_id == num_guassian_modes -1){
+				logd << endl;
+			}
+
+			t_acc_pi[data_id][mode_id]= acc_pi[id];
+		}
+
+		logd << "acc_mu" << endl;
+		for (int id = 0 ; id< acc_mu.size(); id++){
+			int data_id = id / num_guassian_modes;
+			int mode_id = id % num_guassian_modes;
+			logd << acc_mu[id] << " ";
+			if (mode_id == num_guassian_modes -1){
+				logd << endl;
+			}
+
+			t_acc_mu[data_id][mode_id][0]= acc_mu[id];
+		}
+
+		logd << "acc_sigma" << endl;
+		for (int id = 0 ; id< acc_sigma.size(); id++){
+			int data_id = id / num_guassian_modes;
+			int mode_id = id % num_guassian_modes;
+			logd << acc_sigma[id] << " ";
+			if (mode_id == num_guassian_modes -1){
+				logd << endl;
+			}
+
+			t_acc_sigma[data_id][mode_id][0]= acc_sigma[id];
+		}
+
+		logd << "ang" << endl;
+		for (int id = 0 ; id< ang.size(); id++){
+			int data_id = id / num_steer_bins;
+			int bin_id = id % num_steer_bins;
+			logd << ang[id] << " ";
+			if (bin_id == num_steer_bins -1){
+				logd << endl;
+			}
+
+			t_ang[data_id][bin_id] = ang[id];
+		}
+	}
+}
 
 void PedNeuralSolverPrior::Test_all_srv(int batchsize, int num_guassian_modes, int num_steer_bins){
 	cerr << "Testing all model using ROS service, bs = " << batchsize << endl;
@@ -2167,11 +2260,11 @@ void PedNeuralSolverPrior::Test_model(string path){
 	int num_guassian_modes = 5;
 	int num_steer_bins = 2*ModelParams::NumSteerAngle;
 
-//	Test_all_srv(batchsize, num_guassian_modes, num_steer_bins);
+	Test_all_srv(batchsize, num_guassian_modes, num_steer_bins);
 
 //	Test_val_srv(batchsize, num_guassian_modes, num_steer_bins);
 
-	Test_all_libtorch(batchsize, num_guassian_modes, num_steer_bins);
+//	Test_all_libtorch(batchsize, num_guassian_modes, num_steer_bins);
 
 	Test_val_libtorch(batchsize, num_guassian_modes, num_steer_bins);
 
@@ -2346,6 +2439,23 @@ void PedNeuralSolverPrior::Check_force_steer(int action, int default_action){
 		cout << "Searched steering too far away from default" << endl;
 		prior_force_steer = true; 
 	}
+}
+
+bool PedNeuralSolverPrior::Check_high_uncertainty(despot::VNode* vnode){
+	return false;
+	double max_prob = Globals::NEG_INFTY;
+	for (int steer_id = 0; steer_id < vnode->prior_steer_probs().size(); steer_id++){
+		if ( vnode->prior_steer_probs(steer_id) > max_prob){
+			max_prob = vnode->prior_steer_probs(steer_id);
+		}
+	}
+	if (max_prob < 0.5)
+		return true; // uncertainty too high
+
+//	if (abs(static_cast<const PedPomdp*>(model_)->GetSteering(vnode->default_move().action)) > 15)
+//		return true;
+
+	return false;
 }
 
 int keep_count = 0;
