@@ -2453,7 +2453,7 @@ bool PedNeuralSolverPrior::Check_high_uncertainty(despot::VNode* vnode){
 			max_prob = prob2;
 		}
 	}
-	if (max_prob < 0.6)
+	if (max_prob < 0.4)
 		return true; // uncertainty too high
 
 //	if (abs(static_cast<const PedPomdp*>(model_)->GetSteering(vnode->default_move().action)) > 15)
@@ -2477,7 +2477,7 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 
 	bool keep_count_modified = false;
 
-	if ( dir_diff > M_PI / 6.0){ // 30 degree difference with path
+	if ( dir_diff > M_PI / 2.0){ // 30 degree difference with path
 		// cout << "resetting to default action: " << default_action << ", ";
 		// SolverPrior::nn_priors[0]->print_prior_actions(default_action);
 		// action = default_action;
