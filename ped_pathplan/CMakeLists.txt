@@ -12,8 +12,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   geometry_msgs
-  ped_costmap
   message_filters
+  # ped_costmap
+  costmap_2d
   message_generation
   nav_core
   pluginlib

@@ -1431,6 +1431,9 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 			}
 
+			SolverPrior::prior_force_steer = false; // Debugging!! disabling force steer and acc codes.
+			SolverPrior::prior_force_acc = false; // Debugging!! disabling force steer and acc codes.
+
 			if (astar.value <= COL_VALUE_THREAD){
 				cerr << "All actions colliding, using default move" << endl;
 				astar = vnode->default_move();

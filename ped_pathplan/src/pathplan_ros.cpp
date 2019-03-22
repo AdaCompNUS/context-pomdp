@@ -1,5 +1,7 @@
 #include <ped_pathplan/pathplan_ros.h>
 
+////  // PLUGINLIB_EXPORT_CLASS(ped_pathplan::PathPlanROS, nav_core::BaseGlobalPlanner)
+
 namespace ped_pathplan {
     using namespace std;
     using namespace costmap_2d;
@@ -36,11 +38,17 @@ namespace ped_pathplan {
             private_nh.param("planning_step_len", planning_step_len, 0.8);
             private_nh.param("planning_step_len_res", planning_step_len_res, 0.1);
 
+            cout << "cost_steering_deg ******: "<< cost_steering_deg <<endl;
+
             costmap_ros = cmros;
 
-            int nx = cmros->getSizeInCellsX();
-            int ny = cmros->getSizeInCellsY();
-            float map_res = cmros->getResolution(); //map resolution 
+//            int nx = cmros->getSizeInCellsX();
+//            int ny = cmros->getSizeInCellsY();
+//            float map_res = cmros->getResolution(); //map resolution
+            int nx = cmros->getCostmap()->getSizeInCellsX();
+            int ny = cmros->getCostmap()->getSizeInCellsY();
+            float map_res = cmros->getCostmap()->getResolution(); //map resolution
+
             planner = boost::shared_ptr<PathPlan>(new PathPlan(nx, ny, steering_limit_deg, yaw_res_deg, cost_steering_deg, step, num_search, discretize_ratio, discount, map_res, carlen, planning_step_len, planning_step_len_res));
 
             updateCostmap();
@@ -192,7 +200,18 @@ namespace ped_pathplan {
     }*/
 
     void PathPlanROS::updateCostmap() {
-        costmap_ros->getCostmapCopy(costmap);
+//      costmap_ros->getCostmapCopy(costmap);
+    	costmap = *costmap_ros->getCostmap();
+
+    	if (false){
+    		cout << "Source cost map from ROS" << endl;
+    		for (int i =0 ;i < 1/*costmap.getSizeInCellsX()*/; i++){
+    			for (int j =0 ;j < costmap.getSizeInCellsY(); j++){
+    				std::cout << (int)costmap.getCost(i,j) << " ";
+    			}
+    			std::cout << endl;
+    		}
+    	}
     }
 
     void PathPlanROS::mapToWorld(double mx, double my, double& wx, double& wy) {

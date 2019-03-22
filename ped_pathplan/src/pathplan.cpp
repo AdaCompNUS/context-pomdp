@@ -47,6 +47,8 @@ namespace ped_pathplan {
 
         steplen = step * map_res;
 
+        cout << "cost_steering ******: "<< cost_steering <<endl;
+
    //     cout << "steplen ******: "<<steplen<<endl;
    //     cout << "map resolution *****: "<<map_res<<endl;
         /*
@@ -71,9 +73,16 @@ namespace ped_pathplan {
                 {
                     *cm = COST_OBS;
                     int v = *cmap;
+
+                    if (v == COST_OBS_ROS){ // panpan
+                    	v = COST_OBS;
+                    	*cm = v;
+                    }
+
                     if (v < COST_OBS_ROS)
                     {
-                        v = COST_NEUTRAL+COST_FACTOR*v;
+//                        v = COST_NEUTRAL+COST_FACTOR*v;
+                    	v = max(COST_NEUTRAL, v);
                         if (v >= COST_OBS)
                             v = COST_OBS-1;
                         *cm = v;
@@ -115,10 +124,11 @@ namespace ped_pathplan {
 
         }
 
-/*        if ( output_map ){
-            cout << "before output costmap"<<endl;
+        bool output_map = false;
+        if ( output_map ){
+            cout << "Rescaled costmap"<<endl;
 
-            for (int i=0; i<ny; i++)
+            for (int i=0; i<1/*ny*/; i++)
             {
                 int k=i*nx;
                 for (int j=0; j<nx; j++)
@@ -128,10 +138,10 @@ namespace ped_pathplan {
                 cout<<endl;
             }
 
-            cout << "after output costmap"<<endl;
+//            cout << "after output costmap"<<endl;
 
             output_map = false;
-        }*/
+        }
 
          
     }

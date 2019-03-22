@@ -2204,7 +2204,7 @@ void PedNeuralSolverPrior::Test_val_libtorch(int batchsize, int num_guassian_mod
 	logd << "[Test_model] Loading value model "<< path << endl;
 	auto val_net = torch::jit::load(path);
 	val_net->to(at::kCUDA);
-	assert(net);
+	assert(val_net);
 
 	Globals::lock_process();
 	for (int i =0 ;i< 1 ; i++){
@@ -2435,6 +2435,8 @@ void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt
 
 void PedNeuralSolverPrior::Check_force_steer(int action, int default_action){
 
+	return; // disable this functionality
+
 	if (abs(action - default_action) > 3 * 100){ // steering to different direction
 		cout << "Searched steering too far away from default" << endl;
 		prior_force_steer = true; 
@@ -2442,7 +2444,9 @@ void PedNeuralSolverPrior::Check_force_steer(int action, int default_action){
 }
 
 bool PedNeuralSolverPrior::Check_high_uncertainty(despot::VNode* vnode){
-	return false;
+
+	return false; // disable this functionality
+
 	double max_prob = Globals::NEG_INFTY;
 	double prob2 = 0.0;
 	for (int steer_id = 0; steer_id < vnode->prior_steer_probs().size(); steer_id++){
@@ -2465,6 +2469,8 @@ bool PedNeuralSolverPrior::Check_high_uncertainty(despot::VNode* vnode){
 int keep_count = 0;
 
 void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_heading, double car_vel){
+
+	return; // disable this functionality
 
 	double dir_diff = abs(car_heading - path_heading);
 
@@ -2519,5 +2525,4 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 			keep_count = 0;
 		}
 	}
-
 }

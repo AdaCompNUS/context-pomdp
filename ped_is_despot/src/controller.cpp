@@ -900,6 +900,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	unity_driving_simulator_->beliefTracker->text();
 	PlanningLoop(solver, world, logger);
 	ros::spin();
+
 	logger->EndRound();
 
 	PrintResult(1, logger, main_clock_start);

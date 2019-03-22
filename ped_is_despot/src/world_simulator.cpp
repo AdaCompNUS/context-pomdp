@@ -445,10 +445,8 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 	steering_=static_cast<PedPomdp*>(model_)->GetSteering(action);
 
 	cerr << "DEBUG: Executing action:" << action << " steer/acc = " << steering_ << "/" << acc << endl;
-//	cerr << "action IDs steer/acc = " << static_cast<PedPomdp*>(model_)->GetSteeringID(action)
-//				<< "/" << static_cast<PedPomdp*>(model_)->GetAccelerationID(action) << endl;
-//	cout<<"cmd steering = "<<steering_<<endl;
-//	cout<<"cmd target_speed = "<<target_speed_<<endl;
+
+//	target_speed_ = 0; // Freezing robot motion. Debugging !!!!!!!!
 }
 
 //void WorldSimulator::update_cmds_buffered(const ros::TimerEvent &e){
