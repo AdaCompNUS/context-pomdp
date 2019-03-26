@@ -1110,9 +1110,20 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 //
 //	value_batch = value_batch.squeeze(1);
 
-	at::Tensor value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch;
+	at::Tensor value_batch_dummy, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch;
 
-	query_srv(vnodes.size(), input_tensor, value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
+	query_srv(vnodes.size(), input_tensor, value_batch_dummy, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
+
+	///VALUE START/////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	auto drive_net_output = drive_net_value->forward(inputs);
+
+	logd << "[Compute] Refracting value outputs " << endl;
+	auto value_batch = drive_net_output.toTensor().cpu();
+
+	value_batch = value_batch.squeeze(1);
+
+	///VALUE END////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	logd << "[Compute] Refracting outputs " << endl;
 
@@ -1222,9 +1233,7 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 		vnode->prior_value(prior_value);
 
-		// vnode->prior_value(vnode->upper_bound() - 5.0 /*prior_value*/);
-		
-    vnode->prior_initialized(true);
+		vnode->prior_initialized(true);
 	}
 
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;

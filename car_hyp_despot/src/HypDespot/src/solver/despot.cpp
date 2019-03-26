@@ -864,12 +864,12 @@ void DESPOT::InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 	InitUpperBound(vnode, upper_bound, streams, history);
 
-  if (vnode->depth()==0){
-      // This is a patch!!!!!!
-      // The policy network doesn't has a value head yet, 
-      // so we are not able to provide an initial lower bound for the root.
-      vnode->lower_bound(vnode->Weight() * (vnode->upper_bound() - 5.0));
-  }
+//  if (vnode->depth()==0){
+//      // This is a patch!!!!!!
+//      // The policy network doesn't has a value head yet,
+//      // so we are not able to provide an initial lower bound for the root.
+//      vnode->lower_bound(vnode->Weight() * (vnode->upper_bound() - 5.0));
+//  }
 
 	logd << "[InitBounds] node "<<vnode<<" at level " << vnode->depth() <<
 			" neural lb=" << vnode->lower_bound() << " ub=" <<
@@ -1851,14 +1851,14 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 
 	if (Globals::config.use_prior){
       ((VNode*) vnode)->lower_bound(lower);
-      if (vnode->depth()==0 && std::fabs(vnode->default_move().value + 34.0)< 1e-2 ){
-          // This is a patch!!!
-          // The policy network doesn't has a value head yet,
-          // so we are not able to provide an initial lower bound for the root.
-          ValuedAction move(((VNode*) vnode)->default_move().action, ((VNode*)
-          vnode)->lower_bound());
-          ((VNode*) vnode)->default_move(move);
-      }
+//      if (vnode->depth()==0 && std::fabs(vnode->default_move().value + 34.0)< 1e-2 ){
+//          // This is a patch!!!
+//          // The policy network doesn't has a value head yet,
+//          // so we are not able to provide an initial lower bound for the root.
+//          ValuedAction move(((VNode*) vnode)->default_move().action, ((VNode*)
+//          vnode)->lower_bound());
+//          ((VNode*) vnode)->default_move(move);
+//      }
  	}
  	else{
 		if (lower > ((VNode*) vnode)->lower_bound()) {
