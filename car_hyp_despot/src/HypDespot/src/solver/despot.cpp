@@ -217,6 +217,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 	int prior_hist_size = 0;
 
 	int threadID=MapThread(this_thread::get_id());
+	int trial_expansion_count = 0;
 
 	if(Globals::config.use_prior)
 		prior_hist_size = SolverPrior::nn_priors[threadID]->Size(true);
@@ -260,7 +261,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 
 				TreeExpansionTime += Globals::ElapsedTime(start);
 				Expansion_done = true;
-
+				trial_expansion_count ++;
 			}
 		} catch (exception &e) {
 			cout << "Locking error: " << e.what() << endl;
@@ -362,8 +363,9 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 	         && WEU((VNode*) cur) > 0 &&
 	         !Globals::Timeout(Globals::config.time_per_move));
   
-  printf( "Termination of trial: WEU = %f, timeout = %d, depth = %d\n", WEU((VNode*) cur), 
+  printf( "Termination of trial: WEU = %f, timeout = %d, expansion_count= %d, depth = %d\n", WEU((VNode*) cur),
       Globals::Timeout(Globals::config.time_per_move),
+      trial_expansion_count,
       cur->depth());
 
 	history.Truncate(hist_size);
@@ -752,27 +754,27 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		Globals::sleep_ms(1000*sleep_time);
 	}
 
-	logi << "[DESPOT::Search] Time for EXPLORE: " << explore_time << "s"
+	logd << "[DESPOT::Search] Time for EXPLORE: " << explore_time << "s"
 	     << endl;
-	logi << "	[DESPOT::Search] Time for BLOCKER_CHECK: " << BlockerCheckTime
+	logd << "	[DESPOT::Search] Time for BLOCKER_CHECK: " << BlockerCheckTime
 	     << "s" << endl;
-	logi << "	[DESPOT::Search] Time for TREE_EXPANSION: " << TreeExpansionTime
+	logd << "	[DESPOT::Search] Time for TREE_EXPANSION: " << TreeExpansionTime
 	     << "s" << endl;
-	logi << "		[DESPOT::Search] Time for AVE_REWARD: " << AveRewardTime << "s"
+	logd << "		[DESPOT::Search] Time for AVE_REWARD: " << AveRewardTime << "s"
 	     << endl;
-	logi << "			[DESPOT::Search] Time for STEP_MODEL: " << ModelStepTime << "s"
+	logd << "			[DESPOT::Search] Time for STEP_MODEL: " << ModelStepTime << "s"
 	     << endl;
-	logi << "			[DESPOT::Search] Time for COPY_PARTICLE: " << ParticleCopyTime
+	logd << "			[DESPOT::Search] Time for COPY_PARTICLE: " << ParticleCopyTime
 	     << "s" << endl;
-	logi << "			[DESPOT::Search] Time for COUNT_OBS: " << ObsCountTime << "s"
+	logd << "			[DESPOT::Search] Time for COUNT_OBS: " << ObsCountTime << "s"
 	     << endl;
-	logi << "		[DESPOT::Search] Time for MAKE_NODES: "
+	logd << "		[DESPOT::Search] Time for MAKE_NODES: "
 	     << MakeObsNodeTime - InitBoundTime << "s" << endl;
-	logi << "		[DESPOT::Search] Time for INIT_BOUNDS: " << InitBoundTime << "s"
+	logd << "		[DESPOT::Search] Time for INIT_BOUNDS: " << InitBoundTime << "s"
 	     << endl;
-	logi << "	[DESPOT::Search] Time for PATH_TRACKING: " << PathTrackTime << "s"
+	logd << "	[DESPOT::Search] Time for PATH_TRACKING: " << PathTrackTime << "s"
 	     << endl;
-	logi << "[DESPOT::Search] Time for BACK_UP: " << backup_time << "s" << endl;
+	logd << "[DESPOT::Search] Time for BACK_UP: " << backup_time << "s" << endl;
 
 	if (statistics != NULL) {
 		statistics->num_particles_after_search = model->NumActiveParticles();

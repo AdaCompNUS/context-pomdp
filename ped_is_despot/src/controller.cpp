@@ -783,7 +783,7 @@ void Controller::CheckCurPath(){
 void Controller::TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len){
 	for(int i=0; i<SolverPrior::nn_priors.size();i++){
 		SolverPrior::nn_priors[i]->Truncate(cur_search_hist_len, true);
-		logi << __FUNCTION__ << " truncating search history length to " <<
+		logd << __FUNCTION__ << " truncating search history length to " <<
 				cur_search_hist_len << endl;
 		SolverPrior::nn_priors[i]->compare_history_with_recorded();
 //		SolverPrior::nn_priors[i]->DebugHistory("Trunc history");
