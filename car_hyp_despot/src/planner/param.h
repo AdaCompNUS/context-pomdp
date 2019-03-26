@@ -44,7 +44,7 @@ namespace ModelParams {
 	const double NumSteerAngle=7;
 	const double angle_rln=MaxSteerAngle/NumSteerAngle; // velocity resolution
 
-	const double OBS_LINE_STEP = 10.0; // only check end points
+	const double OBS_LINE_STEP = 0.5; // only check end points
 
 	extern std::string rosns;
 	extern std::string laser_frame;
