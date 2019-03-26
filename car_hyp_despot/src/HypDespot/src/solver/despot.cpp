@@ -824,8 +824,8 @@ void DESPOT::InitLowerBound(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 		if (vnode->depth()==0){
 			logd << "recording SolverPrior::nn_priors[prior_id]->default_action" << endl;
-			SolverPrior::nn_priors[prior_id]->default_action = vnode->max_prob_action();
-		}
+			SolverPrior::nn_priors[prior_id]->default_action = vnode->max_prob_action();      
+    }
 
 		logd << "vnode "<< vnode << " at level "<< vnode->depth() << " prior value=" << move.value << ", ";
 		SolverPrior::nn_priors[prior_id]->print_prior_actions(move.action);
@@ -863,6 +863,13 @@ void DESPOT::InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 	InitLowerBound(vnode, lower_bound, streams, history, b_init_root);
 
 	InitUpperBound(vnode, upper_bound, streams, history);
+
+  if (vnode->depth()==0){
+      // This is a patch!!!!!!
+      // The policy network doesn't has a value head yet, 
+      // so we are not able to provide an initial lower bound for the root.
+      vnode->lower_bound(vnode->Weight() * (vnode->upper_bound() - 5.0));
+  }
 
 	logd << "[InitBounds] node "<<vnode<<" at level " << vnode->depth() <<
 			" neural lb=" << vnode->lower_bound() << " ub=" <<
@@ -1703,7 +1710,7 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 
 	if (Globals::config.use_prior && /*vnode->depth()==0 &&*/ SolverPrior::nn_priors[0]->prior_force_steer){
 //		cout << "best upper 1" << endl;
-		SolverPrior::nn_priors[prior_ID]->Get_force_steer_action(vnode, opt_act_start, opt_act_end);
+		// SolverPrior::nn_priors[prior_ID]->Get_force_steer_action(vnode, opt_act_start, opt_act_end);
 	}
 
 //	cout << "best upper 2" << endl;
@@ -1843,7 +1850,15 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 
 
 	if (Globals::config.use_prior){
-		((VNode*) vnode)->lower_bound(lower);
+      ((VNode*) vnode)->lower_bound(lower);
+      if (vnode->depth()==0 && std::fabs(vnode->default_move().value + 34.0)< 1e-2 ){
+          // This is a patch!!!
+          // The policy network doesn't has a value head yet,
+          // so we are not able to provide an initial lower bound for the root.
+          ValuedAction move(((VNode*) vnode)->default_move().action, ((VNode*)
+          vnode)->lower_bound());
+          ((VNode*) vnode)->default_move(move);
+      }
  	}
  	else{
 		if (lower > ((VNode*) vnode)->lower_bound()) {

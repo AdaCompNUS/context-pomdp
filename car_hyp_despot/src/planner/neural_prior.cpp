@@ -1222,7 +1222,9 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 		vnode->prior_value(prior_value);
 
-		vnode->prior_initialized(true);
+		// vnode->prior_value(vnode->upper_bound() - 5.0 /*prior_value*/);
+		
+    vnode->prior_initialized(true);
 	}
 
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
@@ -1915,7 +1917,7 @@ void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 		logi << "value" << endl;
 		for (int i = 0 ; i< value.size(); i++){
 			logi << value[i] << " ";
-			t_value[i]= -2.5; //value[i];
+			t_value[i]= -3.4; //value[i];
 		}
 		logi << endl;
 

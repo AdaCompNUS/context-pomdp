@@ -4,6 +4,7 @@
      <!-- **** cost map and path planning **** -->
      <node name="ped_path_planner" pkg="ped_pathplan" type="path_planner" output="screen" >
          <rosparam file="$(find ped_pathplan)/launch/params.yaml" command="load" />
+         <param name = "ped_costmap/inflation_radius" value="$(arg inflation_radius)" /> 
          <param name="planner/cost_steering_deg" value="$(arg cost_steering_deg)" />
          <remap from="ped_path_planner/planner/plan" to="plan" />
          <remap from="navgoal" to="/move_base_simple/goal"/>
