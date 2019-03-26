@@ -1746,7 +1746,7 @@ bool WorldModel::CheckCarWithObstacles(const CarStruct& car, int flag){
 }
 
 bool WorldModel::CheckCarWithObsLine(const CarStruct& car, COORD& start_point, COORD& end_point, int flag){
-	const double step = ModelParams::PATH_STEP;
+	const double step = ModelParams::OBS_LINE_STEP;
 
 	double d = COORD::EuclideanDistance(start_point, end_point);
 	double dx = (end_point.x-start_point.x) / d;
@@ -1773,7 +1773,10 @@ bool WorldModel::CheckCarWithObsLine(const CarStruct& car, COORD& start_point, C
 		//if(::inCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir))
 		//	return true;
 
-		t += step;
+		if (t == ti + d - 0.01)
+			break;
+		else
+			t = min( t + step, ti + d - 0.01);
 	}
 
 	return false;
