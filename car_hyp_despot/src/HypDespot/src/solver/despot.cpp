@@ -361,6 +361,10 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 	} while (cur->depth() < Globals::config.search_depth
 	         && WEU((VNode*) cur) > 0 &&
 	         !Globals::Timeout(Globals::config.time_per_move));
+  
+  printf( "Termination of trial: WEU = %f, timeout = %d, depth = %d\n", WEU((VNode*) cur), 
+      Globals::Timeout(Globals::config.time_per_move),
+      cur->depth());
 
 	history.Truncate(hist_size);
 	if(Globals::config.use_prior){
@@ -539,10 +543,14 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 				cout << "Reaching max trials, stopping search" << endl;
 				break;
 			}
-	} while (used_time * (num_trials + 1.0) / num_trials < timeout
+	} while (used_time /** (num_trials + 1.0) / num_trials*/ < timeout
 	         && !Globals::Timeout(Globals::config.time_per_move)
 	         && (((VNode*) root)->upper_bound() - ((VNode*) root)->lower_bound())
 	         > 1e-6);
+
+  printf("Termination of thread: used_time = %f, timeout = %d, root gap = %f\n", used_time,
+      Globals::Timeout(Globals::config.time_per_move), ((VNode*) root)->upper_bound() - ((VNode*) root)->lower_bound());
+
 	Globals::Global_print_deleteT(this_thread::get_id(), 0, 1);
 
 	Globals::MinusActiveThread();

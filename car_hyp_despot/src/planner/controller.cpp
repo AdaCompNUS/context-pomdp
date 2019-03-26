@@ -65,6 +65,8 @@ void DrivingController::InitializeDefaultParameters() {
 	Globals::config.sim_len=200;
 	Globals::config.pruning_constant= 0.001;
 
+  Globals::config.xi = 0.8;
+
 	Globals::config.max_policy_sim_len=90;
 	//Globals::config.search_depth = 30;
 
@@ -72,7 +74,7 @@ void DrivingController::InitializeDefaultParameters() {
 	Globals::config.useGPU=true	;
 	Globals::config.use_multi_thread_=true;
 	
-	Globals::config.NUM_THREADS=5;
+	Globals::config.NUM_THREADS = 5;
 
 	Globals::config.exploration_mode=UCT;
 	Globals::config.exploration_constant=0.3;

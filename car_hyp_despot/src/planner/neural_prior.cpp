@@ -1227,7 +1227,9 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 			// get the steering prob from angs
 		}
 
-		double prior_value = value_transform_inverse(value_double[node_id]);
+    // This is a patch !!!
+    // 0.3 is the confidence bound for the val net fitting error.
+		double prior_value = value_transform_inverse(value_double[node_id] - 0.3);
 
 		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
 
@@ -1923,12 +1925,12 @@ void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 		vector<float> acc_sigma = message.response.acc_sigma;
 		vector<float> ang = message.response.ang;
 
-		logi << "value" << endl;
+		logd << "value" << endl;
 		for (int i = 0 ; i< value.size(); i++){
-			logi << value[i] << " ";
+			logd << value[i] << " ";
 			t_value[i]= -3.4; //value[i];
 		}
-		logi << endl;
+		logd << endl;
 
 		logd << "acc_pi" << endl;
 		for (int id = 0 ; id< acc_pi.size(); id++){

@@ -239,7 +239,8 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.num_scenarios=5;
 	Globals::config.discount=1.0; //0.95;
 	Globals::config.sim_len=200/*180*//*10*/; // this is not used
-
+  
+  Globals::config.xi = 0.95;
 	//Globals::config.pruning_constant= 0.001; // passed as a ROS node param
 
 	Globals::config.useGPU=true;
@@ -249,7 +250,7 @@ void Controller::InitializeDefaultParameters() {
 
 	Globals::config.GPUid=1;//default GPU
 	Globals::config.use_multi_thread_=true;
-	Globals::config.NUM_THREADS=10;
+	Globals::config.NUM_THREADS=5;
 
 	Globals::config.exploration_mode=UCT;
 	Globals::config.exploration_constant = 2.0;
