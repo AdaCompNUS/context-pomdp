@@ -467,11 +467,11 @@ public:
 	double Value(const State& s) const {
 		const PomdpState& state = static_cast<const PomdpState&>(s);
 
-		if (ped_pomdp_->world_model->inCollision(state))
-			return ped_pomdp_->CrashPenalty(state);
+	//	if (ped_pomdp_->world_model->inCollision(state))
+		//	return ped_pomdp_->CrashPenalty(state);
 
 		int min_step = ped_pomdp_->world_model->minStepToGoal(state);
-		return -ModelParams::TIME_REWARD * min_step + ModelParams::GOAL_REWARD * Globals::Discount(min_step);
+		return -ModelParams::TIME_REWARD * min_step;// + ModelParams::GOAL_REWARD * Globals::Discount(min_step);
 	}
 };
 
@@ -490,7 +490,7 @@ ParticleUpperBound* PedPomdp::CreateParticleUpperBound(string name) const {
 
 ScenarioUpperBound* PedPomdp::CreateScenarioUpperBound(string name,
         string particle_bound_name) const {
-  name = "SMART";
+ name = "SMART";
 	// name = "TRIVIAL";
 	ScenarioUpperBound* ub;
 	if (name == "TRIVIAL") {

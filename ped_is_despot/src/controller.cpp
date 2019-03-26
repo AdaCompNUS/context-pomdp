@@ -240,7 +240,7 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.discount=1.0; //0.95;
 	Globals::config.sim_len=200/*180*//*10*/; // this is not used
   
-  Globals::config.xi = 0.95;
+  Globals::config.xi = 0.97;
 	//Globals::config.pruning_constant= 0.001; // passed as a ROS node param
 
 	Globals::config.useGPU=true;
