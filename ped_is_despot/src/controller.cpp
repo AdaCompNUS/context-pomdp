@@ -250,7 +250,7 @@ void Controller::InitializeDefaultParameters() {
 
 	Globals::config.GPUid=1;//default GPU
 	Globals::config.use_multi_thread_=true;
-	Globals::config.NUM_THREADS=5;
+	Globals::config.NUM_THREADS=10;
 
 	Globals::config.exploration_mode=UCT;
 	Globals::config.exploration_constant = 2.0;

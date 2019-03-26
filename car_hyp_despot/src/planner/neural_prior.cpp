@@ -1229,7 +1229,7 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
     // This is a patch !!!
     // 0.3 is the confidence bound for the val net fitting error.
-		double prior_value = value_transform_inverse(value_double[node_id] - 0.3);
+		double prior_value = value_transform_inverse(value_double[node_id]);
 
 		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
 
