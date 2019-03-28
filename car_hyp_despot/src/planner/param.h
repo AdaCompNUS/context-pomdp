@@ -62,7 +62,7 @@ namespace ModelParams {
     }
 
     // deprecated params
-    const double GOAL_REWARD = 0;
+    const double GOAL_REWARD = 1.0;
     const double TIME_REWARD = 0.1/*0.0*/;
     const bool CPUDoPrint=false;
 

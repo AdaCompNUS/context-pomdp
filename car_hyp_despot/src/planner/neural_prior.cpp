@@ -1229,7 +1229,9 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
     // This is a patch !!!
     // 0.3 is the confidence bound for the val net fitting error.
-		double prior_value = value_transform_inverse(value_double[node_id]);
+    // Goal reward was not considered suring val net training
+    // Thus adding it here
+		double prior_value = value_transform_inverse(value_double[node_id]) + ModelParams::GOAL_REWARD;
 
 		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
 
@@ -1524,7 +1526,10 @@ void PedNeuralSolverPrior::ComputeMiniBatchValue(vector<torch::Tensor>& input_ba
 
 		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
 
-		vnode->prior_value(prior_value);
+    // this is a patch !!!
+    // goal reward was not counted during val net training
+    // so add it here
+		vnode->prior_value(prior_value + ModelParams::GOAL_REWARD);
 	}
 
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
