@@ -499,7 +499,7 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
     double chord_len = min_turning_radii * sin(theta) * 2;
 
     if (chord_len > d) // can never reach goal with in the round
-    	return - Globals::config.sim_len;
+    	return Globals::config.sim_len;
     else {
     	double total_dist = arc_len + d - chord_len; // turn and then proceed
     	return int(ceil(total_dist / (ModelParams::VEL_MAX / freq)));
