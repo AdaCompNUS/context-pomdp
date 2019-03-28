@@ -495,7 +495,7 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
     	return int(ceil(d / (ModelParams::VEL_MAX/freq)));
 
     double min_turning_radii = CAR_LENGTH / tan(ModelParams::MaxSteerAngle);
-    double arc_len = min_turning_radii * theta;
+    // double arc_len = min_turning_radii * theta;
     double chord_len = min_turning_radii * sin(theta) * 2;
 
     if (chord_len > d) // can never reach goal with in the round

@@ -470,7 +470,7 @@ public:
 	//	if (ped_pomdp_->world_model->inCollision(state))
 		//	return ped_pomdp_->CrashPenalty(state);
 
-		int min_step = ped_pomdp_->world_model->minStepToGoalWithSteer(state);
+		int min_step = ped_pomdp_->world_model->minStepToGoal(state);
 		return -ModelParams::TIME_REWARD * min_step + ModelParams::GOAL_REWARD * Globals::Discount(min_step);
 	}
 };
