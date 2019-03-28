@@ -78,7 +78,7 @@ namespace ModelParams {
 //#define CAR_EXPAND_SIZE 0.2f
 
 #define CAR_WIDTH 2.0f
-#define CAR_LENGTH 1.68f
+#define CAR_LENGTH 2.68f
 #define CAR_SIDE_MARGIN 1.2f
 #define CAR_FRONT_MARGIN 1.5f
 #define PED_SIZE 0.25f
