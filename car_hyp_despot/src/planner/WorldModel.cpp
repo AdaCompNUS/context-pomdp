@@ -478,6 +478,34 @@ int WorldModel::minStepToGoal(const PomdpState& state) {
     return int(ceil(d / (ModelParams::VEL_MAX/freq)));
 }
 
+int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
+    double d = COORD::EuclideanDistance(state.car.pos,car_goal);
+
+    if (d < 0) d = 0;
+
+    if (d == 0) return 0;
+
+    double theta = abs(COORD::SlopAngle(state.car.pos,car_goal) - state.car.heading_dir);
+
+    if (theta > M_PI) {
+         theta = 2 * M_PI - theta;
+    }
+
+    if (theta == 0) // can go through straight line
+    	return int(ceil(d / (ModelParams::VEL_MAX/freq)));
+
+    double min_turning_radii = CAR_LENGTH / tan(ModelParams::MaxSteerAngle);
+    double arc_len = min_turning_radii * theta;
+    double chord_len = min_turning_radii * sin(theta) * 2;
+
+    if (chord_len > d) // can never reach goal with in the round
+    	return - Globals::config.sim_len;
+    else {
+    	double total_dist = arc_len + d - chord_len; // turn and then proceed
+    	return int(ceil(total_dist / (ModelParams::VEL_MAX / freq)));
+    }
+}
+
 void WorldModel::PedStep(PedStruct &ped, Random& random) {
     const COORD& goal = goals[ped.goal];
 	if (goal.x == -1 && goal.y == -1) {  //stop intention
