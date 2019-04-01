@@ -480,9 +480,7 @@ int WorldModel::minStepToGoal(const PomdpState& state) {
 
 int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
     double d = COORD::EuclideanDistance(state.car.pos,car_goal);
-
     if (d < 0) d = 0;
-
     if (d == 0) return 0;
 
     double theta = abs(COORD::SlopAngle(state.car.pos,car_goal) - state.car.heading_dir);
@@ -494,16 +492,51 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
     if (theta == 0) // can go through straight line
     	return int(ceil(d / (ModelParams::VEL_MAX/freq)));
 
-    double min_turning_radii = CAR_LENGTH / tan(ModelParams::MaxSteerAngle);
+    double r = CAR_LENGTH / tan(ModelParams::MaxSteerAngle);
     // double arc_len = min_turning_radii * theta;
-    double chord_len = min_turning_radii * sin(theta) * 2;
+    double chord_len = r * sin(theta) * 2;
 
-    if (chord_len > d) // can never reach goal with in the round
+    if (chord_len >= d) // can never reach goal with in the round
     	return Globals::config.sim_len;
     else {
-//    	double total_dist = arc_len + d - chord_len; // turn and then proceed
-//    	return int(ceil(total_dist / (ModelParams::VEL_MAX / freq)));
-    	return int(ceil(d / (ModelParams::VEL_MAX/freq)));
+    	// calcutate the length of the shortest curve
+
+    	float sin_theta = sin(theta);
+    	float cos_theta = cos(theta);
+    	float a = d * d + r * r - 2* d *r * sin_theta;
+    	float b = 2 * r * (d * sin_theta - r);
+    	float c = r * r - d * d * cos_theta * cos_theta;
+
+    	float delta = b * b - 4 * a * c;
+    	if (delta <= 0)
+    		raise(SIGABRT);
+
+    	float cos_phi_1 = (-b + sqrt(delta)) / (2 *a);
+    	float cos_phi_2 = (-b - sqrt(delta)) / (2 *a);
+
+    	float sin_phi_1 = (r * cos_phi_1 + d * sin_theta - r > 0)? sqrt(1 - cos_phi_1 * cos_phi_1): -sqrt(1 - cos_phi_1 * cos_phi_1);
+    	float sin_phi_2 = (r * cos_phi_2 + d * sin_theta - r > 0)? sqrt(1 - cos_phi_2 * cos_phi_2): -sqrt(1 - cos_phi_2 * cos_phi_2);
+
+    	float phi_1 = atan2(sin_phi_1, cos_phi_1); // 0 - pi
+    	float phi_2 = atan2(sin_phi_2, cos_phi_2); // 0 - pi
+
+    	float phi = 0, cos_phi = 0, sin_phi = 0; // the one larger than zero
+    	if (phi_1 >= phi_2) {
+    		phi = phi_1;
+    		cos_phi = cos_phi_1;
+    		sin_phi = sin_phi_1;
+    	}
+    	else {
+			phi = phi_2;
+			cos_phi = cos_phi_2;
+			sin_phi = sin_phi_2;
+		}
+
+    	float arc_len = phi * r;
+
+    	float line_len = sqrt(pow(r * cos_phi + d * sin_theta - r ,2) + pow(r * sin_phi - d * cos_theta,2));
+
+    	return int(ceil( (arc_len + line_len) / (ModelParams::VEL_MAX/freq)));
     }
 }
 
