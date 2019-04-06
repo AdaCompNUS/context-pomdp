@@ -517,20 +517,45 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
     	float sin_phi_1 = (r * cos_phi_1 + d * sin_theta - r > 0)? sqrt(1 - cos_phi_1 * cos_phi_1): -sqrt(1 - cos_phi_1 * cos_phi_1);
     	float sin_phi_2 = (r * cos_phi_2 + d * sin_theta - r > 0)? sqrt(1 - cos_phi_2 * cos_phi_2): -sqrt(1 - cos_phi_2 * cos_phi_2);
 
-    	float phi_1 = atan2(sin_phi_1, cos_phi_1); // 0 - pi
-    	float phi_2 = atan2(sin_phi_2, cos_phi_2); // 0 - pi
+//        float turning_dir = COORD::get_dir(state.car.heading_dir, COORD::SlopAngle(state.car.pos,car_goal));
+
+    	float phi_1 = atan2(sin_phi_1, cos_phi_1); // -pi, - pi
+    	float phi_2 = atan2(sin_phi_2, cos_phi_2); // -pi, - pi
+
+        bool phi_1_ok = false; bool phi_2_ok = false;
+
+        if (abs(r + ( d* sin_theta - r) * cos_phi_1 - d * cos_theta * sin_phi_1) < 1e-3)
+            phi_1_ok = true;
+
+        if (abs(r + ( d* sin_theta - r) * cos_phi_2 - d * cos_theta * sin_phi_2) < 1e-3)
+            phi_2_ok = true;
+
+        if (phi_1 < 0)
+			phi_1 = phi_1 + 2 * M_PI;
+		if (phi_2 < 0)
+			phi_2 = phi_2 + 2 * M_PI;
 
     	float phi = 0, cos_phi = 0, sin_phi = 0; // the one larger than zero
-    	if (phi_1 >= phi_2) {
-    		phi = phi_1;
+
+    	if (!phi_1_ok)
+			phi = phi_2;
+		else if (!phi_2_ok)
+			phi = phi_1;
+		else if (phi_2 <= phi_1)
+			phi = phi_2;
+		else if (phi_1 <= phi_2)
+			phi = phi_1;
+
+    	if (phi == phi_1) {
     		cos_phi = cos_phi_1;
     		sin_phi = sin_phi_1;
     	}
-    	else {
-			phi = phi_2;
+    	else if (phi == phi_2){
 			cos_phi = cos_phi_2;
 			sin_phi = sin_phi_2;
 		}
+    	else // neither phi_1 or phi_2
+    		raise(SIGABRT);
 
     	float arc_len = phi * r;
 

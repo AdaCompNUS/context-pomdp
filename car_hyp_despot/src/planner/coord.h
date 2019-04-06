@@ -54,6 +54,8 @@ struct COORD
   
   static double SlopAngle(COORD start, COORD end);
 
+  static bool get_dir(double a, double b);
+
   double Length(){
 	  return sqrt(x*x + y*y);
   }
@@ -100,6 +102,21 @@ inline double COORD::SlopAngle(COORD start, COORD end){
 		angle += 2 * M_PI;
 
 	return angle;
+}
+
+inline bool COORD::get_dir(double a, double b){
+	// a and b are two angles
+	double diff = b - a;
+	if (diff >= 0 and diff < M_PI)
+		return true; // ccw
+	else if (diff >= M_PI)
+		return false; // cw
+	else if (diff < 0 and diff >= -M_PI)
+		return false; // cw
+	else if (diff < -M_PI)
+		return true; // ccw
+	else
+		return true;
 }
 
 
