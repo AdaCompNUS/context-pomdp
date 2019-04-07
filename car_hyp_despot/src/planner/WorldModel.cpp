@@ -497,7 +497,8 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
     double chord_len = r * sin(theta) * 2;
 
     if (chord_len >= d) // can never reach goal with in the round
-    	return Globals::config.sim_len;
+//    	return Globals::config.sim_len;
+    	return 5 * int(ceil(d / (ModelParams::VEL_MAX/freq)));
     else {
     	// calcutate the length of the shortest curve
 
