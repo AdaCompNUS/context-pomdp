@@ -1416,6 +1416,8 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 			if (opt_act_end == 0 ){ // no node expanded
 				cout << "No node expanded !!" << endl;
+				logi << "prior_force_steer="<< 1 << endl;
+
 				astar = vnode->default_move();
 				return astar;
 			}
