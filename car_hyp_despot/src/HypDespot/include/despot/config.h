@@ -63,6 +63,31 @@ struct Config {
 	{
 		rollout_type = "INDEPENDENT";
 	}
+
+	void text(){
+		printf("Globals::config:\n");
+		printf("=> search_depth=%d\n", search_depth);
+		printf("=> discount=%f\n", discount);
+		printf("=> root_seed=%d\n", root_seed);
+		printf("=> time_per_move=%f\n", num_scenarios);
+		printf("=> pruning_constant=%f\n", pruning_constant);
+		printf("=> xi=%f\n", xi);
+		printf("=> sim_len=%d\n", sim_len);
+		printf("=> default_action=%s\n", default_action);
+		printf("=> max_policy_sim_len=%d\n", max_policy_sim_len);
+		printf("=> noise=%f\n", noise);
+		printf("=> silence=%d\n", silence);
+		printf("=> useGPU=%d\n", useGPU);
+		printf("=> rollout_type=%s\n", rollout_type);
+		printf("=> GPUid=%d\n", GPUid);
+		printf("=> use_multi_thread_=%d\n", use_multi_thread_);
+		printf("=> exploration_constant_o=%f\n", exploration_constant_o);
+		printf("=> exploration_constant=%f\n", exploration_constant);
+		printf("=> enable_despot_thread=%d\n", enable_despot_thread);
+		printf("=> despot_thread_gap=%d\n", despot_thread_gap);
+		printf("=> expanstion_switch_thresh=%d\n", expanstion_switch_thresh);
+		printf("=> time_scale=%f\n", time_scale);
+	}
 };
 
 } // namespace despot

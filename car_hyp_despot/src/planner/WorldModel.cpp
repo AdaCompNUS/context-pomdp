@@ -1539,8 +1539,8 @@ void WorldModel::RVO2PedStep(PomdpStateWorld& state, Random& random){
     // Update positions of only attentive peds
     for(int i=0; i<num_ped; i++){
     	if(state.peds[i].mode==PED_ATT){
-    		peds[i].pos.x=ped_sim_[threadID]->getAgentPosition(agent).x();// + random.NextGaussian() * (ped_sim_[threadID]->getAgentPosition(agent).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
-    		peds[i].pos.y=ped_sim_[threadID]->getAgentPosition(agent).y();// + random.NextGaussian() * (ped_sim_[threadID]->getAgentPosition(agent).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+    		peds[i].pos.x=ped_sim_[threadID]->getAgentPosition(agent).x()+ random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;// + random.NextGaussian() * (ped_sim_[threadID]->getAgentPosition(agent).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+    		peds[i].pos.y=ped_sim_[threadID]->getAgentPosition(agent).y()+ random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;// + random.NextGaussian() * (ped_sim_[threadID]->getAgentPosition(agent).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
     	    agent++;
     	}
     }
@@ -1579,9 +1579,8 @@ void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarS
     ped_sim_[threadID]->doStep();
 
     for(int i=0; i<num_ped; i++){
-        peds[i].pos.x=ped_sim_[threadID]->getAgentPosition(i).x();// + random.NextGaussian() * (ped_sim_[threadID]->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
-        peds[i].pos.y=ped_sim_[threadID]->getAgentPosition(i).y();// + random.NextGaussian() * (ped_sim_[threadID]->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
-      
+        peds[i].pos.x=ped_sim_[threadID]->getAgentPosition(i).x() + random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;// + random.NextGaussian() * (ped_sim_[threadID]->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+        peds[i].pos.y=ped_sim_[threadID]->getAgentPosition(i).y() + random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;// + random.NextGaussian() * (ped_sim_[threadID]->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
     }
 
 }
@@ -1625,9 +1624,9 @@ void WorldModel::RVO2PedStep(PedStruct peds[], double& random, int num_ped, CarS
 
     	if(peds[i].mode==PED_ATT){
 			double rNum=GenerateGaussian(random);
-			peds[i].pos.x=ped_sim_[threadID]->getAgentPosition(i).x();// + rNum * (ped_sim_[threadID]->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+			peds[i].pos.x=ped_sim_[threadID]->getAgentPosition(i).x() + rNum * ModelParams::NOISE_PED_POS / freq;// + rNum * (ped_sim_[threadID]->getAgentPosition(i).x() - peds[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
 			rNum=GenerateGaussian(rNum);
-			peds[i].pos.y=ped_sim_[threadID]->getAgentPosition(i).y();// + rNum * (ped_sim_[threadID]->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
+			peds[i].pos.y=ped_sim_[threadID]->getAgentPosition(i).y() + rNum * ModelParams::NOISE_PED_POS / freq;// + rNum * (ped_sim_[threadID]->getAgentPosition(i).y() - peds[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
     	}
     }
 }

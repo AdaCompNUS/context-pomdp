@@ -81,6 +81,8 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
 	controller = new Controller(nh, fixed_path, pruning_constant, pathplan_ahead, obstacle_file_name);
 
+	ModelParams::print_params();
+
     // default goal: after create door
     if(b_load_goal){// load goal from ped_is_despot.yaml file
 	    n.param("goalx", controller->goalx_, 19.5);
@@ -96,6 +98,9 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 			case 1: controller->goalx_=18.0; controller->goaly_=0.0; break;
 			case 2: controller->goalx_=0.0; controller->goaly_=-18.0; break;
 		}
+
+		cout << "No goal availabel from ros params. Using default goals\n";
+		cout << "car goal: " << controller->goalx_ << " " << controller->goaly_ << endl;
 	}
 
     controller->RunPlanning(argc, argv);

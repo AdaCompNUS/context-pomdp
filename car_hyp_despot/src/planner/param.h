@@ -67,6 +67,8 @@ namespace ModelParams {
     const bool CPUDoPrint=false;
 
     const bool is_simulation=true;
+
+    void print_params();
 };
 
 

@@ -22,5 +22,28 @@ namespace ModelParams {
 	std::string laser_frame="/laser_frame";
 
 	std::string car_model = "audi_r8";// or pomdp_car
+
+
+	void print_params(){
+		printf("ModelParams:\n");
+		printf("=> GOAL_TRAVELLED=%f\n", GOAL_TRAVELLED);
+		printf("=> CRASH_PENALTY=%f\n", CRASH_PENALTY);
+		printf("=> REWARD_FACTOR_VEL=%f\n", REWARD_FACTOR_VEL);
+		printf("=> REWARD_BASE_CRASH_VEL=%f\n", REWARD_BASE_CRASH_VEL);
+		printf("=> BELIEF_SMOOTHING=%f\n", BELIEF_SMOOTHING);
+		printf("=> NOISE_ROBVEL=%f\n", NOISE_ROBVEL);
+		printf("=> NOISE_GOAL_ANGLE=%f\n", NOISE_GOAL_ANGLE);
+		printf("=> NOISE_PED_VEL=%f\n", NOISE_PED_VEL);
+		printf("=> NOISE_PED_POS=%f\n", NOISE_PED_POS);
+		printf("=> COLLISION_DISTANCE=%f\n", COLLISION_DISTANCE);
+		printf("=> IN_FRONT_ANGLE_DEG=%f\n", IN_FRONT_ANGLE_DEG);
+		printf("=> DRIVING_PLACE=%d\n", DRIVING_PLACE);
+		printf("=> VEL_MAX=%f\n", VEL_MAX);
+		printf("=> LASER_RANGE=%f\n", LASER_RANGE);
+
+		printf("=> rosns=%s\n", rosns);
+		printf("=> laser_frame=%s\n", laser_frame);
+		printf("=> car_model=%s\n", car_model);
+	}
 }
 

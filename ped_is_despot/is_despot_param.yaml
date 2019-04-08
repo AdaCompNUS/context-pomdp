@@ -12,7 +12,7 @@ pruning_constant: 0 #100000000
 pathplan_ahead: 1.5
 
 
-crash_penalty: -3000.0
+crash_penalty: -30000.0
 #reward_factor_vel: 0.5
 reward_factor_vel: 4
 reward_base_crash_vel: 0.5

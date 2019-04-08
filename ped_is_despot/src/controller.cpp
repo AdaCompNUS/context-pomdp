@@ -107,17 +107,17 @@ nh(_nh), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file
 */
 
 /// for audi r8
+	cerr <<"DEBUG: Entering Controller()"<<endl;
 
     simulation_mode_ = UNITY;
-
     fixed_path_=false;
-	cout << "fixed_path = " << fixed_path_ << endl;
-	cout << "pathplan_ahead = " << pathplan_ahead_ << endl;
 	Globals::config.pruning_constant = pruning_constant;
-
 	global_frame_id = ModelParams::rosns + "/map";
-	cerr <<"DEBUG: Entering Controller()"<<endl;
 	control_freq=ModelParams::control_freq;
+
+	cout << "=> fixed_path = " << fixed_path_ << endl;
+	cout << "=> pathplan_ahead (will be reset to 0 for lets-drive mode)= " << pathplan_ahead_ << endl;
+	cout << "=> pruning_constant = (will be rewritten by planner::initdefaultparams)" << pruning_constant << endl;
 
 	cerr << "DEBUG: Initializing publishers..." << endl;
 
@@ -275,7 +275,8 @@ void Controller::InitializeDefaultParameters() {
 
 	logging::level(3);
 
-	logi << "[default param] time_per_move=" << Globals::config.time_per_move << endl;
+	logi << "Planner default parameters:" << endl;
+	Globals::config.text();
 
 }
 
