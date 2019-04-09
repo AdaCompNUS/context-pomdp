@@ -253,7 +253,7 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.NUM_THREADS=10;
 
 	Globals::config.exploration_mode=UCT;
-	Globals::config.exploration_constant = 0.1;
+	Globals::config.exploration_constant = 1.0;
 //	Globals::config.exploration_constant=0.0;
 	Globals::config.exploration_constant_o = 1.0;
 
