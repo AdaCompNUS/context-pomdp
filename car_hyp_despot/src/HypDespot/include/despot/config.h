@@ -69,7 +69,8 @@ struct Config {
 		printf("=> search_depth=%d\n", search_depth);
 		printf("=> discount=%f\n", discount);
 		printf("=> root_seed=%d\n", root_seed);
-		printf("=> time_per_move=%f\n", num_scenarios);
+		printf("=> num_scenarios=%d\n", num_scenarios);
+		printf("=> time_per_move=%f\n", time_per_move);
 		printf("=> pruning_constant=%f\n", pruning_constant);
 		printf("=> xi=%f\n", xi);
 		printf("=> sim_len=%d\n", sim_len);

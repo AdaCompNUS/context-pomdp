@@ -288,6 +288,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 						   ((QNode*) qstar)->edge(),
 						   -1000,
 						   "trace down to QNode");
+
 			}
 			else
 				cout << "qstar is leaf" << endl;
@@ -363,10 +364,12 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 	         && WEU((VNode*) cur) > 0 &&
 	         !Globals::Timeout(Globals::config.time_per_move));
   
-  printf( "Termination of trial: WEU = %f, timeout = %d, expansion_count= %d, depth = %d\n", WEU((VNode*) cur),
-      Globals::Timeout(Globals::config.time_per_move),
-      trial_expansion_count,
-      cur->depth());
+  printf( "Termination of trial-t%d: WEU = %f, timeout = %d, expansion_count= %d, depth = %d\n",
+		  threadID,
+		  WEU((VNode*) cur),
+		  Globals::Timeout(Globals::config.time_per_move),
+		  trial_expansion_count,
+		  cur->depth());
 
 	history.Truncate(hist_size);
 	if(Globals::config.use_prior){
@@ -550,7 +553,7 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 	         && (((VNode*) root)->upper_bound() - ((VNode*) root)->lower_bound())
 	         > 1e-6);
 
-  printf("Termination of thread: used_time = %f, timeout = %d, root gap = %f\n", used_time,
+  printf("Termination of thread %d: used_time = %f, timeout = %d, root gap = %f\n", threadID, used_time,
       Globals::Timeout(Globals::config.time_per_move), ((VNode*) root)->upper_bound() - ((VNode*) root)->lower_bound());
 
 	Globals::Global_print_deleteT(this_thread::get_id(), 0, 1);
@@ -1436,11 +1439,13 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 				// if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
 				// 	score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
 
-				logi << "Children of root node: action: " << qnode->edge() <<
-						" visit_count: " << visit <<
-						" upper_bound: " << qnode->upper_bound() <<		
-						" lower_bound: " << qnode->lower_bound() <<
-						" score: " << score << endl;
+				if (qnode->lower_bound() != EMPTY_LB_VALUE)
+					logi << "Children of root node: action: " << qnode->edge() <<
+							" visit_count: " << visit <<
+							" upper_bound: " << qnode->upper_bound() <<
+							" lower_bound: " << qnode->lower_bound() <<
+							" prior: " << qnode->prior_probability() <<
+							" score: " << score << endl;
 
 				if (score > score_max) {
 					astar = ValuedAction(action, qnode->lower_bound());
@@ -1703,6 +1708,7 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 	double upperstar = Globals::NEG_INFTY;
 	double lowerstar = Globals::NEG_INFTY;
 
+	int astar_prior = -1;
 	double prob_star = Globals::NEG_INFTY;
 
 	bool use_exploration_value = true;
@@ -1757,11 +1763,24 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 			upperstar = qnode->upper_bound(use_exploration_value);
 			astar = action;
 		}
+
+		if (qnode->prior_probability() > prob_star + 1e-8) {
+			prob_star = qnode->prior_probability();
+			astar_prior = action;
+		}
 	}
 
 	assert(astar >= 0);
+	assert(astar_prior >= 0);
 
 	Shared_QNode* qstar = static_cast<Shared_QNode*>(((VNode*) vnode)->Child(astar));
+	Shared_QNode* qstar_prior = static_cast<Shared_QNode*>(((VNode*) vnode)->Child(astar_prior));
+
+	if (true)
+		printf("thread %d chose qnode with action %d, prior prob %f, ub %f, bonus %f ;\n          best qnode has action %d, prior prob %f, ub %f, bonus %f",
+				prior_ID, astar, qstar->prior_probability_, qstar->upper_bound(false), qstar->exploration_bonus,
+				astar_prior, qstar_prior->prior_probability_, qstar_prior->upper_bound(false), qstar_prior->exploration_bonus);
+
 	if (Globals::config.exploration_mode == VIRTUAL_LOSS)
 		qstar->exploration_bonus -= CalExplorationValue(((VNode*) vnode)->depth() + 1);
 	else if (Globals::config.exploration_mode == UCT)
