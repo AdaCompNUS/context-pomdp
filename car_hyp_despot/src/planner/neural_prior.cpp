@@ -38,6 +38,7 @@ void SolverPrior::record_init_time(){
 
 	logd << " SolverPrior init_time recorded" << endl;
 }
+
 cv::Mat rescale_image(const cv::Mat& image, double downsample_ratio=0.03125){
 	logd << "[rescale_image]" << endl;
 	auto start = Time::now();
@@ -1204,12 +1205,28 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 		// Update the values in the vnode
 
 		double accum_prob = 0;
+
+		double* act_prob_total = new double[steer_probs_Tensor.size(0)];
+		int sharpen_factor = 2;
+
+		for (int action = 0;  action < ped_model->NumActions(); action ++){
+			int acc_ID=ped_model->GetAccelerationID(action);
+			int steerID = ped_model->GetSteeringID(action);
+			float acc_prob = acc_probs_double[acc_ID];
+
+			act_prob_total[steerID] += std::pow(acc_prob, sharpen_factor);
+		}
+
 		for (int action = 0;  action < ped_model->NumActions(); action ++){
 			int acc_ID=ped_model->GetAccelerationID(action);
 			int steerID = ped_model->GetSteeringID(action);
 
 			float acc_prob = acc_probs_double[acc_ID];
 			float steer_prob = cal_steer_prob(steer_probs_double, steerID);
+
+			if (sharpen_factor > 1){
+				acc_prob = pow(acc_prob, sharpen_factor)/act_prob_total[steerID];
+			}
 
 			float joint_prob = acc_prob * steer_prob;
 			vnode->prior_action_probs(action, joint_prob);
@@ -1578,10 +1595,12 @@ void PedNeuralSolverPrior::get_history_tensors(int mode, despot::VNode* cur_node
 				cerr << "Empty car tensor hist, slot "<< t << endl;
 				raise(SIGABRT);
 			}
+
 			if (!map_hist_[t].defined()){
 				cerr << "Empty map tensor hist, slot "<< t << endl;
 				raise(SIGABRT);
 			}
+
 			car_hist_tensor_[i] = car_hist_[t];
 			map_hist_tensor_[i] = map_hist_[t];
 
@@ -1598,10 +1617,12 @@ void PedNeuralSolverPrior::get_history_tensors(int mode, despot::VNode* cur_node
 				cerr << "Empty car tensor hist, node "<< parent << endl;
 				raise(SIGABRT);
 			}
+
 			if (!static_cast<Shared_VNode*>(parent)->map_tensor.defined()){
 				cerr << "Empty map tensor hist, node "<< parent << endl;
 				raise(SIGABRT);
 			}
+
 			car_hist_tensor_[i] = static_cast<Shared_VNode*>(parent)->car_tensor;
 			map_hist_tensor_[i] = static_cast<Shared_VNode*>(parent)->map_tensor;
 
