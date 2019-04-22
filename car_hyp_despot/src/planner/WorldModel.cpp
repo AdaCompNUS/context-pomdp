@@ -498,11 +498,13 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
     // double arc_len = min_turning_radii * theta;
     double chord_len = r * sin(theta) * 2;
 
-    if (chord_len >= d + ModelParams::GOAL_TOLERANCE){
+    double relax_thresh = ModelParams::GOAL_TOLERANCE;
+
+    if (chord_len >= d + relax_thresh){
     	printf("No steering path available: chord_len=%f, d=%f, r=%f, theta=%f\n", chord_len, d, r, theta);
     	return Globals::config.sim_len;  // can never reach goal with in the round
     }
-    else if (chord_len <  d + ModelParams::GOAL_TOLERANCE && chord_len >= d) {
+    else if (chord_len <  d + relax_thresh && chord_len >= d) {
     	return 2* theta * r; // the arc length of turning to the goal
     }
     else {
