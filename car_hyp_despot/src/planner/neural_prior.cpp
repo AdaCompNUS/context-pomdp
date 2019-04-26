@@ -1177,77 +1177,15 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 		auto acc_sigma_actions = acc_sigma.unsqueeze(0).expand({num_accs, num_modes, 1});
 
 		auto acc_probs_Tensor = gm_pdf(acc_pi_actions, acc_sigma_actions, acc_mu_actions, acc_candiates);
-		logd << "rescaling acc probs" << endl;
-
-        auto acc_sum = acc_probs_Tensor.sum();
-        float acc_total_prob = acc_sum.data<float>()[0];
-	    acc_probs_Tensor = acc_probs_Tensor / acc_total_prob;
 
         auto steer_probs_Tensor = at::_softmax(ang, 0, false);
 
-        assert(2*ModelParams::NumSteerAngle == steer_probs_Tensor.size(0));
+        Update_prior_probs(acc_probs_Tensor, acc_probs_Tensor, vnode);
 
-		logd << "acc probs = " << acc_probs_Tensor << endl;
-		logd << "steer probs = " << steer_probs_Tensor << endl;
-
-	    auto acc_probs_double = acc_probs_Tensor.accessor<float, 1>();
-
-	    if (logging::level()>=3){
-	    	logd << "printing acc probs, acc_probs_Tensor dim=" << acc_probs_Tensor.sizes() << endl;
-	    	for (int acc_id =0; acc_id < acc_probs_Tensor.sizes()[0]; acc_id++){
-				double query_acc = ped_model->GetAccelerationNoramlized(acc_id);
-				logd << "query acc "<< acc_id <<"=" <<  query_acc << ", prob=" << acc_probs_double[acc_id] << endl;
-			}
-	    }
-
-	    auto steer_probs_double = steer_probs_Tensor.accessor<float, 1>();
-
-		// Update the values in the vnode
-
-		double accum_prob = 0;
-
-		double* act_prob_total = new double[steer_probs_Tensor.size(0)];
-		int sharpen_factor = 2;
-
-		for (int action = 0;  action < ped_model->NumActions(); action ++){
-			int acc_ID=ped_model->GetAccelerationID(action);
-			int steerID = ped_model->GetSteeringID(action);
-			float acc_prob = acc_probs_double[acc_ID];
-
-			act_prob_total[steerID] += std::pow(acc_prob, sharpen_factor);
-		}
-
-		for (int action = 0;  action < ped_model->NumActions(); action ++){
-			int acc_ID=ped_model->GetAccelerationID(action);
-			int steerID = ped_model->GetSteeringID(action);
-
-			float acc_prob = acc_probs_double[acc_ID];
-			float steer_prob = cal_steer_prob(steer_probs_double, steerID);
-
-			if (sharpen_factor > 1){
-				acc_prob = pow(acc_prob, sharpen_factor)/act_prob_total[steerID];
-			}
-
-			float joint_prob = acc_prob * steer_prob;
-			vnode->prior_action_probs(action, joint_prob);
-
-			if (acc_ID == 0){
-				vnode->prior_steer_probs(steerID, steer_prob);
-			}
-
-			accum_prob += joint_prob;
-
-			logd << "action "<< acc_ID << " " << steerID <<
-					" joint_prob = " << joint_prob
-					<< " accum_prob = " << accum_prob << endl;
-
-			// get the steering prob from angs
-		}
-
-    // This is a patch !!!
-    // 0.3 is the confidence bound for the val net fitting error.
-    // Goal reward was not considered suring val net training
-    // Thus adding it here
+		// This is a patch !!!
+		// 0.3 is the confidence bound for the val net fitting error.
+		// Goal reward was not considered during val net training
+		// Thus adding it here
 		double prior_value = value_transform_inverse(value_double[node_id]) + ModelParams::GOAL_REWARD;
 
 		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
@@ -1258,6 +1196,105 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 	}
 
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
+}
+
+void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::Tensor& steer_probs_Tensor, despot::VNode* vnode){
+	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
+
+	logd << "normalizing acc probs" << endl;
+
+    auto acc_sum = acc_probs_Tensor.sum();
+    float acc_total_prob = acc_sum.data<float>()[0];
+    acc_probs_Tensor = acc_probs_Tensor / acc_total_prob;
+
+    assert(2*ModelParams::NumSteerAngle == steer_probs_Tensor.size(0));
+
+	logd << "acc probs = " << acc_probs_Tensor << endl;
+	logd << "steer probs = " << steer_probs_Tensor << endl;
+
+    auto acc_probs_double = acc_probs_Tensor.accessor<float, 1>();
+
+    if (logging::level()>=3){
+    	logd << "printing acc probs, acc_probs_Tensor dim=" << acc_probs_Tensor.sizes() << endl;
+    	for (int acc_id =0; acc_id < acc_probs_Tensor.sizes()[0]; acc_id++){
+			double query_acc = ped_model->GetAccelerationNoramlized(acc_id);
+			logd << "query acc "<< acc_id <<"=" <<  query_acc << ", prob=" << acc_probs_double[acc_id] << endl;
+		}
+    }
+
+    auto steer_probs_double = steer_probs_Tensor.accessor<float, 1>();
+
+	// Update the values in the vnode
+	logd << "sharpening acc probs" << endl;
+
+	double act_prob_total = 0;
+	int sharpen_factor = 1;
+
+	if (sharpen_factor != 1){
+	//		for (int action = 0;  action < ped_model->NumActions(); action ++){
+		for (int acc_ID = 0; acc_ID < 2 * ModelParams::NumAcc; acc_ID ++){
+			float acc_prob = acc_probs_double[acc_ID];
+			act_prob_total += std::pow(acc_prob, sharpen_factor);
+		}
+	}
+
+	logd << "storing steer probs" << endl;
+
+	for (int steerID = 0; steerID < 2*ModelParams::NumSteerAngle + 1; steerID++){
+		float steer_prob = cal_steer_prob(steer_probs_double, steerID);
+		vnode->prior_steer_probs(steerID, steer_prob);
+	}
+
+	logd << "assigning probs" << endl;
+
+	double accum_prob = 0;
+//		for (int action = 0;  action < ped_model->NumActions(); action ++){
+	for (auto action: vnode->legal_actions()){
+		logd << "legal action " << action << endl;
+
+		int acc_ID=ped_model->GetAccelerationID(action);
+		int steerID = ped_model->GetSteeringID(action);
+
+		float acc_prob = acc_probs_double[acc_ID];
+		if (sharpen_factor != 1)
+			acc_prob = pow(acc_prob, sharpen_factor)/act_prob_total; // sharpen and normalize
+
+		float steer_prob = cal_steer_prob(steer_probs_double, steerID);
+
+		float joint_prob = acc_prob * steer_prob;
+
+		logd << "joint prob " << joint_prob << endl;
+
+		vnode->prior_action_probs(action, joint_prob);
+
+		accum_prob += joint_prob;
+
+		logd << "action "<< acc_ID << " " << steerID <<
+				" joint_prob = " << joint_prob
+				<< " accum_prob = " << accum_prob << endl;
+	}
+
+	logd << "normalizing probs" << endl;
+
+	for (auto action: vnode->legal_actions()){
+		// normalize over all legal actions
+//		logd << "1" << endl;
+
+		double prob = vnode->prior_action_probs(action);
+//		logd << "2" << endl;
+
+		prob = prob / accum_prob;
+//		logd << "3" << endl;
+
+		vnode->prior_action_probs(action, prob);
+
+		logd << action_probs_.size() << endl;
+
+		if (vnode->depth() == 0)
+			action_probs_[action] = vnode->prior_action_probs(action); // store the root action priors
+	}
+
+	logd << "done" << endl;
 }
 
 void PedNeuralSolverPrior::ComputePreference(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
@@ -1389,50 +1426,10 @@ void PedNeuralSolverPrior::ComputeMiniBatchPref(vector<torch::Tensor>& input_bat
 		auto acc_sigma_actions = acc_sigma.unsqueeze(0).expand({num_accs, num_modes, 1});
 
 		auto acc_probs_Tensor = gm_pdf(acc_pi_actions, acc_sigma_actions, acc_mu_actions, acc_candiates);
-		logd << "rescaling acc probs" << endl;
-
-        auto acc_sum = acc_probs_Tensor.sum();
-        float acc_total_prob = acc_sum.data<float>()[0];
-	    acc_probs_Tensor = acc_probs_Tensor / acc_total_prob;
 
         auto steer_probs_Tensor = at::_softmax(ang, 0, false);
 
-        assert(2*ModelParams::NumSteerAngle == steer_probs_Tensor.size(0));
-
-		logd << "acc probs = " << acc_probs_Tensor << endl;
-		logd << "steer probs = " << steer_probs_Tensor << endl;
-
-	    auto acc_probs_double = acc_probs_Tensor.accessor<float, 1>();
-	    auto steer_probs_double = steer_probs_Tensor.accessor<float, 1>();
-
-		// Update the values in the vnode
-
-		double accum_prob = 0;
-		for (int action = 0;  action < ped_model->NumActions(); action ++){
-			int acc_ID = ped_model->GetAccelerationID(action);
-			int steerID = ped_model->GetSteeringID(action);
-
-			float acc_prob = acc_probs_double[acc_ID];
-
-			float steer_prob = cal_steer_prob(steer_probs_double, steerID);
-
-			float joint_prob = acc_prob * steer_prob;
-			vnode->prior_action_probs(action, joint_prob);
-
-			accum_prob += joint_prob;
-
-//			logd << "action "<< acc_ID << " " << steerID <<
-//					" joint_prob = " << joint_prob
-//					<< " accum_prob = " << accum_prob << endl;
-
-			// get the steering prob from angs
-		}
-
-//		double prior_value = value_transform_inverse(value_double[node_id]);
-
-//		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
-
-//		vnode->prior_value(prior_value);
+        Update_prior_probs(acc_probs_Tensor, steer_probs_Tensor, vnode);
 	}
 
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
@@ -1543,14 +1540,54 @@ void PedNeuralSolverPrior::ComputeMiniBatchValue(vector<torch::Tensor>& input_ba
 
 		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
 
-    // this is a patch !!!
-    // goal reward was not counted during val net training
-    // so add it here
+		// this is a patch !!!
+		// goal reward was not counted during val net training
+		// so add it here
 		vnode->prior_value(prior_value + ModelParams::GOAL_REWARD);
 	}
 
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 }
+
+std::vector<ACT_TYPE> PedNeuralSolverPrior::ComputeLegalActions(const State* state, const DSPOMDP* model){
+	const PomdpState* pomdp_state = static_cast<const PomdpState*>(state);
+	const PedPomdp* pomdp_model = static_cast<const PedPomdp*>(model_);
+
+	ACT_TYPE act_start, act_end;
+
+	int steer_code = world_model.hasMinSteerPath(*pomdp_state);
+
+	if (steer_code == 1){
+		int steerID = pomdp_model->GetSteerIDfromSteering(ModelParams::MaxSteerAngle);
+		act_start = pomdp_model->GetActionID(steerID, 0);
+		act_end = act_start + 2 * ModelParams::NumAcc + 1;
+		printf("Limited legal actions: %d - %d (dir %d)\n", act_start, act_end, steer_code);
+	}
+	else if (steer_code == -1){
+		int steerID = pomdp_model->GetSteerIDfromSteering(-ModelParams::MaxSteerAngle);
+		act_start = pomdp_model->GetActionID(steerID, 0);
+		act_end = act_start + 2 * ModelParams::NumAcc + 1;
+		printf("Limited legal actions: %d - %d (dir %d)\n", act_start, act_end, steer_code);
+	}
+	else if (steer_code == 2){
+		int steerID = pomdp_model->GetSteerIDfromSteering(0);
+		act_start = pomdp_model->GetActionID(steerID, 0);
+		act_end = act_start + 1;
+		printf("Limited legal actions: %d - %d (dir %d)\n", act_start, act_end, steer_code);
+	}
+	else{
+		act_start = 0;
+		act_end = model->NumActions();
+	}
+
+	std::vector<ACT_TYPE> legal_actions;
+	for (ACT_TYPE action = act_start; action < act_end; action++) {
+		legal_actions.push_back(action);
+	}
+
+	return legal_actions;
+}
+
 
 void PedNeuralSolverPrior::get_history_settings(despot::VNode* cur_node, int mode, int &num_history, int &start_channel){
 	if (mode == FULL){ // Full update of the input channels
@@ -1951,12 +1988,12 @@ void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 		vector<float> acc_sigma = message.response.acc_sigma;
 		vector<float> ang = message.response.ang;
 
-		logd << "value" << endl;
-		for (int i = 0 ; i< value.size(); i++){
-			logd << value[i] << " ";
-			t_value[i]= -3.4; //value[i];
-		}
-		logd << endl;
+//		logd << "value" << endl;
+//		for (int i = 0 ; i< value.size(); i++){
+//			logd << value[i] << " ";
+//			t_value[i]= -3.4; //value[i];
+//		}
+//		logd << endl;
 
 		logd << "acc_pi" << endl;
 		for (int id = 0 ; id< acc_pi.size(); id++){
@@ -2009,7 +2046,7 @@ void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 }
 
 void PedNeuralSolverPrior::Test_all_srv(int batchsize, int num_guassian_modes, int num_steer_bins){
-	cerr << "Testing all model using ROS service, bs = " << batchsize << endl;
+	cerr << "Testing all model using ROS service, bs = " << batchsize << "..." << endl;
 
 	ros::NodeHandle n("~");
 
@@ -2019,7 +2056,7 @@ void PedNeuralSolverPrior::Test_all_srv(int batchsize, int num_guassian_modes, i
 
 	nn_client_.waitForExistence(ros::DURATION_MAX);
 
-	for (int i =0 ;i< 10 ; i++){
+	for (int i =0 ;i< 2 ; i++){
 
 		std::vector<torch::jit::IValue> inputs;
 
@@ -2093,6 +2130,7 @@ void PedNeuralSolverPrior::Test_all_srv(int batchsize, int num_guassian_modes, i
 
 		logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
 	}
+	cerr << "NN ROS servie test done." << endl;
 }
 
 void PedNeuralSolverPrior::Test_val_srv(int batchsize, int num_guassian_modes, int num_steer_bins){

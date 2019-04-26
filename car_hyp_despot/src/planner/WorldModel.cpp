@@ -480,6 +480,45 @@ int WorldModel::minStepToGoal(const PomdpState& state) {
     return int(ceil(d / (ModelParams::VEL_MAX/freq)));
 }
 
+
+int WorldModel::hasMinSteerPath(const PomdpState& state) {
+
+	/// Return: 0 - has path
+	///         1 - ccw
+	///		    -1 - cw
+	///			2 - goal reached
+
+    double d = COORD::EuclideanDistance(state.car.pos,car_goal);
+    if (d < 0) d = 0;
+    if (d == 0) return 2; // already reach goal
+
+    double theta = abs(COORD::SlopAngle(state.car.pos,car_goal) - state.car.heading_dir);
+
+    if (theta > M_PI) {
+         theta = 2 * M_PI - theta;
+    }
+
+    if (theta == 0) // can go through straight line
+    	return int(ceil(d / (ModelParams::VEL_MAX/freq)));
+
+    double r = CAR_LENGTH / tan(ModelParams::MaxSteerAngle);
+    // double arc_len = min_turning_radii * theta;
+    double chord_len = r * sin(theta) * 2;
+
+//    double relax_thresh = ModelParams::GOAL_TOLERANCE;
+
+    float turning_dir = COORD::get_dir(state.car.heading_dir, COORD::SlopAngle(state.car.pos,car_goal));
+
+    if (chord_len >= d){
+    	printf("No steering path available: chord_len=%f, d=%f, r=%f, theta=%f\n", chord_len, d, r, theta);
+
+    	return turning_dir? 1:-1;  // no steer path available, should turn ccw or cw
+    }
+    else
+    	return 0; // path available
+}
+
+
 int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
     double d = COORD::EuclideanDistance(state.car.pos,car_goal);
     if (d < 0) d = 0;
@@ -501,7 +540,7 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
     double relax_thresh = ModelParams::GOAL_TOLERANCE;
 
     if (chord_len >= d + relax_thresh){
-    	printf("No steering path available: chord_len=%f, d=%f, r=%f, theta=%f\n", chord_len, d, r, theta);
+//    	printf("No steering path available: chord_len=%f, d=%f, r=%f, theta=%f\n", chord_len, d, r, theta);
     	return Globals::config.sim_len;  // can never reach goal with in the round
     }
     else if (chord_len <  d + relax_thresh && chord_len >= d) {

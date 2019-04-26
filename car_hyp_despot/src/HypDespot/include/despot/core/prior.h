@@ -108,6 +108,8 @@ public:
 
 	virtual void ComputeValue(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode) =0;
 
+	virtual std::vector<ACT_TYPE> ComputeLegalActions(const State* state, const DSPOMDP* model) = 0;
+
 	virtual void Record_hist_len() = 0;
 
 	virtual void print_prior_actions(ACT_TYPE) = 0;

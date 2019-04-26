@@ -553,8 +553,8 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 	         && (((VNode*) root)->upper_bound() - ((VNode*) root)->lower_bound())
 	         > 1e-6);
 
-  printf("Termination of thread %d: used_time = %f, timeout = %d, root gap = %f\n", threadID, used_time,
-      Globals::Timeout(Globals::config.time_per_move), ((VNode*) root)->upper_bound() - ((VNode*) root)->lower_bound());
+//    printf("Termination of thread %d: used_time = %f, timeout = %d, root gap = %f\n", threadID, used_time,
+//      Globals::Timeout(Globals::config.time_per_move), ((VNode*) root)->upper_bound() - ((VNode*) root)->lower_bound());
 
 	Globals::Global_print_deleteT(this_thread::get_id(), 0, 1);
 
@@ -1323,7 +1323,8 @@ void DESPOT::OptimalAction2(VNode* vnode) {
 	if (vnode->depth() <= 2) {
 		ValuedAction astar(-1, Globals::NEG_INFTY);
 		QNode * best_qnode = NULL;
-		for (int action = 0; action < vnode->children().size(); action++) {
+//		for (int action = 0; action < vnode->children().size(); action++) {
+		for (ACT_TYPE action: vnode->legal_actions()) {
 			QNode* qnode = vnode->Child(action);
 			if (qnode->lower_bound() > astar.value) {
 				astar = ValuedAction(action, qnode->lower_bound());
@@ -1375,7 +1376,8 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 	if (!Globals::config.use_prior){
 
-		for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
+//		for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
+		for (ACT_TYPE action: vnode->legal_actions()) {
 			QNode* qnode = vnode->Child(action);
 
 			logi << "Children of root node: action: " << qnode->edge() << "  lowerbound: "
@@ -1415,9 +1417,9 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 			float root_visit = static_cast<Shared_VNode*>(vnode)->visit_count_;
 			float score_max = Globals::NEG_INFTY;
 
-			int opt_act_start = 0, opt_act_end = vnode->children().size();
+//			int opt_act_start = 0, opt_act_end = vnode->children().size();
 
-			if (opt_act_end == 0 ){ // no node expanded
+			if (vnode->children().size() == 0 ){ // no node expanded
 				cout << "No node expanded !!" << endl;
 				logi << "prior_force_steer="<< 1 << endl;
 
@@ -1428,7 +1430,8 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 			logi << "prior_discount_optact="<< SolverPrior::prior_discount_optact << endl;
 
 			// first round, free steering
-			for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++) {
+//			for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++) {
+			for (ACT_TYPE action: vnode->legal_actions()) {
 				QNode* qnode = vnode->Child(action);
 
 				float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
@@ -1439,7 +1442,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 				// if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
 				// 	score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
 
-				if (qnode->lower_bound() != EMPTY_LB_VALUE)
+				if (qnode->lower_bound() != EMPTY_LB_VALUE) // only print visited nodes
 					logi << "Children of root node: action: " << qnode->edge() <<
 							" visit_count: " << visit <<
 							" upper_bound: " << qnode->upper_bound() <<
@@ -1481,6 +1484,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 						score_max = Globals::NEG_INFTY;
 
 						// get the action ids corresponding to the optimal prior steering
+						ACT_TYPE opt_act_start, opt_act_end;
 						SolverPrior::nn_priors[0]->Get_force_steer_action(vnode, opt_act_start, opt_act_end);
 						for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++) {
 							QNode* qnode = vnode->Child(action);
@@ -1690,7 +1694,8 @@ VNode* DESPOT::SelectBestWEUNode(QNode* qnode, bool despot_thread) {
 QNode* DESPOT::SelectBestUpperBoundNode(VNode* vnode) {
 	int astar = -1;
 	double upperstar = Globals::NEG_INFTY;
-	for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
+//	for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
+	for (ACT_TYPE action: vnode->legal_actions()) {
 		QNode* qnode = vnode->Child(action);
 
 		if (qnode->upper_bound() > upperstar + 1e-5) {
@@ -1718,8 +1723,9 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 	if (Globals::config.use_prior)
 		use_exploration_value = true;
 
-	int opt_act_start = 0;
-	int opt_act_end = vnode->children().size();
+//	int opt_act_start = 0;
+//	int opt_act_end = vnode->children().size();
+	assert(vnode->legal_actions().size() == vnode->children().size());
 
 	int prior_ID = 0;
 	if (Globals::config.use_multi_thread_){
@@ -1734,7 +1740,8 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 //	cout << "best upper 2" << endl;
 
 
-	for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++) {	
+//	for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++){
+	for (ACT_TYPE action: vnode->legal_actions()) {
 //		cout << "best upper 3" << endl;
 
 		Shared_QNode* qnode =
@@ -1776,8 +1783,8 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 	Shared_QNode* qstar = static_cast<Shared_QNode*>(((VNode*) vnode)->Child(astar));
 	Shared_QNode* qstar_prior = static_cast<Shared_QNode*>(((VNode*) vnode)->Child(astar_prior));
 
-	if (true)
-		printf("thread %d chose qnode with action %d, prior prob %f, ub %f, bonus %f ;\n          best qnode has action %d, prior prob %f, ub %f, bonus %f",
+	if (false)
+		printf("thread %d chose qnode with action %d, prior prob %f, ub %f, bonus %f ;\n          best qnode has action %d, prior prob %f, ub %f, bonus %f\n",
 				prior_ID, astar, qstar->prior_probability_, qstar->upper_bound(false), qstar->exploration_bonus,
 				astar_prior, qstar_prior->prior_probability_, qstar_prior->upper_bound(false), qstar_prior->exploration_bonus);
 
@@ -1801,8 +1808,13 @@ void DESPOT::Update(VNode* vnode, bool real) {
 	double upper = vnode->default_move().value;
 	double utility_upper = Globals::NEG_INFTY;
 
-	for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
+//	for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
+	for (ACT_TYPE action: vnode->legal_actions()) {
 		QNode* qnode = vnode->Child(action);
+
+
+		assert(qnode!=NULL);
+//		printf("[Update] gettting info from qnode %d", qnode);
 
 		lower = max(lower, qnode->lower_bound());
 		upper = max(upper, qnode->upper_bound());
@@ -1819,6 +1831,7 @@ void DESPOT::Update(VNode* vnode, bool real) {
 		vnode->utility_upper_bound(utility_upper);
 	}
 }
+
 void DESPOT::Update(Shared_VNode* vnode, bool real) {
 	lock_guard < mutex > lck(vnode->GetMutex());//lock v_node during updation
 	if (((VNode*) vnode)->depth() > 0 && real) {
@@ -1847,8 +1860,9 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 
 	double utility_upper = Globals::NEG_INFTY;
 
-	for (int action = 0; action < ((VNode*) vnode)->children().size();
-	        action++) {
+//	for (int action = 0; action < ((VNode*) vnode)->children().size();
+//	        action++) {
+	for (ACT_TYPE action: vnode->legal_actions()) {
 		Shared_QNode* qnode =
 		    static_cast<Shared_QNode*>(((VNode*) vnode)->Child(action));
 
@@ -1869,6 +1883,8 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
   //           static_cast<Shared_QNode*>(qnode)->edge(),
   //           -1000,
   //           "Update Vnode");
+
+		assert(qnode!=NULL);
 
 		lower = max(lower, ((QNode*) qnode)->lower_bound());
 		upper = max(upper, ((QNode*) qnode)->upper_bound());
@@ -2148,6 +2164,23 @@ VNode* DESPOT::FindBlocker(VNode* vnode) {
 //	}
 //}
 
+void DESPOT::ComputeLegalActions(VNode* vnode, const DSPOMDP * model){
+	if (Globals::config.use_prior){
+		logd << "[ComputeLegalActions] for vnode " << vnode << endl;
+
+		int prior_ID = 0;
+		if (Globals::config.use_prior){
+			if (Globals::config.use_multi_thread_){
+				prior_ID=MapThread(this_thread::get_id());
+			}
+		}
+
+		State* state = vnode->particles()[0];
+
+		vnode->legal_actions(SolverPrior::nn_priors[prior_ID]->ComputeLegalActions(state, model));
+	}
+}
+
 void DESPOT::ComputePriorPref(VNode* vnode, const DSPOMDP * model){
 	if (Globals::config.use_prior){
 
@@ -2246,11 +2279,16 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 	if (Globals::config.use_prior){
 		// compute prior probabilities for actions
+		ComputeLegalActions(vnode, model);
 		ComputePriorPref(vnode, model);
 	}
 
 	for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
-		logd << " Action " << action << endl;
+		children.push_back(NULL);
+	}
+
+	for(ACT_TYPE action: vnode->legal_actions()){
+		logd << " Legal action " << action << endl;
 
 		//Create new Q-nodes for each action
 		QNode* qnode;
@@ -2268,14 +2306,16 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 			qnode->prior_probability(vnode->prior_action_probs(action)/*action_probs[action]*/);
 		}
 
-		children.push_back(qnode);
+//		children.push_back(qnode);
+		children[action] = qnode;
 	}
 
 	if (Globals::config.use_prior){
 //		vnode->print_action_probs();
 	}
 
-	for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
+//	for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
+	for(ACT_TYPE action: vnode->legal_actions()){
 		QNode* qnode = children[action];
 
 		if (use_GPU_ && vnode->PassGPUThreshold())

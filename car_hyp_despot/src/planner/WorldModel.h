@@ -49,6 +49,8 @@ public:
     int minStepToGoal(const PomdpState& state);
     int minStepToGoalWithSteer(const PomdpState& state);
 
+    int hasMinSteerPath(const PomdpState& state);
+
 	void PedStep(PedStruct &ped, Random& random);
 	void PedStep(PedStruct &ped, double& random);
 

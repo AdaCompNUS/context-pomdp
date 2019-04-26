@@ -79,7 +79,8 @@ VNode::VNode(int count, double value, int depth, QNode* parent, OBS_TYPE edge) :
 
 
 VNode::~VNode() {
-	for (int a = 0; a < children_.size(); a++) {
+	// for (int a = 0; a < children_.size(); a++) {
+	for (int a : legal_actions_) {
 		QNode* child = children_[a];
 		assert(child != NULL);
 		if(child->IsAllocated())//allocated by memory pool
@@ -154,7 +155,8 @@ QNode* VNode::Child(int action) {
 
 int VNode::Size() const {
 	int size = 1;
-	for (int a = 0; a < children_.size(); a++) {
+//	for (int a = 0; a < children_.size(); a++) {
+	for (int a : legal_actions_) {
 		size += children_[a]->Size();
 	}
 	return size;
@@ -165,7 +167,8 @@ int VNode::PolicyTreeSize() const {
 		return 0;
 
 	QNode* best = NULL;
-	for (int a = 0; a < children_.size(); a++) {
+//	for (int a = 0; a < children_.size(); a++) {
+	for (int a: legal_actions_) {
 		QNode* child = children_[a];
 		if (best == NULL || child->lower_bound() > best->lower_bound())
 			best = child;

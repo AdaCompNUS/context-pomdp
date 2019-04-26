@@ -152,6 +152,10 @@ public:
 	void ComputePreference(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode);
 	void ComputeMiniBatchPref(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode);
 
+	void Update_prior_probs(at::Tensor& acc_probs_Tensor, at::Tensor& steer_probs_Tensor, despot::VNode* vnode);
+
+	std::vector<ACT_TYPE> ComputeLegalActions(const State* state, const DSPOMDP* model);
+
 	void Process_history(despot::VNode* cur_node, int);
 	std::vector<torch::Tensor> Process_history_input(despot::VNode* cur_node);
 

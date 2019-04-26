@@ -48,8 +48,11 @@ public:
 // lets_drive
 protected:
   	const double DUMMY_VALUE = 10000000;
-  	std::vector<double> prior_action_probs_;
+  	std::map<ACT_TYPE, double> prior_action_probs_;
   	std::vector<double> prior_steer_probs_;
+
+  	std::vector<ACT_TYPE> legal_actions_;
+
   	double prior_value_;
 
   	bool prior_initialized_;
@@ -57,12 +60,14 @@ protected:
 public:
   	double prior_action_probs(int i){return prior_action_probs_[i];}
   	void prior_action_probs(int i, double v){
-  		if (prior_action_probs_.size() > i)
-  			prior_action_probs_[i]=v;
-  		else if (prior_action_probs_.size() == i)
-  			prior_action_probs_.push_back(v);
-  		else
-  			assert(false);
+//  		if (prior_action_probs_.size() > i)
+//  			prior_action_probs_[i]=v;
+//  		else if (prior_action_probs_.size() == i)
+//  			prior_action_probs_.push_back(v);
+//  		else
+//  			assert(false);
+
+  		prior_action_probs_[i]=v;
   	}
 
   	double prior_steer_probs(int i){return prior_steer_probs_[i];}
@@ -76,6 +81,15 @@ public:
 		else
 			assert(false);
 	}
+
+  	void legal_actions(std::vector<ACT_TYPE> actions){
+  		legal_actions_ = actions;
+  	}
+
+  	std::vector<ACT_TYPE>& legal_actions(){
+  		return legal_actions_;
+  	}
+
 	double prior_value();
   	void prior_value(double v){prior_value_ = v;}
 

@@ -173,8 +173,8 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 		SolverPrior::nn_priors[i]->prior_id(i);
 
 		if (Globals::config.use_prior){
-			assert(model_file_ != "");
-			static_cast<PedNeuralSolverPrior*>(SolverPrior::nn_priors[i])->Load_model(model_file_);
+//			assert(model_file_ != "");
+//			static_cast<PedNeuralSolverPrior*>(SolverPrior::nn_priors[i])->Load_model(model_file_);
 			assert(value_model_file_ != "");
 			static_cast<PedNeuralSolverPrior*>(SolverPrior::nn_priors[i])->Load_value_model(value_model_file_);
 		}
@@ -240,7 +240,7 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.discount=1.0; //0.95;
 	Globals::config.sim_len=300/*180*//*10*/; // this is not used
   
-  Globals::config.xi = 0.97;
+    Globals::config.xi = 0.97;
 	//Globals::config.pruning_constant= 0.001; // passed as a ROS node param
 
 	Globals::config.useGPU=true;
@@ -253,7 +253,7 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.NUM_THREADS=10;
 
 	Globals::config.exploration_mode=UCT;
-	Globals::config.exploration_constant = 10.0;
+	Globals::config.exploration_constant = 2.0;
 //	Globals::config.exploration_constant=0.0;
 	Globals::config.exploration_constant_o = 1.0;
 
@@ -678,6 +678,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 		action = solver->Search().action;
 	}
 	else if (b_use_drive_net_ == LETS_DRIVE){
+//	 	int state_code = unity_driving_simulator_->worldModel.hasMinSteerPath(cur_state);
 		cerr << "DEBUG: Search for action using " <<typeid(*solver).name()<< " with NN prior." << endl;
 		assert(solver->belief());
 		cerr << "DEBUG: Sampling particles" << endl;

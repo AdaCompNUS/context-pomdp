@@ -47,6 +47,7 @@ struct COORD
   
   static double EuclideanDistance(COORD lhs, COORD rhs);
   static double ManhattanDistance(COORD lhs, COORD rhs);
+  static double get_dir(double a, double b);
   
 /*
   static int DirectionalDistance(COORD lhs, COORD rhs, int direction);
@@ -97,6 +98,25 @@ inline int COORD::DirectionalDistance(COORD lhs, COORD rhs, int direction) {
 inline std::ostream& operator<<(std::ostream& ostr, COORD& COORD) {
   ostr << "(" << COORD.x << ", " << COORD.y << ")";
   return ostr;
+}
+
+inline double get_dir(double a, double b){
+	double diff = b - a;
+
+	if (diff >= 0 && diff < M_PI) {
+		return true; // ccw
+	}
+	else if (diff >= M_PI) {
+		return false; // cw
+	}
+	else if (diff < 0 && diff >= -M_PI) {
+		return false; // cw
+	}
+	else if (diff < -M_PI) {
+		return true; // ccw
+	}
+
+	return true;
 }
 
 #endif // COORD_H
