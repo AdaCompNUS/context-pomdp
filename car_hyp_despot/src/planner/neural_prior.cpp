@@ -1228,7 +1228,7 @@ void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::
 	logd << "sharpening acc probs" << endl;
 
 	double act_prob_total = 0;
-	int sharpen_factor = 1;
+	int sharpen_factor = 4;
 
 	if (sharpen_factor != 1){
 	//		for (int action = 0;  action < ped_model->NumActions(); action ++){

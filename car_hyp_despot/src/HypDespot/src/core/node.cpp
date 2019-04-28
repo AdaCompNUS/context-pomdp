@@ -231,7 +231,11 @@ double VNode::prior_value() {
 ACT_TYPE VNode::max_prob_action(){
 	ACT_TYPE astar = -1;
 	double prob = 0;
-	for (int a = 0; a < prior_action_probs_.size(); a++) {
+//	for (int a = 0; a < prior_action_probs_.size(); a++) {
+	for (map<ACT_TYPE, double>::iterator it = prior_action_probs_.begin();
+		        it != prior_action_probs_.end(); it++) {
+		ACT_TYPE a = it->first;
+		prob = it->second;
 		if (prior_action_probs(a)>prob){
 			prob = prior_action_probs(a);
 			astar = a;

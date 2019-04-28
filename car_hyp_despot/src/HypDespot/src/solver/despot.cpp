@@ -364,12 +364,12 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 	         && WEU((VNode*) cur) > 0 &&
 	         !Globals::Timeout(Globals::config.time_per_move));
   
-  printf( "Termination of trial-t%d: WEU = %f, timeout = %d, expansion_count= %d, depth = %d\n",
-		  threadID,
-		  WEU((VNode*) cur),
-		  Globals::Timeout(Globals::config.time_per_move),
-		  trial_expansion_count,
-		  cur->depth());
+//  printf( "Termination of trial-t%d: WEU = %f, timeout = %d, expansion_count= %d, depth = %d\n",
+//		  threadID,
+//		  WEU((VNode*) cur),
+//		  Globals::Timeout(Globals::config.time_per_move),
+//		  trial_expansion_count,
+//		  cur->depth());
 
 	history.Truncate(hist_size);
 	if(Globals::config.use_prior){
