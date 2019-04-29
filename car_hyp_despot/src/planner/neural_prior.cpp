@@ -28,6 +28,16 @@ ros::ServiceClient PedNeuralSolverPrior::nn_client_val_;
 
 std::chrono::time_point<std::chrono::system_clock> SolverPrior::init_time_;
 
+bool delectNAN(double v){
+	if (isnan(v))
+		return true;
+	else if (v != v){
+		return true;
+	}
+
+	return false;
+}
+
 
 double SolverPrior::get_timestamp(){
 	return Globals::ElapsedTime(init_time_);
@@ -420,7 +430,8 @@ void PedNeuralSolverPrior::Load_model(std::string path){
 	// DONE: Pass the model name through ROS params
 	drive_net = torch::jit::load(model_file);
 
-	assert(drive_net);
+	if(drive_net == NULL)
+		raise(SIGABRT);
 
 	if (use_gpu_for_nn)
 		drive_net->to(at::kCUDA);
@@ -451,7 +462,8 @@ void PedNeuralSolverPrior::Load_value_model(std::string path){
 	// DONE: Pass the model name through ROS params
 	drive_net_value = torch::jit::load(value_model_file);
 
-	assert(drive_net_value);
+	if(drive_net_value == NULL)
+		raise(SIGABRT);
 
 	if (use_gpu_for_nn)
 		drive_net_value->to(at::kCUDA);
@@ -1113,8 +1125,13 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 	at::Tensor value_batch_dummy, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch;
 
-	query_srv(vnodes.size(), input_tensor, value_batch_dummy, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
-
+	bool succeed = false;
+	while(!succeed) {
+		succeed = query_srv(vnodes.size(), input_tensor, value_batch_dummy, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
+		if (!succeed)
+			logi << "Root node action model query failed !!!" << endl;
+	}
+	logi << "Root node action model query succeeded" << endl;
 	///VALUE START/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	auto drive_net_output = drive_net_value->forward(inputs);
@@ -1180,7 +1197,7 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
         auto steer_probs_Tensor = at::_softmax(ang, 0, false);
 
-        Update_prior_probs(acc_probs_Tensor, acc_probs_Tensor, vnode);
+        Update_prior_probs(acc_probs_Tensor, steer_probs_Tensor, vnode);
 
 		// This is a patch !!!
 		// 0.3 is the confidence bound for the val net fitting error.
@@ -1207,10 +1224,13 @@ void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::
     float acc_total_prob = acc_sum.data<float>()[0];
     acc_probs_Tensor = acc_probs_Tensor / acc_total_prob;
 
-    assert(2*ModelParams::NumSteerAngle == steer_probs_Tensor.size(0));
+    if(2*ModelParams::NumSteerAngle != steer_probs_Tensor.size(0))
+    	raise(SIGABRT);
 
-	logd << "acc probs = " << acc_probs_Tensor << endl;
-	logd << "steer probs = " << steer_probs_Tensor << endl;
+    if (vnode->depth()==0) {
+    	logd << "acc probs = " << acc_probs_Tensor << endl;
+    	logd << "steer probs = " << steer_probs_Tensor << endl;
+    }
 
     auto acc_probs_double = acc_probs_Tensor.accessor<float, 1>();
 
@@ -1245,9 +1265,14 @@ void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::
 		vnode->prior_steer_probs(steerID, steer_prob);
 	}
 
-	logd << "assigning probs" << endl;
+	logd << "assigning action probs to vnode " << vnode << " at depth " << vnode->depth() << endl;
 
 	double accum_prob = 0;
+
+//	if (vnode->depth() == 0){
+//		logi << "Before assigning root action probs" << endl;
+//		vnode->print_action_probs();
+//	}
 //		for (int action = 0;  action < ped_model->NumActions(); action ++){
 	for (auto action: vnode->legal_actions()){
 		logd << "legal action " << action << endl;
@@ -1263,6 +1288,10 @@ void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::
 
 		float joint_prob = acc_prob * steer_prob;
 
+		if(delectNAN(joint_prob)){
+			raise(SIGABRT);
+		}
+
 		logd << "joint prob " << joint_prob << endl;
 
 		vnode->prior_action_probs(action, joint_prob);
@@ -1273,6 +1302,11 @@ void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::
 				" joint_prob = " << joint_prob
 				<< " accum_prob = " << accum_prob << endl;
 	}
+
+//	if (vnode->depth() == 0){
+//		logi << "Assigning root action probs" << endl;
+//		vnode->print_action_probs();
+//	}
 
 	logd << "normalizing probs" << endl;
 
@@ -1290,9 +1324,17 @@ void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::
 
 		logd << action_probs_.size() << endl;
 
+		if(delectNAN(vnode->prior_action_probs(action)))
+			raise(SIGABRT);
+
 		if (vnode->depth() == 0)
 			action_probs_[action] = vnode->prior_action_probs(action); // store the root action priors
 	}
+
+//	if (vnode->depth() == 0){
+//		logi << "Assigning root action probs (after normalization)" << endl;
+//		vnode->print_action_probs();
+//	}
 
 	logd << "done" << endl;
 }
@@ -1390,7 +1432,12 @@ void PedNeuralSolverPrior::ComputeMiniBatchPref(vector<torch::Tensor>& input_bat
 
 	at::Tensor value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch;
 
-	query_srv(vnodes.size(), input_tensor, value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
+	bool succeed = false;
+	while(!succeed) {
+		succeed = query_srv(vnodes.size(), input_tensor, value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
+		if (!succeed)
+			logi << "Action model query failed !!!" << endl;
+	}
 
 	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
 
@@ -1959,7 +2006,7 @@ std::vector<torch::Tensor> PedNeuralSolverPrior::Process_history_input(despot::V
 //
 //}
 
-void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tensor& t_value, at::Tensor& t_acc_pi,
+bool PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tensor& t_value, at::Tensor& t_acc_pi,
 		at::Tensor& t_acc_mu, at::Tensor& t_acc_sigma, at::Tensor& t_ang){
 	int num_guassian_modes = 5;
 	int num_steer_bins = 2*ModelParams::NumSteerAngle;
@@ -1997,6 +2044,9 @@ void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 
 		logd << "acc_pi" << endl;
 		for (int id = 0 ; id< acc_pi.size(); id++){
+			if (delectNAN(acc_pi[id]))
+				return false;
+
 			int data_id = id / num_guassian_modes;
 			int mode_id = id % num_guassian_modes;
 			logd << acc_pi[id] << " ";
@@ -2009,6 +2059,9 @@ void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 
 		logd << "acc_mu" << endl;
 		for (int id = 0 ; id< acc_mu.size(); id++){
+			if (delectNAN(acc_mu[id]))
+				return false;
+
 			int data_id = id / num_guassian_modes;
 			int mode_id = id % num_guassian_modes;
 			logd << acc_mu[id] << " ";
@@ -2021,6 +2074,9 @@ void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 
 		logd << "acc_sigma" << endl;
 		for (int id = 0 ; id< acc_sigma.size(); id++){
+			if (delectNAN(acc_sigma[id]))
+				return false;
+
 			int data_id = id / num_guassian_modes;
 			int mode_id = id % num_guassian_modes;
 			logd << acc_sigma[id] << " ";
@@ -2033,6 +2089,9 @@ void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 
 		logd << "ang" << endl;
 		for (int id = 0 ; id< ang.size(); id++){
+			if (delectNAN(ang[id]))
+				return false;
+
 			int data_id = id / num_steer_bins;
 			int bin_id = id % num_steer_bins;
 			logd << ang[id] << " ";
@@ -2042,6 +2101,10 @@ void PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 
 			t_ang[data_id][bin_id] = ang[id];
 		}
+
+		return true;
+	} else {
+		return false;
 	}
 }
 

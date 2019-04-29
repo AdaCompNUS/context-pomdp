@@ -601,6 +601,9 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		root = new Shared_VNode(particles, particleIDs);
 		if (Globals::config.exploration_mode == UCT)
 			static_cast<Shared_VNode*>(root)->visit_count_ = 1.1;
+
+		if (Globals::config.use_prior)
+			ComputeLegalActions(root, model);
 	} else
 		root = new VNode(particles, particleIDs);
 
@@ -824,6 +827,7 @@ void DESPOT::InitLowerBound(VNode* vnode, ScenarioLowerBound* lower_bound,
 	ValuedAction move;
 
 	if (Globals::config.use_prior){
+
 		// Initialize the value
 		logd << "[InitLowerBound] Using prior for lower bound value: node "<<vnode<<" at depth " << vnode->depth()
 				<< " value " << vnode->prior_value() << endl;
@@ -837,10 +841,15 @@ void DESPOT::InitLowerBound(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 		if (vnode->depth()==0){
 			logd << "recording SolverPrior::nn_priors[prior_id]->default_action" << endl;
-			SolverPrior::nn_priors[prior_id]->default_action = vnode->max_prob_action();      
-    }
+			SolverPrior::nn_priors[prior_id]->default_action = vnode->max_prob_action();
+
+//			logi << "default action of root node " << move.action << "(" << move.value << ")"
+//					<< "from " << vnode->legal_actions().size() << " legal actions"<< endl;
+//			vnode->print_action_probs();
+		}
 
 		logd << "vnode "<< vnode << " at level "<< vnode->depth() << " prior value=" << move.value << ", ";
+
 		SolverPrior::nn_priors[prior_id]->print_prior_actions(move.action);
 	}
 	else{
@@ -1325,10 +1334,12 @@ void DESPOT::OptimalAction2(VNode* vnode) {
 		QNode * best_qnode = NULL;
 //		for (int action = 0; action < vnode->children().size(); action++) {
 		for (ACT_TYPE action: vnode->legal_actions()) {
-			QNode* qnode = vnode->Child(action);
-			if (qnode->lower_bound() > astar.value) {
-				astar = ValuedAction(action, qnode->lower_bound());
-				best_qnode = qnode;
+			if (action < vnode->children().size()) {
+				QNode* qnode = vnode->Child(action);
+				if (qnode->lower_bound() > astar.value) {
+					astar = ValuedAction(action, qnode->lower_bound());
+					best_qnode = qnode;
+				}
 			}
 		}
 		if (vnode->children().size() == 0)
@@ -1378,14 +1389,16 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 
 //		for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
 		for (ACT_TYPE action: vnode->legal_actions()) {
-			QNode* qnode = vnode->Child(action);
+			if (action < vnode->children().size()) {
+				QNode* qnode = vnode->Child(action);
 
-			logi << "Children of root node: action: " << qnode->edge() << "  lowerbound: "
-					     << qnode->lower_bound() << endl;
+				logi << "Children of root node: action: " << qnode->edge() << "  lowerbound: "
+							 << qnode->lower_bound() << endl;
 
-			if (qnode->lower_bound() > astar.value) {
-				astar = ValuedAction(action, qnode->lower_bound());
-				best_qnode = qnode;		//Debug
+				if (qnode->lower_bound() > astar.value) {
+					astar = ValuedAction(action, qnode->lower_bound());
+					best_qnode = qnode;		//Debug
+				}
 			}
 		}
 
@@ -1812,7 +1825,6 @@ void DESPOT::Update(VNode* vnode, bool real) {
 	for (ACT_TYPE action: vnode->legal_actions()) {
 		QNode* qnode = vnode->Child(action);
 
-
 		assert(qnode!=NULL);
 //		printf("[Update] gettting info from qnode %d", qnode);
 
@@ -2166,7 +2178,8 @@ VNode* DESPOT::FindBlocker(VNode* vnode) {
 
 void DESPOT::ComputeLegalActions(VNode* vnode, const DSPOMDP * model){
 	if (Globals::config.use_prior){
-		logd << "[ComputeLegalActions] for vnode " << vnode << endl;
+		logd << "[ComputeLegalActions] for vnode " << vnode << "at depth "
+				<< vnode->depth();
 
 		int prior_ID = 0;
 		if (Globals::config.use_prior){
@@ -2178,6 +2191,8 @@ void DESPOT::ComputeLegalActions(VNode* vnode, const DSPOMDP * model){
 		State* state = vnode->particles()[0];
 
 		vnode->legal_actions(SolverPrior::nn_priors[prior_ID]->ComputeLegalActions(state, model));
+
+		logd << " with " << vnode->legal_actions().size() << " legal actions" << endl;
 	}
 }
 
@@ -2279,12 +2294,18 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 	if (Globals::config.use_prior){
 		// compute prior probabilities for actions
-		ComputeLegalActions(vnode, model);
 		ComputePriorPref(vnode, model);
+//		vnode->print_action_probs();
 	}
 
 	for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
 		children.push_back(NULL);
+	}
+
+	if (vnode->legal_actions().size() != vnode->prior_action_probs().size()){
+		cerr << "node level " << vnode->depth() << " " << vnode->legal_actions().size() << " legal actions, "
+				<< vnode->prior_action_probs().size() << " prior probs " << endl;
+		raise(SIGABRT);
 	}
 
 	for(ACT_TYPE action: vnode->legal_actions()){
@@ -2458,6 +2479,9 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 			                         obs);
 			if (Globals::config.exploration_mode == UCT)
 				static_cast<Shared_VNode*>(vnode)->visit_count_ = 1.1;
+
+			if (Globals::config.use_prior)
+				ComputeLegalActions(vnode, model);
 		}
 		else
 			vnode = new VNode(partitions[obs], partition_ID,

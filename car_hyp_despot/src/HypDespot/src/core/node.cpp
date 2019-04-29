@@ -81,12 +81,14 @@ VNode::VNode(int count, double value, int depth, QNode* parent, OBS_TYPE edge) :
 VNode::~VNode() {
 	// for (int a = 0; a < children_.size(); a++) {
 	for (int a : legal_actions_) {
-		QNode* child = children_[a];
-		assert(child != NULL);
-		if(child->IsAllocated())//allocated by memory pool
-			DESPOT::qnode_pool_.Free(child);
-		else
-			delete child;
+		if (a < children_.size()) {
+			QNode* child = children_[a];
+			assert(child != NULL);
+			if(child->IsAllocated())//allocated by memory pool
+				DESPOT::qnode_pool_.Free(child);
+			else
+				delete child;
+		}
 	}
 	children_.clear();
 
@@ -157,7 +159,12 @@ int VNode::Size() const {
 	int size = 1;
 //	for (int a = 0; a < children_.size(); a++) {
 	for (int a : legal_actions_) {
-		size += children_[a]->Size();
+		if (a < children_.size()) {
+//			logd << "[VNode::Size] vnode " << this << " legal action " << a <<
+//					" with " << children_.size() << " children"<< endl;
+//			logd << "[VNode::Size] qnode " << children_[a] << endl;
+			size += children_[a]->Size();
+		}
 	}
 	return size;
 }
@@ -169,10 +176,13 @@ int VNode::PolicyTreeSize() const {
 	QNode* best = NULL;
 //	for (int a = 0; a < children_.size(); a++) {
 	for (int a: legal_actions_) {
-		QNode* child = children_[a];
-		if (best == NULL || child->lower_bound() > best->lower_bound())
-			best = child;
+		if (a < children_.size()) {
+			QNode* child = children_[a];
+			if (best == NULL || child->lower_bound() > best->lower_bound())
+				best = child;
+		}
 	}
+
 	return best->PolicyTreeSize();
 }
 
@@ -235,20 +245,22 @@ ACT_TYPE VNode::max_prob_action(){
 	for (map<ACT_TYPE, double>::iterator it = prior_action_probs_.begin();
 		        it != prior_action_probs_.end(); it++) {
 		ACT_TYPE a = it->first;
-		prob = it->second;
-		if (prior_action_probs(a)>prob){
-			prob = prior_action_probs(a);
+		if (it->second > prob){
+			prob = it->second;
 			astar = a;
 		}
 	}
+
 	return astar;
 }
 
 void VNode::print_action_probs(){
-	logi << "vnode of level " << depth() << " action_probs with " <<
+	logi << "vnode " << this << " of level " << depth() << " action_probs with " <<
 			prior_action_probs_.size() << " elements:" << endl;
-	for (int a = 0; a < prior_action_probs_.size(); a++) {
-		logi << prior_action_probs_[a] << " ";
+	for (map<ACT_TYPE, double>::iterator it = prior_action_probs_.begin();
+			it != prior_action_probs_.end(); it++) {
+		ACT_TYPE a = it->first;
+		logi << it->second << " ";
 	}
 	logi << endl;
 }

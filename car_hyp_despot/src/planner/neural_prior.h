@@ -186,7 +186,7 @@ public:
 	void Test_all_libtorch(int batchsize, int num_guassian_modes, int num_steer_bins);
 	void Test_val_libtorch(int batchsize, int num_guassian_modes, int num_steer_bins);
 
-	void query_srv(int batchsize, at::Tensor images, at::Tensor& t_value, at::Tensor& t_acc_pi,
+	bool query_srv(int batchsize, at::Tensor images, at::Tensor& t_value, at::Tensor& t_acc_pi,
 			at::Tensor& t_acc_mu, at::Tensor& t_acc_sigma, at::Tensor& t_ang);
 
 

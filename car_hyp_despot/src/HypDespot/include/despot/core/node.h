@@ -69,6 +69,9 @@ public:
 
   		prior_action_probs_[i]=v;
   	}
+  	std::map<ACT_TYPE, double>& prior_action_probs(){
+  		return prior_action_probs_;
+  	}
 
   	double prior_steer_probs(int i){return prior_steer_probs_[i];}
   	std::vector<double>& prior_steer_probs(){return prior_steer_probs_;}
