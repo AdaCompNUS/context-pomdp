@@ -1138,7 +1138,7 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 	if (!succeed){
 		cerr << "ERROR: NN query failure !!!!!" << endl;
-		rasie(SIGABRT);
+		raise(SIGABRT);
 	}
 
 	logi << "Root node action model query succeeded" << endl;
@@ -1454,7 +1454,7 @@ void PedNeuralSolverPrior::ComputeMiniBatchPref(vector<torch::Tensor>& input_bat
 
 	if (!succeed){
 		cerr << "ERROR: NN query failure !!!!!" << endl;
-		rasie(SIGABRT);
+		raise(SIGABRT);
 	}
 
 	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
