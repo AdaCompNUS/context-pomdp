@@ -22,6 +22,7 @@ bool use_gpu_for_nn = true;
 bool do_print = false;
 
 int init_hist_len = 0;
+int max_retry_count = 3;
 
 ros::ServiceClient PedNeuralSolverPrior::nn_client_;
 ros::ServiceClient PedNeuralSolverPrior::nn_client_val_;
@@ -1125,12 +1126,21 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 	at::Tensor value_batch_dummy, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch;
 
-	bool succeed = false;
+	bool succeed = false; int retry_count = 0;
 	while(!succeed) {
 		succeed = query_srv(vnodes.size(), input_tensor, value_batch_dummy, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
+		retry_count++;
 		if (!succeed)
 			logi << "Root node action model query failed !!!" << endl;
+		if(retry_count == max_retry_count)
+			break;
 	}
+
+	if (!succeed){
+		cerr << "ERROR: NN query failure !!!!!" << endl;
+		rasie(SIGABRT);
+	}
+
 	logi << "Root node action model query succeeded" << endl;
 	///VALUE START/////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1432,11 +1442,19 @@ void PedNeuralSolverPrior::ComputeMiniBatchPref(vector<torch::Tensor>& input_bat
 
 	at::Tensor value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch;
 
-	bool succeed = false;
+	bool succeed = false; int retry_count = 0;
 	while(!succeed) {
 		succeed = query_srv(vnodes.size(), input_tensor, value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
+		retry_count++;
 		if (!succeed)
 			logi << "Action model query failed !!!" << endl;
+		if(retry_count == max_retry_count)
+			break;
+	}
+
+	if (!succeed){
+		cerr << "ERROR: NN query failure !!!!!" << endl;
+		rasie(SIGABRT);
 	}
 
 	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
