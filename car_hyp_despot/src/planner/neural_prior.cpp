@@ -1130,8 +1130,11 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 	while(!succeed) {
 		succeed = query_srv(vnodes.size(), input_tensor, value_batch_dummy, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
 		retry_count++;
-		if (!succeed)
+		if (!succeed){
 			logi << "Root node action model query failed !!!" << endl;
+			logi << "retry_count = " << retry_count
+					<< ", max_retry=" << max_retry_count << endl;
+		}
 		if(retry_count == max_retry_count)
 			break;
 	}
@@ -1446,8 +1449,11 @@ void PedNeuralSolverPrior::ComputeMiniBatchPref(vector<torch::Tensor>& input_bat
 	while(!succeed) {
 		succeed = query_srv(vnodes.size(), input_tensor, value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
 		retry_count++;
-		if (!succeed)
+		if (!succeed) {
 			logi << "Action model query failed !!!" << endl;
+			logi << "retry_count = " << retry_count
+								<< ", max_retry=" << max_retry_count << endl;
+		}
 		if(retry_count == max_retry_count)
 			break;
 	}
