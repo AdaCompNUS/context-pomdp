@@ -1461,6 +1461,7 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 							" upper_bound: " << qnode->upper_bound() <<
 							" lower_bound: " << qnode->lower_bound() <<
 							" prior: " << qnode->prior_probability() <<
+							" visit bonus: " << 0.5 * SolverPrior::prior_discount_optact * sqrt(visit/root_visit) <<
 							" score: " << score << endl;
 
 				if (score > score_max) {
