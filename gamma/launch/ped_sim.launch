@@ -1,0 +1,9 @@
+<launch>
+	 <!-- <node name="peds_simulator_no_car" pkg="peds_unity_system" type="peds_simulator_no_car" launch-prefix="gdb -ex run - -args"  respawn="false" output="screen" required="true"> -->
+	 <node name="porca_planner" pkg="porca_planner" type="porca_planner" respawn="false" output="screen" required="true">
+	    <param name = "obstacle_file_name" value="$(arg obstacle_file_name)" />
+	    <param name = "goal_file_name" value="$(arg goal_file_name)" />
+	    <param name = "goalx" value="$(arg goal_x)" />
+        <param name = "goaly" value="$(arg goal_y)" />
+	 </node>
+</launch>

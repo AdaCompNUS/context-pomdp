@@ -21,7 +21,7 @@ if __name__ == '__main__':
     print('loading map {}...'.format(osm_file_loc))
     lane_network = carla.LaneNetwork.load(osm_file_loc)
     occupancy_map = lane_network.create_occupancy_map()
-    print(len(occupancy_map.triangles()))
+    print(len(occupancy_map.triangles))
     
     client = carla.Client('127.0.0.1', 2000)
     client.set_timeout(2.0)
