@@ -1804,14 +1804,14 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 
 	for (size_t i = 0; i < num_ped; ++i) {
 		// For each ego ped
-	    for(int goal_id=0; goal_id<goals.size(); goal_id++) {
+	    for(int intention_id=0; intention_id < GetNumIntentions(); intention_id++) {
 
 	    	RVO::Vector2 ori_pos(ped_sim_[threadID]->getAgentPosition(i).x(),  ped_sim_[threadID]->getAgentPosition(i).y());
 
 			// Set preferred velocity for the ego ped according to goal_id
 			// Leave other pedestrians to have default preferred velocity
 
-			if (goal_id >= goals.size()-1) { /// stop intention
+			if (goal_id >= GetNumIntentions()-1) { /// stop intention
 				ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
 			} else{
 				RVO::Vector2 goal(goals[goal_id].x, goals[goal_id].y);
