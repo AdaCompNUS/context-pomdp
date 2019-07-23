@@ -101,10 +101,42 @@ class CrowdAgent:
         return self.pref_speed * velocity
 
     def set_velocity(self, velocity):
-        control = carla.WalkerControl(
-                carla.Vector3D(velocity.x, velocity.y),
-                1.0, False)
-        self.actor.apply_control(control)
+        if self.agent_tag == "People":
+            control = carla.WalkerControl(
+                    carla.Vector3D(velocity.x, velocity.y),
+                    1.0, False)
+            self.actor.apply_control(control)
+        elif self.agent_tag == "Car" or self.agent_tag == "Bicycle":
+            
+            steer = get_signed_angle_diff(velocity, self.get_forward_direction())
+            min_steering_angle = -45.0
+            max_steering_angle = 45.0
+            if steer > max_steering_angle:
+                steer = max_steering_angle
+            elif steer < min_steering_angle:
+                steer = min_steering_angle
+
+            k = 0.5
+            steer = k * steer / (max_steering_angle - min_steering_angle) * 2.0
+
+            desired_speed = norm(velocity)
+            cur_speed = norm(self.get_velocity())
+
+            control = self.actor.get_control()
+            control.steer =  steer
+
+            if desired_speed - cur_speed > 0:
+                control.throttle = (desired_speed - cur_speed)/desired_speed
+                control.brake = 0.0
+            elif desired_speed - cur_speed == 0:
+                control.throttle = 0.0
+                control.brake = 0.0
+            else:
+                control.throttle = 0
+                control.brake = (cur_speed - desired_speed)/cur_speed
+
+            self.actor.apply_control(control)
+
 
     def add_closest_route_point_to_path(self):
         self.path_route_points.append(self.route_map.get_nearest_route_point(self.get_position()))
@@ -155,10 +187,10 @@ if __name__ == '__main__':
                 if not in_bounds(position):
                     continue
                 route_points = route_map.get_next_route_points(route_point, 1.0)
-                if len(route_points) == 0:
-                    continue
-                route_point = random.choice(route_points)
-                next_position = route_map.get_position(route_point)
+                if len(route_points) != 0:
+                    route_point = random.choice(route_points)
+                    next_position = route_map.get_position(route_point)
+                    break
 
 
             forward = next_position - position
@@ -186,6 +218,7 @@ if __name__ == '__main__':
                 pref_speed = 2.5
             if actor:
                 crowd_agents.append(CrowdAgent(route_map, actor, pref_speed, agent_tag))
+                #print "spawned agent: ", agent_tag, " at ", actor.get_location()
 
         world.wait_for_tick()
 
@@ -207,7 +240,7 @@ if __name__ == '__main__':
                 crowd_agent.actor.destroy()
                 continue
             
-            if crowd_agent.agent_tag != gamma.get_agent_type(i):
+            if crowd_agent.agent_tag != gamma.get_agent_tag(i):
                 gamma.set_agent(i, carla.AgentParams.get_default(crowd_agent.agent_tag))
 
             pref_vel = crowd_agent.get_preferred_velocity()
@@ -225,6 +258,7 @@ if __name__ == '__main__':
                 next_crowd_agents.append(None)
                 gamma.set_agent_position(i, crowd_agent.get_position())
                 gamma.set_agent_pref_velocity(i, carla.Vector2D(0, 0))
+                gamma.set_agent_velocity(i, carla.Vector2D(0, 0)) 
                 crowd_agent.actor.destroy()
         crowd_agents = next_crowd_agents
         
