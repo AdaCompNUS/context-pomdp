@@ -442,10 +442,10 @@ void WorldModel::getClosestPed(const PomdpState& state,
 
 
 bool WorldModel::isMovingAway(const PomdpState& state, int ped) {
-    const auto& carpos = state.car.pos;
+  const auto& carpos = state.car.pos;
 
 	const auto& pedpos = state.peds[ped].pos;
-	const auto& goalpos = goals[state.peds[ped].goal];
+	const auto& goalpos = GetGoalPos(state.peds[ped]);
 
 	if (goalpos.x == -1 && goalpos.y == -1)
 		return false;
@@ -625,7 +625,7 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
 }
 
 void WorldModel::PedStep(PedStruct &ped, Random& random) {
-    const COORD& goal = goals[ped.goal];
+    const COORD& goal = GetGoalPos(ped);
 	if (goal.x == -1 && goal.y == -1) {  //stop intention
 		return;
 	}
@@ -644,7 +644,7 @@ void WorldModel::PedStep(PedStruct &ped, Random& random) {
 
 void WorldModel::PedStep(PedStruct &ped, double& random) {
 
-    const COORD& goal = goals[ped.goal];
+  const COORD& goal = GetGoalPos(ped);
 	if (goal.x == -1 && goal.y == -1) {  //stop intention
 		return;
 	}
@@ -681,9 +681,23 @@ double gaussian_prob(double x, double stddev) {
     return a * exp(b);
 }
 
+COORD WorldModel::GetGoalPos(PedStruct& ped, int intention_id){
 
-void WorldModel::PedStepDeterministic(PedStruct& ped, int step) {
-    const COORD& goal = goals[ped.goal];
+    // return goals[intention_id];
+
+    return COORD(ped.pos.x + ped.vel.x/freq*3, ped.pos.y + ped.vel.y/freq*3);
+}
+
+
+int WorldModel::GetNumIntentions(PedStruct& ped){
+
+  // return goals.size();
+  //
+  return 2; // current vel model
+}
+
+void WorldModel::PedStepGoal(PedStruct& ped, int step) {
+  const COORD& goal = goals[ped.goal];
 	if (goal.x == -1 && goal.y == -1) {  //stop intention
 		return;
 	}
@@ -694,19 +708,15 @@ void WorldModel::PedStepDeterministic(PedStruct& ped, int step) {
     ped.pos.y += goal_vec.dh;
 }
 
-void WorldModel::PedStepCurVel(PedStruct& ped, COORD vel) {
-
-//	if (vel.Length()>=1e-3){
-//		cout << "recaling vel with "<< (1.0/freq) << endl;
-//	}
-//	vel = vel * (1.0/freq);
-    ped.pos.x += vel.x * (1.0/freq);
-    ped.pos.y += vel.y * (1.0/freq);
+void WorldModel::PedStepCurVel(PedStruct& ped) {
+  ped.pos.x += ped.vel.x * (1.0/freq);
+  ped.pos.y += ped.vel.y * (1.0/freq);
 }
 
-double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
+double WorldModel::pedMoveProb(COORD prev, PedStruct& ped, int intention_id) {
 	const double K = 0.001;
-    const COORD& goal = goals[goal_id];
+  const COORD& curr = ped.pos;
+  const COORD& goal = GetGoalPos(ped); 
 	double move_dist = Norm(curr.x-prev.x, curr.y-prev.y),
 		   goal_dist = Norm(goal.x-prev.x, goal.y-prev.y);
 	double sensor_noise = 0.1;
@@ -714,7 +724,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 
     bool debug=false;
 	// CHECK: beneficial to add back noise?
-	if(debug) cout<<"goal id "<<goal_id<<endl;
+	if(debug) cout<<"intention id "<<intention_id<<endl;
 	if (goal.x == -1 && goal.y == -1) {  //stop intention 
 		return (move_dist < sensor_noise) ? 0.4 : 0;
 	} else {
@@ -1075,8 +1085,6 @@ double get_timestamp(){
 void WorldStateTracker::updatePed(const Pedestrian& ped, bool doPrint){
     int i=0;
 
-//    raise(SIGABRT);
-
     bool no_move = true;
     for(;i<ped_list.size();i++) {
         if (ped_list[i].id==ped.id) {
@@ -1221,13 +1229,14 @@ PomdpState WorldStateTracker::getPomdpState() {
 		pomdpState.num = ModelParams::N_PED_IN;
 	}
 
-    for(int i=0;i<pomdpState.num;i++) {
-        const auto& ped = sorted_peds[i].second;
-        pomdpState.peds[i].pos.x=ped.w;
-        pomdpState.peds[i].pos.y=ped.h;
-		pomdpState.peds[i].id = ped.id;
-		pomdpState.peds[i].goal = -1;
-    }
+  for(int i=0;i<pomdpState.num;i++) {
+      const auto& ped = sorted_peds[i].second;
+      pomdpState.peds[i].pos.x=ped.w;
+      pomdpState.peds[i].pos.y=ped.h;
+      pomdpState.peds[i].id = ped.id;
+      pomdpState.peds[i].goal = -1;
+      pomdpState.peds[i].vel=ped.vel;
+  }
 	return pomdpState;
 }
 
@@ -1466,7 +1475,7 @@ vector<PedStruct> WorldBeliefTracker::predictPeds() {
 
             for(int i=0; i<4; i++) {
                 PedStruct ped = ped0;
-                model.PedStepDeterministic(ped, step + i);
+                model.PedStepGoal(ped, step + i);
                 prediction.push_back(ped);
             }
         }

@@ -60,8 +60,10 @@ public:
     void RVO2PedStep(PedStruct peds[], double& random, int num_ped); //no interaction between car and pedestrian
     void RVO2PedStep(PedStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
     void RVO2PedStep(PomdpStateWorld& state, Random& random);
-    void PedStepDeterministic(PedStruct& ped, int step);
+    void PedStepGoal(PedStruct& ped, int step=1);
     void PedStepCurVel(PedStruct& ped, COORD vel);
+
+  COORD GetGoalPos(int intention_id);
 
     void FixGPUVel(CarStruct &car);
 	void RobStep(CarStruct &car, double steering, Random& random);
@@ -140,6 +142,7 @@ public:
 
     return guide_steer;
   }
+
 };
 
 class WorldStateTracker {
