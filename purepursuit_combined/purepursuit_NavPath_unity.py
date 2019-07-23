@@ -40,7 +40,7 @@ goal_reached = 0
 NO_NET = 0
 IMITATION = 1
 LETS_DRIVE = 2
-
+JOINT_POMDP = 3
 
 use_steer_from_path = True # False, if True, steering will be calculated from path
 use_steer_from_pomdp = False # True, if True, steering will come from 'cmd_vel' topic
@@ -315,7 +315,10 @@ if __name__=='__main__':
     elif use_drive_net == LETS_DRIVE:
         use_steer_from_path = False
         use_steer_from_pomdp = True
-
+    elif use_drive_net == JOINT_POMDP:
+        use_steer_from_path = False
+        use_steer_from_pomdp = True
+ 
     if use_steer_from_pomdp:
         print("Using steer from pomdp")
     if use_steer_from_path:

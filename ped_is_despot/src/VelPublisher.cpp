@@ -59,7 +59,7 @@ public:
             steer_sub = nh.subscribe("cmd_vel_drive_net", 1, &VelPublisher::steerCallBack, this);
             vel_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::velCallBack, this);
         }
-        else if (b_use_drive_net_ == despot::NO || b_use_drive_net_ == despot::LETS_DRIVE)
+        else if (b_use_drive_net_ == despot::NO || b_use_drive_net_ == despot::LETS_DRIVE ||b_use_drive_net_ == despot::JOINT_POMDP)
             action_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::actionCallBack, this);
 
         ros::Timer timer = nh.createTimer(ros::Duration(1 / freq / time_scale), &VelPublisher::publishSpeed, this);

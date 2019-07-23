@@ -15,7 +15,7 @@
 
 #include "neural_prior.h"
 
-
+double path_look_ahead = 5.0;
 
 #undef LOG
 #define LOG(lv) \
@@ -56,24 +56,54 @@ public:
 			min_step = min(step, min_step);
 		}
 
-		double move_penalty = ped_pomdp_->MovementPenalty(*state);
+    double value = 0;
+    ACT_TYPE default_act; 
+    if (Globals::config.use_prior){
+    	double move_penalty = ped_pomdp_->MovementPenalty(*state);
 
-		// Case 1, no pedestrian: Constant car speed
-		double value = move_penalty / (1 - Globals::Discount());
-		// Case 2, with pedestrians: Constant car speed, head-on collision with nearest neighbor
-		if (min_step != numeric_limits<int>::max()) {
-			double crash_penalty = ped_pomdp_->CrashPenalty(*state);
-			value = (move_penalty) * (1 - Globals::Discount(min_step)) / (1 - Globals::Discount())
-			        + crash_penalty * Globals::Discount(min_step);
-			if(DoPrintCPU)
-				printf("   min_step,crash_penalty, value=%d %f %f\n"
-						,min_step, crash_penalty,value);
-		}
+      // Case 1, no pedestrian: Constant car speed
+      value = move_penalty / (1 - Globals::Discount());
+      // Case 2, with pedestrians: Constant car speed, head-on collision with nearest neighbor
+      if (min_step != numeric_limits<int>::max()) {
+        double crash_penalty = ped_pomdp_->CrashPenalty(*state);
+        value = (move_penalty) * (1 - Globals::Discount(min_step)) / (1 - Globals::Discount())
+                + crash_penalty * Globals::Discount(min_step);
+        if(DoPrintCPU)
+          printf("   min_step,crash_penalty, value=%d %f %f\n"
+              ,min_step, crash_penalty,value);
+      }
 
-		if(DoPrintCPU)
-			printf("   min_step,num_peds,move_penalty, value=%d %d %f %f\n"
-					,min_step,state->num, move_penalty,value);
-		return ValuedAction(ped_pomdp_->ACT_CUR, State::Weight(particles) * value);
+      if(DoPrintCPU)
+        printf("   min_step,num_peds,move_penalty, value=%d %d %f %f\n"
+            ,min_step,state->num, move_penalty,value);
+      // default action, go straight with current speed
+      int steerID = ped_pomdp_->GetSteerIDfromSteering(0);                                                                                                                                            
+      default_act = ped_pomdp_->GetActionID(steerID, 0);
+   } else { // Joint-Action-POMDP
+      int dec_step = round(carvel / ModelParams::AccSpeed * ModelParams::control_freq);
+
+      if (dec_step > min_step) {
+        value = ped_pomdp_->CrashPenalty(*state);
+      }
+
+      // 2. stay forever
+      float stay_cost = ModelParams::REWARD_FACTOR_VEL * (0.0 - ModelParams::VEL_MAX)
+              / ModelParams::VEL_MAX;
+
+      value += (-ModelParams::TIME_REWARD + stay_cost) / (1 - Globals::Discount());
+
+      // 1. decelarate untill full stop
+      for (int step = 0 ; step < dec_step; step++){
+        value = -0.1 - ModelParams::TIME_REWARD + stay_cost + value * Globals::Discount();
+
+      }
+      // default action, go straight and decelarate
+      int steerID = ped_pomdp_->GetSteerIDfromSteering(0);                                                                                                                                            
+      default_act = ped_pomdp_->GetActionID(steerID, 2);
+
+    }
+
+   		return ValuedAction(default_act, State::Weight(particles) * value);
 	}
 };
 
@@ -159,13 +189,39 @@ double PedPomdp::ActionPenalty(int action) const {
 
 // Less penalty for longer distance travelled
 double PedPomdp::MovementPenalty(const PomdpState& state) const {
-//	return ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
-	return -ModelParams::TIME_REWARD;
+  return -ModelParams::TIME_REWARD;
 }
+
+
+double PedPomdp::MovementPenalty(const PomdpState& state, float steering) const {
+  float base_reward = 0;
+
+  // float guide_steer = world_model->GetSteerToPath<PomdpState>(state);
+
+  // if(abs(steering - guide_steer) < 0.1) {
+//				printf("Near path reward/n");
+   // base_reward += 0.2;
+ // }
+
+  return base_reward - ModelParams::TIME_REWARD + ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
+}
+
 // Less penalty for longer distance travelled
 double PedPomdp::MovementPenalty(const PomdpStateWorld& state) const {
-//	return ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
-	return -ModelParams::TIME_REWARD;
+  	return -ModelParams::TIME_REWARD;
+}
+
+double PedPomdp::MovementPenalty(const PomdpStateWorld& state, float steering) const {
+  float base_reward = 0;
+
+  // float guide_steer = world_model->GetSteerToPath<PomdpStateWorld>(state);
+
+  // if(abs(steering - guide_steer) < 0.1) {
+//				printf("Near path reward/n");
+   //  base_reward += 0.2;
+  // }
+
+  return base_reward - ModelParams::TIME_REWARD + ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
 }
 
 bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
@@ -212,10 +268,11 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	}
 
  	// Safety control: collision; Terminate upon collision
-    if(state.car.vel > 0.001 && world_model->inCollision(state) ) { /// collision occurs only when car is moving
-		reward = CrashPenalty(state);
+	int col_ped = 0;
+  if(state.car.vel > 0.001 && world_model->inCollision(state, col_ped) ) { /// collision occurs only when car is moving
+    reward = CrashPenalty(state);
 
-        logd << "assigning collision reward" << reward << endl;
+    logd << "assigning collision reward" << reward << endl;
 		return true;
 	}
 
@@ -223,7 +280,12 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	reward += ActionPenalty(GetAccelerationID(action));
 
 	// Speed control: Encourage higher speed
-	reward += MovementPenalty(state);
+  double steering = GetSteering(action);
+  if (Globals::config.use_prior)
+    reward += MovementPenalty(state);
+  else{
+    reward += MovementPenalty(state, steering);
+  }
 
 	// State transition
 
@@ -237,7 +299,6 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	logd << "[PedPomdp::"<<__FUNCTION__<<"] Refract action"<< endl;
 	double acc = GetAcceleration(action);
-	double steering = GetSteering(action);
 
 //	cout << "car freq " << world_model->freq << endl;
 
@@ -319,13 +380,16 @@ bool PedPomdp::Step(PomdpStateWorld& state, double rNum, int action, double& rew
 	reward += ActionPenalty(GetAccelerationID(action));
 
 	// Speed control: Encourage higher speed
-	reward += MovementPenalty(state);
+	double steering = GetSteering(action);
+	if (Globals::config.use_prior)
+    reward += MovementPenalty(state);
+  else
+    reward += MovementPenalty(state, steering);
 
 	// State transition
 	Random random(rNum);
 	logd << "[PedPomdp::"<<__FUNCTION__<<"] Refract action"<< endl;
 	double acc = GetAcceleration(action);
-	double steering = GetSteering(action);
 
 	world_model->RobStep(state.car, steering, random);
 	world_model->RobVelStep(state.car, acc, random);

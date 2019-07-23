@@ -271,6 +271,17 @@ void Controller::InitializeDefaultParameters() {
 	else
 		Globals::config.use_prior = false;
 
+	if (b_use_drive_net_ == JOINT_POMDP) {
+		Globals::config.useGPU=false;
+    Globals::config.num_scenarios=10;
+		Globals::config.NUM_THREADS=10;
+		Globals::config.discount=0.95;
+		Globals::config.search_depth=20;
+		Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/20;
+		Globals::config.pruning_constant=0.001;
+		Globals::config.exploration_constant = 0.1;
+  }
+
 //	Globals::config.root_seed=1024;
 
 	logging::level(3);
@@ -346,7 +357,7 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
-	if (b_use_drive_net_ == LETS_DRIVE){
+  if (b_use_drive_net_ == LETS_DRIVE || b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == IMITATION){
 		pathplan_ahead_ = 0;
 	}
 
@@ -358,6 +369,9 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 		path_from_topic = p.interpolate();
 		WorldSimulator::worldModel.setPath(path_from_topic);
 	}
+
+  // if(Globals::config.useGPU)
+    // static_cast<PedPomdp*>(ped_pomdp_model)->UpdateGPUPath();
 
 	publishPath(path->header.frame_id, path_from_topic);
 }
@@ -439,7 +453,7 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 			cur_state,
 			search_state, last_action);
 
-	if (SolverPrior::history_mode == "track"){
+  if (Globals::config.use_prior && SolverPrior::history_mode == "track"){
 		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
 		for(int i=0; i<SolverPrior::nn_priors.size();i++){
 			if (i > 0){
@@ -516,7 +530,7 @@ void Controller::PredictPedsForSearch(State* search_state) {
 
 			static_cast<const PedPomdp*>(ped_pomdp_model)->PrintStatePeds(*predicted_state, string("predicted_peds"));
 
-			if (SolverPrior::history_mode == "track") {
+      if (Globals::config.use_prior && SolverPrior::history_mode == "track"){
 				SolverPrior::nn_priors[0]->Add_tensor_hist(predicted_state);
 
 				for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
@@ -548,7 +562,7 @@ void Controller::PredictPedsForSearch(State* search_state) {
 
 void Controller::UpdatePriors(const State* cur_state, State* search_state) {
 	//	SolverPrior::nn_priors[0]->DebugHistory("After Deep update");
-	if (SolverPrior::history_mode == "track") {
+  if (Globals::config.use_prior && SolverPrior::history_mode == "track"){
 		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
 		for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 			if (i > 0) {
@@ -661,7 +675,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 	cur_search_hist_len = SolverPrior::nn_priors[0]->Size(true);
 	cur_tensor_hist_len = SolverPrior::nn_priors[0]->Tensor_hist_size();
 
-	if( SolverPrior::history_mode=="track" && cur_search_hist_len != cur_tensor_hist_len){
+  if(Globals::config.use_prior && SolverPrior::history_mode=="track" && cur_search_hist_len != cur_tensor_hist_len){
 		cerr << "State hist length "<< cur_search_hist_len <<
 				" mismatch with tensor hist length " << cur_tensor_hist_len << endl;
 		raise(SIGABRT);
@@ -670,9 +684,9 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 	PredictPedsForSearch(search_state);
 
 	start_t = get_time_second();
-	ACT_TYPE action;
+  ACT_TYPE action = static_cast<const PedPomdp*>(ped_pomdp_model)->GetActionID(0.0, 0.0);
 	double step_reward;
-	if (b_use_drive_net_ == NO){
+  if (b_use_drive_net_ == NO || b_use_drive_net_ == JOINT_POMDP){
 		cerr << "DEBUG: Search for action using " <<typeid(*solver).name()<< endl;
 		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(static_cast<const PedPomdp*>(ped_pomdp_model));
 		action = solver->Search().action;
@@ -840,6 +854,10 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 			search_solver, num_runs, world_type, belief_type, time_limit);
 	if(options==NULL)
 		return 0;
+
+	if(Globals::config.useGPU)
+		PrepareGPU();
+
 	clock_t main_clock_start = clock();
 
 	/* =========================

@@ -44,6 +44,9 @@ ValuedAction DefaultPolicy::RecursiveValue(const vector<State*>& particles,
 		return particle_lower_bound_->Value(particles);
 	} else {
 		ACT_TYPE action = Action(particles, streams, history);
+    
+    // if (history.Size() == initial_depth_) 
+      // cout << "roll out default action at initial depth " << action << endl;
 
 		double value = 0;
 

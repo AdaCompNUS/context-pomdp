@@ -290,82 +290,83 @@ void PedNeuralSolverPrior::Init(){
 	//	     Refer to python codes: bag_2_hdf5.parse_map_data_from_dict
 	//		 (map_dict_entry is the raw OccupancyGrid data)
 
-	cerr << "DEBUG: Initializing Map" << endl;
+  if (Globals::config.use_prior){
+    cerr << "DEBUG: Initializing Map" << endl;
 
-	map_prop_.downsample_ratio = 0.03125;
-	map_prop_.resolution = raw_map_.info.resolution;
-	map_prop_.origin = COORD(raw_map_.info.origin.position.x, raw_map_.info.origin.position.y);
-	map_prop_.dim = (int)(raw_map_.info.height);
-	map_prop_.new_dim = (int)(map_prop_.dim * map_prop_.downsample_ratio);
-	map_prop_.map_intensity_scale = 1500.0;
+    map_prop_.downsample_ratio = 0.03125;
+    map_prop_.resolution = raw_map_.info.resolution;
+    map_prop_.origin = COORD(raw_map_.info.origin.position.x, raw_map_.info.origin.position.y);
+    map_prop_.dim = (int)(raw_map_.info.height);
+    map_prop_.new_dim = (int)(map_prop_.dim * map_prop_.downsample_ratio);
+    map_prop_.map_intensity_scale = 1500.0;
 
-	// DONE: Convert the data in raw_map to your desired image data structure;
-	// 		 (like a torch tensor);
+    // DONE: Convert the data in raw_map to your desired image data structure;
+    // 		 (like a torch tensor);
 
-	cerr << "DEBUG: Initializing Map image" << endl;
+    cerr << "DEBUG: Initializing Map image" << endl;
 
-	map_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
+    map_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
 
-	int index = 0;
-	for (std::vector<int8_t>::const_reverse_iterator iterator = raw_map_.data.rbegin();
-		  iterator != raw_map_.data.rend(); ++iterator) {
-		int x = (map_prop_.dim - 1) - (size_t)(index / map_prop_.dim);
-		int y = (map_prop_.dim - 1) - (size_t)(index % map_prop_.dim);
-		assert(*iterator != -1);
-		map_image_.at<float>(x,y) = (float)(*iterator);
-		index++;
-	}
+    int index = 0;
+    for (std::vector<int8_t>::const_reverse_iterator iterator = raw_map_.data.rbegin();
+        iterator != raw_map_.data.rend(); ++iterator) {
+      int x = (map_prop_.dim - 1) - (size_t)(index / map_prop_.dim);
+      int y = (map_prop_.dim - 1) - (size_t)(index % map_prop_.dim);
+      assert(*iterator != -1);
+      map_image_.at<float>(x,y) = (float)(*iterator);
+      index++;
+    }
 
-	double minVal, maxVal;
-	minMaxLoc(map_image_, &minVal, &maxVal);
-	map_prop_.map_intensity = maxVal;
+    double minVal, maxVal;
+    minMaxLoc(map_image_, &minVal, &maxVal);
+    map_prop_.map_intensity = maxVal;
 
-	logd << "Map properties: " << endl;
-	logd << "-dim " << map_prop_.dim << endl;
-	logd << "-new_dim " << map_prop_.new_dim << endl;
-	logd << "-downsample_ratio " << map_prop_.downsample_ratio << endl;
-	logd << "-map_intensity " << map_prop_.map_intensity << endl;
-	logd << "-map_intensity_scale " << map_prop_.map_intensity_scale << endl;
-	logd << "-resolution " << map_prop_.resolution << endl;
+    logd << "Map properties: " << endl;
+    logd << "-dim " << map_prop_.dim << endl;
+    logd << "-new_dim " << map_prop_.new_dim << endl;
+    logd << "-downsample_ratio " << map_prop_.downsample_ratio << endl;
+    logd << "-map_intensity " << map_prop_.map_intensity << endl;
+    logd << "-map_intensity_scale " << map_prop_.map_intensity_scale << endl;
+    logd << "-resolution " << map_prop_.resolution << endl;
 
-	cerr << "DEBUG: Scaling map" << endl;
+    cerr << "DEBUG: Scaling map" << endl;
 
-	rescaled_map_ = rescale_image(map_image_);
-	normalize(rescaled_map_);
+    rescaled_map_ = rescale_image(map_image_);
+    normalize(rescaled_map_);
 
-	cerr << "DEBUG: Initializing other images" << endl;
+    cerr << "DEBUG: Initializing other images" << endl;
 
-	goal_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
+    goal_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
 
-	for( int i=0;i<num_hist_channels;i++){
-		map_hist_images_.push_back(cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1));
-		car_hist_images_.push_back(cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1));
-	}
+    for( int i=0;i<num_hist_channels;i++){
+      map_hist_images_.push_back(cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1));
+      car_hist_images_.push_back(cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1));
+    }
 
-	map_hist_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
-	car_hist_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
+    map_hist_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
+    car_hist_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
 
-	cerr << "DEBUG: Initializing tensors" << endl;
+    cerr << "DEBUG: Initializing tensors" << endl;
 
-	empty_map_tensor_ = at::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
-	map_tensor_ = at::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
-	goal_tensor = torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
+    empty_map_tensor_ = at::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
+    map_tensor_ = at::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
+    goal_tensor = torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
 
-	logd << "[PedNeuralSolverPrior::Init] create tensors of size " <<map_prop_.new_dim<< ","<<map_prop_.new_dim<< endl;
-	for( int i=0;i<num_hist_channels;i++){
+    logd << "[PedNeuralSolverPrior::Init] create tensors of size " <<map_prop_.new_dim<< ","<<map_prop_.new_dim<< endl;
+    for( int i=0;i<num_hist_channels;i++){
 
-		map_hist_tensor_.push_back(torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat));
-		car_hist_tensor_.push_back(torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat));
+      map_hist_tensor_.push_back(torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat));
+      car_hist_tensor_.push_back(torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat));
 
-		map_hist_links.push_back(NULL);
-		car_hist_links.push_back(NULL);
-		hist_time_stamps.push_back(-1);
-	}
+      map_hist_links.push_back(NULL);
+      car_hist_links.push_back(NULL);
+      hist_time_stamps.push_back(-1);
+    }
 
-	goal_link = NULL;
+    goal_link = NULL;
 
-	logd << "[PedNeuralSolverPrior::Init] end " << endl;
-
+    logd << "[PedNeuralSolverPrior::Init] end " << endl;
+  }
 }
 
 void PedNeuralSolverPrior::Clear_hist_timestamps(){
@@ -401,13 +402,14 @@ PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 	map_received = false;
 	drive_net = NULL;
 
+  if (Globals::config.use_prior){
 
-	cerr << "[" << __FUNCTION__<< "] Testing model start" << endl;
+    cerr << "[" << __FUNCTION__<< "] Testing model start" << endl;
 
-	Test_model("");
+    Test_model("");
 
-	cerr << "[" << __FUNCTION__<< "] Testing model end" << endl;
-
+    cerr << "[" << __FUNCTION__<< "] Testing model end" << endl;
+  }
 }
 
 void PedNeuralSolverPrior::Load_model(std::string path){
@@ -1621,44 +1623,55 @@ void PedNeuralSolverPrior::ComputeMiniBatchValue(vector<torch::Tensor>& input_ba
 }
 
 std::vector<ACT_TYPE> PedNeuralSolverPrior::ComputeLegalActions(const State* state, const DSPOMDP* model){
-	const PomdpState* pomdp_state = static_cast<const PomdpState*>(state);
-	const PedPomdp* pomdp_model = static_cast<const PedPomdp*>(model_);
+  const PomdpState* pomdp_state = static_cast<const PomdpState*>(state);
+  const PedPomdp* pomdp_model = static_cast<const PedPomdp*>(model_);
 
-	ACT_TYPE act_start, act_end;
+  ACT_TYPE act_start, act_end;
 
-	int steer_code = world_model.hasMinSteerPath(*pomdp_state);
+  if (Globals::config.use_prior){
+    int steer_code = world_model.hasMinSteerPath(*pomdp_state);
 
-	if (steer_code == 1){
-		int steerID = pomdp_model->GetSteerIDfromSteering(ModelParams::MaxSteerAngle);
-		act_start = pomdp_model->GetActionID(steerID, 0);
-		act_end = act_start + 2 * ModelParams::NumAcc + 1;
-		printf("Limited legal actions: %d - %d (dir %d)\n", act_start, act_end, steer_code);
-	}
-	else if (steer_code == -1){
-		int steerID = pomdp_model->GetSteerIDfromSteering(-ModelParams::MaxSteerAngle);
-		act_start = pomdp_model->GetActionID(steerID, 0);
-		act_end = act_start + 2 * ModelParams::NumAcc + 1;
-		printf("Limited legal actions: %d - %d (dir %d)\n", act_start, act_end, steer_code);
-	}
-	else if (steer_code == 2){
-		int steerID = pomdp_model->GetSteerIDfromSteering(0);
-		act_start = pomdp_model->GetActionID(steerID, 0);
-		act_end = act_start + 1;
-		printf("Limited legal actions: %d - %d (dir %d)\n", act_start, act_end, steer_code);
-	}
-	else{
-		act_start = 0;
-		act_end = model->NumActions();
-	}
+    if (steer_code == 1){
+      int steerID = pomdp_model->GetSteerIDfromSteering(ModelParams::MaxSteerAngle);
+      act_start = pomdp_model->GetActionID(steerID, 0);
+      act_end = act_start + 2 * ModelParams::NumAcc + 1;
+      printf("Limited legal actions: %d - %d (dir %d)\n", act_start, act_end, steer_code);
+    }
+    else if (steer_code == -1){
+      int steerID = pomdp_model->GetSteerIDfromSteering(-ModelParams::MaxSteerAngle);
+      act_start = pomdp_model->GetActionID(steerID, 0);
+      act_end = act_start + 2 * ModelParams::NumAcc + 1;
+      printf("Limited legal actions: %d - %d (dir %d)\n", act_start, act_end, steer_code);
+    }
+    else if (steer_code == 2){
+      int steerID = pomdp_model->GetSteerIDfromSteering(0);
+      act_start = pomdp_model->GetActionID(steerID, 0);
+      act_end = act_start + 1;
+      printf("Limited legal actions: %d - %d (dir %d)\n", act_start, act_end, steer_code);
+    }
+    else{
+      act_start = 0;
+      act_end = model->NumActions();
+    }
+  } else {
+    double steer_to_path = pomdp_model->world_model->GetSteerToPath<PomdpState>(*pomdp_state);
+   
+    // steer_to_path = 0; //debugging 
+
+    act_start = pomdp_model->GetActionID(pomdp_model->GetSteerIDfromSteering(steer_to_path), 0);
+
+    act_end = act_start + 2 * ModelParams::NumAcc + 1;
+
+    // printf("Limited legal actions: %d - %d \n", act_start, act_end);
+  }
 
 	std::vector<ACT_TYPE> legal_actions;
-	for (ACT_TYPE action = act_start; action < act_end; action++) {
-		legal_actions.push_back(action);
-	}
+  for (ACT_TYPE action = act_start; action < act_end; action++) {
+    legal_actions.push_back(action);
+  }
 
-	return legal_actions;
+  return legal_actions;
 }
-
 
 void PedNeuralSolverPrior::get_history_settings(despot::VNode* cur_node, int mode, int &num_history, int &start_channel){
 	if (mode == FULL){ // Full update of the input channels

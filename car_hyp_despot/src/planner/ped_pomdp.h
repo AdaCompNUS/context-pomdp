@@ -59,7 +59,10 @@ public:
     double MovementPenalty(const PomdpState& state) const;
     double MovementPenalty(const PomdpStateWorld& state) const;
 
-	uint64_t Observe(const State& ) const;
+    double MovementPenalty(const PomdpState& state, float) const;
+    double MovementPenalty(const PomdpStateWorld& state, float) const;
+  
+ 	uint64_t Observe(const State& ) const;
 	const std::vector<int>& ObserveVector(const State& )   const;
 	double ObsProb(uint64_t z, const State& s, int action) const;
 
@@ -186,7 +189,6 @@ public:
 	static int GetAccIDfromAcc(float acc);
 	static int GetSteerIDfromSteering(float steering);
 };
-
 
 #endif
 

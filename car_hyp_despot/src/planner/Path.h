@@ -4,7 +4,7 @@
 #include"param.h"
 
 struct Path : std::vector<COORD> {
-    int nearest(COORD pos);
+    int nearest(const COORD pos) const;
     double mindist(COORD pos);
     int forward(int i, double len) const;
 	double getYaw(int i) const;

@@ -60,6 +60,7 @@ static int step_counter = 0;
 DESPOT::DESPOT(const DSPOMDP* model, ScenarioLowerBound* lb,
                ScenarioUpperBound* ub, Belief* belief, bool use_GPU) :
 	Solver(model, belief), root_(NULL), lower_bound_(lb), upper_bound_(ub) {
+  logd << __FUNCTION__ << endl;
 	assert(model != NULL);
 	model_ = model;
 
@@ -82,6 +83,7 @@ DESPOT::DESPOT(const DSPOMDP* model, ScenarioLowerBound* lb,
 }
 
 DESPOT::~DESPOT() {
+  logd << __FUNCTION__ << endl;
 
 	QuickRandom::DestroyRandGen();
 
@@ -100,6 +102,7 @@ ScenarioUpperBound* DESPOT::upper_bound() const {
 VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
                      ScenarioLowerBound* lower_bound, ScenarioUpperBound* upper_bound,
                      const DSPOMDP* model, History& history, SearchStatistics* statistics) {
+  logd << __FUNCTION__ << endl;
 	VNode* cur = root;
 
 	int hist_size = history.Size();
@@ -211,6 +214,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
                             ScenarioLowerBound* lower_bound, ScenarioUpperBound* upper_bound,
                             const DSPOMDP* model, History& history, bool& Expansion_done,
                             Shared_SearchStatistics* statistics, bool despot_thread) {
+  logd << __FUNCTION__ << endl;
 	Shared_VNode* cur = root;
 
 	int hist_size = history.Size();
@@ -380,6 +384,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 	return cur;
 }
 void DESPOT::ExploitBlockers(VNode* vnode) {
+  logd << __FUNCTION__ << endl;
 	if (Globals::config.pruning_constant <= 0) {
 		logd << "Return: small pruning " << Globals::config.pruning_constant
 		     << endl;
@@ -412,7 +417,7 @@ void DESPOT::ExploitBlockers(VNode* vnode) {
 
 			if (cur->parent() == NULL) {
 				cur = NULL;
-				cout << "blocked node " << cur << " set to NULL" << endl;
+				// cout << "blocked node " << cur << " set to NULL" << endl;
 			} else {
 				cur = cur->parent()->parent();
 			}
@@ -423,6 +428,7 @@ void DESPOT::ExploitBlockers(VNode* vnode) {
 }
 
 void DESPOT::ExploitBlockers(Shared_VNode* vnode) {
+  logd << __FUNCTION__ << endl;
 	if (Globals::config.pruning_constant <= 0) {
 		logd << "Return: small pruning " << Globals::config.pruning_constant
 		     << endl;
@@ -457,7 +463,7 @@ void DESPOT::ExploitBlockers(Shared_VNode* vnode) {
 
 			if (cur->parent() == NULL) {
 				cur = NULL;
-				cout << "blocked node " << cur << " set to NULL" << endl;
+				// cout << "blocked node " << cur << " set to NULL" << endl;
 
 			} else {
 				cur = cur->parent()->parent();
@@ -474,6 +480,7 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
                               double& explore_time, double& backup_time, int& num_trials,
                               double timeout, MsgQueque<Shared_VNode>& node_queue,
                               MsgQueque<Shared_VNode>& print_queue, int threadID) {
+  logd << __FUNCTION__ << endl;
 	Globals::ChooseGPUForThread();			//otherwise the GPUID would be 0 (default)
 	Globals::AddMappedThread(this_thread::get_id(), threadID);
 	used_time = 0;
@@ -563,6 +570,7 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 }
 
 void PrintServer(MsgQueque<Shared_VNode>& print_queue, float timeout) {
+  logd << __FUNCTION__ << endl;
 	//cout << "Create printing thread " << this_thread::get_id() << endl;
 	for (;;) {
 		Shared_VNode* node = print_queue.receive(false, timeout);
@@ -579,6 +587,7 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
                              ScenarioLowerBound* lower_bound, ScenarioUpperBound* upper_bound,
                              const DSPOMDP* model, History& history, double timeout,
                              SearchStatistics* statistics) {
+  logd << __FUNCTION__ << endl;
 	if (statistics != NULL) {
 		statistics->num_particles_before_search = model->NumActiveParticles();
 	}
@@ -602,8 +611,8 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		if (Globals::config.exploration_mode == UCT)
 			static_cast<Shared_VNode*>(root)->visit_count_ = 1.1;
 
-		if (Globals::config.use_prior)
-			ComputeLegalActions(root, model);
+		// if (Globals::config.use_prior)
+		ComputeLegalActions(root, model);
 	} else
 		root = new VNode(particles, particleIDs);
 
@@ -796,6 +805,7 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 }
 
 void DESPOT::Compare() {
+  logd << __FUNCTION__ << endl;
 	vector<State*> particles = belief_->Sample(Globals::config.num_scenarios);
 	SearchStatistics statistics;
 
@@ -812,6 +822,7 @@ void DESPOT::Compare() {
 
 void DESPOT::InitLowerBound(VNode* vnode, ScenarioLowerBound* lower_bound,
                             RandomStreams& streams, History& history, bool b_init_root) {
+  logd << __FUNCTION__ << endl;
 	/*if (Globals::config.use_prior && !b_init_root){
 		int prior_id = 0;
 		if (Globals::config.use_multi_thread_){
@@ -866,6 +877,7 @@ void DESPOT::InitLowerBound(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 void DESPOT::InitUpperBound(VNode* vnode, ScenarioUpperBound* upper_bound,
                             RandomStreams& streams, History& history) {
+  logd << __FUNCTION__ << endl;
 	streams.position(vnode->depth());
 	double upper = upper_bound->Value(vnode->particles(), streams, history);
 	vnode->utility_upper_bound(upper * Globals::Discount(vnode->depth()));
@@ -880,18 +892,20 @@ void DESPOT::InitUpperBound(VNode* vnode, ScenarioUpperBound* upper_bound,
 void DESPOT::InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
                         ScenarioUpperBound* upper_bound, RandomStreams& streams,
                         History& history, bool b_init_root) {
+  logd << __FUNCTION__ << endl;
 	//if(vnode->depth()==3)
 	//	cout<<vnode->depth()<<" "<<history.Size()<<" "<<streams.position()<<endl;
 	InitLowerBound(vnode, lower_bound, streams, history, b_init_root);
 
 	InitUpperBound(vnode, upper_bound, streams, history);
 
-//  if (vnode->depth()==0){
+  // if (vnode->depth()==0){
 //      // This is a patch!!!!!!
 //      // The policy network doesn't has a value head yet,
 //      // so we are not able to provide an initial lower bound for the root.
 //      vnode->lower_bound(vnode->Weight() * (vnode->upper_bound() - 5.0));
-//  }
+  //cout << "roor node default move: " << vnode->default_move().action << endl;
+  //}
 
 	logd << "[InitBounds] node "<<vnode<<" at level " << vnode->depth() <<
 			" neural lb=" << vnode->lower_bound() << " ub=" <<
@@ -905,6 +919,7 @@ void DESPOT::InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 }
 
 ValuedAction DESPOT::Search() {
+  logd << __FUNCTION__ << endl;
 	if (logging::level() >= logging::DEBUG) {
 		model_->PrintBelief(*belief_);
 	}
@@ -1106,6 +1121,7 @@ ValuedAction DESPOT::Search() {
 }
 
 double DESPOT::CheckDESPOT(const VNode* vnode, double regularized_value) {
+  logd << __FUNCTION__ << endl;
 	cout
 	        << "--------------------------------------------------------------------------------"
 	        << endl;
@@ -1180,6 +1196,7 @@ double DESPOT::CheckDESPOT(const VNode* vnode, double regularized_value) {
 }
 
 double DESPOT::CheckDESPOTSTAR(const VNode* vnode, double regularized_value) {
+  logd << __FUNCTION__ << endl;
 	cout
 	        << "--------------------------------------------------------------------------------"
 	        << endl;
@@ -1227,6 +1244,7 @@ double DESPOT::CheckDESPOTSTAR(const VNode* vnode, double regularized_value) {
 }
 
 VNode* DESPOT::Prune(VNode* vnode, int& pruned_action, double& pruned_value) {
+  logd << __FUNCTION__ << endl;
 	vector<State*> empty;
 	vector<int> emptyID;
 	VNode* pruned_v = new VNode(empty, emptyID, vnode->depth(), NULL,
@@ -1274,6 +1292,7 @@ VNode* DESPOT::Prune(VNode* vnode, int& pruned_action, double& pruned_value) {
 }
 
 QNode* DESPOT::Prune(QNode* qnode, double& pruned_value) {
+  logd << __FUNCTION__ << endl;
 	QNode* pruned_q = new QNode((VNode*) NULL, qnode->edge());
 	pruned_value = qnode->step_reward - Globals::config.pruning_constant;
 	map<OBS_TYPE, VNode*>& children = qnode->children();
@@ -1298,6 +1317,7 @@ QNode* DESPOT::Prune(QNode* qnode, double& pruned_value) {
 }
 //for debugging
 void DESPOT::OutputWeight(QNode* qnode) {
+  logd << __FUNCTION__ << endl;
 	double qnode_weight = 0;
 	std::vector<double> vnode_weight;
 	if (qnode == NULL) {
@@ -1329,6 +1349,7 @@ void DESPOT::OutputWeight(QNode* qnode) {
 
 //for debugging
 void DESPOT::OptimalAction2(VNode* vnode) {
+  logd << __FUNCTION__ << endl;
 	if (vnode->depth() <= 2) {
 		ValuedAction astar(-1, Globals::NEG_INFTY);
 		QNode * best_qnode = NULL;
@@ -1378,6 +1399,7 @@ void DESPOT::OptimalAction2(VNode* vnode) {
 }
 
 ValuedAction DESPOT::OptimalAction(VNode* vnode) {
+  logd << __FUNCTION__ << endl;
 	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! debug code !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //	cout << "[OptimalAction] Debug only: returning default move of node " << vnode << endl;
 //	return vnode->default_move();
@@ -1392,8 +1414,11 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 			if (action < vnode->children().size()) {
 				QNode* qnode = vnode->Child(action);
 
-				logi << "Children of root node: action: " << qnode->edge() << "  lowerbound: "
-							 << qnode->lower_bound() << endl;
+        float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
+  
+        logi << "Children of root node: action: " << qnode->edge() << " visit_count: " << visit <<
+                "  lowerbound: " << qnode->lower_bound() <<
+                "  upperbound: " << qnode->upper_bound() << endl;
 
 				if (qnode->lower_bound() > astar.value) {
 					astar = ValuedAction(action, qnode->lower_bound());
@@ -1561,23 +1586,28 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 }
 
 double DESPOT::Gap(VNode* vnode) {
+  logd << __FUNCTION__ << endl;
 	return (vnode->upper_bound() - vnode->lower_bound());
 }
 
 double DESPOT::Gap(Shared_VNode* vnode, bool use_Vloss) {
+  logd << __FUNCTION__ << endl;
 	return (vnode->upper_bound((bool)use_Vloss) - vnode->lower_bound());
 }
 
 double DESPOT::WEU(VNode* vnode) {
+  logd << __FUNCTION__ << endl;
 	return WEU(vnode, Globals::config.xi);
 }
 
 double DESPOT::WEU(Shared_VNode* vnode) {
+  logd << __FUNCTION__ << endl;
 	return WEU(vnode, Globals::config.xi);
 }
 
 // Can pass root as an argument, but will not affect performance much
 double DESPOT::WEU(VNode* vnode, double xi) {
+  logd << __FUNCTION__ << endl;
 	VNode* root = vnode;
 	while (root->parent() != NULL) {
 		root = root->parent()->parent();
@@ -1587,6 +1617,7 @@ double DESPOT::WEU(VNode* vnode, double xi) {
 }
 
 double DESPOT::WEU(Shared_VNode* vnode, double xi) {
+  logd << __FUNCTION__ << endl;
 	VNode* root = vnode;
 	while (root->parent() != NULL) {
 		root = root->parent()->parent();
@@ -1599,6 +1630,7 @@ double DESPOT::WEU(Shared_VNode* vnode, double xi) {
 }
 
 VNode* DESPOT::SelectBestWEUNode(QNode* qnode, bool despot_thread) {
+  logd << __FUNCTION__ << endl;
 	double weustar = Globals::NEG_INFTY;
 	VNode* vstar = NULL;
 	bool use_exploration_value = true;
@@ -1706,6 +1738,7 @@ VNode* DESPOT::SelectBestWEUNode(QNode* qnode, bool despot_thread) {
 }
 
 QNode* DESPOT::SelectBestUpperBoundNode(VNode* vnode) {
+  logd << __FUNCTION__ << endl;
 	int astar = -1;
 	double upperstar = Globals::NEG_INFTY;
 //	for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
@@ -1723,7 +1756,8 @@ QNode* DESPOT::SelectBestUpperBoundNode(VNode* vnode) {
 }
 
 Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_thread) {
-	int astar = -1;
+  logd << __FUNCTION__ << endl;
+  int astar = -1;
 	double upperstar = Globals::NEG_INFTY;
 	double lowerstar = Globals::NEG_INFTY;
 
@@ -1747,20 +1781,20 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 	}
 
 	if (Globals::config.use_prior && /*vnode->depth()==0 &&*/ SolverPrior::nn_priors[0]->prior_force_steer){
-//		cout << "best upper 1" << endl;
+  //cout << "best upper 1" << endl;
 		// SolverPrior::nn_priors[prior_ID]->Get_force_steer_action(vnode, opt_act_start, opt_act_end);
 	}
 
-//	cout << "best upper 2" << endl;
+  //cout << "best upper 2" << endl;
 
 
 //	for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++){
 	for (ACT_TYPE action: vnode->legal_actions()) {
-//		cout << "best upper 3" << endl;
+  // cout << "best upper 3" << endl;
 
 		Shared_QNode* qnode =
 		    static_cast<Shared_QNode*>(((VNode*) vnode)->Child(action));
-//		cout << "best upper 4, action, qnode" <<action << " "<< qnode<<  endl;
+  // cout << "best upper 4, action, qnode" <<action << " "<< qnode<<  endl;
 
 		if (qnode && Globals::config.use_multi_thread_ && Globals::config.exploration_mode == UCT)
 		{
@@ -1769,38 +1803,47 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 		}
 
 
-//		cout << "best upper 5" << endl;
+  // cout << "best upper 5" << endl;
 
 		if(Globals::config.use_prior && vnode->depth()==0){
-			logd << "comparing level "<< qnode->parent()->depth() << " qnode " << qnode <<
+        SolverPrior::nn_priors[prior_ID]->print_prior_actions(action);
+		}
+
+    logd << "comparing level "<< qnode->parent()->depth() << " qnode " << qnode <<
 					" , upper_bound()= " << qnode->upper_bound(false) <<
 					" , lower_bound()= " << qnode->lower_bound() <<
 					" bonus " << qnode->exploration_bonus << ", ";
 
-			SolverPrior::nn_priors[prior_ID]->print_prior_actions(action);
-		}
 
 		if (qnode->upper_bound(use_exploration_value) > upperstar + 1e-5) {
 			upperstar = qnode->upper_bound(use_exploration_value);
 			astar = action;
 		}
 
-		if (qnode->prior_probability() > prob_star + 1e-8) {
-			prob_star = qnode->prior_probability();
-			astar_prior = action;
-		}
+    if(Globals::config.use_prior){
+        if (qnode->prior_probability() > prob_star + 1e-8) {
+            prob_star = qnode->prior_probability();
+            astar_prior = action;
+        }
+    }
 	}
 
 	assert(astar >= 0);
-	assert(astar_prior >= 0);
 
 	Shared_QNode* qstar = static_cast<Shared_QNode*>(((VNode*) vnode)->Child(astar));
-	Shared_QNode* qstar_prior = static_cast<Shared_QNode*>(((VNode*) vnode)->Child(astar_prior));
 
-	if (false)
-		printf("thread %d chose qnode with action %d, prior prob %f, ub %f, bonus %f ;\n          best qnode has action %d, prior prob %f, ub %f, bonus %f\n",
-				prior_ID, astar, qstar->prior_probability_, qstar->upper_bound(false), qstar->exploration_bonus,
-				astar_prior, qstar_prior->prior_probability_, qstar_prior->upper_bound(false), qstar_prior->exploration_bonus);
+ 	if (false)
+		printf("thread %d chose qnode with action %d, address %d;\n",
+			prior_ID, astar, qstar);
+
+  if(Globals::config.use_prior) {
+    assert(astar_prior >= 0);
+    Shared_QNode* qstar_prior = static_cast<Shared_QNode*>(((VNode*) vnode)->Child(astar_prior));
+    if (false)
+      printf("thread %d chose qnode with action %d, prior prob %f, ub %f, bonus %f ;\n          best qnode has action %d, prior prob %f, ub %f, bonus %f\n",
+          prior_ID, astar, qstar->prior_probability_, qstar->upper_bound(false), qstar->exploration_bonus,
+          astar_prior, qstar_prior->prior_probability_, qstar_prior->upper_bound(false), qstar_prior->exploration_bonus);
+	}
 
 	if (Globals::config.exploration_mode == VIRTUAL_LOSS)
 		qstar->exploration_bonus -= CalExplorationValue(((VNode*) vnode)->depth() + 1);
@@ -1814,6 +1857,7 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 }
 
 void DESPOT::Update(VNode* vnode, bool real) {
+  logd << __FUNCTION__ << endl;
 	if (vnode->IsLeaf()) {
 		return;
 	}
@@ -1846,6 +1890,7 @@ void DESPOT::Update(VNode* vnode, bool real) {
 }
 
 void DESPOT::Update(Shared_VNode* vnode, bool real) {
+  logd << __FUNCTION__ << endl;
 	lock_guard < mutex > lck(vnode->GetMutex());//lock v_node during updation
 	if (((VNode*) vnode)->depth() > 0 && real) {
 		if ( Globals::config.exploration_mode == VIRTUAL_LOSS) //release virtual loss
@@ -1936,6 +1981,7 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 
 }
 void DESPOT::Update(QNode* qnode, bool real) {
+  logd << __FUNCTION__ << endl;
 
 	double lower = qnode->step_reward;
 	double upper = qnode->step_reward;
@@ -1964,6 +2010,7 @@ void DESPOT::Update(QNode* qnode, bool real) {
 }
 
 void DESPOT::Update(Shared_QNode* qnode, bool real) {
+  logd << __FUNCTION__ << endl;
 	lock_guard < mutex > lck(qnode->GetMutex());//lock v_node during updation
 
 	double lower = qnode->step_reward;
@@ -2026,6 +2073,7 @@ void DESPOT::Update(Shared_QNode* qnode, bool real) {
 }
 
 void DESPOT::Backup(VNode* vnode, bool real) {
+  logd << __FUNCTION__ << endl;
 	int iter = 0;
 	logd << "- Backup " << vnode << " at depth " << vnode->depth() << endl;
 
@@ -2114,6 +2162,7 @@ void DESPOT::Backup(VNode* vnode, bool real) {
 }
 
 VNode* DESPOT::FindBlocker(VNode* vnode) {
+  logd << __FUNCTION__ << endl;
 	VNode* cur = vnode;
 	int count = 1;
 	while (cur != NULL) {
@@ -2126,7 +2175,7 @@ VNode* DESPOT::FindBlocker(VNode* vnode) {
 		count++;
 		if (cur->parent() == NULL) {
 			cur = NULL;
-			cout << "blocked node " << cur << " set to NULL" << endl;
+			// cout << "blocked node " << cur << " set to NULL" << endl;
 		} else {
 			cur = cur->parent()->parent();
 		}
@@ -2178,7 +2227,8 @@ VNode* DESPOT::FindBlocker(VNode* vnode) {
 //}
 
 void DESPOT::ComputeLegalActions(VNode* vnode, const DSPOMDP * model){
-	if (Globals::config.use_prior){
+  logd << __FUNCTION__ << endl;
+	if (true/*Globals::config.use_prior*/){
 		logd << "[ComputeLegalActions] for vnode " << vnode << "at depth "
 				<< vnode->depth();
 
@@ -2195,9 +2245,18 @@ void DESPOT::ComputeLegalActions(VNode* vnode, const DSPOMDP * model){
 
 		logd << " with " << vnode->legal_actions().size() << " legal actions" << endl;
 	}
+  else{
+      std::vector<ACT_TYPE> legal_actions;
+      for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
+        legal_actions.push_back(action);
+      }
+      vnode->legal_actions(legal_actions);
+      logd << " with " << vnode->legal_actions().size() << " legal actions" << endl;
+    }
 }
 
 void DESPOT::ComputePriorPref(VNode* vnode, const DSPOMDP * model){
+  logd << __FUNCTION__ << endl;
 	if (Globals::config.use_prior){
 
 		logd << "[ComputePriorPref] for actions under vnode " << vnode << endl;
@@ -2223,6 +2282,7 @@ void DESPOT::ComputePriorPref(VNode* vnode, const DSPOMDP * model){
 }
 
 void DESPOT::ComputePriorValue(QNode* qnode, const DSPOMDP * model){
+  logd << __FUNCTION__ << endl;
 	if (Globals::config.use_prior){
 
 		if (qnode->Weight()==0){
@@ -2271,6 +2331,7 @@ void DESPOT::ComputePriorValue(QNode* qnode, const DSPOMDP * model){
 void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
                     ScenarioUpperBound* upper_bound, const DSPOMDP* model,
                     RandomStreams& streams, History& history) {
+  logd << __FUNCTION__ << endl;
 	vector<QNode*>& children = vnode->children();
 	logd << "- Expanding vnode " << vnode << endl;
 
@@ -2303,11 +2364,15 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 		children.push_back(NULL);
 	}
 
-	if (vnode->legal_actions().size() != vnode->prior_action_probs().size()){
-		cerr << "node level " << vnode->depth() << " " << vnode->legal_actions().size() << " legal actions, "
+	if (Globals::config.use_prior && vnode->legal_actions().size() != vnode->prior_action_probs().size()){
+		cerr << "vnode level " << vnode->depth() << " " << vnode->legal_actions().size() << " legal actions, "
 				<< vnode->prior_action_probs().size() << " prior probs " << endl;
 		raise(SIGABRT);
 	}
+  else{
+      logd << "vnode level " << vnode->depth() << " " << vnode->legal_actions().size() << endl;
+  }
+ 
 
 	for(ACT_TYPE action: vnode->legal_actions()){
 		logd << " Legal action " << action << endl;
@@ -2397,6 +2462,7 @@ void DESPOT::DisableDebugInfo() {
 void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
                     ScenarioUpperBound* ub, const DSPOMDP* model, RandomStreams& streams,
                     History& history) {
+  logd << __FUNCTION__ << endl;
 	int prior_ID = 0;
 	if (Globals::config.use_prior){
 		if (Globals::config.use_multi_thread_){
@@ -2481,13 +2547,13 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 			if (Globals::config.exploration_mode == UCT)
 				static_cast<Shared_VNode*>(vnode)->visit_count_ = 1.1;
 
-			if (Globals::config.use_prior)
-				ComputeLegalActions(vnode, model);
-		}
+      ComputeLegalActions(vnode, model);
+    }
 		else
 			vnode = new VNode(partitions[obs], partition_ID,
 			                  parent->depth() + 1, qnode, obs);
-		logd << " New node created!" << endl;
+
+    logd << " New node created with " << vnode->legal_actions().size() <<" legal actions!" << endl;
 		children[obs] = vnode;
 	}
 	MakeObsNodeTime += Globals::ElapsedTime(start);
@@ -2503,6 +2569,7 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 void DESPOT::InitChildrenBounds(QNode* qnode, ScenarioLowerBound* lb,
                     ScenarioUpperBound* ub, const DSPOMDP* model, RandomStreams& streams,
                     History& history) {
+  logd << __FUNCTION__ << endl;
 
 	logd << "[InitChildrenBounds] for qnode " << qnode << endl;
 
@@ -2577,6 +2644,7 @@ void DESPOT::InitChildrenBounds(QNode* qnode, ScenarioLowerBound* lb,
 
 void DESPOT::InitChildrenUpperBounds(QNode* qnode, ScenarioUpperBound* ub,
 		const DSPOMDP* model, RandomStreams& streams, History& history) {
+  logd << __FUNCTION__ << endl;
 
 	logd << "[InitChildrenUpperBounds] for qnode " << qnode << endl;
 
@@ -2620,6 +2688,7 @@ void DESPOT::InitChildrenUpperBounds(QNode* qnode, ScenarioUpperBound* ub,
 
 void DESPOT::InitChildrenLowerBounds(QNode* qnode, ScenarioLowerBound* lb,
 		const DSPOMDP* model, RandomStreams& streams, History& history) {
+  logd << __FUNCTION__ << endl;
 
 	logd << "[InitChildrenLowerBounds] for qnode " << qnode << endl;
 
@@ -2705,6 +2774,7 @@ void DESPOT::InitChildrenLowerBounds(QNode* qnode, ScenarioLowerBound* lb,
 }
 
 void DESPOT::PrintCPUTime(int num_searches) {
+  logd << __FUNCTION__ << endl;
 	cout.precision(5);
 	cout << "ExpansionCount (total/per-search)=" << HitCount << "/"
 	     << HitCount / num_searches << endl;
@@ -2729,6 +2799,7 @@ void DESPOT::PrintCPUTime(int num_searches) {
 }
 ValuedAction DESPOT::Evaluate(VNode* root, vector<State*>& particles,
                               RandomStreams& streams, POMCPPrior* prior, const DSPOMDP* model) {
+  logd << __FUNCTION__ << endl;
 	double value = 0;
 
 	for (int i = 0; i < particles.size(); i++) {
@@ -2787,6 +2858,7 @@ ValuedAction DESPOT::Evaluate(VNode* root, vector<State*>& particles,
 }
 
 void DESPOT::belief(Belief* b) {
+  logd << __FUNCTION__ << endl;
 	try{
 		logi << "[DESPOT::belief] Start: Set initial belief." << endl;
 	}catch (std::exception e) {
@@ -2800,6 +2872,7 @@ void DESPOT::belief(Belief* b) {
 }
 
 void DESPOT::BeliefUpdate(ACT_TYPE action, OBS_TYPE obs) {
+  logd << __FUNCTION__ << endl;
 	double start = get_time_second();
 
 	belief_->Update(action, obs);
@@ -2812,6 +2885,7 @@ void DESPOT::BeliefUpdate(ACT_TYPE action, OBS_TYPE obs) {
 }
 
 double DESPOT::AverageInitLower() const {
+  logd << __FUNCTION__ << endl;
 	double sum = 0;
 	for (int i = 0; i < Initial_lower.size(); i++) {
 		double bound = Initial_lower[i];
@@ -2821,6 +2895,7 @@ double DESPOT::AverageInitLower() const {
 }
 
 double DESPOT::StderrInitLower() const {
+  logd << __FUNCTION__ << endl;
 	double sum = 0, sum2 = 0;
 	for (int i = 0; i < Initial_lower.size(); i++) {
 		double bound = Initial_lower[i];
@@ -2831,6 +2906,7 @@ double DESPOT::StderrInitLower() const {
 	return n > 0 ? sqrt(sum2 / n / n - sum * sum / n / n / n) : 0.0;
 }
 double DESPOT::AverageFinalLower() const {
+  logd << __FUNCTION__ << endl;
 	double sum = 0;
 	for (int i = 0; i < Final_lower.size(); i++) {
 		double bound = Final_lower[i];
@@ -2840,6 +2916,7 @@ double DESPOT::AverageFinalLower() const {
 }
 
 double DESPOT::StderrFinalLower() const {
+  logd << __FUNCTION__ << endl;
 	double sum = 0, sum2 = 0;
 	for (int i = 0; i < Final_lower.size(); i++) {
 		double bound = Final_lower[i];
@@ -2851,6 +2928,7 @@ double DESPOT::StderrFinalLower() const {
 }
 
 double DESPOT::AverageInitUpper() const {
+  logd << __FUNCTION__ << endl;
 	double sum = 0;
 	for (int i = 0; i < Initial_upper.size(); i++) {
 		double bound = Initial_upper[i];
@@ -2859,6 +2937,7 @@ double DESPOT::AverageInitUpper() const {
 	return Initial_upper.size() > 0 ? (sum / Initial_upper.size()) : 0.0;
 }
 double DESPOT::StderrInitUpper() const {
+  logd << __FUNCTION__ << endl;
 	double sum = 0, sum2 = 0;
 	for (int i = 0; i < Initial_upper.size(); i++) {
 		double bound = Initial_upper[i];
@@ -2869,6 +2948,7 @@ double DESPOT::StderrInitUpper() const {
 	return n > 0 ? sqrt(sum2 / n / n - sum * sum / n / n / n) : 0.0;
 }
 double DESPOT::AverageFinalUpper() const {
+  logd << __FUNCTION__ << endl;
 	double sum = 0;
 	for (int i = 0; i < Final_upper.size(); i++) {
 		double bound = Final_upper[i];
@@ -2877,6 +2957,7 @@ double DESPOT::AverageFinalUpper() const {
 	return Final_upper.size() > 0 ? (sum / Final_upper.size()) : 0.0;
 }
 double DESPOT::StderrFinalUpper() const {
+  logd << __FUNCTION__ << endl;
 	double sum = 0, sum2 = 0;
 	for (int i = 0; i < Final_upper.size(); i++) {
 		double bound = Final_upper[i];
@@ -2888,6 +2969,7 @@ double DESPOT::StderrFinalUpper() const {
 }
 
 void DESPOT::PrintStatisticResult() {
+  logd << __FUNCTION__ << endl;
 	ios::fmtflags old_settings = cout.flags();
 
 	//int Width=7;

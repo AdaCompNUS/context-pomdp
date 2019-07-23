@@ -217,13 +217,24 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
 	double mindist = numeric_limits<double>::infinity();
 	const COORD& carpos = state->car.pos;
 	double carvel = state->car.vel;
-	auto& car_goal=this->car_goal;
 
-	logd << __FUNCTION__ << "] "<<car_goal.x<<car_goal.y<<endl;
+	// COORD car_goal(this->car_goal.x, this->car_goal.y);
+
+  //if (!Globals::config.use_prior){
+    //int near = path.nearest(state->car.pos);
+    //int ahead = path.forward(near, 3.0);
+    //car_goal.x= path[ahead].x; // target at 3 meters ahead along the path
+    //car_goal.y= path[ahead].y; // target at 3 meters ahead along the path
+  //}
+
+	// logd << __FUNCTION__ << "] "<<car_goal.x<<car_goal.y<<endl;
 
 	logd << __FUNCTION__ <<"] Calculate steering"<< endl;
-	double steering=CalculateGoalDir(state->car,car_goal);
-	steering=steering*ModelParams::MaxSteerAngle;
+
+	double steering = GetSteerToPath(static_cast<const PomdpState*>(state)[0]);
+  // steering = 0;
+  // double steering=CalculateGoalDir(state->car,car_goal);
+	// steering=steering*ModelParams::MaxSteerAngle;
 
 	logd << __FUNCTION__ << "] Calculate acceleration"<< endl;
 	double acceleration;
@@ -239,15 +250,15 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
 	// TODO set as a param
 	logd << __FUNCTION__ <<"] Calculate min dist"<< endl;
 	if (mindist < /*2*/3.5) {
-		acceleration= (carvel <= 0.01) ? 0 : 2;
+		acceleration= (carvel <= 0.01) ? 0 : -ModelParams::AccSpeed;
 	}
 	else if (mindist < /*4*/5) {
-		if (carvel > 1.0+1e-4) acceleration= 2;
-		else if (carvel < 0.5-1e-4) acceleration= 1;
-		else acceleration= 0;
+		if (carvel > 1.0+1e-4) acceleration= -ModelParams::AccSpeed;
+		else if (carvel < 0.5-1e-4) acceleration= ModelParams::AccSpeed;
+		else acceleration= 0.0;
 	}
 	else
-		acceleration= carvel >= ModelParams::VEL_MAX-1e-4 ? 0 : 1;
+		acceleration= carvel >= ModelParams::VEL_MAX-1e-4 ? 0 : ModelParams::AccSpeed;
 
 	logd << __FUNCTION__ <<"] Calculate action ID"<< endl;
 	return PedPomdp::GetActionID(steering, acceleration);
@@ -1084,10 +1095,11 @@ void WorldStateTracker::updatePed(const Pedestrian& ped, bool doPrint){
         	ped_list[i].vel.x = (ped.w - ped_list[i].w) / duration;
 			ped_list[i].vel.y = (ped.h - ped_list[i].h) / duration;
 
-			if (ped_list[i].vel.Length()>3.0){
-				cerr << "WARNING: Unusual ped " << i << " speed: " << ped_list[i].vel.Length() << endl;
-				raise(SIGABRT);
-			}
+      if (Globals::config.use_prior) 
+          if (ped_list[i].vel.Length()>3.0){
+            cerr << "WARNING: Unusual ped " << i << " speed: " << ped_list[i].vel.Length() << endl;
+            raise(SIGABRT);
+          }
 
 			if (ped_list[i].vel.Length()>1e-4){
 				no_move = false;

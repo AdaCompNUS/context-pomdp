@@ -24,7 +24,7 @@ class PathExtractor(object):
                 self.spawn_waypoints = self.map.generate_waypoints(0.5)
             elif map_type is "osm":
                 self.lane_net = carla.LaneNetwork.load(osm_file_loc)
-                self.route_map= self.lane_net.create_route_map()
+                self.route_map= carla.RouteMap(self.lane_net)
                 assert(self.lane_net)
                 assert(self.route_map)
             else:

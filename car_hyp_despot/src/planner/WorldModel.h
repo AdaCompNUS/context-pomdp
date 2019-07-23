@@ -112,6 +112,34 @@ public:
     void PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarStruct& car);
 
     void PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedStruct>& curr_peds);
+
+public:
+  template<typename T>
+  double GetSteerToPath(const T& state) const {
+    COORD car_goal= path[path.forward(path.nearest(state.car.pos), 5.0)]; // target at 3 meters ahead along the path
+    COORD dir = car_goal - state.car.pos;
+    double theta = atan2(dir.y, dir.x);
+
+    if(theta<0)
+      theta+=2*M_PI;
+
+    theta = theta - state.car.heading_dir;
+
+    while (theta > 2*M_PI)
+      theta -= 2*M_PI;
+    while (theta < 0)
+      theta += 2*M_PI;
+
+    float guide_steer = 0;
+    if(theta < M_PI)
+      guide_steer = min(theta, ModelParams::MaxSteerAngle); // Dvc_ModelParams::MaxSteerAngle//CCW
+    else if(theta>M_PI)
+      guide_steer = max((theta - 2*M_PI), -ModelParams::MaxSteerAngle); //-Dvc_ModelParams::MaxSteerAngle;//CW
+    else
+      guide_steer = 0;//ahead
+
+    return guide_steer;
+  }
 };
 
 class WorldStateTracker {

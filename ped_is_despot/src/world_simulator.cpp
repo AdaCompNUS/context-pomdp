@@ -223,8 +223,10 @@ double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action){
 	reward += pedpomdp_model->ActionPenalty(action);
 
 	// Speed control: Encourage higher speed
-	reward += pedpomdp_model->MovementPenalty(state);
-
+  if( Globals::config.use_prior)	
+    reward += pedpomdp_model->MovementPenalty(state);
+  else
+    reward += pedpomdp_model->MovementPenalty(state, pedpomdp_model->GetSteering(action));
 	return reward;
 }
 
@@ -558,6 +560,7 @@ void WorldSimulator::publishCmdAction()
 	cmd.linear.y = real_speed_;
 	cmd.angular.z = steering_; // GetSteering returns radii value
 	cout<<"[publishCmdAction] time stamp" << SolverPrior::nn_priors[0]->get_timestamp() <<endl;
+  cout << "[publishCmdAction]  target speed " << target_speed_ << " steering " << steering_ << endl;
 	cmdPub_.publish(cmd);
 }
 

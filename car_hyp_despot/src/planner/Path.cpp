@@ -7,7 +7,7 @@ using namespace std;
 
 
 
-int Path::nearest(COORD pos) {
+int Path::nearest(const COORD pos) const {
     auto& path = *this;
     double dmin = COORD::EuclideanDistance(pos, path[0]);
     int imin = 0;
