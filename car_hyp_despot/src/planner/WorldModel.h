@@ -8,6 +8,7 @@ struct PedBelief {
 	int id;
     COORD pos;
     double speed;
+    COORD vel;
     std::vector<double> prob_goals;
 
     std::vector<std::vector<double>> prob_modes_goals;
@@ -61,12 +62,12 @@ public:
     void RVO2PedStep(PedStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
     void RVO2PedStep(PomdpStateWorld& state, Random& random);
     void PedStepGoal(PedStruct& ped, int step=1);
-    void PedStepCurVel(PedStruct& ped, COORD vel);
+    void PedStepCurVel(PedStruct& ped);
 
-    COORD GetGoalPos(PedStruct& ped, int intention_id);
-    COORD GetGoalPos(PedBelief& ped, int intention_id);
+    COORD GetGoalPos(const PedStruct& ped, int intention_id=-1);
+    COORD GetGoalPos(const PedBelief& ped, int intention_id);
 
-    int GetNumIntentions(PedStruct& ped);
+    int GetNumIntentions(const PedStruct& ped);
     int GetNumIntentions(int ped_id);
 
     void FixGPUVel(CarStruct &car);
@@ -81,8 +82,8 @@ public:
     void RobStepCurVel(CarStruct &car);
     void RobStepCurAction(CarStruct &car, double acc, double steering);
 
-    double pedMoveProb(COORD p0, COORD p1, int goal_id);
-    double pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, int ped_mode);
+    double pedMoveProb(COORD p0, const PedStruct& p1, int goal_id);
+    double pedMoveProb(COORD prev, const PedStruct& curr, int goal_id, int ped_mode);
 
     void setPath(Path path);
     void updatePedBelief(PedBelief& b, const PedStruct& curr_ped);
@@ -110,7 +111,7 @@ public:
 
     /// lets drive
     vector<vector<COORD>> ped_mean_dirs;
-    COORD DistractedPedMeanDir(COORD& ped, int goal_id);
+    COORD DistractedPedMeanDir(PedStruct& ped, int goal_id);
     COORD AttentivePedMeanDir(int ped_id, int goal_id);
 
     void add_car_agents(int num_peds, CarStruct& car);

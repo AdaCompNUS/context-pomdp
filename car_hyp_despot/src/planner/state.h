@@ -13,29 +13,29 @@ using namespace despot;
 struct PedStruct {
 	PedStruct(){
 		id = -1;
-    vel = ModelParams::PED_SPEED;
-    mode = PED_DIS;
+    speed = ModelParams::PED_SPEED;
+    mode = 1;//PED_DIS;
   }
 	PedStruct(COORD a, int b, int c) {
 		pos = a;
 		goal = b;
 		id = c;
-    vel = ModelParams::PED_SPEED;
-    mode = PED_DIS;
+    speed = ModelParams::PED_SPEED;
+    mode = 1;//PED_DIS;
 	}
 	PedStruct(COORD a, int b, int c, float speed) {
 		pos = a;
 		goal = b;
 		id = c;
-		vel = speed;
-    mode = PED_DIS;
+		speed = speed;
+    mode = 1;//PED_DIS;
 	}
 	COORD pos; //pos
 	int goal;  //goal
 	int id;   //id
-  double vel;
-  int mode;
-  COORD dir; // heading dir, for cur_vel motion model
+    double speed;
+    int mode;
+    COORD vel; // heading dir, for cur_vel motion model
 };
 
 class Pedestrian

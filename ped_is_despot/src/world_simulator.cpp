@@ -189,7 +189,8 @@ State* WorldSimulator::GetCurrentState() const{
 			current_state.peds[i].pos.y=sorted_peds[i].second.h;
 			current_state.peds[i].id=sorted_peds[i].second.id;
 			current_state.peds[i].goal = -1; // goal is hidden variable
-			current_state.peds[i].vel = ModelParams::PED_SPEED;
+			current_state.peds[i].vel = sorted_peds[i].second.vel;
+			current_state.peds[i].speed = ModelParams::PED_SPEED;
 			//current_state.peds[i] = world_state.peds[sorted_peds[i].second.id];
 		}
 	}

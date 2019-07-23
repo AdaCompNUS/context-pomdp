@@ -43,7 +43,7 @@ struct COORD
       return COORD(x - rhs.x, y - rhs.y);
    }
 
-  COORD operator*(int mul) const
+  COORD operator*(float mul) const
   {
     return COORD(x * mul, y * mul);
   }

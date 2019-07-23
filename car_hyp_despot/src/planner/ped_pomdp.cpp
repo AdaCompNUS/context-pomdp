@@ -47,12 +47,12 @@ public:
 		for (int i = 0; i < state->num; i++) {
 			auto& p = state->peds[i];
 			// 3.25 is maximum distance to collision boundary from front laser (see collsion.cpp)
-			int step = (p.vel + carvel <= 1e-5) ? min_step : int(ceil(ModelParams::control_freq
+			int step = (p.speed + carvel <= 1e-5) ? min_step : int(ceil(ModelParams::control_freq
 			           * max(COORD::EuclideanDistance(carpos, p.pos) - /*1.0*/3.25, 0.0)
-			           / ((p.vel + carvel))));
+			           / ((p.speed + carvel))));
 
 			if(DoPrintCPU)
-				printf("   step,min_step, p.vel + carvel=%d %d %f\n",step,min_step, p.vel + carvel);
+				printf("   step,min_step, p.speed + carvel=%d %d %f\n",step,min_step, p.speed + carvel);
 			min_step = min(step, min_step);
 		}
 
@@ -459,7 +459,7 @@ void PedPomdp::Statistics(const std::vector<PomdpState*> particles) const {
 
 	for (int j = 0; j < state_0->num; j ++) {
 		cout << "Ped " << j << " Belief is ";
-		for (int i = 0; i < world_model->goals.size(); i ++) {
+		for (int i = 0; i < world_model->GetNumIntentions(state_0->peds[j]); i ++) {
 			cout << (goal_count[j][i] + 0.0) << " ";
 		}
 		cout << endl;
@@ -616,7 +616,7 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 	for (int i = 0; i < state.num; i ++) {
 		out << "ped " << i << ": id / pos / vel / goal / dist2car / infront =  " << state.peds[i].id << " / "
 		    << "(" << state.peds[i].pos.x << ", " << state.peds[i].pos.y << ") / "
-		    << state.peds[i].vel << " / "
+		    << state.peds[i].speed << " / "
 		    << state.peds[i].goal << " / "
 		    << COORD::EuclideanDistance(state.peds[i].pos, carpos) << "/"
 		    << world_model->inFront(state.peds[i].pos, state.car) << endl;
@@ -663,7 +663,7 @@ void PedPomdp::PrintWorldState(const PomdpStateWorld& state, ostream& out) const
 		}
 		out << "ped " << i << ": id / pos / vel / goal / dist2car / infront =  " << state.peds[i].id << " / "
 		    << "(" << state.peds[i].pos.x << ", " << state.peds[i].pos.y << ") / "
-		    << state.peds[i].vel << " / "
+		    << state.peds[i].speed << " / "
 		    << state.peds[i].goal << " / "
 		    << COORD::EuclideanDistance(state.peds[i].pos, carpos) << "/"
 		    << world_model->inFront(state.peds[i].pos, state.car)
@@ -716,11 +716,11 @@ void PedPomdp::PrintParticles(const vector<State*> particles, ostream& out) cons
 		}
 	}
 
-	cout << "ped 0 vel: " << pomdp_state->peds[0].vel << endl;
+	cout << "ped 0 vel: " << pomdp_state->peds[0].speed << endl;
 
 	for (int j = 0; j < 6; j ++) {
 		cout << "Ped " << pomdp_state->peds[j].id << " Belief is ";
-		for (int i = 0; i < world_model->goals.size(); i ++) {
+		for (int i = 0; i < world_model->GetNumIntentions(pomdp_state->peds[j]); i ++) {
 			cout << (goal_count[j][i] + 0.0) << " ";
 		}
 		cout << endl;
@@ -733,7 +733,7 @@ void PedPomdp::PrintParticles(const vector<State*> particles, ostream& out) cons
 	logd << "<><><> q:" << endl;
 	for (int j = 0; j < 6; j ++) {
 		logd << "Ped " << pomdp_state->peds[j].id << " Belief is ";
-		for (int i = 0; i < world_model->goals.size(); i ++) {
+		for (int i = 0; i < world_model->GetNumIntentions(pomdp_state->peds[j]); i ++) {
 			logd << (q_goal_count[j][i] + 0.0) << " ";
 		}
 		logd << endl;
@@ -777,7 +777,7 @@ double PedPomdp::ImportanceScore(PomdpState* state, ACT_TYPE last_action) const
 		CarStruct car = state -> car;
 		COORD ped_pos = ped.pos;
 
-		const COORD& goal = world_model->goals[ped.goal];
+		const COORD& goal = world_model->GetGoalPos(ped);
 		double move_dw, move_dh;
 		if (goal.x == -1 && goal.y == -1) {  //stop intention
 			move_dw = 0; //stop intention does not change ped pos, hence movement is 0;
@@ -786,7 +786,7 @@ double PedPomdp::ImportanceScore(PomdpState* state, ACT_TYPE last_action) const
 		else {
 			MyVector goal_vec(goal.x - ped_pos.x, goal.y - ped_pos.y);
 			double a = goal_vec.GetAngle();
-			MyVector move(a, ped.vel*1.0, 0); //movement in unit time
+			MyVector move(a, ped.speed*1.0, 0); //movement in unit time
 			move_dw = move.dw;
 			move_dh = move.dh;
 		}
@@ -882,7 +882,7 @@ void PedPomdp::ExportState(const State& state, std::ostream& out) const {
 	for (int i = 0; i < ModelParams::N_PED_IN; i++)
 		out << cardriveState.peds[i].goal << " " << cardriveState.peds[i].id
 		    << " " << cardriveState.peds[i].pos.x << " " << cardriveState.peds[i].pos.y
-		    << " " << cardriveState.peds[i].vel << " ";
+		    << " " << cardriveState.peds[i].speed << " ";
 
 	out << endl;
 
@@ -910,7 +910,7 @@ State* PedPomdp::ImportState(std::istream& in) const {
 				for (int i = 0; i < ModelParams::N_PED_IN; i++)
 					ss >> cardriveState->peds[i].goal >> cardriveState->peds[i].id
 					   >> cardriveState->peds[i].pos.x >> cardriveState->peds[i].pos.y
-					   >> cardriveState->peds[i].vel;
+					   >> cardriveState->peds[i].speed;
 			}
 		}
 	}
@@ -948,7 +948,7 @@ void PedPomdp::ImportStateList(std::vector<State*>& particles, std::istream& in)
 				for (int i = 0; i < ModelParams::N_PED_IN; i++)
 					ss >> cardriveState->peds[i].goal >> cardriveState->peds[i].id
 					   >> cardriveState->peds[i].pos.x >> cardriveState->peds[i].pos.y
-					   >> cardriveState->peds[i].vel;
+					   >> cardriveState->peds[i].speed;
 				particles[PID] = cardriveState;
 				PID++;
 

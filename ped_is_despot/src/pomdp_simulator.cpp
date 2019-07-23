@@ -418,7 +418,7 @@ void POMDPSimulator::ImportPeds(std::string filename, PomdpStateWorld& world_sta
 				>> world_state.peds[i].goal
 				>> world_state.peds[i].pos.x
 				>> world_state.peds[i].pos.y
-				>> world_state.peds[i].vel;
+				>> world_state.peds[i].speed;
 				i++;
 			}
 		}
@@ -441,7 +441,7 @@ void POMDPSimulator::ExportPeds(std::string filename, PomdpStateWorld& world_sta
 				<<world_state.peds[i].goal<<" "
 				<<world_state.peds[i].pos.x<<" "
 				<<world_state.peds[i].pos.y<<" "
-				<<world_state.peds[i].vel<<endl;
+				<<world_state.peds[i].speed<<endl;
 	}
 	fout<<endl;
 }
@@ -625,7 +625,7 @@ void POMDPSimulator::PrintWorldState(PomdpStateWorld state, ostream& out) {
 		}
 		out << "ped " << i << ": id / pos / vel / goal / dist2car / infront =  " << state.peds[i].id << " / "
             << "(" << state.peds[i].pos.x << ", " << state.peds[i].pos.y << ") / "
-            << state.peds[i].vel << " / "
+            << state.peds[i].speed << " / "
             << state.peds[i].goal << " / "
             << COORD::EuclideanDistance(state.peds[i].pos, carpos) << "/"
 			<< worldModel.inFront(state.peds[i].pos, state.car) << endl;

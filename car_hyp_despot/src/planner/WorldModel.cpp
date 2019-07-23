@@ -636,7 +636,7 @@ void WorldModel::PedStep(PedStruct &ped, Random& random) {
     a += noise;
 
 	//TODO noisy speed
-    MyVector move(a, ped.vel/freq, 0);
+    MyVector move(a, ped.speed/freq, 0);
     ped.pos.x += move.dw;
     ped.pos.y += move.dh;
     return;
@@ -666,7 +666,7 @@ void WorldModel::PedStep(PedStruct &ped, double& random) {
 
 		//TODO noisy speed
 //		cout << "ped vel = " << ped.vel << endl;
-		MyVector move(a, ped.vel/freq, 0);
+		MyVector move(a, ped.speed/freq, 0);
 		ped.pos.x += move.dw;
 		ped.pos.y += move.dh;
 	}
@@ -681,21 +681,23 @@ double gaussian_prob(double x, double stddev) {
     return a * exp(b);
 }
 
-COORD WorldModel::GetGoalPos(PedStruct& ped, int intention_id){
+COORD WorldModel::GetGoalPos(const PedStruct& ped, int intention_id){
+
+    if (intention_id ==-1)
+        intention_id = ped.goal;
+    // return goals[intention_id];
+
+    return COORD(ped.pos.x + ped.vel.x/freq*3, ped.pos.y + ped.vel.y/freq*3);
+}
+
+COORD WorldModel::GetGoalPos(const PedBelief& ped, int intention_id){
 
     // return goals[intention_id];
 
     return COORD(ped.pos.x + ped.vel.x/freq*3, ped.pos.y + ped.vel.y/freq*3);
 }
 
-COORD WorldModel::GetGoalPos(PedBelief& ped, int intention_id){
-
-    // return goals[intention_id];
-
-    return COORD(ped.pos.x + ped.vel.x/freq*3, ped.pos.y + ped.vel.y/freq*3);
-}
-
-int WorldModel::GetNumIntentions(PedStruct& ped){
+int WorldModel::GetNumIntentions(const PedStruct& ped){
 
   // return goals.size();
   //
@@ -716,7 +718,7 @@ void WorldModel::PedStepGoal(PedStruct& ped, int step) {
 	}
 
 	MyVector goal_vec(goal.x - ped.pos.x, goal.y - ped.pos.y);
-    goal_vec.AdjustLength(step * ped.vel / freq);
+    goal_vec.AdjustLength(step * ped.speed / freq);
     ped.pos.x += goal_vec.dw;
     ped.pos.y += goal_vec.dh;
 }
@@ -726,10 +728,10 @@ void WorldModel::PedStepCurVel(PedStruct& ped) {
   ped.pos.y += ped.vel.y * (1.0/freq);
 }
 
-double WorldModel::pedMoveProb(COORD prev, PedStruct& ped, int intention_id) {
+double WorldModel::pedMoveProb(COORD prev, const PedStruct& ped, int intention_id) {
 	const double K = 0.001;
   const COORD& curr = ped.pos;
-  const COORD& goal = GetGoalPos(ped); 
+  const COORD& goal = GetGoalPos(ped, intention_id); 
 	double move_dist = Norm(curr.x-prev.x, curr.y-prev.y),
 		   goal_dist = Norm(goal.x-prev.x, goal.y-prev.y);
 	double sensor_noise = 0.1;
@@ -751,10 +753,11 @@ double WorldModel::pedMoveProb(COORD prev, PedStruct& ped, int intention_id) {
 	}
 }
 
-double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, int ped_mode) {
+double WorldModel::pedMoveProb(COORD prev, const PedStruct& ped, int intention_id, int ped_mode) {
 	const double K = 0.001;
 //	cout << __FUNCTION__ << "@" << __LINE__ << endl;
-
+    auto& curr = ped.pos;
+    int ped_id = ped.id;
 	double move_dist = Norm(curr.x-prev.x, curr.y-prev.y);
 
 	COORD goal;
@@ -764,18 +767,18 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, 
 			cout << "Encountering overflowed ped id " << ped_id;
 			while (ped_mean_dirs.size() < ped_id + 1){
 				cout << "adding init mean dir for ped " << ped_mean_dirs.size()<< endl;
-				vector<COORD> dirs(goals.size());
+				vector<COORD> dirs(GetNumIntentions(ped_id));
 				ped_mean_dirs.push_back(dirs);
 			}
 		}
-		if(goal_id >= ped_mean_dirs[0].size()){
-			cerr << "Encountering overflowed goal id " << goal_id;
+		if(intention_id >= ped_mean_dirs[0].size()){
+			cerr << "Encountering overflowed goal id " << intention_id;
 			exit(-1);
 		}
-		goal = ped_mean_dirs[ped_id][goal_id] + prev;
+		goal = ped_mean_dirs[ped_id][intention_id] + prev;
 	}
 	else{
-		goal = goals[goal_id];
+		goal = GetGoalPos(ped, intention_id);
 	}
 //	cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
@@ -786,7 +789,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, 
 
     bool debug=false;
 	// CHECK: beneficial to add back noise?
-	if(debug) cout<<"goal id "<<goal_id<<endl;
+	if(debug) cout<<"goal id "<<intention_id<<endl;
 	if (goal.x == -1 && goal.y == -1) {  //stop intention
 		logd <<"stop intention" << endl;
 
@@ -809,7 +812,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int ped_id, int goal_id, 
 
 		double vel_error=0;
 		if(ped_mode == PED_ATT){
-			double mean_vel = ped_mean_dirs[ped_id][goal_id].Length();
+			double mean_vel = ped_mean_dirs[ped_id][intention_id].Length();
 			vel_error = move_dist - mean_vel;
 
 			logd <<"ATT angle error=" << angle << endl;
@@ -994,23 +997,23 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 
     bool debug=false;
 
-    for(int i=0; i<goals.size(); i++) {
+    for(int i=0; i<GetNumIntentions(curr_ped); i++) {
 
     	// Attentive mode
     	logd << "TEST ATT" << endl;
-		double prob = pedMoveProb(b.pos, curr_ped.pos, curr_ped.id, i, PED_ATT);
+		double prob = pedMoveProb(b.pos, curr_ped, i, PED_ATT);
 		if(debug) cout << "attentive likelihood " << i << ": " << prob << endl;
         b.prob_modes_goals[PED_ATT][i] *=  prob;
 		// Keep the belief noisy to avoid aggressive policies
-		b.prob_modes_goals[PED_ATT][i] += SMOOTHING / goals.size()/2.0; // CHECK: decrease or increase noise
+		b.prob_modes_goals[PED_ATT][i] += SMOOTHING / GetNumIntentions(curr_ped)/2.0; // CHECK: decrease or increase noise
 
 		// Detracted mode
     	logd << "TEST DIS" << endl;
-		prob = pedMoveProb(b.pos, curr_ped.pos, curr_ped.id, i, PED_DIS);
+		prob = pedMoveProb(b.pos, curr_ped, i, PED_DIS);
 		if(debug) cout << "Detracted likelihood " << i << ": " << prob << endl;
 		b.prob_modes_goals[PED_DIS][i] *=  prob;
 		// Important: Keep the belief noisy to avoid aggressive policies
-		b.prob_modes_goals[PED_DIS][i] += SMOOTHING / goals.size()/2.0; // CHECK: decrease or increase noise
+		b.prob_modes_goals[PED_DIS][i] += SMOOTHING / GetNumIntentions(curr_ped)/2.0; // CHECK: decrease or increase noise
 	}
 
 //	cout << __FUNCTION__ << "@" << __LINE__ << endl;
@@ -1041,7 +1044,8 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 //	cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
     double moved_dist = COORD::EuclideanDistance(b.pos, curr_ped.pos);
-    b.vel = ALPHA * b.vel + (1-ALPHA) * moved_dist * ModelParams::control_freq;
+    b.vel = b.vel*ALPHA + (curr_ped.pos - b.pos)* (ModelParams::control_freq * (1-ALPHA));
+    b.speed = ALPHA * b.speed + (1-ALPHA) * moved_dist * ModelParams::control_freq;
 	b.pos = curr_ped.pos;
 
 //	cout << __FUNCTION__ << "@" << __LINE__ << endl;
@@ -1052,11 +1056,13 @@ PedBelief WorldModel::initPedBelief(const PedStruct& ped) {
     PedBelief b;
     b.id = ped.id;
     b.pos = ped.pos;
-    b.vel = ModelParams::PED_SPEED;
+    b.speed = ped.speed;
+    b.vel = ped.vel;
+    // b.speed = ModelParams::PED_SPEED;
 //    cout << "PED_DIS + 1= "<< PED_DIS + 1 << endl;
     int num_types = PED_DIS + 1;
     for(int i =0 ; i < num_types; i++){
-    	b.prob_modes_goals.push_back(vector<double>(goals.size(), 1.0/goals.size()/num_types));
+    	b.prob_modes_goals.push_back(vector<double>(GetNumIntentions(ped), 1.0/GetNumIntentions(ped)/num_types));
     }
 
     return b;
@@ -1249,6 +1255,7 @@ PomdpState WorldStateTracker::getPomdpState() {
       pomdpState.peds[i].id = ped.id;
       pomdpState.peds[i].goal = -1;
       pomdpState.peds[i].vel=ped.vel;
+      pomdpState.peds[i].speed = ModelParams::PED_SPEED;
   }
 	return pomdpState;
 }
@@ -1261,6 +1268,8 @@ void WorldBeliefTracker::update() {
     for(const auto& dp: sorted_peds) {
         auto& p = dp.second;
         PedStruct ped(COORD(p.w, p.h), -1, p.id);
+        ped.vel = p.vel;
+        ped.speed = ModelParams::PED_SPEED;
         newpeds[p.id] = ped;
     }
 
@@ -1442,6 +1451,7 @@ PomdpState WorldBeliefTracker::sample(bool predict) {
 			p.sample_goal_mode(s.peds[s.num].goal, s.peds[s.num].mode);
 			s.peds[s.num].id = p.id;
             s.peds[s.num].vel = p.vel;
+            s.peds[s.num].speed = p.speed;
 			s.num ++;
 		}
     }
@@ -1479,12 +1489,13 @@ vector<PedStruct> WorldBeliefTracker::predictPeds() {
 
     for(const auto& p: sorted_beliefs) {
         double dist = COORD::EuclideanDistance(p.pos, car.pos);
-        int step = (p.vel + car.vel>1e-5)?int(dist / (p.vel + car.vel) * ModelParams::control_freq):100000;
+        int step = (p.speed + car.vel>1e-5)?int(dist / (p.speed + car.vel) * ModelParams::control_freq):100000;
 
         for(int j=0; j<1; j++) {
             int goal = p.maxlikely_goal();
             PedStruct ped0(p.pos, goal, p.id);
 			ped0.vel = p.vel;
+            ped0.speed =  p.speed;
 
             for(int i=0; i<4; i++) {
                 PedStruct ped = ped0;
@@ -1514,7 +1525,7 @@ PomdpState WorldBeliefTracker::predictPedsCurVel(PomdpState* ped_state, double a
 
 	for(int i =0 ; i< predicted_state.num ; i++) {
 		auto & p = predicted_state.peds[i];
-		COORD ped_vel = stateTracker.getPedVel(p.id);
+		// COORD ped_vel = stateTracker.getPedVel(p.id);
 
 //		if (acc >0 ){
 //			if (ped_vel.Length()<1e-3){
@@ -1527,7 +1538,7 @@ PomdpState WorldBeliefTracker::predictPedsCurVel(PomdpState* ped_state, double a
 //			}
 //		}
 
-		model.PedStepCurVel(p, ped_vel);
+		model.PedStepCurVel(p/*, ped_vel*/);
     }
 
     predicted_state.time_stamp = ped_state->time_stamp + 1.0 / ModelParams::control_freq;
@@ -1594,11 +1605,13 @@ void WorldModel::RVO2PedStep(PomdpStateWorld& state, Random& random){
 	int agent = 0;
 	for (size_t i = 0; i < num_ped; ++i) {
 		if(state.peds[i].mode==PED_ATT){
-		   int goal_id = peds[i].goal;
-			if (goal_id >= goals.size()-1) { /// stop intention
+		   int intention_id = peds[i].goal;
+			if (intention_id >= GetNumIntentions(peds[i])-1) { /// stop intention
 				ped_sim_[threadID]->setAgentPrefVelocity(agent, RVO::Vector2(0.0f, 0.0f));
 			} else{
-				RVO::Vector2 goal(goals[goal_id].x, goals[goal_id].y);
+
+                auto goal_pos = GetGoalPos(peds[i], intention_id);
+				RVO::Vector2 goal(goal_pos.x, goal_pos.y);
 				if ( absSq(goal - ped_sim_[threadID]->getAgentPosition(agent)) < ped_sim_[threadID]->getAgentRadius(agent) * ped_sim_[threadID]->getAgentRadius(agent) ) {
 					// Agent is within one radius of its goal, set preferred velocity to zero
 					ped_sim_[threadID]->setAgentPrefVelocity(agent, RVO::Vector2(0.0f, 0.0f));
@@ -1644,11 +1657,12 @@ void WorldModel::RVO2PedStep(PedStruct peds[], Random& random, int num_ped, CarS
 
     // Set the preferred velocity for each agent.
     for (size_t i = 0; i < num_ped; ++i) {
-        int goal_id = peds[i].goal;
-        if (goal_id >= goals.size()-1) { /// stop intention
+        int intention_id = peds[i].goal;
+        if (intention_id >= GetNumIntentions(peds[i])-1) { /// stop intention
             ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
         } else{
-            RVO::Vector2 goal(goals[goal_id].x, goals[goal_id].y);
+            auto goal_pos = GetGoalPos(peds[i], intention_id);
+            RVO::Vector2 goal(goal_pos.x, goal_pos.y);
             if ( absSq(goal - ped_sim_[threadID]->getAgentPosition(i)) < ped_sim_[threadID]->getAgentRadius(i) * ped_sim_[threadID]->getAgentRadius(i) ) {
                 // Agent is within one radius of its goal, set preferred velocity to zero
                 ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
@@ -1690,11 +1704,12 @@ void WorldModel::RVO2PedStep(PedStruct peds[], double& random, int num_ped, CarS
     for (size_t i = 0; i < num_ped; ++i) {
 
     	if(peds[i].mode==PED_ATT){
-			int goal_id = peds[i].goal;
-			if (goal_id >= goals.size()-1) { /// stop intention
+			int intention_id = peds[i].goal;
+			if (intention_id >= GetNumIntentions(peds[i])-1) { /// stop intention
 				ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
 			} else{
-				RVO::Vector2 goal(goals[goal_id].x, goals[goal_id].y);
+                auto goal_pos = GetGoalPos(peds[i], intention_id);
+                RVO::Vector2 goal(goal_pos.x, goal_pos.y);
 				if ( absSq(goal - ped_sim_[threadID]->getAgentPosition(i)) < ped_sim_[threadID]->getAgentRadius(i) * ped_sim_[threadID]->getAgentRadius(i) ) {
 					// Agent is within one radius of its goal, set preferred velocity to zero
 					ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
@@ -1724,14 +1739,14 @@ void WorldModel::RVO2PedStep(PedStruct peds[], double& random, int num_ped, CarS
     }
 }
 
-COORD WorldModel::DistractedPedMeanDir(COORD& ped, int goal_id) {
+COORD WorldModel::DistractedPedMeanDir(PedStruct& ped, int intention_id) {
 	COORD dir(0,0);
-	const COORD& goal = goals[goal_id];
+	const COORD& goal = GetGoalPos(ped, intention_id);
 	if (goal.x == -1 && goal.y == -1) {  //stop intention
 		return dir;
 	}
 
-	MyVector goal_vec(goal.x - ped.x, goal.y - ped.y);
+	MyVector goal_vec(goal.x - ped.pos.x, goal.y - ped.pos.y);
 //	goal_vec.AdjustLength(ped.vel / freq);
 
 	dir.x = goal_vec.dw;
@@ -1740,8 +1755,8 @@ COORD WorldModel::DistractedPedMeanDir(COORD& ped, int goal_id) {
 	return dir;
 }
 
-COORD WorldModel::AttentivePedMeanDir(int ped_id, int goal_id){
-	return ped_mean_dirs[ped_id][goal_id];
+COORD WorldModel::AttentivePedMeanDir(int ped_id, int intention_id){
+	return ped_mean_dirs[ped_id][intention_id];
 }
 
 #include "Vector2.h"
@@ -1794,8 +1809,11 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 	ped_sim_[threadID]->clearAllAgents();
 
 	//adding pedestrians
+    std::vector<int> ped_ids;
+    ped_ids.resize(num_ped);
 	for(int i=0; i<num_ped; i++){
 		ped_sim_[threadID]->addAgent(RVO::Vector2(peds[i].pos.x, peds[i].pos.y));
+        ped_ids[i] = peds[i].id;
 	}
 
 	// adding car as a "special" pedestrian
@@ -1809,25 +1827,26 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 	if(num_ped > ped_mean_dirs.size()){
 		cout << "Encountering overflowed peds list of size " << num_ped;
 		while (ped_mean_dirs.size() < num_ped){
+            int i = ped_mean_dirs.size();
 			cout << "adding init mean dir for ped " << ped_mean_dirs.size()<< endl;
-			vector<COORD> dirs(goals.size());
+			vector<COORD> dirs(GetNumIntentions(ped_ids[i]));
 			ped_mean_dirs.push_back(dirs);
 		}
 	}
 
 	for (size_t i = 0; i < num_ped; ++i) {
 		// For each ego ped
-	    for(int intention_id=0; intention_id < GetNumIntentions(i); intention_id++) {
+	    for(int intention_id=0; intention_id < GetNumIntentions(ped_ids[i]); intention_id++) {
 
 	    	RVO::Vector2 ori_pos(ped_sim_[threadID]->getAgentPosition(i).x(),  ped_sim_[threadID]->getAgentPosition(i).y());
 
-			// Set preferred velocity for the ego ped according to goal_id
+			// Set preferred velocity for the ego ped according to intention_id
 			// Leave other pedestrians to have default preferred velocity
 
-			if (goal_id >= GetNumIntentions(i)-1) { /// stop intention
+			if (intention_id >= GetNumIntentions(ped_ids[i])-1) { /// stop intention
 				ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
 			} else{
-                auto goal_pos = GetGoalPos(i);
+                auto goal_pos = GetGoalPos(peds[i], intention_id);
 				RVO::Vector2 goal(goal_pos.x, goal_pos.y);
 				if ( absSq(goal - ped_sim_[threadID]->getAgentPosition(i)) < ped_sim_[threadID]->getAgentRadius(i) * ped_sim_[threadID]->getAgentRadius(i) ) {
 					// Agent is within one radius of its goal, set preferred velocity to zero
@@ -1847,9 +1866,9 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 			logd << "[PrepareAttentivePedMeanDirs] ped_mean_dirs len=" << ped_mean_dirs.size()
 					<< " goal_list len=" << ped_mean_dirs[0].size() << "\n";
 
-			logd << "[PrepareAttentivePedMeanDirs] i=" << i << " goal_id=" << goal_id << "\n";
+			logd << "[PrepareAttentivePedMeanDirs] i=" << i << " intention_id=" << intention_id << "\n";
 
-			ped_mean_dirs[i][goal_id]=dir;
+			ped_mean_dirs[i][intention_id]=dir;
 
 	    	// reset ped state
 			ped_sim_[threadID]->setAgentPosition(i, ori_pos);
@@ -1873,24 +1892,24 @@ void WorldModel::PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedSt
 			COORD dir = cur_ped.pos - old_ped.pos;
 
 			cout << "dir: " << endl;
-			for(int goal_id=0; goal_id<goals.size(); goal_id++) {
-				cout <<goal_id<<"," << dir.x << "," << dir.y << " ";
+			for(int intention_id=0; intention_id<GetNumIntentions(cur_ped); intention_id++) {
+				cout <<intention_id<<"," << dir.x << "," << dir.y << " ";
 			}
 			cout<< endl;
 
 			cout << "Meandir: " << endl;
-		    for(int goal_id=0; goal_id<goals.size(); goal_id++) {
-		    	cout <<goal_id<<","<<ped_mean_dirs[i][goal_id].x << ","<< ped_mean_dirs[i][goal_id].y << " ";
+		    for(int intention_id=0; intention_id<GetNumIntentions(cur_ped); intention_id++) {
+		    	cout <<intention_id<<","<<ped_mean_dirs[i][intention_id].x << ","<< ped_mean_dirs[i][intention_id].y << " ";
 		    }
 		    cout<< endl;
 
 			cout << "Att probs: " << endl;
-		    for(int goal_id=0; goal_id<goals.size(); goal_id++) {
+		    for(int intention_id=0; intention_id<GetNumIntentions(cur_ped); intention_id++) {
 		    	logd <<"ped, goal, ped_mean_dirs.size() =" << cur_ped.id << " "
-		    					<< goal_id <<" "<< ped_mean_dirs.size() << endl;
-				double prob = pedMoveProb(old_ped.pos, cur_ped.pos, cur_ped.id, goal_id, PED_ATT);
+		    					<< intention_id <<" "<< ped_mean_dirs.size() << endl;
+				double prob = pedMoveProb(old_ped.pos, cur_ped, intention_id, PED_ATT);
 
-				cout <<"prob: "<< goal_id<<","<<prob << endl;
+				cout <<"prob: "<< intention_id<<","<<prob << endl;
 			}
 		    cout<< endl;
 		}
@@ -1973,14 +1992,14 @@ bool WorldModel::pedMoveMeanDir(const PomdpStateWorld& state){
 
 
 	for(int ped_id=0;ped_id< state.num; ped_id++)
-		for(int goal_id=0;goal_id< goals.size(); goal_id++){
+		for(int intention_id=0;intention_id< goals.size(); intention_id++){
 			PedStruct updated_ped=state.peds[ped_id];
 			// assume that the pedestrian takes the goal
-			updated_ped.goal=goal_id;
+			updated_ped.goal=intention_id;
 			PedMotionDirDeterministic(updated_ped);
 			// record the movement direction of the pedestrian taking the goal
-			ped_mean_dirs[ped_id][goal_id]=updated_ped.pos-state.peds[ped_id].pos;
-			ped_mean_speeds[ped_id][goal_id]=COORD::EuclideanDistance(updated_ped.pos,
+			ped_mean_dirs[ped_id][intention_id]=updated_ped.pos-state.peds[ped_id].pos;
+			ped_mean_speeds[ped_id][intention_id]=COORD::EuclideanDistance(updated_ped.pos,
 					state.peds[ped_id].pos);
 		}
 
