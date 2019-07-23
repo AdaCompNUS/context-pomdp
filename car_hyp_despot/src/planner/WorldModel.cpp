@@ -688,8 +688,21 @@ COORD WorldModel::GetGoalPos(PedStruct& ped, int intention_id){
     return COORD(ped.pos.x + ped.vel.x/freq*3, ped.pos.y + ped.vel.y/freq*3);
 }
 
+COORD WorldModel::GetGoalPos(PedBelief& ped, int intention_id){
+
+    // return goals[intention_id];
+
+    return COORD(ped.pos.x + ped.vel.x/freq*3, ped.pos.y + ped.vel.y/freq*3);
+}
 
 int WorldModel::GetNumIntentions(PedStruct& ped){
+
+  // return goals.size();
+  //
+  return 2; // current vel model
+}
+
+int WorldModel::GetNumIntentions(int ped_id){
 
   // return goals.size();
   //
@@ -1804,17 +1817,18 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 
 	for (size_t i = 0; i < num_ped; ++i) {
 		// For each ego ped
-	    for(int intention_id=0; intention_id < GetNumIntentions(); intention_id++) {
+	    for(int intention_id=0; intention_id < GetNumIntentions(i); intention_id++) {
 
 	    	RVO::Vector2 ori_pos(ped_sim_[threadID]->getAgentPosition(i).x(),  ped_sim_[threadID]->getAgentPosition(i).y());
 
 			// Set preferred velocity for the ego ped according to goal_id
 			// Leave other pedestrians to have default preferred velocity
 
-			if (goal_id >= GetNumIntentions()-1) { /// stop intention
+			if (goal_id >= GetNumIntentions(i)-1) { /// stop intention
 				ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
 			} else{
-				RVO::Vector2 goal(goals[goal_id].x, goals[goal_id].y);
+                auto goal_pos = GetGoalPos(i);
+				RVO::Vector2 goal(goal_pos.x, goal_pos.y);
 				if ( absSq(goal - ped_sim_[threadID]->getAgentPosition(i)) < ped_sim_[threadID]->getAgentRadius(i) * ped_sim_[threadID]->getAgentRadius(i) ) {
 					// Agent is within one radius of its goal, set preferred velocity to zero
 					ped_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));

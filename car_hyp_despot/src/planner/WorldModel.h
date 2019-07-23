@@ -7,7 +7,7 @@ using namespace despot;
 struct PedBelief {
 	int id;
     COORD pos;
-    double vel;
+    double speed;
     std::vector<double> prob_goals;
 
     std::vector<std::vector<double>> prob_modes_goals;
@@ -63,7 +63,11 @@ public:
     void PedStepGoal(PedStruct& ped, int step=1);
     void PedStepCurVel(PedStruct& ped, COORD vel);
 
-  COORD GetGoalPos(int intention_id);
+    COORD GetGoalPos(PedStruct& ped, int intention_id);
+    COORD GetGoalPos(PedBelief& ped, int intention_id);
+
+    int GetNumIntentions(PedStruct& ped);
+    int GetNumIntentions(int ped_id);
 
     void FixGPUVel(CarStruct &car);
 	void RobStep(CarStruct &car, double steering, Random& random);
