@@ -614,13 +614,15 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 	    << state.car.vel << endl;
 	out << state.num << " pedestrians " << endl;
 	for (int i = 0; i < state.num; i ++) {
-		out << "ped " << i << ": id / pos / vel / goal / dist2car / infront =  " << state.peds[i].id << " / "
+		out << "ped " << i << ": id / pos / speed / vel / goal / dist2car / infront =  " << state.peds[i].id << " / "
 		    << "(" << state.peds[i].pos.x << ", " << state.peds[i].pos.y << ") / "
 		    << state.peds[i].speed << " / "
+		    << "(" << state.peds[i].vel.x << ", " << state.peds[i].vel.y << ") / "
 		    << state.peds[i].goal << " / "
 		    << COORD::EuclideanDistance(state.peds[i].pos, carpos) << "/"
 		    << world_model->inFront(state.peds[i].pos, state.car) << endl;
 	}
+	
 	double min_dist = -1;
 	if (state.num > 0)
 		min_dist = COORD::EuclideanDistance(carpos, state.peds[0].pos);

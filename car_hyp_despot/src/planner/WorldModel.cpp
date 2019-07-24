@@ -1122,13 +1122,13 @@ void WorldStateTracker::updatePed(const Pedestrian& ped, bool doPrint){
         	ped_list[i].vel.x = (ped.w - ped_list[i].w) / duration;
 			ped_list[i].vel.y = (ped.h - ped_list[i].h) / duration;
 
-      if (Globals::config.use_prior) 
-          if (ped_list[i].vel.Length()>3.0){
-            cerr << "WARNING: Unusual ped " << i << " speed: " << ped_list[i].vel.Length() << endl;
-            raise(SIGABRT);
-          }
+            if (Globals::config.use_prior) 
+            if (ped_list[i].vel.Length()>3.0){
+                cerr << "WARNING: Unusual ped " << i << " speed: " << ped_list[i].vel.Length() << endl;
+                raise(SIGABRT);
+            }
 
-			if (ped_list[i].vel.Length()>1e-4){
+	       if (ped_list[i].vel.Length()>1e-4){
 				no_move = false;
 			}
 
