@@ -31,6 +31,11 @@ import math
 
 agent_tag_list = ["People", "Car", "Bicycle"]
 
+client = carla.Client('127.0.0.1', 2000)
+client.set_timeout(10.0)
+
+world = client.get_world()
+
 class CrowdAgent:
     def __init__(self, route_map, actor, pref_speed, agent_tag):
         self.route_map = route_map
@@ -61,8 +66,13 @@ class CrowdAgent:
         if norm(forward_vec) == 0:
             print "no forward vec"
         sideward_vec = rotate(forward_vec, 90.0) # the local y direction
+
         half_y_len = bbox.extent.y
         half_x_len = bbox.extent.x
+
+        if self.agent_tag == "People":
+            half_y_len = 0.23
+            half_x_len = 0.23
         corners = []
         corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
         corners.append(loc + half_x_len*forward_vec + half_y_len*sideward_vec)
@@ -70,6 +80,10 @@ class CrowdAgent:
         corners.append(loc - half_x_len*forward_vec - half_y_len*sideward_vec)
         if half_y_len == 0 or half_x_len == 0:
             print "no bounding_box"
+        # print "============"
+        # print "forward_vec: ", forward_vec
+        # print "half_x_len: ", half_x_len
+        # print "half_y_len: ", half_y_len
         return corners
 
     def get_rotation(self):
@@ -133,7 +147,7 @@ class CrowdAgent:
             for i in range(len(self.path_route_points) / 2):
                 route_point = self.path_route_points[i]
                 offset = position - route_map.get_position(route_point)
-                if norm(offset) < 1.0:
+                if norm(offset) < 5.0:
                     cut_index = i + 1
 
             self.path_route_points = self.path_route_points[cut_index:]
@@ -159,25 +173,36 @@ class CrowdAgent:
             elif steer < min_steering_angle:
                 steer = min_steering_angle
 
-            k = 0.5
+            k = 1.0
             steer = k * steer / (max_steering_angle - min_steering_angle) * 2.0
 
             desired_speed = norm(velocity)
             cur_speed = norm(self.get_velocity())
 
             control = self.actor.get_control()
-            control.steer =  steer
 
+            k2 = 1.0
             if desired_speed - cur_speed > 0:
-                control.throttle = (desired_speed - cur_speed)/desired_speed
+                control.throttle = k2 * (desired_speed - cur_speed)/desired_speed
                 control.brake = 0.0
             elif desired_speed - cur_speed == 0:
                 control.throttle = 0.0
                 control.brake = 0.0
             else:
                 control.throttle = 0
-                control.brake = (cur_speed - desired_speed)/cur_speed
+                control.brake = 0 #k2 * (cur_speed - desired_speed)/cur_speed
+            #print "throttle: ", control.throttle
+            global world
+            if desired_speed == 0:
+                print "desired speed: ", desired_speed
+                print "current speed: ", cur_speed
+                print "throttle: ", control.throttle
+                #world.debug.draw_line(self.actor.get_location(), )
+                world.debug.draw_line(self.actor.get_location()+carla.Vector3D(0,0,2), self.actor.get_location()+self.actor.get_transform().get_forward_vector()+carla.Vector3D(0,0,2),  life_time=0.2)
 
+            control.steer = steer
+            #control.throttle = 0.5
+            # control.brake = 0
             self.actor.apply_control(control)
 
 
@@ -233,10 +258,7 @@ if __name__ == '__main__':
     for i in range(NUM_AGENTS):
         gamma.add_agent(carla.AgentParams.get_default("People"), i)
     
-    client = carla.Client('127.0.0.1', 2000)
-    client.set_timeout(10.0)
 
-    world = client.get_world()
     world.spawn_occupancy_map(
         occupancy_map, 
         '/Game/Carla/Static/GenericMaterials/Asphalt/M_Asphalt01')
@@ -250,11 +272,13 @@ if __name__ == '__main__':
     vehicles_blueprints = world.get_blueprint_library().filter('vehicle.*')
     bikes_blueprints = [x for x in vehicles_blueprints if int(x.get_attribute('number_of_wheels')) == 2]
     cars_blueprints = [x for x in vehicles_blueprints if int(x.get_attribute('number_of_wheels')) == 4]
+
+    # for b in cars_blueprints:
+    #     print([s.id for s in b])
     
 
     crowd_agents = []
 
-    ite = 0
     while True:
 
         while len(crowd_agents) < NUM_AGENTS:
@@ -277,7 +301,7 @@ if __name__ == '__main__':
             forward = next_position - position
             yaw_deg = get_signed_angle_diff(forward, carla.Vector2D(1,0))
             rot = carla.Rotation(0, yaw_deg, 0)         
-            loc = carla.Location(position.x, position.y, 2.0)
+            loc = carla.Location(position.x, position.y, 0.5)
             trans = carla.Transform(loc, rot)
 
             agent_tag = random.choice(agent_tag_list)
@@ -286,8 +310,8 @@ if __name__ == '__main__':
                 actor = world.try_spawn_actor(
                     random.choice(walker_blueprints),
                     trans)
-                pref_speed = 1.2
-                #pref_speed = 0.5 + random.random() * 3
+                #pref_speed = 1.2
+                pref_speed = 0.5 + random.random() * 1.5
                 if actor:
                     crowd_agents.append(CrowdAgent(sidewalk, actor, pref_speed, agent_tag))
                     world.wait_for_tick()
@@ -309,9 +333,9 @@ if __name__ == '__main__':
                     world.wait_for_tick()
             
                 #print "spawned agent: ", agent_tag, " at ", actor.get_location()
-        for i in range(0,5):
-            world.wait_for_tick()
-        # world.wait_for_tick()
+        # for i in range(0,3):
+        #     world.wait_for_tick()
+        world.wait_for_tick()
 
             # UpdateAllAgentPosition ();
             # UpdateAllAgentBoundingBoxCorners ();
@@ -339,9 +363,14 @@ if __name__ == '__main__':
                 next_crowd_agents.append(crowd_agent)
                 gamma.set_agent_position(i, crowd_agent.get_position()) ### update agent position
                 gamma.set_agent_velocity(i, crowd_agent.get_velocity()) ### update agent current velocity
+                #world.debug.draw_line(crowd_agent.actor.get_location()+carla.Vector3D(0,0,2), crowd_agent.actor.get_location()+crowd_agent.actor.get_velocity()+carla.Vector3D(0,0,2),  life_time=0)
                 gamma.set_agent_heading(i, crowd_agent.get_forward_direction()) ### update agent heading
+                #world.debug.draw_line(crowd_agent.actor.get_location()+carla.Vector3D(0,0,2), crowd_agent.actor.get_location()+crowd_agent.actor.get_transform().get_forward_vector()+carla.Vector3D(0,0,2), color=carla.Color (0,0,255), life_time=0)
                 gamma.set_agent_bounding_box_corners(i, crowd_agent.get_bounding_box_corners()) ### update agent bounding box corners
                 gamma.set_agent_pref_velocity(i, pref_vel) ### update agent preferred velocity
+                pref_vel_to_draw = carla.Vector3D(pref_vel.x,pref_vel.y,0)
+                #world.debug.draw_line(crowd_agent.actor.get_location()+carla.Vector3D(0,0,2), crowd_agent.actor.get_location()+pref_vel_to_draw+carla.Vector3D(0,0,2), color=carla.Color (0,255,0), life_time=0)
+
                 # setAgentMaxTrackingAngle
                 # setAgentAttentionRadius
                 # setAgentResDecRate
@@ -361,11 +390,8 @@ if __name__ == '__main__':
                 crowd_agent.actor.destroy()
         crowd_agents = next_crowd_agents
         
-        print (ite)
         gamma.do_step()
 
-        print (ite)
-        ite += 1
 
         for (i, crowd_agent) in enumerate(crowd_agents):
             if crowd_agent is not None:
