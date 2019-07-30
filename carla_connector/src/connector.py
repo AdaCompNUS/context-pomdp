@@ -30,9 +30,7 @@ class Carla_Connector(object):
         try:
             self.client = carla.Client('localhost', 2000)
             self.client.set_timeout(10.0)
-
-
-            
+          
             self.world = self.client.get_world()
             # self.world = self.client.load_map('Town03')
 
@@ -52,7 +50,7 @@ class Carla_Connector(object):
             self.path_extractor = PathExtractor(self.player, self.client, self.world)
             print('-------------- 1 --------------')
             self.find_player()
-            self.processor = StateProcessor(self.client, self.world)
+            self.processor = StateProcessor(self.client, self.world, self.path_extractor)
             self.pursuit = Pursuit(self.player, self.world, self.client, self.bp_lib)
             self.speed_control = SpeedController(self.player, self.client, self.world)
 
@@ -137,8 +135,8 @@ class Carla_Connector(object):
 
             transform = carla.Transform(carla.Location(x=0.8, z=1.7))
             self.lidar_sensor = self.world.spawn_actor(lidar_bp, transform, attach_to=self.player)
-            self.lidar_sensor.listen(lambda data: SpeedController._parse_proximity(
-                self.speed_control,data))
+            # self.lidar_sensor.listen(lambda data: SpeedController._parse_proximity(
+            #     self.speed_control,data))
 
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()

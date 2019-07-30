@@ -70,3 +70,11 @@ def get_signed_angle_diff(vector1, vector2):
     elif theta < -180:
         theta += 360
     return theta
+
+def get_actor_flag(actor):
+    if isinstance(actor, carla.Vehicle):
+        return 'car'
+    elif isinstance(actor, carla.Walker):
+        return 'ped'
+    else:
+        return 'unsupported'

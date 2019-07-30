@@ -80,23 +80,29 @@ class PathExtractor(object):
             print(exc_type, fname, exc_tb.tb_lineno)
             print(e)
 
-    def get_position(self,route_point):
-        if self.player_type is 'car':
+    def get_position(self,route_point, actor_flag=None):
+        if actor_flag is None:
+            actor_flag = self.player_type
+        if actor_flag is 'car':
             return self.route_map.get_position(route_point)
-        elif self.player_type is 'ped':
+        elif actor_flag is 'ped':
             return self.sidewalk.get_route_point_position(route_point)
 
-    def get_next_position(self, route_point, offset = 1.0):
-        if self.player_type is 'car':
+    def get_next_position(self, route_point, actor_flag=None, offset = 1.0):
+        if actor_flag is None:
+            actor_flag = self.player_type
+        if actor_flag is 'car':
             next_point = self.route_map.get_next_route_points(route_point, offset)
-            return self.get_position(random.choice(next_point))
-        elif self.player_type is 'ped':
+            return self.get_position(random.choice(next_point), actor_flag)
+        elif actor_flag is 'ped':
             next_point = self.sidewalk.get_next_route_point(route_point, offset)
-            return self.get_position(next_point)
+            return self.get_position(next_point, actor_flag)
 
-    def get_yaw_on_route(self, route_point):
-        pos = self.get_position(route_point)
-        next_pos = self.get_next_position(route_point)
+    def get_yaw_on_route(self, route_point, actor_flag = None):
+        if actor_flag is None:
+            actor_flag = self.player_type
+        pos = self.get_position(route_point, actor_flag)
+        next_pos = self.get_next_position(route_point, actor_flag)
         yaw = numpy.rad2deg(math.atan2(next_pos.y-pos.y, next_pos.x-pos.x))
         return yaw
 
@@ -127,7 +133,7 @@ class PathExtractor(object):
 
                 spawn_trans = Transform()
                 
-                yaw = self.get_yaw_on_route(start_point)
+                yaw = self.get_yaw_on_route(start_point, 'car')
                 # yaw = start_point.get_orientation()  # TODO: implemented this
                 spawn_trans.location.x = pos.x
                 spawn_trans.location.y = pos.y
@@ -165,7 +171,8 @@ class PathExtractor(object):
                 while pos is None or (abs(pos.x)>map_bound or abs(pos.y) > map_bound):
 
                     position = carla.Vector2D(random.uniform(
-                        -map_bound, map_bound), random.uniform(-map_bound, map_bound))
+                        -map_bound/2.0, map_bound/2.0), 
+                        random.uniform(-map_bound/2.0, map_bound/2.0))
                     if self.player_type is 'car':
                         start_point = self.route_map.get_nearest_route_point(position)
                         if len(self.sidewalk.get_next_route_paths(start_point, 20.0, 1.0)) > 1:
@@ -177,7 +184,7 @@ class PathExtractor(object):
 
                 spawn_trans = Transform()
                 
-                yaw = self.get_yaw_on_route(start_point)
+                yaw = self.get_yaw_on_route(start_point, 'ped')
                 # yaw = start_point.get_orientation()  # TODO: implemented this
                 spawn_trans.location.x = pos.x
                 spawn_trans.location.y = pos.y
@@ -252,30 +259,37 @@ class PathExtractor(object):
 
             self.markers.append(self.world.spawn_actor(marker_bp, spawn_trans))
 
-    def extend_path(self):
+    def extend_path(self, actor=None, path=None):
+        if actor is None:
+            actor = self.player
+        if path is None:
+            path = self.path
 
-        if self.player_type is 'car':
-            next_route_points = self.route_map.get_next_route_points(self.path[-1], 4.0)
+        actor_flag = ''
+        if isinstance(actor, carla.Vehicle):
+            actor_flag = 'car'
+            next_route_points = self.route_map.get_next_route_points(path[-1], 4.0)
 
             if len(next_route_points) == 0:
-                print('Route point query failure!!! cur path len {}'.format(len(self.path)))
+                print('Route point query failure!!! cur path len {}'.format(len(path)))
                 return False
 
             next_point = random.choice(next_route_points)
 
             if not mute_debug:
-                pos = self.get_position(self.path[-1])
-                next_pos = self.get_position(next_point)
+                pos = self.get_position(path[-1], actor_flag)
+                next_pos = self.get_position(next_point, actor_flag)
                 print('cur pos: {} {}'.format(pos.x, pos.y))
                 print('next pos {} {}'.format(next_pos.x, next_pos.y))
 
-            self.path.append(next_point)
+            path.append(next_point)
 
-        elif self.player_type is 'ped':
+        elif isinstance(actor, carla.Walker):
+            actor_flag = 'ped'
             if self.player_walking_dir:
-                self.path.append(self.sidewalk.get_next_route_point(self.path[-1], 1.0))
+                path.append(self.sidewalk.get_next_route_point(path[-1], 1.0))
             else:
-                self.path.append(self.sidewalk.get_previous_route_point(self.path[-1], 1.0))
+                path.append(self.sidewalk.get_previous_route_point(path[-1], 1.0))
         else:
             print("Unsupported player type")
             return False
@@ -283,98 +297,32 @@ class PathExtractor(object):
         return True
 
 
-    def get_cur_path(self):
+    def cut_path(self, path, rount_pos, actor_flag):
+
         try:
+            cut_index = 0
+            min_offset = 100000.0
+            for i in range(len(path) / 2):
+                route_point = path[i]
+
+                offset = rount_pos - self.get_position(route_point, actor_flag)
+                offset = math.sqrt(offset.x**2 + offset.y**2)
+
+                if offset < min_offset:
+                    min_offset = offset
+            
+                if offset < 0.5:
+                    cut_index = i + 1
+
+            if min_offset > 5.0:
+                print('Lost track: path min offset {}'.format(min_offset))
+
             if not mute_debug:
-                print('parse path')
-
-            ego_location = self.player.get_location()
-            # print('car location {} {}'.format(ego_location.x, ego_location.y))
-
-            if map_type is "carla":
-                way_point = self.map.get_waypoint(ego_location)  
-                self.path = self.extract_path(way_point)
-            elif map_type is "osm":
-                position = Vector2D(ego_location.x, ego_location.y)
-
-                if self.player_type is 'car':                
-                    route_point = self.route_map.get_nearest_route_point(position)
-                    route_paths = self.route_map.get_next_route_paths(route_point, 20.0, 1.0)
-
-                    print("route_paths.size()={}".format(len(route_paths)))
-
-                    color_i = 0
-                    for path in route_paths:
-                        last_loc = None
-                        color_i += 50
-                        for point in path:
-                            pos = self.get_position(point)
-                            loc = carla.Location(pos.x, pos.y, 0.1)
-                            if last_loc is not None:
-                                self.world.debug.draw_line(last_loc,loc,life_time = 0.1, color = carla.Color(color_i,color_i,0,0))
-                            last_loc = carla.Location(pos.x, pos.y, 0.1)
-
-                    self.path = route_paths[0]
-
-                    rount_pos = self.get_position(route_point)
-
-                elif self.player_type is 'ped':
-                    route_point = self.sidewalk.get_nearest_route_point(position)
-
-                    if len(self.path) == 0:
-                        self.path.append(route_point)
-
-                    while len(self.path) < 20:
-                        if random.random() <= 0.01:
-                            adjacent_route_points = self.sidewalk.get_adjacent_route_points(self.path[-1])
-                            if adjacent_route_points:
-                                self.path.append(adjacent_route_points[0])
-                                self.player_walking_dir = random.choice([False, True])
-                                continue
-
-                        if not self.extend_path():
-                            break
-                        pass
-
-                    # color_i = 255
-                    # last_loc = None
-                 #    for point in self.path:
-                 #        pos = self.sidewalk.get_position(point)
-                 #        loc = carla.Location(pos.x, pos.y, 0.1)
-                 #        if last_loc is not None:
-                 #            self.world.debug.draw_line(last_loc,loc,life_time = 0.1, color = carla.Color(color_i,color_i,0,0))
-                 #        last_loc = carla.Location(pos.x, pos.y, 0.1)
-
-
-                if len(self.path) < 10:
-                    if not mute_debug:
-                        print('path shorter than 10')
-                    rospy.signal_shutdown('Deadend')
-                
-                cut_index = 0
-                min_offset = 100000.0
-                for i in range(len(self.path) / 2):
-                    route_point = self.path[i]
-                    offset = rount_pos - self.get_position(route_point)
-                    offset = math.sqrt(offset.x**2 + offset.y**2)
-
-                    if offset < min_offset:
-                        min_offset = offset
-                
-                    if offset < 0.5:
-                        cut_index = i + 1
-
-                if min_offset > 5.0:
-                    print('Lost track: path min offset {}'.format(min_offset))
-
-
-                self.path = self.path[cut_index:]
                 if cut_index > 0: # not mute_debug:
                     print('cut_index', cut_index)
 
-                
             if not mute_debug:
-                print('cur path len {}'.format(len(self.path)))
+                print('cur path len {}'.format(len(path)))
                 print('')
 
         except Exception as e:
@@ -384,7 +332,88 @@ class PathExtractor(object):
             print(e)
             pdb.set_trace()
 
-        return self.path
+        return path[cut_index:]
+        
+
+    def get_cur_paths(self, actor, path):
+        # ego_location = self.player.get_location()
+        actor_location = actor.get_location()
+
+        # print('car location {} {}'.format(ego_location.x, ego_location.y))            
+        try:
+            position = Vector2D(actor_location.x, actor_location.y)
+            # print("get_cur_paths for actor", actor)
+            actor_flag = ''
+            if isinstance(actor, carla.Vehicle):
+                actor_flag = 'car'
+                # print("actor is vehicle")
+                # TODO: change this to extend paths at leaf and trim the start part                
+                route_point = self.route_map.get_nearest_route_point(position)
+                route_paths = self.route_map.get_next_route_paths(route_point, 20.0, 1.0)
+                rount_pos = self.get_position(route_point, actor_flag)
+
+                for i in range(len(route_paths)):
+                    route_paths[i] = self.cut_path(route_paths[i], rount_pos, actor_flag)
+
+            elif isinstance(actor, carla.Walker):
+                actor_flag = 'ped'
+                # print("actor is walker")
+                
+                route_point = self.sidewalk.get_nearest_route_point(position)
+                rount_pos = self.get_position(route_point, actor_flag)
+
+                if len(path) == 0:
+                    path.append(route_point)
+
+                while len(path) < 20:
+                    # if random.random() <= 0.01:q
+                    #     adjacent_route_points = self.sidewalk.get_adjacent_route_points(path[-1])
+                    #     if adjacent_route_points:
+                    #         path.append(adjacent_route_points[0])
+                    #         self.player_walking_dir = random.choice([False, True])
+                    #         continue
+
+                    if not self.extend_path(actor, path):
+                        break
+                    pass
+
+                path = self.cut_path(path, rount_pos, actor_flag)
+                route_paths = [path]
+
+            # path = route_paths[0]
+            
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            print(e)
+            pdb.set_trace()
+
+        return route_paths
+
+
+    def get_cur_path(self, actor, path):
+        if not mute_debug:
+            print('parse path')
+
+        if map_type is "carla":
+            actor_location = actor.get_location()
+            way_point = self.map.get_waypoint(actor_location)  
+            path = self.extract_path(way_point)
+        elif map_type is "osm":
+            
+            route_paths = self.get_cur_paths(actor, path)
+            path = route_paths[0]
+                # color_i = 255
+                # last_loc = None
+             #    for point in self.path:
+             #        pos = self.sidewalk.get_position(point)
+             #        loc = carla.Location(pos.x, pos.y, 0.1)
+             #        if last_loc is not None:
+             #            self.world.debug.draw_line(last_loc,loc,life_time = 0.1, color = carla.Color(color_i,color_i,0,0))
+             #        last_loc = carla.Location(pos.x, pos.y, 0.1)
+        
+        return path
 
     def get_smooth_path(self, input_path):
         path = []
@@ -427,8 +456,8 @@ class PathExtractor(object):
 
         return pose 
 
-    def to_pose_stamped_route(self, route_point, current_time):
-        pos = self.get_position(route_point)
+    def to_pose_stamped_route(self, route_point, current_time, actor_flag):
+        pos = self.get_position(route_point, actor_flag)
         pose = PoseStamped()
         pose.header.stamp = current_time
         pose.header.frame_id = "map"
@@ -436,7 +465,7 @@ class PathExtractor(object):
         pose.pose.position.y = pos.y
         pose.pose.position.z = 0
 
-        yaw = self.get_yaw_on_route(route_point)
+        yaw = self.get_yaw_on_route(route_point, actor_flag)
 
         quaternion = tf.transformations.quaternion_from_euler(0, 0, yaw)
 
@@ -473,22 +502,22 @@ class PathExtractor(object):
             if not mute_debug:
                 print("Publishing path")
 
-            path = self.get_cur_path()
+            self.path = self.get_cur_path(self.player, self.path)
 
-            if path is not None:
+            if self.path is not None:
 
-                smooth_path = self.get_smooth_path(path)
+                smooth_path = self.get_smooth_path(self.path)
 
                 # visualize the path
 
                 # print('Visualizing path of len {}'.format(smooth_path.shape[0]))
-                last_loc = None
-                for i in range(smooth_path.shape[0]):
-                    pos = smooth_path[i,:]
-                    loc = carla.Location(pos[0], pos[1], 0.1)
-                    if last_loc is not None:
-                        self.world.debug.draw_line(last_loc,loc,life_time = 0.1, color = carla.Color(0,255,0,0))
-                    last_loc = carla.Location(pos[0], pos[1], 0.1)
+                # last_loc = None
+                # for i in range(smooth_path.shape[0]):
+                #     pos = smooth_path[i,:]
+                #     loc = carla.Location(pos[0], pos[1], 0.1)
+                #     if last_loc is not None:
+                #         self.world.debug.draw_line(last_loc,loc,life_time = 0.1, color = carla.Color(0,255,0,0))
+                #     last_loc = carla.Location(pos[0], pos[1], 0.1)
 
                 if smooth_path is not None:
                     current_time = rospy.Time.now() 

@@ -141,7 +141,7 @@ class World(object):
                 if actor.attributes.get('role_name') == 'ego_vehicle':
                     self.player = actor
                     if True: # not mute_debug:
-                        print('Player found in connector')
+                        print('Player found in automatic controller')
                     break
 
         if self.player is None:
