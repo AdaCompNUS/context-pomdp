@@ -119,10 +119,10 @@ void WorldModel::InitPedGoals(){
         file.close();
     }
 
-     for(int i=0;i<ModelParams::N_PED_WORLD; i++){
-    	 vector<COORD> dirs(goals.size());
-    	 ped_mean_dirs.push_back(dirs);
-     }
+     // for(int i=0;i<ModelParams::N_PED_WORLD; i++){
+    	//  vector<COORD> dirs(goals.size());
+    	//  ped_mean_dirs.push_back(dirs);
+     // }
 }
 
 void WorldModel::InitRVO(){
@@ -753,6 +753,18 @@ double WorldModel::pedMoveProb(COORD prev, const PedStruct& ped, int intention_i
 	}
 }
 
+void WorldModel::EnsureMeanDirExist(int ped_id){
+    if ( ped_mean_dirs.find(ped_id) == ped_mean_dirs.end() ){ 
+        // if(ped_id >= ped_mean_dirs.size()){
+        cout << "Encountering new ped id in pedMoveProb" << ped_id;
+        // while (ped_mean_dirs.size() < ped_id + 1){
+        cout << "adding init mean dir for ped " << ped_id << endl;
+        vector<COORD> dirs(GetNumIntentions(ped_id));
+        ped_mean_dirs[ped_id] = dirs;
+        // }
+    }
+}
+
 double WorldModel::pedMoveProb(COORD prev, const PedStruct& ped, int intention_id, int ped_mode) {
 	const double K = 0.001;
 //	cout << __FUNCTION__ << "@" << __LINE__ << endl;
@@ -763,18 +775,13 @@ double WorldModel::pedMoveProb(COORD prev, const PedStruct& ped, int intention_i
 	COORD goal;
 
 	if(ped_mode == PED_ATT){
-		if(ped_id >= ped_mean_dirs.size()){
-			cout << "Encountering overflowed ped id " << ped_id;
-			while (ped_mean_dirs.size() < ped_id + 1){
-				cout << "adding init mean dir for ped " << ped_mean_dirs.size()<< endl;
-				vector<COORD> dirs(GetNumIntentions(ped_id));
-				ped_mean_dirs.push_back(dirs);
-			}
-		}
-		if(intention_id >= ped_mean_dirs[0].size()){
-			cerr << "Encountering overflowed goal id " << intention_id;
+        EnsureMeanDirExist(ped_id);
+
+		if(intention_id >= ped_mean_dirs[ped_id].size()){
+			cerr << "Encountering overflowed intention id " << intention_id << "at ped " << ped_id << endl;
 			exit(-1);
 		}
+
 		goal = ped_mean_dirs[ped_id][intention_id] + prev;
 	}
 	else{
@@ -1823,16 +1830,8 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 
 	ped_sim_[threadID]->doPreStep();// build kd tree and find neighbors for peds
 
-
-	if(num_ped > ped_mean_dirs.size()){
-		cout << "Encountering overflowed peds list of size " << num_ped;
-		while (ped_mean_dirs.size() < num_ped){
-            int i = ped_mean_dirs.size();
-			cout << "adding init mean dir for ped " << ped_mean_dirs.size()<< endl;
-			vector<COORD> dirs(GetNumIntentions(ped_ids[i]));
-			ped_mean_dirs.push_back(dirs);
-		}
-	}
+    for (int i = 0; i < num_ped ; i++)
+        EnsureMeanDirExist(ped_ids[i]);
 
 	for (size_t i = 0; i < num_ped; ++i) {
 		// For each ego ped
@@ -1864,7 +1863,7 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 			dir.y = ped_sim_[threadID]->getAgentPosition(i).y() - peds[i].pos.y;
 
 			logd << "[PrepareAttentivePedMeanDirs] ped_mean_dirs len=" << ped_mean_dirs.size()
-					<< " goal_list len=" << ped_mean_dirs[0].size() << "\n";
+					<< " intention_list len=" << ped_mean_dirs[i].size() << "\n";
 
 			logd << "[PrepareAttentivePedMeanDirs] i=" << i << " intention_id=" << intention_id << "\n";
 
@@ -1877,42 +1876,53 @@ void WorldModel::PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarS
 }
 
 void WorldModel::PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedStruct>& curr_peds){
-	if(logging::level()>=4){
+	if(logging::level()>=3){
 		int num_ped = old_peds.size();
 
-		for (size_t i = 0; i < 6; ++i) {
-			cout <<"ped "<< i << endl;
-			// For each ego ped
-			auto& old_ped = old_peds[i];
-			auto& cur_ped = curr_peds[i];
+        int count = 0;
+        for (std::map<int, PedStruct>::iterator it=curr_peds.begin(); it!=curr_peds.end(); ++it) {
 
-			cout << "prev pos: "<< old_ped.pos.x << "," << old_ped.pos.y << endl;
-			cout << "cur pos: "<< cur_ped.pos.x << "," << cur_ped.pos.y << endl;
+            if (count == 6) break;
 
-			COORD dir = cur_ped.pos - old_ped.pos;
+            int ped_id = it->first;
 
-			cout << "dir: " << endl;
-			for(int intention_id=0; intention_id<GetNumIntentions(cur_ped); intention_id++) {
-				cout <<intention_id<<"," << dir.x << "," << dir.y << " ";
-			}
-			cout<< endl;
+            if ( old_peds.find(ped_id) == old_peds.end() )
+                continue;
 
-			cout << "Meandir: " << endl;
-		    for(int intention_id=0; intention_id<GetNumIntentions(cur_ped); intention_id++) {
-		    	cout <<intention_id<<","<<ped_mean_dirs[i][intention_id].x << ","<< ped_mean_dirs[i][intention_id].y << " ";
-		    }
-		    cout<< endl;
+            cout <<"ped "<< i << endl;
+            auto& cur_ped = it->second;
+            // For each ego ped
+            auto& old_ped = old_peds[ped_id];
+    					
+    		cout << "prev pos: "<< old_ped.pos.x << "," << old_ped.pos.y << endl;
+    		cout << "cur pos: "<< cur_ped.pos.x << "," << cur_ped.pos.y << endl;
 
-			cout << "Att probs: " << endl;
-		    for(int intention_id=0; intention_id<GetNumIntentions(cur_ped); intention_id++) {
-		    	logd <<"ped, goal, ped_mean_dirs.size() =" << cur_ped.id << " "
-		    					<< intention_id <<" "<< ped_mean_dirs.size() << endl;
-				double prob = pedMoveProb(old_ped.pos, cur_ped, intention_id, PED_ATT);
+    		COORD dir = cur_ped.pos - old_ped.pos;
 
-				cout <<"prob: "<< intention_id<<","<<prob << endl;
-			}
-		    cout<< endl;
-		}
+    		cout << "dir: " << endl;
+    		for(int intention_id=0; intention_id<GetNumIntentions(cur_ped); intention_id++) {
+    			cout <<intention_id<<"," << dir.x << "," << dir.y << " ";
+    		}
+    		cout<< endl;
+
+    		cout << "Meandir: " << endl;
+    	    for(int intention_id=0; intention_id<GetNumIntentions(cur_ped); intention_id++) {
+    	    	cout <<intention_id<<","<<ped_mean_dirs[ped_id][intention_id].x << ","<< ped_mean_dirs[ped_id][intention_id].y << " ";
+    	    }
+    	    cout<< endl;
+
+    		cout << "Att probs: " << endl;
+    	    for(int intention_id=0; intention_id<GetNumIntentions(cur_ped); intention_id++) {
+    	    	logd <<"ped, goal, ped_mean_dirs.size() =" << cur_ped.id << " "
+    	    					<< intention_id <<" "<< ped_mean_dirs.size() << endl;
+    			double prob = pedMoveProb(old_ped.pos, cur_ped, intention_id, PED_ATT);
+
+    			cout <<"prob: "<< intention_id<<","<<prob << endl;
+    		}
+    	    cout<< endl;
+
+            count ++;
+        }
 	}
 }
 

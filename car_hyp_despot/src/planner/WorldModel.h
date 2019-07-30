@@ -110,7 +110,7 @@ public:
     bool CheckCarWithObsLine(const CarStruct& car, COORD& obs_last_point, COORD& obs_first_point, int flag);// 0 in search, 1 real check
 
     /// lets drive
-    vector<vector<COORD>> ped_mean_dirs;
+    std::map<int, vector<COORD>> ped_mean_dirs;
     COORD DistractedPedMeanDir(PedStruct& ped, int goal_id);
     COORD AttentivePedMeanDir(int ped_id, int goal_id);
 

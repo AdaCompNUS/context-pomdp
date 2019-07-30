@@ -120,6 +120,10 @@ class SpeedController(object):
                 cmd.linear.y = -acc
 
 
+            if curr_vel >2 and cmd.linear.y > 0:
+                cmd.linear.x = curr_vel
+                cmd.linear.y = 0
+
             if not mute_debug:
                 print("Publishing speed, proximity {}, vel {}, acc {}".format(
                     self.proximity, cmd.linear.x, cmd.linear.y))

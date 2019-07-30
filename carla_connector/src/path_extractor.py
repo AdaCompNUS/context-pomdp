@@ -96,7 +96,9 @@ class PathExtractor(object):
 
                 while pos is None or (abs(pos.x)>300 or abs(pos.y) > 300):
                     start_point = self.route_map.rand_route_point()
-                    pos = self.route_map.get_position(start_point)
+
+                    if len(self.route_map.get_next_route_paths(start_point, 20.0, 1.0)) > 1:
+                        pos = self.route_map.get_position(start_point)
 
                 spawn_trans = Transform()
                 
@@ -207,21 +209,35 @@ class PathExtractor(object):
             elif map_type is "osm":
                 position = Vector2D(ego_location.x, ego_location.y)
                 route_point = self.route_map.get_nearest_route_point(position)
+                route_paths = self.route_map.get_next_route_paths(route_point, 20.0, 1.0)
+
+                print("route_paths.size()={}".format(len(route_paths)))
+
+                color_i = 0
+                for path in route_paths:
+                    # path = route_paths[0]
+                    last_loc = None
+                    color_i += 50
+                    for point in path:
+                        pos = self.route_map.get_position(point)
+                        loc = carla.Location(pos.x, pos.y, 0.1)
+                        if last_loc is not None:
+                            self.world.debug.draw_line(last_loc,loc,life_time = 0.1, color = carla.Color(color_i,color_i,0,0))
+                        last_loc = carla.Location(pos.x, pos.y, 0.1)
+
+                self.path = route_paths[0]
+
                 rount_pos = self.route_map.get_position(route_point)
-                # print('nearest_route_point {} at {} {}'.format(route_point, rount_pos.x, rount_pos.y))
 
-                # self.world.debug.draw_point(carla.Location(rount_pos.x, rount_pos.y, 0.1),life_time = 0.03)
-
-                if len(self.path) == 0:
-                    self.path.append(route_point)
-                while len(self.path) < 10 and self.extend_path():
-                    pass
+            #     if len(self.path) == 0:
+            #         self.path.append(route_point)
+            #     while len(self.path) < 10 and self.extend_path():
+            #         pass
                 if len(self.path) < 10:
                     if not mute_debug:
                         print('path shorter than 50')
                     rospy.signal_shutdown('Deadend')
-                    # return None
-
+                
                 cut_index = 0
                 min_offset = 100000.0
                 for i in range(len(self.path) / 2):
@@ -231,9 +247,7 @@ class PathExtractor(object):
 
                     if offset < min_offset:
                         min_offset = offset
-                    # if i ==0:
-                    #     print('offset to path point {} = {}'.format(i, offset))
-
+                
                     if offset < 0.5:
                         cut_index = i + 1
 
@@ -245,30 +259,9 @@ class PathExtractor(object):
                 if cut_index > 0: # not mute_debug:
                     print('cut_index', cut_index)
 
-                # for rount_point in self.path:
-                # route_point = self.path[0]
-                # pos = self.route_map.get_position(route_point)
-                # self.world.debug.draw_point(carla.Location(pos.x, pos.y, 1),life_time = 0.1, color = carla.Color(0,255,0,0))
-                # route_point = self.path[-1]
-                # pos1 = self.route_map.get_position(route_point)
-                # self.world.debug.draw_point(carla.Location(pos1.x, pos1.y, 1),life_time = 0.1, color = carla.Color(0,0,255,0))
-
-            # self.spawn_path_marker(path)
+                
             if not mute_debug:
                 print('cur path len {}'.format(len(self.path)))
-                # last_pos = None
-                # for rount_point in self.path:
-                #     pos = self.route_map.get_position(route_point)
-                #     print(pos)
-                    # if last_pos:
-                    #     step = math.sqrt((pos.x - last_pos.x)**2 + (pos.y -
-                    #         last_pos.y)**2)
-                    #     print(pos, step)
-                    # else:
-                    #     last_pos = Vector2D()
-                    # last_pos.x = pos.x
-                    # last_pos.y = pos.y
-
                 print('')
 
         except Exception as e:
@@ -375,14 +368,14 @@ class PathExtractor(object):
 
                 # visualize the path
 
-                print('Visualizing path of len {}'.format(smooth_path.shape[0]))
-                last_loc = None
-                for i in range(smooth_path.shape[0]):
-                    pos = smooth_path[i,:]
-                    loc = carla.Location(pos[0], pos[1], 0.1)
-                    if last_loc is not None:
-                        self.world.debug.draw_line(last_loc,loc,life_time = 0.1, color = carla.Color(0,255,0,0))
-                    last_loc = carla.Location(pos[0], pos[1], 0.1)
+                # print('Visualizing path of len {}'.format(smooth_path.shape[0]))
+                # last_loc = None
+                # for i in range(smooth_path.shape[0]):
+                #     pos = smooth_path[i,:]
+                #     loc = carla.Location(pos[0], pos[1], 0.1)
+                #     if last_loc is not None:
+                #         self.world.debug.draw_line(last_loc,loc,life_time = 0.1, color = carla.Color(0,255,0,0))
+                #     last_loc = carla.Location(pos[0], pos[1], 0.1)
 
                 if smooth_path is not None:
                     current_time = rospy.Time.now() 
