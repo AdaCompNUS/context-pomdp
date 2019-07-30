@@ -34,6 +34,7 @@ import time
 
 mute_debug = True 
 map_type = "osm"  # or "osm"
+map_bound = 200
 
 def cv_to_np(c):
     return numpy.array([c.x, c.y, c.z])
