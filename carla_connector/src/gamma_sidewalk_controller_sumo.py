@@ -146,12 +146,12 @@ class CrowdAgent:
             cut_index = 0
             for i in range(len(self.path_route_points) / 2):
                 route_point = self.path_route_points[i]
-                offset = position - self.route_map.get_position(route_point)
+                offset = position - self.route_map.get_route_point_position(route_point)
                 if norm(offset) < 5.0:
                     cut_index = i + 1
 
             self.path_route_points = self.path_route_points[cut_index:]
-            target_position = self.route_map.get_position(self.path_route_points[0])
+            target_position = self.route_map.get_route_point_position(self.path_route_points[0])
         
             velocity = normalize(target_position - position)
 
@@ -230,7 +230,8 @@ class CrowdAgent:
             
 
 def in_bounds(position):
-    return -200 <= position.x <= 200 and -200 <= position.y <= 200
+    #return -200 <= position.x <= 200 and -200 <= position.y <= 200
+    return 450 <= position.x <= 1200 and 1100 <= position.y <= 1900
 
 NUM_AGENTS = 100
 
@@ -242,13 +243,15 @@ default_agent_bbox.append(default_agent_pos + carla.Vector2D(-1,1))
 default_agent_bbox.append(default_agent_pos + carla.Vector2D(-1,-1))
 
 if __name__ == '__main__':
-    lane_network = carla.LaneNetwork.load(osm_file_loc)
-    route_map = carla.RouteMap(lane_network)
 
-    occupancy_map = lane_network.create_occupancy_map()
+    with open('/home/yuanfu/carla/Data/map.net.xml', 'r') as file:
+        map_data = file.read()
+    network = carla.SumoNetwork.load(map_data)
+
+    occupancy_map = network.create_occupancy_map()
     sidewalk = carla.Sidewalk(
         occupancy_map,
-        carla.Vector2D(-200, -200), carla.Vector2D(200, 200),
+        carla.Vector2D(450, 1100), carla.Vector2D(1200, 1900), #carla.Vector2D(-200, -200), carla.Vector2D(200, 200),
         3.0, 0.1,
         10.0)
     sidewalk_occupancy_map = sidewalk.create_occupancy_map()
@@ -286,15 +289,16 @@ if __name__ == '__main__':
             position = carla.Vector2D(0, 0)
             next_position = carla.Vector2D(0, 0)
             while True:
-                position = carla.Vector2D(random.uniform(-200, 200), random.uniform(-200, 200))
-                route_point = route_map.get_nearest_route_point(position)
-                position = route_map.get_position(route_point)
+                position = carla.Vector2D(random.uniform(450, 1200), random.uniform(1100, 1900))
+                #position = carla.Vector2D(random.uniform(-200, 200), random.uniform(-200, 200))
+                route_point = network.get_nearest_route_point(position)
+                position = network.get_route_point_position(route_point)
                 if not in_bounds(position):
                     continue
-                route_points = route_map.get_next_route_points(route_point, 1.0)
+                route_points = network.get_next_route_points(route_point, 1.0)
                 if len(route_points) != 0:
                     route_point = random.choice(route_points)
-                    next_position = route_map.get_position(route_point)
+                    next_position = network.get_route_point_position(route_point)
                     break
 
 
@@ -321,7 +325,7 @@ if __name__ == '__main__':
                     trans)
                 pref_speed = 6.0
                 if actor:
-                    crowd_agents.append(CrowdAgent(route_map, actor, pref_speed, agent_tag))
+                    crowd_agents.append(CrowdAgent(network, actor, pref_speed, agent_tag))
                     world.wait_for_tick()
             elif agent_tag == "Bicycle":
                 actor = world.try_spawn_actor(
@@ -329,7 +333,7 @@ if __name__ == '__main__':
                     trans)
                 pref_speed = 6
                 if actor:
-                    crowd_agents.append(CrowdAgent(route_map, actor, pref_speed, agent_tag))
+                    crowd_agents.append(CrowdAgent(network, actor, pref_speed, agent_tag))
                     world.wait_for_tick()
             
                 #print "spawned agent: ", agent_tag, " at ", actor.get_location()
