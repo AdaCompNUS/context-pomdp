@@ -114,6 +114,7 @@ class Pursuit(object):
             self.pub_line = rospy.Publisher("pursuit_line", Marker, queue_size=1)
             self.pub_cmd_steer = rospy.Publisher("IL_steer_cmd", Float32, queue_size=1)
             self.initialized = False
+            self.vel = [0.0, 0.0]
             self.markers = []
 
         except Exception as e:
@@ -188,7 +189,10 @@ class Pursuit(object):
             self.car_steer = self.calc_angular(position, pursuit_angle, car_yaw)
 
             angular_diff = self.calc_angular_diff(position, pursuit_point, car_yaw)
+
             self.car_steer = 0.4*self.car_steer + 0.4*angular_diff
+
+            self.vel = self.calc_dir(position, pursuit_point) * 1.2
 
             # self.car_steer = 0.4* angular_diff
 
@@ -235,6 +239,10 @@ class Pursuit(object):
             r = -MAX_ANGULAR
         return r
 
+    def calc_dir(self, position, pursuit_point):
+        move_dir =  numpy.array([pursuit_point[0] - position[0], pursuit_point[1] - position[1]])
+        move_dir = move_dir / numpy.linalg.norm(move_dir)
+        return move_dir
 
     def publish_pursuit_line(self, p, a, frame_id):
 
@@ -284,27 +292,36 @@ class Pursuit(object):
         spectator.set_transform(spectator_transform)
 
     def update_carla_control(self):
-        control = self.player.get_control()
-        control.steer =  self.car_steer # numpy.rad2deg(self.car_steer)
 
-        if self.car_acc > 0:
-            control.throttle = self.car_acc
-            control.brake = 0.0
-        elif self.car_acc == 0:
-            control.throttle = 0.0
-            control.brake = 0.0
-        else:
-            control.throttle = 0
-            control.brake = self.car_acc
+        if isinstance(self.player, carla.Vehicle):
+            control = self.player.get_control()
+            control.steer =  self.car_steer # numpy.rad2deg(self.car_steer)
 
-        if not mute_debug:
-            print("Updating carla control, throttle {}, brake {}, steer {}".format(
-                control.throttle, control.brake, control.steer))
+            if self.car_acc > 0:
+                control.throttle = self.car_acc
+                control.brake = 0.0
+            elif self.car_acc == 0:
+                control.throttle = 0.0
+                control.brake = 0.0
+            else:
+                control.throttle = 0
+                control.brake = self.car_acc
 
-        self.player.apply_control(control)
+            if not mute_debug:
+                print("Updating carla control, throttle {}, brake {}, steer {}".format(
+                    control.throttle, control.brake, control.steer))
+
+            self.player.apply_control(control)
+            
+        elif isinstance(self.player, carla.Walker):
+
+            # print("updating velocity ({},{})".format(self.vel[0], self.vel[1]))
+            
+            control = carla.WalkerControl(
+                    carla.Vector3D(self.vel[0], self.vel[1]),
+                    1.0, False)
+            self.player.apply_control(control)
         # self.reset_spectator()
-
-
 
 if __name__=='__main__':
 

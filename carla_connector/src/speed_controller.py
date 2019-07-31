@@ -7,8 +7,8 @@ from peds_unity_system.msg import peds_car_info as PedsCarInfo
 from peds_unity_system.msg import car_info as CarInfo # panpan
 from peds_unity_system.msg import peds_info as PedsInfo
 from peds_unity_system.msg import ped_info as PedInfo
-from cluster_assoc.msg import pedestrian_array as PedestrainArray
-from cluster_assoc.msg import pedestrian as Pedestrian
+from carla_connector.msg import agent_array as AgentArray
+from carla_connector.msg import traffic_agent as TrafficAgent
 from geometry_msgs.msg import Twist
 
 freq = 10.0
@@ -29,7 +29,7 @@ class SpeedController(object):
             self.peds_pos = []
 
             self.pub_cmd_vel = rospy.Publisher("cmd_vel", Twist, queue_size=1)
-            rospy.Subscriber("pedestrian_array", PedestrainArray, self.cb_peds, queue_size=1)
+            rospy.Subscriber("agent_array", AgentArray, self.cb_peds, queue_size=1)
             rospy.Subscriber("IL_car_info", CarInfo, self.cb_car, queue_size=1)
 
             rospy.Timer(rospy.Duration(1.0/freq), self.compute_speed_and_publish)
@@ -42,24 +42,24 @@ class SpeedController(object):
             pdb.set_trace()
 
 
-    @staticmethod
-    def _parse_proximity(self, lidar_measurement):
-        player_loc = self.player.get_location()
+    # @staticmethod
+    # def _parse_proximity(self, lidar_measurement):
+    #     player_loc = self.player.get_location()
 
-        yaw = numpy.deg2rad(self.player.get_transform().rotation.yaw)
-        heading = numpy.array([math.cos(yaw), math.sin(yaw),0])
-        self.proximity = 10000000
+    #     yaw = numpy.deg2rad(self.player.get_transform().rotation.yaw)
+    #     heading = numpy.array([math.cos(yaw), math.sin(yaw),0])
+    #     self.proximity = 10000000
 
-        for location in lidar_measurement:
-            direc = cv_to_np(location) - cv_to_np(player_loc)
-            direc = direc / numpy.linalg.norm(direc)
+    #     for location in lidar_measurement:
+    #         direc = cv_to_np(location) - cv_to_np(player_loc)
+    #         direc = direc / numpy.linalg.norm(direc)
 
-            infront = True if (numpy.dot(heading, direc)>0.8) else False
+    #         infront = True if (numpy.dot(heading, direc)>0.8) else False
 
-            if infront:
-                dist = player_loc.distance(location)/100.0
-                if dist < self.proximity:
-                    self.proximity = dist
+    #         if infront:
+    #             dist = player_loc.distance(location)/100.0
+    #             if dist < self.proximity:
+    #                 self.proximity = dist
 
     def cal_proximty(self):
         # actor_list = self.world.get_actors()
@@ -119,7 +119,6 @@ class SpeedController(object):
                 cmd.linear.x = curr_vel - delta;
                 cmd.linear.y = -acc
 
-
             if curr_vel >2 and cmd.linear.y > 0:
                 cmd.linear.x = curr_vel
                 cmd.linear.y = 0
@@ -133,10 +132,10 @@ class SpeedController(object):
 
 
     def cb_peds(self, msg):
-        ped_list = msg.pd_vector
+        ped_list = msg.agents
         self.peds_pos = []
         for ped in ped_list:
-            self.peds_pos.append([ped.global_centroid.x, ped.global_centroid.y])
+            self.peds_pos.append([ped.pos.position.x, ped.pos.position.y])
 
         if not mute_debug:
             if len(self.peds_pos)>0:
