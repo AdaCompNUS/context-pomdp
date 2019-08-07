@@ -28,15 +28,6 @@ class PathExtractor(object):
                 self.map = self.world.get_map()
                 self.spawn_waypoints = self.map.generate_waypoints(0.5)
             elif map_type is "osm":
-                # self.lane_net = carla.LaneNetwork.load(osm_file_loc)
-                # self.route_map= carla.RouteMap(self.lane_net)
-                # occupancy_map = self.lane_net.create_occupancy_map()
-                # self.sidewalk = carla.Sidewalk(
-                #     occupancy_map,
-                #     carla.Vector2D(-map_bound, -map_bound), carla.Vector2D(map_bound, map_bound),
-                #     3.0, 0.1,
-                #     10.0)
-                # assert(self.lane_net)
                 self.route_map = route_map
                 self.sidewalk =  sidewalk
                 assert(self.route_map)
@@ -58,6 +49,8 @@ class PathExtractor(object):
                 spawn_trans.rotation.roll = 0
                 self.player.set_transform(spawn_trans)
             elif map_type is "osm":
+
+                print("Creating player in PathExtractor")
                 if self.player_type is 'car':
                     self.spawn_osm_vehicle()
                 elif self.player_type is 'ped':

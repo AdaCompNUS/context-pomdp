@@ -52,49 +52,61 @@ class Carla_Connector(object):
 
             self.lidar_sensor = None
             self.camera_sensor = None
+
+            print('-------------- PathExtractor --------------')
+
             self.find_player()
             self.path_extractor = PathExtractor(
                 self.player, self.client, self.world, route_map, sidewalk)
-            print('-------------- 1 --------------')
+            
+            print('-------------- StateProcessor --------------')
             self.find_player()
             self.processor = StateProcessor(
                 self.client, self.world, self.path_extractor)
-            print('-------------- 2 --------------')
+            
+            print('-------------- Pursuit controller --------------')
             self.pursuit = Pursuit(self.player, self.world, self.client, self.bp_lib)
-            print('-------------- 3 --------------')
+            
+            print('-------------- SpeedController --------------')
             self.speed_control = SpeedController(self.player, self.client, self.world)
-            print('-------------- 4 --------------')
+            
+            print('Add main rendering camera')
             
             # self.add_lidar()
             self.add_camera()
 
+            print("Enabling timer callbacks in all submodules")
             self.pursuit.initialized = True
             self.processor.initialized = True
             self.speed_control.initialized = True
             self.path_extractor.initialized = True
+
+            print("Reset camera and enable camera following")
             self.reset_spectator()
 
             rospy.Timer(rospy.Duration(1.0/30.0), self.cb_update_spectator)  ##0.2 for golfcart; 0.05
 
-            print("Initialization succesful")
+            print("Connector initialization successful")
 
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
             print(e)
-            print("Launch failed...")
+            print("Connector launch failed...")
             self.player.destroy()
             pdb.set_trace()
             # sys.exit()
 
         finally:
-            print("Initialization ended")
+            print("Connector initialization ended")
 
 
     def spawn_vehicle(self):
         
         if map_type is "carla":
+
+            print("Spawning player vehicle in CARLA map")
             vehicle_bp = random.choice(self.bp_lib.filter('vehicle.bmw.*'))
 
             spawn_point = random.choice(self.world.get_map().get_spawn_points())
@@ -317,6 +329,9 @@ if __name__ == '__main__':
                                choices=["Roaming", "Basic"],
                                help="select which agent to run",
                                default="Basic")
+
+        print("create OSM map")
+
         world = create_map()
         
         print("generate topology")
@@ -338,8 +353,8 @@ if __name__ == '__main__':
         crowd_out = open("Crowd_controller_log.txt", 'w')
 
         crowd_proc = subprocess.Popen(shell_cmd.split() ) #, stdout=crowd_out, stderr=crowd_out)
-
-        # crowd_controller = CrowdController(world, route_map, occupancy_map, sidewalk)
+        
+        print("start carla_publishers node")
 
         parent = ROSLaunchParent("mycore", [], is_core=True)     # run_id can be any string
         parent.start()
@@ -347,17 +362,13 @@ if __name__ == '__main__':
         rospy.init_node('carla_publishers')
         rospy.on_shutdown(myhook)
 
-        # self.path_extractor = PathExtractor(self.player, self.client, self.world, 
-        #   route_map, sidewalk)
-  #       self.processor = StateProcessor(self.client, self.world, self.path_extractor)
-  #       self.pursuit = Pursuit(self.player, self.world, self.client, self.bp_lib)
-  #       self.speed_control = SpeedController(self.player, self.client, self.world)
-
+        print("launch carla connector")
         connector = Carla_Connector(route_map, sidewalk)
 
-        print("multiprocessing")
-
         try:
+
+            print("Enter rendering loop")
+
             args = argparser.parse_args()
 
             args.width, args.height = [int(x) for x in args.res.split('x')]

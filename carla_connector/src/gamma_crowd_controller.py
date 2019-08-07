@@ -401,7 +401,7 @@ class CrowdController:
         
     def maintain_agent_pool(self):
         while len(self.crowd_agents) < NUM_AGENTS:
-            # print("add agent")
+            print("New crowd agent")
             self.create_new_agent()
 
     def update_agents(self):
@@ -486,7 +486,7 @@ class CrowdController:
         # client.set_timeout(2.0)
         # self.world = client.get_world()
 
-        print("launch_crowd_controller enter loop")
+        print("crowd controller loop started")
 
         while self.alive:
             self.simulation_step()
@@ -494,6 +494,7 @@ class CrowdController:
 
 def myhook():
     print("Clearing crowd....")
+    # TODO: ensure that the crowd is cleared when exiting the program
     controller.alive = False
     controller.destroy_agents()
 
