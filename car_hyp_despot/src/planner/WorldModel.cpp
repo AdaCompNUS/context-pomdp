@@ -1889,7 +1889,7 @@ void WorldModel::PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedSt
             if ( old_peds.find(ped_id) == old_peds.end() )
                 continue;
 
-            cout <<"ped "<< i << endl;
+            cout <<"ped "<< ped_id << endl;
             auto& cur_ped = it->second;
             // For each ego ped
             auto& old_ped = old_peds[ped_id];

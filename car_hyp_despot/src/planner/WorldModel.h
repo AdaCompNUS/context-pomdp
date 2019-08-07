@@ -120,6 +120,8 @@ public:
 
     void PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedStruct>& curr_peds);
 
+    void EnsureMeanDirExist(int ped_id);
+
 public:
   template<typename T>
   double GetSteerToPath(const T& state) const {
