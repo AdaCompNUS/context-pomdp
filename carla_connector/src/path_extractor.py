@@ -2,6 +2,7 @@
 from util import * 
 
 import rospy
+from std_msgs.msg import String
 from nav_msgs.msg import Path as NavPath
 from geometry_msgs.msg import PoseStamped
 import pdb
@@ -10,14 +11,16 @@ import tf
 from carla import LaneNetwork
 from path_smoothing import interpolate_polyline, smoothing
 
+from carla_connector.srv import *
+
 
 class PathExtractor(object):
-    def __init__(self, player, client, world):
+    def __init__(self, player, client, world, route_map, sidewalk):
         try:
             self.client = client
             self.world = world
             self.player = player
-            self.player_type = 'ped'
+            self.player_type = 'car'
             self.player_walking_dir = random.choice([True, False])
             self.path = [] 
 
@@ -25,20 +28,21 @@ class PathExtractor(object):
                 self.map = self.world.get_map()
                 self.spawn_waypoints = self.map.generate_waypoints(0.5)
             elif map_type is "osm":
-                self.lane_net = carla.LaneNetwork.load(osm_file_loc)
-                self.route_map= carla.RouteMap(self.lane_net)
-                occupancy_map = self.lane_net.create_occupancy_map()
-                self.sidewalk = carla.Sidewalk(
-                    occupancy_map,
-                    carla.Vector2D(-map_bound, -map_bound), carla.Vector2D(map_bound, map_bound),
-                    3.0, 0.1,
-                    10.0)
-                assert(self.lane_net)
+                # self.lane_net = carla.LaneNetwork.load(osm_file_loc)
+                # self.route_map= carla.RouteMap(self.lane_net)
+                # occupancy_map = self.lane_net.create_occupancy_map()
+                # self.sidewalk = carla.Sidewalk(
+                #     occupancy_map,
+                #     carla.Vector2D(-map_bound, -map_bound), carla.Vector2D(map_bound, map_bound),
+                #     3.0, 0.1,
+                #     10.0)
+                # assert(self.lane_net)
+                self.route_map = route_map
+                self.sidewalk =  sidewalk
                 assert(self.route_map)
                 assert(self.sidewalk)
             else:
                 raise Exception('map type not supported: {}'.format(map_type))
-
 
             self.bp_lib = self.world.get_blueprint_library()
 
@@ -62,6 +66,30 @@ class PathExtractor(object):
             self.plan_pub = rospy.Publisher('plan', NavPath, queue_size=1)
             rospy.Timer(rospy.Duration(0.1), self.publish_path)
 
+            print("Waiting for crowd controller services...")
+
+            rospy.wait_for_service('get_extension_dir')
+            self.get_dir_srv = rospy.ServiceProxy('get_extension_dir', GetExtensionDir)
+
+            rospy.wait_for_service('add_ego_agent')
+            self.add_ego_agent_srv = rospy.ServiceProxy('add_ego_agent', AddEgoAgent)
+            
+            print("Crowd controller services ready")            
+            
+            time.sleep(10)   # wait for crowd controller to finish generating crowd         
+            
+            if map_type is "osm":
+                flag = String()
+                if self.player_type is 'car':
+                    flag.data = 'Car'
+                elif self.player_type is 'ped':
+                    flag.data = 'People'
+                
+                resp = self.add_ego_agent_srv(flag)
+
+                if not resp.success:
+                    print("!!!!!!! ego-player failed to be added to gamma")
+        
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -97,6 +125,13 @@ class PathExtractor(object):
         elif actor_flag is 'ped':
             next_point = self.sidewalk.get_next_route_point(route_point, offset)
             return self.get_position(next_point, actor_flag)
+
+    def get_extension_dir(self, actor_id):
+        try:
+            resp = self.get_dir_srv(actor_id)
+            return resp.dir
+        except rospy.ServiceException, e:
+            print "Service call failed: %s"%e
 
     def get_yaw_on_route(self, route_point, actor_flag = None):
         if actor_flag is None:
@@ -259,11 +294,14 @@ class PathExtractor(object):
 
             self.markers.append(self.world.spawn_actor(marker_bp, spawn_trans))
 
-    def extend_path(self, actor=None, path=None):
+    def extend_path(self, actor=None, path=None, direction = None):
         if actor is None:
             actor = self.player
         if path is None:
             path = self.path
+
+        if direction is None:
+            direction = self.player_walking_dir
 
         actor_flag = ''
         if isinstance(actor, carla.Vehicle):
@@ -286,7 +324,8 @@ class PathExtractor(object):
 
         elif isinstance(actor, carla.Walker):
             actor_flag = 'ped'
-            if self.player_walking_dir:
+
+            if direction:
                 path.append(self.sidewalk.get_next_route_point(path[-1], 1.0))
             else:
                 path.append(self.sidewalk.get_previous_route_point(path[-1], 1.0))
@@ -333,7 +372,6 @@ class PathExtractor(object):
             pdb.set_trace()
 
         return path[cut_index:]
-        
 
     def get_cur_paths(self, actor, path):
         # ego_location = self.player.get_location()
@@ -347,7 +385,8 @@ class PathExtractor(object):
             if isinstance(actor, carla.Vehicle):
                 actor_flag = 'car'
                 # print("actor is vehicle")
-                # TODO: change this to extend paths at leaf and trim the start part                
+                # TODO: change this to extend paths at leaf and trim the start part   
+                # TODO: add the vehicles current pos to start of the path             
                 route_point = self.route_map.get_nearest_route_point(position)
                 route_paths = self.route_map.get_next_route_paths(route_point, 20.0, 1.0)
                 rount_pos = self.get_position(route_point, actor_flag)
@@ -358,6 +397,7 @@ class PathExtractor(object):
             elif isinstance(actor, carla.Walker):
                 actor_flag = 'ped'
                 # print("actor is walker")
+                # TODO: use the offset factor when extracting the path
                 
                 route_point = self.sidewalk.get_nearest_route_point(position)
                 rount_pos = self.get_position(route_point, actor_flag)
@@ -365,15 +405,10 @@ class PathExtractor(object):
                 if len(path) == 0:
                     path.append(route_point)
 
-                while len(path) < 20:
-                    # if random.random() <= 0.01:q
-                    #     adjacent_route_points = self.sidewalk.get_adjacent_route_points(path[-1])
-                    #     if adjacent_route_points:
-                    #         path.append(adjacent_route_points[0])
-                    #         self.player_walking_dir = random.choice([False, True])
-                    #         continue
+                direction = self.get_extension_dir(actor.id)
 
-                    if not self.extend_path(actor, path):
+                while len(path) < 20:
+                    if not self.extend_path(actor, path, direction):
                         break
                     pass
 

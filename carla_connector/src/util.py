@@ -35,6 +35,8 @@ import time
 mute_debug = True 
 map_type = "osm"  # or "osm"
 map_bound = 200
+carla_portal  = 2000
+carla_ip = '127.0.0.1'
 
 def cv_to_np(c):
     return numpy.array([c.x, c.y, c.z])
