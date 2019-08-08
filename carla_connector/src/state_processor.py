@@ -196,8 +196,12 @@ class StateProcessor(object):
                 ext = [bb.extent.x, bb.extent.y]
 
                 agent_tmp.bbox = Polygon()
-                for i,j in ([-1, -1], [1, -1], [1, 1], [-1, 1]):
-                    agent_tmp.bbox.points.append(Point32(x=pos[0] + i*ext[0], y=pos[1] + j*ext[1], z=0.0))
+
+                corners = get_bounding_box_corners(actor)
+
+                for corner in corners:
+                    agent_tmp.bbox.points.append(Point32(
+                        x=corner.x, y=corner.y, z=0.0))
 
                 agent_tmp.reset_intention = False # TODO: set this flag when intention changes
 

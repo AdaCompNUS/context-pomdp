@@ -9,9 +9,9 @@ struct PedBelief {
     COORD pos;
     double speed;
     COORD vel;
-    std::vector<double> prob_goals; // this can be shared for all types of intention
+    // std::vector<double> prob_goals;
     std::vector<std::vector<COORD>> goal_paths;
-
+    // this can be shared for all types of intention
     std::vector<std::vector<double>> prob_modes_goals;
     int sample_goal() const;
     int maxlikely_goal() const;

@@ -80,3 +80,37 @@ def get_actor_flag(actor):
         return 'ped'
     else:
         return 'unsupported'
+
+def get_position(actor):
+
+    pos3D = actor.get_location()
+    return carla.Vector2D(pos3D.x, pos3D.y)
+
+def get_forward_direction(actor):
+    forward = actor.get_transform().get_forward_vector()
+    return carla.Vector2D(forward.x, forward.y)
+
+
+def get_bounding_box_corners(actor):
+        bbox = actor.bounding_box
+        loc = carla.Vector2D(bbox.location.x, bbox.location.y) + get_position(actor)
+        forward_vec = normalize(get_forward_direction(actor)) # the local x direction (left-handed coordinate system)
+        if norm(forward_vec) == 0:
+            print "no forward vec"
+        sideward_vec = rotate(forward_vec, 90.0) # the local y direction
+
+        half_y_len = bbox.extent.y
+        half_x_len = bbox.extent.x
+
+        if self.agent_tag == "People":
+            half_y_len = 0.23
+            half_x_len = 0.23
+        corners = []
+        corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
+        corners.append(loc + half_x_len*forward_vec + half_y_len*sideward_vec)
+        corners.append(loc + half_x_len*forward_vec - half_y_len*sideward_vec)
+        corners.append(loc - half_x_len*forward_vec - half_y_len*sideward_vec)
+        if half_y_len == 0 or half_x_len == 0:
+            print "no bounding_box"
+        
+        return corners

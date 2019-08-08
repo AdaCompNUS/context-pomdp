@@ -25,6 +25,7 @@ bool SimulatorBase::ped_data_ready = false;
 double pub_frequency = 9.0;
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector);
+void agentArrayCallback(carla_connector::agent_array);
 void receive_map_callback(nav_msgs::OccupancyGrid map);
 
 COORD poseToCoord(const tf::Stamped<tf::Pose>& pose) {
@@ -94,6 +95,9 @@ bool WorldSimulator::Connect(){
     mapSub_ = nh.subscribe("map", 1, receive_map_callback); // nav_msgs::OccupancyGrid
 
   	carSub_ = nh.subscribe("IL_car_info", 1, &WorldSimulator::update_il_car, this);
+
+    agentSub_ = nh.subscribe("agent_array", 1, agentArrayCallback); 
+
    	//steerSub_ = nh.subscribe("IL_steer_cmd", 1, &WorldSimulator::update_il_steering, this);
 
 //    timer_speed = nh.createTimer(ros::Duration(0.05), &WorldSimulator::publishCmdAction, this);
@@ -729,6 +733,52 @@ void WorldSimulator::speedCallback(nav_msgs::Odometry odo)
 bool sortFn(Pedestrian p1,Pedestrian p2)
 {
 	return p1.id<p2.id;
+}
+
+void agentArrayCallback(carla_connector::agent_array data){
+	for (carla_connector::traffic_agent& agent : data.agents){
+
+		std::string agent_type = agent.type.data;
+
+		if (agent_type == "car"){
+			Vehicle world_veh;
+
+			world_veh.id = agent.id;
+			world_veh.w = agent.pose.position.x;
+			world_veh.h = agent.pose.position.y;
+
+			world_veh.bb.front = ;
+		
+			veh_list.push_back(world_ped);
+		} else if (agent_type == "ped"){
+			Pedestrian world_ped;
+
+			world_ped.id = agent.id;
+			world_ped.w = agent.pose.position.x;
+			world_ped.h = agent.pose.position.y;
+		
+			ped_list.push_back(world_ped);
+		}
+		
+
+		
+		# update time                                                                                                            
+		time last_update                                                                                                         
+		                                                                                                                         
+		# general                                                                                                                
+		int32 id                                                                                                                 
+		std_msgs/String type                                                                                                     
+		                                                                                                                         
+		# geometric information                                                                                                  
+		geometry_msgs/Pose pose                                                                                                  
+		geometry_msgs/Polygon bbox                                                                                               
+		                                                                                                                         
+		# intention (paths)                                                                                                      
+		bool reset_intention                                                                                                     
+		nav_msgs/Path[] path_candidates                                                                                          
+		bool[] cross_dirs                                                                                                            
+		                      
+	}
 }
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)

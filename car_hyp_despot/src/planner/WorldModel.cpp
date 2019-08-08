@@ -1356,13 +1356,24 @@ void WorldBeliefTracker::update() {
 
 int PedBelief::sample_goal() const {
     double r = /*double(rand()) / RAND_MAX*/ Random::RANDOM.NextDouble();
-    int i = 0;
-    r -= prob_goals[i];
-    while(r > 0) {
-        i++;
-        r -= prob_goals[i];
+    // int i = 0;
+    // r -= prob_goals[i];
+    // while(r > 0) {
+    //     i++;
+    //     r -= prob_goals[i];
+    // }
+
+    for (auto prob_goals: prob_modes_goals){
+        int i = 0;
+        for (int prob: prob_goals){
+            r -= prob; 
+            if (r <= 0) 
+                return i;
+            i++;      
+        }
     }
-    return i;
+
+    return prob_modes_goals[0].size() - 1; // stop intention as default
 }
 
 void PedBelief::sample_goal_mode(int& goal, int& mode) const {
@@ -1400,6 +1411,8 @@ void PedBelief::sample_goal_mode(int& goal, int& mode) const {
 
 int PedBelief::maxlikely_goal() const {
     double ml = 0;
+    int mode = PED_DIS;
+    auto& prob_goals = prob_modes_goals[mode];
     int mi = prob_goals.size()-1; // stop intention
     for(int i=0; i<prob_goals.size(); i++) {
         if (prob_goals[i] > ml && prob_goals[i] > 0.5) {
@@ -1417,9 +1430,12 @@ void WorldBeliefTracker::printBelief() const {
 		auto& p = sorted_beliefs[i];
 		if (COORD::EuclideanDistance(p.pos, car.pos) <= ModelParams::LASER_RANGE) {
             cout << "ped belief " << p.id << ": ";
-            for (int g = 0; g < p.prob_goals.size(); g ++)
-                cout << " " << p.prob_goals[g];
-            cout << endl;
+
+            for (auto& prob_goals : p.prob_modes_goals){
+                for (int g = 0; g < prob_goals.size(); g ++)
+                    cout << " " << prob_goals[g];
+                cout << endl;
+            }
 		}
     }
 }
@@ -1430,10 +1446,13 @@ PomdpState WorldBeliefTracker::text() const{
 			auto& p = sorted_beliefs[i];
 			cout << "[WorldBeliefTracker::text] " << this << "->p:" << &p << endl;
 			cout << " sorted ped " << i << endl;
-			cout << "-prob_goals: " << p.prob_goals << endl;
-			for (int i=0;i<p.prob_goals.size();i++){
-				cout << p.prob_goals[i] << " ";
-			}
+			// cout << "-prob_goals: " << p.prob_goals << endl;
+   //          for (int mode: p.prob_modes_goals){
+   //              auto & prob_goals = p.prob_modes_goals[mode];
+   //  			for (int i=0;i<prob_goals.size();i++){
+   //  				cout << prob_goals[i] << " ";
+   //  			}
+   //          }
 			cout << "-prob_modes_goals: " << p.prob_modes_goals << endl;
 			for (int i=0;i<p.prob_modes_goals.size();i++){
 				for (int j=0;j<p.prob_modes_goals[i].size();j++){

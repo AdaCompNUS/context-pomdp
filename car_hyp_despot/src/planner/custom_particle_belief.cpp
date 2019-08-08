@@ -328,8 +328,11 @@ void PedPomdpBelief::publishBelief()
 		pb.ped_x=belief.pos.x;
 		pb.ped_y=belief.pos.y;
 		pb.ped_id=belief.id;
-		for(auto & v : belief.prob_goals)
-			pb.belief_value.push_back(v);
+
+		for (auto& prob_goals : belief.prob_modes_goals)
+			for(auto & v : prob_goals)
+				pb.belief_value.push_back(v);
+
 		pbs.believes.push_back(pb);
 	}
 	pbs.cmd_vel=stateTracker->carvel;
@@ -344,7 +347,7 @@ void PedPomdpBelief::publishBelief()
 void PedPomdpBelief::publishMarker(int id,PedBelief & ped)
 {
 	//cout<<"belief vector size "<<belief.size()<<endl;
-	std::vector<double> belief = ped.prob_goals;
+	std::vector<double> belief = ped.prob_modes_goals[0];
 	uint32_t shape = visualization_msgs::Marker::CUBE;
     uint32_t shape_text=visualization_msgs::Marker::TEXT_VIEW_FACING;
 	for(int i=0;i<belief.size();i++)
@@ -355,14 +358,14 @@ void PedPomdpBelief::publishMarker(int id,PedBelief & ped)
 		marker.header.frame_id=ModelParams::rosns + "/map";;
 		marker.header.stamp=ros::Time::now();
 		marker.ns="basic_shapes";
-		marker.id=id*ped.prob_goals.size()+i;
+		marker.id=id*ped.prob_modes_goals[0].size()+i;
 		marker.type=shape;
 		marker.action = visualization_msgs::Marker::ADD;
 
 		marker_text.header.frame_id=ModelParams::rosns + "/map";;
 		marker_text.header.stamp=ros::Time::now();
 		marker_text.ns="basic_shapes";
-		marker_text.id=id*ped.prob_goals.size()+i+1000;
+		marker_text.id=id*ped.prob_modes_goals[0].size()+i+1000;
 		marker_text.type=shape_text;
 		marker_text.action = visualization_msgs::Marker::ADD;
 
