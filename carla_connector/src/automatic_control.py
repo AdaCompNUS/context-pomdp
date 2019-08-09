@@ -765,9 +765,9 @@ def idle_loop(args):
         world = World(client.get_world(), hud, args.filter)
         controller = KeyboardControl(world, False)
 
-      
         clock = pygame.time.Clock()
         while alive:
+            # crowd_controller.simulation_step()
             if controller.parse_events(client, world, clock):
                 return
 

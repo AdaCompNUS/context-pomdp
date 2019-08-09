@@ -17,12 +17,16 @@ import os
 import sys
 from util import *
 
-if __name__ == '__main__':
+def create_map():
     print('loading map {}...'.format(osm_file_loc))
     lane_network = carla.LaneNetwork.load(osm_file_loc)
     occupancy_map = lane_network.create_occupancy_map()
     print(len(occupancy_map.triangles))
     
-    client = carla.Client('127.0.0.1', 2000)
+    client = carla.Client(carla_ip, carla_portal)
     client.set_timeout(10.0)
     client.get_world().spawn_occupancy_map(occupancy_map,'/Game/Carla/Static/GenericMaterials/Asphalt/M_Asphalt01')
+    return client.get_world()
+
+if __name__ == '__main__':
+	create_map()

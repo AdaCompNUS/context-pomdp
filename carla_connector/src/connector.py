@@ -21,14 +21,20 @@ from state_processor import StateProcessor
 from purepursuit_controller import Pursuit
 from speed_controller import SpeedController
 from path_extractor import PathExtractor
+from spawn_osm import create_map
+from gamma_crowd_controller import CrowdController
 
 from roslaunch.parent import ROSLaunchParent
 
+import signal
+
 
 class Carla_Connector(object):
-    def __init__(self):
+    def __init__(self, route_map, sidewalk):
         try:
-            self.client = carla.Client('localhost', 2000)
+            print('-------------- 0 --------------')
+            
+            self.client = carla.Client(carla_ip, carla_portal)
             self.client.set_timeout(10.0)
           
             self.world = self.client.get_world()
@@ -37,7 +43,7 @@ class Carla_Connector(object):
             self.bp_lib = self.world.get_blueprint_library()
 
             if map_type is "carla":
-            	self.map = self.world.get_map()
+                self.map = self.world.get_map()
                 self.spawn_waypoints = self.map.generate_waypoints(5.0)
             self.actor_dict = dict()
             self.spectator = self.world.get_spectator()
@@ -46,45 +52,61 @@ class Carla_Connector(object):
 
             self.lidar_sensor = None
             self.camera_sensor = None
+
+            print('-------------- PathExtractor --------------')
+
             self.find_player()
-            self.path_extractor = PathExtractor(self.player, self.client, self.world)
-            print('-------------- 1 --------------')
+            self.path_extractor = PathExtractor(
+                self.player, self.client, self.world, route_map, sidewalk)
+            
+            print('-------------- StateProcessor --------------')
             self.find_player()
-            self.processor = StateProcessor(self.client, self.world, self.path_extractor)
+            self.processor = StateProcessor(
+                self.client, self.world, self.path_extractor)
+            
+            print('-------------- Pursuit controller --------------')
             self.pursuit = Pursuit(self.player, self.world, self.client, self.bp_lib)
+            
+            print('-------------- SpeedController --------------')
             self.speed_control = SpeedController(self.player, self.client, self.world)
-
-
+            
+            print('Add main rendering camera')
+            
             # self.add_lidar()
             self.add_camera()
 
+            print("Enabling timer callbacks in all submodules")
             self.pursuit.initialized = True
             self.processor.initialized = True
             self.speed_control.initialized = True
             self.path_extractor.initialized = True
+
+            print("Reset camera and enable camera following")
             self.reset_spectator()
 
             rospy.Timer(rospy.Duration(1.0/30.0), self.cb_update_spectator)  ##0.2 for golfcart; 0.05
 
-            print("Initialization succesful")
+            print("Connector initialization successful")
 
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
             print(e)
-            print("Launch failed...")
+            print("Connector launch failed...")
             self.player.destroy()
             pdb.set_trace()
             # sys.exit()
 
         finally:
-            print("Initialization ended")
+            print("Connector initialization ended")
 
 
     def spawn_vehicle(self):
         
         if map_type is "carla":
+
+            print("Spawning player vehicle in CARLA map")
             vehicle_bp = random.choice(self.bp_lib.filter('vehicle.bmw.*'))
 
             spawn_point = random.choice(self.world.get_map().get_spawn_points())
@@ -267,6 +289,7 @@ def myhook():
 # ==============================================================================
 # -- main() --------------------------------------------------------------
 # ==============================================================================
+from multiprocessing import Process
 
 if __name__ == '__main__':
 
@@ -307,6 +330,31 @@ if __name__ == '__main__':
                                help="select which agent to run",
                                default="Basic")
 
+        print("create OSM map")
+
+        world = create_map()
+        
+        print("generate topology")
+
+        lane_network = carla.LaneNetwork.load(osm_file_loc)
+        route_map = carla.RouteMap(lane_network)
+
+        occupancy_map = lane_network.create_occupancy_map()
+        sidewalk = carla.Sidewalk(
+            occupancy_map,
+            carla.Vector2D(-200, -200), carla.Vector2D(200, 200),
+            3.0, 0.1,
+            10.0)
+
+        print("launch crowd_controller")
+
+        shell_cmd = 'python gamma_crowd_controller.py'
+
+        crowd_out = open("Crowd_controller_log.txt", 'w')
+
+        crowd_proc = subprocess.Popen(shell_cmd.split() ) #, stdout=crowd_out, stderr=crowd_out)
+        
+        print("start carla_publishers node")
 
         parent = ROSLaunchParent("mycore", [], is_core=True)     # run_id can be any string
         parent.start()
@@ -314,9 +362,13 @@ if __name__ == '__main__':
         rospy.init_node('carla_publishers')
         rospy.on_shutdown(myhook)
 
-        connector = Carla_Connector()
+        print("launch carla connector")
+        connector = Carla_Connector(route_map, sidewalk)
 
         try:
+
+            print("Enter rendering loop")
+
             args = argparser.parse_args()
 
             args.width, args.height = [int(x) for x in args.res.split('x')]
@@ -330,7 +382,7 @@ if __name__ == '__main__':
 
             idle_loop(args)
 
-            parent.shutdown()
+            # parent.shutdown()
         except KeyboardInterrupt:
             print('\nCancelled by user. Bye!')
 
@@ -341,14 +393,27 @@ if __name__ == '__main__':
 
     finally:
         print("Terminating...")
-        
+        connector.pursuit.initialized = False
+        connector.processor.initialized = False
+        connector.speed_control.initialized = False
+        connector.path_extractor.initialized = False
+
         if connector:
             connector.player.destroy()
             if connector.lidar_sensor: 
                 connector.lidar_sensor.destroy()
             if connector.camera_sensor: 
                 connector.camera_sensor.destroy()
+
         parent.shutdown()
+
+        time.sleep(3)
+
+        os.kill(crowd_proc.pid, 9)
+        crowd_out.close()
+        
+
+        # p.join()
         
 
 

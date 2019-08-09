@@ -9,8 +9,9 @@ struct PedBelief {
     COORD pos;
     double speed;
     COORD vel;
-    std::vector<double> prob_goals;
-
+    // std::vector<double> prob_goals;
+    std::vector<std::vector<COORD>> goal_paths;
+    // this can be shared for all types of intention
     std::vector<std::vector<double>> prob_modes_goals;
     int sample_goal() const;
     int maxlikely_goal() const;
@@ -119,6 +120,8 @@ public:
     void PrepareAttentivePedMeanDirs(std::map<int, PedBelief> peds, CarStruct& car);
 
     void PrintMeanDirs(std::map<int, PedBelief> old_peds, map<int, PedStruct>& curr_peds);
+
+    void EnsureMeanDirExist(int ped_id);
 
 public:
   template<typename T>

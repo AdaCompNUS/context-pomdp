@@ -135,7 +135,7 @@ class SpeedController(object):
         ped_list = msg.agents
         self.peds_pos = []
         for ped in ped_list:
-            self.peds_pos.append([ped.pos.position.x, ped.pos.position.y])
+            self.peds_pos.append([ped.pose.position.x, ped.pose.position.y])
 
         if not mute_debug:
             if len(self.peds_pos)>0:

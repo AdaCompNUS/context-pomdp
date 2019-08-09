@@ -14,6 +14,7 @@ from carla_connector.msg import traffic_agent as TrafficAgent
 from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped, Point, Pose, Quaternion
 from geometry_msgs.msg import Vector3, Polygon, Point32
 from nav_msgs.msg import Odometry, Path
+from std_msgs.msg import String
 import tf
 import pdb
 odom_broadcaster = tf.TransformBroadcaster()
@@ -68,10 +69,10 @@ class StateProcessor(object):
     def publish_data(self, tick):
 
         # if not mute_debug:
-        print("self.initialized {}".format(self.initialized))
+        # print("self.initialized {}".format(self.initialized))
         if self.initialized:
             # if not mute_debug:
-            print("Publishing state data")
+            # print("Publishing state data")
 
             self.find_player()
 
@@ -146,16 +147,16 @@ class StateProcessor(object):
     def update_agent_topic(self, agents_array_msg, actor_list, current_time, actor_query):
 
         try:
-            print("update topic with {} actors".format(len(actor_list)))
+            # print("update topic with {} actors".format(len(actor_list)))
 
             agent_list = actor_list.filter(actor_query) 
             agent_iter = iter(agent_list)
             actor = next(agent_iter, 'end')
-
+            
             while actor is not 'end':
 
                 if actor.attributes.get('role_name') == 'ego_vehicle':
-                    print("skip player")
+                    # print("skip player")
                     actor = next(agent_iter, 'end')      
                     continue
 
@@ -172,19 +173,22 @@ class StateProcessor(object):
                     actor = next(agent_iter, 'end')
                     continue
             
-                print("id: {}".format(actor.id))
+                # print("id: {}".format(actor.id))
                 # print("loc: {}".format(actor.get_location()))
                 # print("vel: {}".format(actor.get_velocity()))
                 agent_tmp = TrafficAgent()
                 agent_tmp.last_update = current_time
                 agent_tmp.id = actor.id
                 actor_flag = get_actor_flag(actor)
-                agent_tmp.type = actor_flag
+                agent_tmp.type = String()
+                agent_tmp.type.data = actor_flag
                 agent_tmp.pose.position.x = actor.get_location().x
                 agent_tmp.pose.position.y = actor.get_location().y
                 agent_tmp.pose.position.z = actor.get_location().z
                 yaw = self.player.get_transform().rotation.yaw
-                agent_tmp.pose.orientation = tf.transformations.quaternion_from_euler(0, 0, yaw)
+                quat_tf = tf.transformations.quaternion_from_euler(0, 0, yaw)
+
+                agent_tmp.pose.orientation = Quaternion(quat_tf[0], quat_tf[1], quat_tf[2], quat_tf[3])
 
                 bb = actor.bounding_box
 
@@ -192,14 +196,18 @@ class StateProcessor(object):
                 ext = [bb.extent.x, bb.extent.y]
 
                 agent_tmp.bbox = Polygon()
-                for i,j in ([-1, -1], [1, -1], [1, 1], [-1, 1]):
-                    agent_tmp.bbox.points.append(Point32(x=pos[0] + i*ext[0], y=pos[1] + j*ext[1], z=0.0))
+
+                corners = get_bounding_box_corners(actor)
+
+                for corner in corners:
+                    agent_tmp.bbox.points.append(Point32(
+                        x=corner.x, y=corner.y, z=0.0))
 
                 agent_tmp.reset_intention = False # TODO: set this flag when intention changes
 
                 agent_paths = self.extractor.get_cur_paths(actor, [])
 
-                print("visualize path")
+                # print("visualize path")
                 color_b = random.randint(0, 100)
                 color_i = 0
                 for route_path in agent_paths:
@@ -215,18 +223,21 @@ class StateProcessor(object):
 
                 agent_tmp.path_candidates = []
 
-                actor_flag = get_actor_flag(actor)
-                for path in agent_paths:
-                    nav_path = Path()
-                    nav_path.header.frame_id = "map";
-                    nav_path.header.stamp = current_time;
+                # TODO: unblock this code block to send intentions to the ros topic
+                # actor_flag = get_actor_flag(actor)
+                # for path in agent_paths:
+                #     nav_path = Path()
+                #     nav_path.header.frame_id = "map";
+                #     nav_path.header.stamp = current_time;
 
-                    for route_point in path:
-                        position = self.extractor.get_position(route_point, actor_flag)
-                        nav_path.poses.append(self.extractor.to_pose_stamped_route(
-                            route_point, current_time, actor_flag))
+                #     for route_point in path:
+                #         position = self.extractor.get_position(route_point, actor_flag)
+                #         nav_path.poses.append(self.extractor.to_pose_stamped_route(
+                #             route_point, current_time, actor_flag))
 
-                    agent_tmp.path_candidates.append(nav_path)
+                #     agent_tmp.path_candidates.append(nav_path)
+
+                #     agent_temp.cross_dirs.append(True) # TODO: set this flag correctly   
                 
                 agents_array_msg.agents.append(agent_tmp)
 
@@ -243,6 +254,8 @@ class StateProcessor(object):
     def publish_non_players(self):
 
         actor_list = self.world.get_actors()
+
+        # print("[StateProcessor] Publishing {} actors".format(len(actor_list)))
         current_time = rospy.Time.now()
 
         agents_array_msg = AgentArray()
@@ -259,7 +272,7 @@ class StateProcessor(object):
         # print (agents_array_msg)
         # with open("array.txt", "w") as f: 
         #     f.write(agents_array_msg)
-        # self.agents_array_pub.publish(agents_array_msg)
+        self.agents_array_pub.publish(agents_array_msg)
 
 if __name__ == '__main__':
     processor = StateProcessor()

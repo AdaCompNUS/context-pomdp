@@ -12,6 +12,7 @@ geometry_msgs/Polygon bbox
 # intention (paths)
 bool reset_intention
 nav_msgs/Path[] path_candidates
+bool[] cross_dirs
 
 
 
