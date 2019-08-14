@@ -9,6 +9,7 @@
 #include <ped_is_despot/ped_info.h>
 #include <ped_is_despot/peds_believes.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <carla_connector/agent_array.h>
 
 #include "neural_prior.h"
 
@@ -21,7 +22,7 @@ else despot::logging::stream(lv)
 WorldStateTracker* SimulatorBase::stateTracker;
 
 WorldModel SimulatorBase::worldModel;
-bool SimulatorBase::ped_data_ready = false;
+bool SimulatorBase::agents_data_ready = false;
 double pub_frequency = 9.0;
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector);
@@ -38,6 +39,17 @@ COORD poseToCoord(const tf::Stamped<tf::Pose>& pose) {
 
 double poseToHeadingDir(const tf::Stamped<tf::Pose>& pose) {
 	/* get yaw angle [-pi, pi)*/
+	double yaw;
+	yaw=tf::getYaw(pose.getRotation());
+	if (yaw<0) yaw+=2* 3.1415926;
+	return yaw;
+}
+
+double navposeToHeadingDir(const geometry_msgs::Pose & msg) {
+	/* get yaw angle [-pi, pi)*/
+	tf::Pose pose;
+	tf::poseMsgToTF(msg, pose);
+
 	double yaw;
 	yaw=tf::getYaw(pose.getRotation());
 	if (yaw<0) yaw+=2* 3.1415926;
@@ -91,7 +103,7 @@ bool WorldSimulator::Connect(){
     IL_pub = nh.advertise<ped_is_despot::imitation_data>("il_data", 1);
 
 	speedSub_ = nh.subscribe("odom", 1, &WorldSimulator::speedCallback, this);
-    pedSub_ = nh.subscribe("ped_local_frame_vector", 1, pedPoseCallback); 
+    // pedSub_ = nh.subscribe("ped_local_frame_vector", 1, pedPoseCallback); 
     mapSub_ = nh.subscribe("map", 1, receive_map_callback); // nav_msgs::OccupancyGrid
 
   	carSub_ = nh.subscribe("IL_car_info", 1, &WorldSimulator::update_il_car, this);
@@ -129,16 +141,15 @@ State* WorldSimulator::Initialize(){
  * [Optional]
  * To help construct initial belief to print debug informations in Logger
  */
-State* WorldSimulator::GetCurrentState() const{
-	static PomdpStateWorld current_state;
-
+State* WorldSimulator::GetCurrentState(){
+	
 	/* Get current car coordinates */
     tf::Stamped<tf::Pose> in_pose, out_pose;
 	// transpose to laser frame for ped avoidance
 	in_pose.setIdentity();
 	in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
 
-	cout<<__FUNCTION__<<" global_frame_id: "<<global_frame_id<<" "<<endl;
+	// cout<<__FUNCTION__<<" global_frame_id: "<<global_frame_id<<" "<<endl;
 
 	/*if(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 		cerr<<"transform error within GetCurrentState"<<endl;
@@ -175,38 +186,22 @@ State* WorldSimulator::GetCurrentState() const{
 	updated_car.heading_dir = poseToHeadingDir(out_pose);
 
 	stateTracker->updateCar(updated_car);
-	stateTracker->cleanPed();
+	stateTracker->cleanAgents();
 
-	/* Update car info for current_state */
-	current_state.car.pos = stateTracker->carpos;
-	current_state.car.vel = stateTracker->carvel;
-	current_state.car.heading_dir = stateTracker->car_heading_dir;
+	PomdpStateWorld state = stateTracker->getPomdpWorldState();
 
+	current_state.assign(state);
 
-	/* Update current_state.peds to the nearest N_PED_WORLD peds */
-	std::vector<WorldStateTracker::PedDistPair> sorted_peds = stateTracker->getSortedPeds();
-	current_state.num = min((int)sorted_peds.size(), ModelParams::N_PED_WORLD);	//current_state.num = num_of_peds_world;
-
-	for(int i=0; i<current_state.num; i++) {
-		if(i<sorted_peds.size()){
-			current_state.peds[i].pos.x=sorted_peds[i].second.w;
-			current_state.peds[i].pos.y=sorted_peds[i].second.h;
-			current_state.peds[i].id=sorted_peds[i].second.id;
-			current_state.peds[i].goal = -1; // goal is hidden variable
-			current_state.peds[i].vel = sorted_peds[i].second.vel;
-			current_state.peds[i].speed = ModelParams::PED_SPEED;
-			//current_state.peds[i] = world_state.peds[sorted_peds[i].second.id];
-		}
-	}
-
-	if (logging::level()>=4)
+	if (logging::level()>=3)
 		static_cast<PedPomdp*>(model_)->PrintWorldState(current_state);
 
 	current_state.time_stamp = SolverPrior::get_timestamp();
 
 	logi << " current state time stamp " <<  current_state.time_stamp << endl;
 
-	return &current_state;
+	// logi << "&current_state " << &current_state << endl;
+	return static_cast<State*>(&current_state);
+	// return NULL;
 }
 
 double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action){
@@ -344,7 +339,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Generate obs"<<endl;
 	obs=static_cast<PedPomdp*>(model_)->StateToIndex(GetCurrentState());
 
-	//worldModel.ped_sim_[0] -> OutputTime();
+	//worldModel.traffic_agent_sim_[0] -> OutputTime();
 	return goal_reached;
 }
 
@@ -497,11 +492,11 @@ void WorldSimulator::AddObstacle(){
 
 	    for(int tid=0; tid<NumThreads;tid++){
 		    for (int i=0; i<4; i++){
-		 	   worldModel.ped_sim_[tid]->addObstacle(obstacle[i]);
+		 	   worldModel.traffic_agent_sim_[tid]->addObstacle(obstacle[i]);
 			}
 
 		    /* Process the obstacles so that they are accounted for in the simulation. */
-		    worldModel.ped_sim_[tid]->processObstacles();
+		    worldModel.traffic_agent_sim_[tid]->processObstacles();
 		}
 	} else{
 		cout << "Using obstacle file " << obstacle_file_name_ << endl;
@@ -534,7 +529,7 @@ void WorldSimulator::AddObstacle(){
 	        cout << endl;
 
 	        for(int tid=0; tid<NumThreads;tid++){
-			 	worldModel.ped_sim_[tid]->addObstacle(obstacles[obst_num]);			
+			 	worldModel.traffic_agent_sim_[tid]->addObstacle(obstacles[obst_num]);			
 			}
 
 	        worldModel.AddObstacle(obstacles[obst_num]);
@@ -544,7 +539,7 @@ void WorldSimulator::AddObstacle(){
 	    }
 
 	    for(int tid=0; tid<NumThreads;tid++){
-			worldModel.ped_sim_[tid]->processObstacles();			    
+			worldModel.traffic_agent_sim_[tid]->processObstacles();			    
 		}
 	    
 	    file.close();
@@ -597,45 +592,55 @@ void WorldSimulator::publishROSState()
 		pose.position.y=(stateTracker->ped_list[i].h+0.0);
 		pose.orientation.w=1.0;
 		pA.poses.push_back(pose);
-		//ped_pubs[i].publish(pose);
+	}
+	for(auto& veh : stateTracker->veh_list)
+	{
+		//GetCurrentState(ped_list[i]);
+		pose.position.x=(veh.w+0.0);
+		pose.position.y=(veh.h+0.0);
+		pose.orientation.w=veh.heading_dir;
+		pA.poses.push_back(pose);
 	}
 
 	pa_pub.publish(pA);
 
-
 	uint32_t shape = visualization_msgs::Marker::CYLINDER;
 
-	for(int i=0;i<worldModel.goals.size();i++)
-	{
-		visualization_msgs::Marker marker;
+	if (worldModel.goal_mode == "goal"){
 
-		marker.header.frame_id=ModelParams::rosns+"/map";
-		marker.header.stamp=ros::Time::now();
-		marker.ns="basic_shapes";
-		marker.id=i;
-		marker.type=shape;
-		marker.action = visualization_msgs::Marker::ADD;
+	    visualization_msgs::MarkerArray markers;
 
-		marker.pose.position.x = worldModel.goals[i].x;
-		marker.pose.position.y = worldModel.goals[i].y;
-		marker.pose.position.z = 0;
-		marker.pose.orientation.x = 0.0;
-		marker.pose.orientation.y = 0.0;
-		marker.pose.orientation.z = 0.0;
-		marker.pose.orientation.w = 1.0;
+		for(int i=0;i<worldModel.goals.size();i++)
+		{
+			visualization_msgs::Marker marker;
 
-		marker.scale.x = 1;
-		marker.scale.y = 1;
-		marker.scale.z = 1;
-		marker.color.r = marker_colors[i][0];
-		marker.color.g = marker_colors[i][1];
-		marker.color.b = marker_colors[i][2];
-		marker.color.a = 1.0;
-		
-		markers.markers.push_back(marker);
+			marker.header.frame_id=ModelParams::rosns+"/map";
+			marker.header.stamp=ros::Time::now();
+			marker.ns="basic_shapes";
+			marker.id=i;
+			marker.type=shape;
+			marker.action = visualization_msgs::Marker::ADD;
+
+			marker.pose.position.x = worldModel.goals[i].x;
+			marker.pose.position.y = worldModel.goals[i].y;
+			marker.pose.position.z = 0;
+			marker.pose.orientation.x = 0.0;
+			marker.pose.orientation.y = 0.0;
+			marker.pose.orientation.z = 0.0;
+			marker.pose.orientation.w = 1.0;
+
+			marker.scale.x = 1;
+			marker.scale.y = 1;
+			marker.scale.z = 1;
+			marker.color.r = marker_colors[i][0];
+			marker.color.g = marker_colors[i][1];
+			marker.color.b = marker_colors[i][2];
+			marker.color.a = 1.0;
+			
+			markers.markers.push_back(marker);
+		}
+		goal_pub.publish(markers);
 	}
-	goal_pub.publish(markers);
-	markers.markers.clear();
 }
 
 extern double marker_colors[20][3];
@@ -697,6 +702,10 @@ bool WorldSimulator::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& i
 {
     out_pose.setIdentity();
 
+	cout<<"laser frame "<<in_pose.frame_id_<<endl;
+		
+    cout << "getting transform of frame " << target_frame << endl;
+
     try {
         tf_.transformPose(target_frame, in_pose, out_pose);
     }
@@ -736,9 +745,17 @@ bool sortFn(Pedestrian p1,Pedestrian p2)
 }
 
 void agentArrayCallback(carla_connector::agent_array data){
+
+	DEBUG(string_sprintf("receive agent num %d", sizeof(data.agents)));
+
+	vector<Pedestrian> ped_list;
+	vector<Vehicle> veh_list;
+
 	for (carla_connector::traffic_agent& agent : data.agents){
 
 		std::string agent_type = agent.type.data;
+
+		cout << "get agent: " << agent.id <<" "<< agent_type << endl;
 
 		if (agent_type == "car"){
 			Vehicle world_veh;
@@ -746,39 +763,66 @@ void agentArrayCallback(carla_connector::agent_array data){
 			world_veh.id = agent.id;
 			world_veh.w = agent.pose.position.x;
 			world_veh.h = agent.pose.position.y;
+			world_veh.heading_dir = navposeToHeadingDir(agent.pose);
 
-			world_veh.bb.front = ;
+			for (auto& corner : agent.bbox.points){
+				world_veh.bb.emplace_back(corner.x, corner.y);	
+			}
 		
-			veh_list.push_back(world_ped);
+			world_veh.reset_intention = agent.reset_intention;
+
+			for (auto& nav_path : agent.path_candidates){
+				Path new_path;
+				world_veh.paths.emplace_back(new_path);
+				for (auto& pose : nav_path.poses){
+					world_veh.paths.back().emplace_back(
+						pose.pose.position.x, pose.pose.position.y);
+				}
+			}
+			veh_list.push_back(world_veh);
+
 		} else if (agent_type == "ped"){
 			Pedestrian world_ped;
 
 			world_ped.id = agent.id;
 			world_ped.w = agent.pose.position.x;
 			world_ped.h = agent.pose.position.y;
+
+			world_ped.reset_intention = agent.reset_intention;
+
+			world_ped.cross_dir = agent.cross_dirs[0];
 		
+			for (auto& nav_path : agent.path_candidates){
+				Path new_path;
+				world_ped.paths.emplace_back(new_path);
+				for (auto& pose : nav_path.poses){
+					world_ped.paths.back().emplace_back(
+						pose.pose.position.x, pose.pose.position.y);
+				}
+			}
+			
 			ped_list.push_back(world_ped);
 		}
-		
-
-		
-		# update time                                                                                                            
-		time last_update                                                                                                         
-		                                                                                                                         
-		# general                                                                                                                
-		int32 id                                                                                                                 
-		std_msgs/String type                                                                                                     
-		                                                                                                                         
-		# geometric information                                                                                                  
-		geometry_msgs/Pose pose                                                                                                  
-		geometry_msgs/Polygon bbox                                                                                               
-		                                                                                                                         
-		# intention (paths)                                                                                                      
-		bool reset_intention                                                                                                     
-		nav_msgs/Path[] path_candidates                                                                                          
-		bool[] cross_dirs                                                                                                            
-		                      
+		else{
+			ERR(string_sprintf("Unsupported type %s", agent_type));
+		}
 	}
+
+	for(int i=0;i<ped_list.size();i++)
+	{
+		WorldSimulator::stateTracker->updatePed(ped_list[i]);
+	}
+
+	for(auto& veh : veh_list)
+	{
+		WorldSimulator::stateTracker->updateVeh(veh);
+	}
+
+	DEBUG(string_sprintf("ped_list len %d", ped_list.size()));
+	DEBUG(string_sprintf("veh_list len %d", veh_list.size()));
+    logd << "====================[ agentArrayCallback end ]=================" << endl;
+
+	SimulatorBase::agents_data_ready = true;
 }
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
@@ -786,44 +830,26 @@ void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
     logd << "======================[ pedPoseCallback ]= ts "<<
     		Globals::ElapsedTime()<< " ==================" << endl;
 
-   // cout<<"pedestrians received size = "<<lPedLocal.ped_local.size()<<endl;
-	if(lPedLocal.ped_local.size()==0) return;
+    if(lPedLocal.ped_local.size()==0) return;
 
-	//sensor_msgs::PointCloud pc;
-
-	//pc.header.frame_id=ModelParams::rosns+"/map";
-	//pc.header.stamp=lPedLocal.ped_local[0].header.stamp;
-	//RealWorld.ped_list.clear();
 	vector<Pedestrian> ped_list;
     for(int ii=0; ii< lPedLocal.ped_local.size(); ii++)
     {
-		//geometry_msgs::Point32 p;
 		Pedestrian world_ped;
 		ped_is_despot::ped_local_frame ped=lPedLocal.ped_local[ii];
 		world_ped.id=ped.ped_id;
 		world_ped.w = ped.ped_pose.x;
 		world_ped.h = ped.ped_pose.y;
-		//p.x=ped.ped_pose.x;
-		//p.y=ped.ped_pose.y;
-		//p.z=1.0;
-		//pc.points.push_back(p);
-
-		//cout<<"ped pose "<<ped.ped_pose.x<<" "<<ped.ped_pose.y<<" "<<world_ped.id<<endl;
 		ped_list.push_back(world_ped);
     }
-	//std::sort(ped_list.begin(),ped_list.end(),sortFn);
-
+	
 	for(int i=0;i<ped_list.size();i++)
 	{
 		WorldSimulator::stateTracker->updatePed(ped_list[i]);
-		//cout<<ped_list[i].id<<" ";
 	}
     logd << "====================[ pedPoseCallback end ]=================" << endl;
 
-	//cout<<endl;
-	//pc_pub.publish(pc);
-
-	SimulatorBase::ped_data_ready = true;
+	SimulatorBase::agents_data_ready = true;
 }
 
 void receive_map_callback(nav_msgs::OccupancyGrid map){
@@ -835,7 +861,6 @@ void receive_map_callback(nav_msgs::OccupancyGrid map){
 		nn_prior->map_received = true;
 		nn_prior->Init();
 	}
-
 
 	logi << "[receive_map_callback] end " << endl;
 }
@@ -896,11 +921,11 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_T
 	// only publish information for N_PED_IN peds for imitation learning
 	for (int i = 0; i < ModelParams::N_PED_IN; i++){
 		ped_is_despot::ped_info ped;
-        ped.ped_id = planning_state.peds[i].id;
-        ped.ped_goal_id = planning_state.peds[i].goal;
+        ped.ped_id = planning_state.agents[i].id;
+        ped.ped_goal_id = planning_state.agents[i].intention;
         ped.ped_speed = 1.2;
-        ped.ped_pos.x = planning_state.peds[i].pos.x;
-        ped.ped_pos.y = planning_state.peds[i].pos.y;
+        ped.ped_pos.x = planning_state.agents[i].pos.x;
+        ped.ped_pos.y = planning_state.agents[i].pos.y;
         ped.ped_pos.z = 0;
         p_ped.peds.push_back(ped);
     }
@@ -911,15 +936,16 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_T
 	// ped belief for pushlish
 	int i=0;
 	ped_is_despot::peds_believes pbs;	
-	for(auto & kv: beliefTracker->peds)
+	for(auto & kv: beliefTracker->agent_beliefs)
 	{
 		ped_is_despot::ped_belief pb;
-		PedBelief belief = kv.second;
+		AgentBelief belief = kv.second;
 		pb.ped_x=belief.pos.x;
 		pb.ped_y=belief.pos.y;
 		pb.ped_id=belief.id;
-		for(auto & v : belief.prob_goals)
-			pb.belief_value.push_back(v);
+		for(auto & goal_probs : belief.prob_modes_goals)
+			for (auto v: goal_probs)
+				pb.belief_value.push_back(v);
 		pbs.believes.push_back(pb);
 	}
 	pbs.cmd_vel=stateTracker->carvel;
@@ -952,4 +978,8 @@ void WorldSimulator::Debug_action(){
 //		cerr << "ERROR: Searched action modified!!!!" << endl;
 //		raise(SIGABRT);
 //	}
+}
+
+void WorldSimulator::setCarGoal(COORD car_goal){
+	worldModel.car_goal=car_goal;
 }

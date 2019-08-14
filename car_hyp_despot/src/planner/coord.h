@@ -35,6 +35,10 @@ struct COORD
     y += offset.y;
   }
 
+  double dot( const COORD& other){
+    return x * other.x + y * other.y;
+  }
+
   COORD operator+(COORD rhs) const {
     return COORD(x + rhs.x, y + rhs.y);
   }

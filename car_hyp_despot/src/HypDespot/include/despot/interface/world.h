@@ -45,7 +45,7 @@ public:
 	 * [Optional]
 	 * To help construct initial belief to print debug informations in Logger
 	 */
-	virtual State* GetCurrentState() const;
+	virtual State* GetCurrentState();
 
 	/**
 	 * [Essential]

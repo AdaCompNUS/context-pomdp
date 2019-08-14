@@ -46,7 +46,7 @@ class WorldModel;
 class PedPomdp;
 class WorldStateTracker;
 class WorldBeliefTracker;
-class PedBelief;
+class AgentBelief;
 
 class PedPomdpBelief: public ParticleBelief{
 public:
@@ -74,22 +74,22 @@ public:
 
 	WorldStateTracker* stateTracker;
 	WorldBeliefTracker* beliefTracker;
-	ros::Publisher pedPredictionPub_,believesPub_, markers_pub, plannerPedsPub_;
+	ros::Publisher agentPredictionPub_,believesPub_, markers_pub, plannerAgentsPub_;
 	ros::NodeHandle nh;
 
 	visualization_msgs::MarkerArray markers;
 
 	void UpdateState(const PomdpStateWorld* src_world_state, WorldModel& world_model);
-	void SortPeds(PomdpState* sorted_search_state, const PomdpStateWorld* src_world_state);
-	void ReorderPeds(PomdpState* target_search_state,
+	void SortAgents(PomdpState* sorted_search_state, const PomdpStateWorld* src_world_state);
+	void ReorderAgents(PomdpState* target_search_state,
 		const PomdpState* ref_search_state,
 		const PomdpStateWorld* src_history_state);
 
-	void publishPedsPrediciton();
+	void publishAgentsPrediciton();
 	void publishBelief();
 	void publishPlannerPeds(const State &s);
 
-	void publishMarker(int , PedBelief & ped);
+	void publishMarker(int , AgentBelief & ped);
 
 	//inline int GetThreadID() const{return 0/*MapThread(this_thread::get_id())*/;}
 };

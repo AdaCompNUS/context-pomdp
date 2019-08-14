@@ -29,7 +29,7 @@ class WorldBeliefTracker;
 
 class POMDPSimulator:public POMDPWorld, public SimulatorBase {
 public:
-    typedef pair<float, Pedestrian> PedDistPair;
+    typedef WorldStateTracker::AgentDistPair AgentDistPair;
 
     //POMDPSimulator(DSPOMDP* model, unsigned seed=0);
     POMDPSimulator(ros::NodeHandle& _nh, DSPOMDP* model, unsigned seed,  std::string obstacle_file_name);
@@ -39,14 +39,14 @@ public:
     double StepReward(PomdpStateWorld& state, ACT_TYPE action);
 
 
-    int numPedInArea(PedStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world);
+    int numPedInArea(AgentStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world);
 
-    int numPedInCircle(PedStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world, double car_x, double car_y);
+    int numPedInCircle(AgentStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world, double car_x, double car_y);
     int run(int argc, char *argv[]);
 
-    PedStruct randomPed();
-    PedStruct randomFarPed(double car_x, double car_y);
-    PedStruct randomPedAtCircleEdge(double car_x, double car_y);
+    AgentStruct randomPed();
+    AgentStruct randomFarPed(double car_x, double car_y);
+    AgentStruct randomPedAtCircleEdge(double car_x, double car_y);
 
     void generateFixedPed(PomdpState &s);
 

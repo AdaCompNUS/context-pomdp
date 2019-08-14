@@ -18,14 +18,14 @@ using namespace despot;
 struct Dvc_PedStruct {
 	DEVICE Dvc_PedStruct() {
 		vel = Dvc_ModelParams::PED_SPEED;
-		mode = PED_DIS;
+		mode = AGENT_DIS;
 	}
 	DEVICE Dvc_PedStruct(Dvc_COORD a, int b, int c) {
 		pos = a;
 		goal = b;
 		id = c;
 		vel = Dvc_ModelParams::PED_SPEED;
-		mode = PED_DIS;
+		mode = AGENT_DIS;
 	}
 	Dvc_COORD pos; //pos
 	int goal;  //goal

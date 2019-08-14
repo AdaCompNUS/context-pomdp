@@ -2,6 +2,7 @@
 #define PED_STATE_H
 #include "coord.h"
 #include "param.h"
+#include "Path.h"
 #include "despot/interface/pomdp.h"
 //#include "util/util.h"
 #include "disabled_util.h"
@@ -10,51 +11,93 @@
 using namespace std;
 
 using namespace despot;
-struct PedStruct {
-	PedStruct(){
+
+enum AgentType { car=0, ped=1, num_values=2};
+
+struct AgentStruct {
+	
+	AgentStruct(){
 		id = -1;
-    speed = ModelParams::PED_SPEED;
-    mode = 1;//PED_DIS;
-  }
-	PedStruct(COORD a, int b, int c) {
+    	speed = ModelParams::PED_SPEED;
+    	mode = 1;//PED_DIS;
+  	}
+	
+	AgentStruct(COORD a, int b, int c) {
 		pos = a;
-		goal = b;
+		intention = b;
 		id = c;
-    speed = ModelParams::PED_SPEED;
-    mode = 1;//PED_DIS;
+    	speed = ModelParams::PED_SPEED;
+    	mode = 1;//PED_DIS;
 	}
-	PedStruct(COORD a, int b, int c, float speed) {
+	
+	AgentStruct(COORD a, int b, int c, float speed) {
 		pos = a;
-		goal = b;
+		intention = b;
 		id = c;
 		speed = speed;
-    mode = 1;//PED_DIS;
+    	mode = 1;//PED_DIS;
 	}
+
 	COORD pos; //pos
-	int goal;  //goal
-	int id;   //id
-    double speed;
     int mode;
+	int intention;  //intended path
+	int pos_along_path; // traveled distance along the path
+	int cross_dir;
+	int id;   //id
+	AgentType type;
+    double speed;
     COORD vel; // heading dir, for cur_vel motion model
+    // std::vector<COORD> bb;
+    double bb_extent_x, bb_extent_y;
 };
 
-class Pedestrian
+
+class Agent
 {
 public:
-	Pedestrian() {
-		last_update = -1;
+	Agent() {
+		last_update = -1; vel.x = 0; vel.y = 0;
     }
-	Pedestrian(double _w,double _h,int _id) {
-        w=_w;h=_h;id=_id;last_update = -1;
+	Agent(double _w,double _h,int _id) {
+        w=_w;h=_h;id=_id;last_update = -1; vel.x = 0; vel.y = 0;
     }
-	Pedestrian(double _w,double _h) {w=_w;h=_h;
-	last_update = -1;
+	Agent(double _w,double _h) {w=_w;h=_h;
+		last_update = -1; vel.x = 0; vel.y = 0;
     }
+
+    virtual AgentType type() const = 0;
 
 	double w,h;
 	COORD vel;
 	int id;   //each pedestrian has a unique identity
 	double last_update;
+
+	bool reset_intention;
+	std::vector<Path> paths;	
+};
+
+class Pedestrian: public Agent
+{
+public:
+	using Agent::Agent;
+
+	bool cross_dir;
+
+	AgentType type() const{
+		return AgentType::ped;
+	}
+};
+
+class Vehicle: public Agent
+{
+public:
+	using Agent::Agent;
+
+	std::vector<COORD> bb;
+	double heading_dir;
+	AgentType type() const {
+		return AgentType::car;
+	}
 };
 
 struct CarStruct {
@@ -67,7 +110,7 @@ class PomdpState : public State {
 public:
 	CarStruct car;
 	int num;
-	PedStruct peds[ModelParams::N_PED_IN];
+	AgentStruct agents[ModelParams::N_PED_IN];
 
 	float time_stamp;
 
@@ -75,7 +118,6 @@ public:
 
 	string text() const {
 		return concat(car.vel);
-		//return "state.h text(): fdfdfdfdfdfdf";
 	}
 };
 
@@ -83,7 +125,7 @@ class PomdpStateWorld : public State {
 public:
 	CarStruct car;
 	int num;
-	PedStruct peds[ModelParams::N_PED_WORLD];
+	AgentStruct agents[ModelParams::N_PED_WORLD];
 
 	float time_stamp;
 
@@ -92,7 +134,27 @@ public:
 
 	string text() const {
 		return concat(car.vel);
-		//return "state.h text(): fdfdfdfdfdfdf";
+	}
+
+	void assign(PomdpStateWorld& src){
+		car.pos = src.car.pos;
+		car.vel = src.car.vel;
+		car.heading_dir = src.car.heading_dir;
+		num = src.num;
+		for (int i = 0; i < num; i++){
+			agents[i].pos = src.agents[i].pos;
+			agents[i].mode = src.agents[i].mode;
+			agents[i].intention = src.agents[i].intention;
+			agents[i].pos_along_path = src.agents[i].pos_along_path;
+			agents[i].cross_dir = src.agents[i].cross_dir;
+			agents[i].id = src.agents[i].id;
+			agents[i].type = src.agents[i].type;
+			agents[i].speed = src.agents[i].speed;
+			agents[i].vel = src.agents[i].vel;
+			agents[i].bb_extent_x = src.agents[i].bb_extent_x;
+			agents[i].bb_extent_y = src.agents[i].bb_extent_y;
+		}
+		time_stamp = src.time_stamp;
 	}
 };
 

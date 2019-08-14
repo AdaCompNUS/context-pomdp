@@ -631,14 +631,14 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 		if (hist_states[i]){
 			logd << "[Process_states] start processing peds for " << hist_states[i] << endl;
 //			pomdp_model->PrintState(*hist_states[i]);
-			auto& ped_list = hist_states[i]->peds;
+			auto& agent_list = hist_states[i]->agents;
 			int num_valid_ped = 0;
 
-			logd << "[Process_states] iterating peds in ped_list=" << &ped_list << endl;
+			logd << "[Process_states] iterating peds in agent_list=" << &agent_list << endl;
 
 			for (int ped_id = 0; ped_id < ModelParams::N_PED_IN; ped_id++) {
 				// Process each pedestrian
-				PedStruct ped = ped_list[ped_id];
+				AgentStruct ped = agent_list[ped_id];
 				// get position of the ped
 				COORD ped_indices = point_to_indices(ped.pos, map_prop_.origin, map_prop_.resolution, map_prop_.dim);
 				if (ped_indices.x == -1 or ped_indices.y == -1) // ped out of map
@@ -771,21 +771,21 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 }
 
 at::Tensor PedNeuralSolverPrior::Process_state_to_map_tensor(const State* s){
-	const PomdpState* ped_state = static_cast<const PomdpState*>(s);
+	const PomdpState* agent_state = static_cast<const PomdpState*>(s);
 
 	map_hist_image_.setTo(0.0);
 
 	// get the array of pedestrians (of length ModelParams::N_PED_IN)
-	if (ped_state){
-		logd << "[Process_states] start processing peds for " << ped_state << endl;
-		const auto& ped_list = ped_state->peds;
+	if (agent_state){
+		logd << "[Process_states] start processing peds for " << agent_state << endl;
+		const auto& agent_list = agent_state->agents;
 		int num_valid_ped = 0;
 
-		logd << "[Process_states] iterating peds in ped_list=" << &ped_list << endl;
+		logd << "[Process_states] iterating peds in agent_list=" << &agent_list << endl;
 
 		for (int ped_id = 0; ped_id < ModelParams::N_PED_IN; ped_id++) {
 			// Process each pedestrian
-			PedStruct ped = ped_list[ped_id];
+			AgentStruct ped = agent_list[ped_id];
 			// get position of the ped
 			COORD ped_indices = point_to_indices(ped.pos, map_prop_.origin, map_prop_.resolution, map_prop_.dim);
 			if (ped_indices.x == -1 or ped_indices.y == -1) // ped out of map
@@ -803,14 +803,14 @@ at::Tensor PedNeuralSolverPrior::Process_state_to_map_tensor(const State* s){
 }
 
 at::Tensor PedNeuralSolverPrior::Process_state_to_car_tensor(const State* s){
-	const PomdpState* ped_state = static_cast<const PomdpState*>(s);
+	const PomdpState* agent_state = static_cast<const PomdpState*>(s);
 
 	car_hist_image_.setTo(0.0);
 
-	if (ped_state){
+	if (agent_state){
 		logd << "[Process_states] processing car for state " << s << endl;
 
-		const CarStruct& car = ped_state->car;
+		const CarStruct& car = agent_state->car;
 		//     car vertices in its local frame
 		//      (-0.8, 0.95)---(3.6, 0.95)
 		//      |                       |
@@ -830,12 +830,12 @@ at::Tensor PedNeuralSolverPrior::Process_state_to_car_tensor(const State* s){
 
 at::Tensor PedNeuralSolverPrior::Process_path_tensor(const State* s){
 
-	const PomdpState* ped_state = static_cast<const PomdpState*>(s);
+	const PomdpState* agent_state = static_cast<const PomdpState*>(s);
 
 	goal_image_.setTo(0.0);
 
 	// get distance between cur car pos and car pos at root node
-	auto& cur_car_pos = ped_state->car.pos;
+	auto& cur_car_pos = agent_state->car.pos;
 	float trav_dist_since_root = (cur_car_pos - root_car_pos_).Length();
 
 	logd << "[Process_states] processing path of size "<< world_model.path.size() << endl;
@@ -2493,9 +2493,9 @@ bool Compare_states(PomdpState* state1, PomdpState* state2){
 
 	bool diff= false;
 	for (int i =0 ; i< state1->num; i++){
-		diff = diff || (state1->peds[i].pos.x != state2->peds[i].pos.x);
-		diff = diff || (state1->peds[i].pos.y != state2->peds[i].pos.y);
-		diff = diff || (state1->peds[i].goal != state2->peds[i].goal);
+		diff = diff || (state1->agents[i].pos.x != state2->agents[i].pos.x);
+		diff = diff || (state1->agents[i].pos.y != state2->agents[i].pos.y);
+		diff = diff || (state1->agents[i].intention != state2->agents[i].intention);
 
 		if (diff){
 			cerr << "!!!!!!! ped " << i << " diff !!!!!!" << endl;

@@ -77,7 +77,7 @@ public:
 	 * [Optional]
 	 * To help construct initial belief to print debug informations in Logger
 	 */
-	State* GetCurrentState() const;
+	State* GetCurrentState();
 
 	/**
 	 * [Essential]
@@ -134,15 +134,14 @@ public:
 	ros::Publisher pa_pub;
 	ros::Publisher cmdPub_, actionPub_, actionPubPlot_;
 
-    ros::Subscriber speedSub_, pedSub_, mapSub_, scanSub_, move_base_speed_;
+    ros::Subscriber speedSub_, agentSub_, mapSub_, scanSub_, move_base_speed_;
 
     ros::Timer timer_speed;
     ros::Timer timer_cmd_update;
 
     tf::TransformListener tf_;
 
-    visualization_msgs::MarkerArray markers;
-
+	PomdpStateWorld current_state;
 
 public:
 	// for imitation learning
@@ -167,5 +166,7 @@ public:
 
 public:
 	void Debug_action();
+
+	void setCarGoal(COORD);
 };
 

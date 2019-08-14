@@ -13,8 +13,8 @@ else despot::logging::stream(lv)
 
 // static WorldStateTracker stateTracker (Simulator::worldModel);
 // static WorldBeliefTracker beliefTracker(Simulator::worldModel, stateTracker);
-static PedStruct sorted_peds_list[ModelParams::N_PED_WORLD];
-static PedStruct reordered_peds_list[ModelParams::N_PED_WORLD];
+static AgentStruct sorted_peds_list[ModelParams::N_PED_WORLD];
+static AgentStruct reordered_peds_list[ModelParams::N_PED_WORLD];
 
 
 MaxLikelihoodScenario::MaxLikelihoodScenario(vector<State*> particles, const DSPOMDP* model,
@@ -38,13 +38,13 @@ vector<State*> MaxLikelihoodScenario::SampleCustomScenarios(int num, vector<Stat
 	for(int i = 0; i < particles.size(); i ++) {
 		const PomdpState* pomdp_state=static_cast<const PomdpState*>(particles.at(i));
 		for(int j = 0; j < pomdp_state->num; j ++) {
-			goal_count[j][pomdp_state->peds[j].goal] += particles[i]->weight;
+			goal_count[j][pomdp_state->agents[j].intention] += particles[i]->weight;
 		}
 	}
 
 	const PomdpState* pomdp_state=static_cast<const PomdpState*>(particles.at(0));
 	for(int j = 0; j < pomdp_state->num; j ++) {
-		cout << "Ped " << pomdp_state->peds[j].id << " Belief is ";
+		cout << "Ped " << pomdp_state->agents[j].id << " Belief is ";
 		for(int i = 0; i < 7; i ++) {
 			cout << (goal_count[j][i] + 0.0) <<" ";
 		}
@@ -62,8 +62,8 @@ vector<State*> MaxLikelihoodScenario::SampleCustomScenarios(int num, vector<Stat
 				max_likelihood_goal = i;
 			}
 		}
-		cout<<"** "<<particle->peds[j].id<<"   goal: "<<max_likelihood_goal;
-		particle->peds[j].goal = max_likelihood_goal;
+		cout<<"** "<<particle->agents[j].id<<"   goal: "<<max_likelihood_goal;
+		particle->agents[j].intention = max_likelihood_goal;
 		cout << endl;
 	}
 
@@ -73,8 +73,8 @@ vector<State*> MaxLikelihoodScenario::SampleCustomScenarios(int num, vector<Stat
 	return sample;
 }
 
-PedStruct NewDummyPed(int pid){
-	return PedStruct(COORD(dummy_pos_value, dummy_pos_value), -1, pid);
+AgentStruct NewDummyAgent(int id){
+	return AgentStruct(COORD(dummy_pos_value, dummy_pos_value), -1, id);
 }
 
 PedPomdpBelief::PedPomdpBelief(vector<State*> particles, const DSPOMDP* model):
@@ -85,10 +85,10 @@ PedPomdpBelief::PedPomdpBelief(vector<State*> particles, const DSPOMDP* model):
 	beliefTracker = new WorldBeliefTracker(SimulatorBase::worldModel, *stateTracker);
 //	logd << "[PedPomdpBelief::PedPomdpBelief] Belief tracker initialized: " << beliefTracker << endl;
 
-	pedPredictionPub_ = nh.advertise<sensor_msgs::PointCloud>("ped_prediction", 1);
+	agentPredictionPub_ = nh.advertise<sensor_msgs::PointCloud>("ped_prediction", 1);
 	markers_pub = nh.advertise<visualization_msgs::MarkerArray>("pomdp_belief",1);
 	believesPub_ = nh.advertise<car_hyp_despot::peds_believes>("peds_believes",1);
-	plannerPedsPub_=nh.advertise<sensor_msgs::PointCloud>("planner_peds",1); // for visualization
+	plannerAgentsPub_=nh.advertise<sensor_msgs::PointCloud>("planner_peds",1); // for visualization
 }
 
 Belief* PedPomdpBelief::MakeCopy() const{
@@ -106,58 +106,58 @@ void PedPomdpBelief::UpdateState(const PomdpStateWorld* src_world_state, WorldMo
 //
 //	raise(SIGABRT);
 //
-//	//update the peds in stateTracker
+//	//update the agents in stateTracker
 //	for(int i=0; i<src_world_state->num; i++) {
-//		Pedestrian p(src_world_state->peds[i].pos.x, src_world_state->peds[i].pos.y, src_world_state->peds[i].id);
+//		Pedestrian p(src_world_state->agents[i].pos.x, src_world_state->agents[i].pos.y, src_world_state->agents[i].id);
 //		stateTracker->updatePed(p, false); // true: print debug info
 //	}
 }
 
-void PedPomdpBelief::SortPeds(PomdpState* sorted_search_state, const PomdpStateWorld* src_world_state){
-	std::vector<WorldStateTracker::PedDistPair> sorted_peds = stateTracker->getSortedPeds();
+void PedPomdpBelief::SortAgents(PomdpState* sorted_search_state, const PomdpStateWorld* src_world_state){
+	std::vector<WorldStateTracker::AgentDistPair> sorted_agents = stateTracker->getSortedAgents();
 
-	//update s.peds to the nearest n_peds peds
+	//update s.agents to the nearest n_peds agents
 	sorted_search_state->num=min(src_world_state->num, ModelParams::N_PED_IN);
-	for(int pid=0; pid<sorted_search_state->num; pid++) {
-		if(pid<sorted_peds.size())
+	for(int i=0; i<sorted_search_state->num; i++) {
+		if(i < sorted_agents.size())
 		{
-			int pedid=sorted_peds[pid].second.id;
+			int agentid = sorted_agents[i].second->id;
 			// Search for the ped in src_world_state
-			int i=0;
-			for(;i<src_world_state->num;i++) {
-				if (pedid==src_world_state->peds[i].id) {
+			int j=0;
+			for(;j<src_world_state->num;j++) {
+				if (agentid==src_world_state->agents[j].id) {
 					//found the corresponding ped, record the order
-					sorted_search_state->peds[pid]=src_world_state->peds[i];
+					sorted_search_state->agents[i]=src_world_state->agents[j];
 					break;
 				}
 			}
-			if(i==src_world_state->num)//ped not found
+			if(j==src_world_state->num)//ped not found
 			{
-				sorted_search_state->peds[pid]=NewDummyPed(-1);
+				sorted_search_state->agents[i]=NewDummyAgent(-1);
 			}
 		}
 	}
 }
 
-void PedPomdpBelief::ReorderPeds(PomdpState* target_search_state,
+void PedPomdpBelief::ReorderAgents(PomdpState* target_search_state,
 		const PomdpState* ref_search_state,
 		const PomdpStateWorld* src_history_state){
-	//update s.peds to the nearest n_peds peds
-	target_search_state->num=ref_search_state->num;
-	for(int pid=0; pid<ref_search_state->num; pid++) {
-		int pedid=ref_search_state->peds[pid].id;
+	//update s.agents to the nearest n_peds agents
+	target_search_state->num = ref_search_state->num;
+	for(int i=0; i < ref_search_state->num; i++) {
+		int agentid = ref_search_state->agents[i].id;
 		//Search for the ped in world_state
-		int i=0;
-		for(;i<src_history_state->num;i++) {
-			if (pedid==src_history_state->peds[i].id) {
+		int j=0;
+		for(;j<src_history_state->num;j++) {
+			if (agentid==src_history_state->agents[j].id) {
 				//found the corresponding ped, record the order
-				target_search_state->peds[pid]=src_history_state->peds[i];
+				target_search_state->agents[i]=src_history_state->agents[j];
 				break;
 			}
 		}
-		if (i >= src_history_state->num) {
+		if (j >= src_history_state->num) {
 			//not found, new ped
-			target_search_state->peds[pid]=NewDummyPed(-1);
+			target_search_state->agents[i]=NewDummyAgent(-1);
 		}
 	}
 }
@@ -179,23 +179,25 @@ bool PedPomdpBelief::DeepUpdate(const std::vector<const State*>& state_history,
 		if (reorder){
 			const PomdpStateWorld* cur_world_state = static_cast<const PomdpStateWorld*>(cur_state);
 
-
 			for (int hi=0;hi< state_history.size(); hi++){
 			   const PomdpStateWorld* hist_state =
 					   static_cast<const PomdpStateWorld*>(state_history[hi]);
 			   PomdpState* hist_state_search =
 					   static_cast<PomdpState*>(state_history_for_search[hi]);
 
-			   ReorderPeds(hist_state_search, cur_state_search, hist_state);
+			   ReorderAgents(hist_state_search, cur_state_search, hist_state);
 			}
 		}
 
-		//Update and reorder the belief distributions for peds
+		DEBUG("update");
+		//Update and reorder the belief distributions for agents
 		beliefTracker->update();
 
+		DEBUG("print");
 		if (Globals::config.silence == false && DESPOT::Debug_mode)
 			beliefTracker->printBelief();
 
+		DEBUG("publish");
 		publishPlannerPeds(*cur_state_search);
 	}
 	catch (exception e) {
@@ -214,7 +216,7 @@ bool PedPomdpBelief::DeepUpdate(const State* cur_state){
 	//Sort pedestrians in the current state and update the current search state
 //	UpdateState(cur_world_state, world_model_);
 
-	//Update and reorder the belief distributions for peds
+	//Update and reorder the belief distributions for agents
 	beliefTracker->update();
 
 	return true;
@@ -222,12 +224,14 @@ bool PedPomdpBelief::DeepUpdate(const State* cur_state){
 
 void PedPomdpBelief::ResampleParticles(const PedPomdp* model){
 
-	logd << "[PedPomdpBelief::ResampleParticles] Sample from belief tracker " << beliefTracker << endl;
+	logd << "[PedPomdpBelief::ResampleParticles] Sample from belief tracker " 
+		<< beliefTracker << endl;
 
 	assert(beliefTracker);
 
 	bool do_prediction = true;
-	vector<PomdpState> samples = beliefTracker->sample(max(2000,5*Globals::config.num_scenarios), do_prediction);
+	vector<PomdpState> samples = beliefTracker->sample(
+		max(2000,5*Globals::config.num_scenarios), do_prediction);
 
 	logd << "[PedPomdpBelief::ResampleParticles] Construct raw particles" << endl;
 
@@ -289,6 +293,10 @@ void PedPomdpBelief::ResampleParticles(const PedPomdp* model){
 		for (int i = 0; i < particles_.size(); i++)
 			initial_particles_.push_back(model_->Copy(particles_[i]));
 	}
+
+	for (int i =0; i < 10; i++){
+		static_cast<const PedPomdp*>(model_)->validate_state(*static_cast<PomdpState*>(particles_[i]));
+	}
 }
 
 
@@ -298,19 +306,19 @@ void PedPomdpBelief::Update(ACT_TYPE action, OBS_TYPE obs) {
 	return ;
 }
 
-void PedPomdpBelief::publishPedsPrediciton() {
-    vector<PedStruct> peds = beliefTracker->predictPeds();
+void PedPomdpBelief::publishAgentsPrediciton() {
+    vector<AgentStruct> agents = beliefTracker->predictAgents();
     sensor_msgs::PointCloud pc;
     pc.header.frame_id=ModelParams::rosns + "/map";
     pc.header.stamp=ros::Time::now();
-    for(const auto& ped: peds) {
+    for(const auto& ped: agents) {
         geometry_msgs::Point32 p;
         p.x = ped.pos.x;
         p.y = ped.pos.y;
         p.z = 1.0;
         pc.points.push_back(p);
     }
-    pedPredictionPub_.publish(pc);
+    agentPredictionPub_.publish(pc);
 }
 
 
@@ -320,11 +328,11 @@ void PedPomdpBelief::publishBelief()
 	//cout<<"belief vector size "<<ped_beliefs.size()<<endl;
 	int i=0;
 	car_hyp_despot::peds_believes pbs;	
-	for(auto & kv: beliefTracker->peds)
+	for(auto & kv: beliefTracker->agent_beliefs)
 	{
 		publishMarker(i++,kv.second);
 		car_hyp_despot::ped_belief pb;
-		PedBelief belief = kv.second;
+		AgentBelief belief = kv.second;
 		pb.ped_x=belief.pos.x;
 		pb.ped_y=belief.pos.y;
 		pb.ped_id=belief.id;
@@ -344,7 +352,7 @@ void PedPomdpBelief::publishBelief()
 }
 
 
-void PedPomdpBelief::publishMarker(int id,PedBelief & ped)
+void PedPomdpBelief::publishMarker(int id,AgentBelief & ped)
 {
 	//cout<<"belief vector size "<<belief.size()<<endl;
 	std::vector<double> belief = ped.prob_modes_goals[0];
@@ -443,10 +451,10 @@ void PedPomdpBelief::publishPlannerPeds(const State &s)
 	pc.header.stamp=ros::Time::now();
 	for(int i=0;i<state.num;i++) {
 		geometry_msgs::Point32 p;
-		p.x=state.peds[i].pos.x;
-		p.y=state.peds[i].pos.y;
+		p.x=state.agents[i].pos.x;
+		p.y=state.agents[i].pos.y;
 		p.z=1.5;
 		pc.points.push_back(p);
 	}
-	plannerPedsPub_.publish(pc);	
+	plannerAgentsPub_.publish(pc);	
 }

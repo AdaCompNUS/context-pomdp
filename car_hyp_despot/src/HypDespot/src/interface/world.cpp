@@ -16,7 +16,7 @@ World::World() {
 World::~World() {
 }
 
-State* World::GetCurrentState() const{
+State* World::GetCurrentState(){
 	return NULL;
 }
 
