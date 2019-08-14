@@ -23,13 +23,13 @@ using namespace despot;
 int n_sim = 1;
 
 #ifdef LINE_CASE
-	const double PED_X0 = 35;/// used to generate peds' locations, where x is in (PED_X0, PED_X1), and y is in (PED_Y0, PED_Y1)
+	const double PED_X0 = 35;/// used to generate agents' locations, where x is in (PED_X0, PED_X1), and y is in (PED_Y0, PED_Y1)
 	const double PED_Y0 = 35;
 	const double PED_X1 = 42;
 	const double PED_Y1 = 52;
 	const int n_peds = 6; // should be smaller than ModelParams::N_PED_IN
 #elif defined(CROSS_CASE)
-	const double PED_X0 = 0;/// used to generate peds' locations, where x is in (PED_X0, PED_X1), and y is in (PED_Y0, PED_Y1)
+	const double PED_X0 = 0;/// used to generate agents' locations, where x is in (PED_X0, PED_X1), and y is in (PED_Y0, PED_Y1)
 	const double PED_Y0 = 0;
 	const double PED_X1 = 20;
 	const double PED_Y1 = 15;
@@ -123,11 +123,11 @@ void POMDPSimulator::AddObstacle(){
 
 	    for(int tid=0; tid<NumThreads;tid++){
 		    for (int i=0; i<4; i++){
-		 	   worldModel.ped_sim_[tid]->addObstacle(obstacle[i]);
+		 	   worldModel.traffic_agent_sim_[tid]->addObstacle(obstacle[i]);
 			}
 
 		    /* Process the obstacles so that they are accounted for in the simulation. */
-		    worldModel.ped_sim_[tid]->processObstacles();
+		    worldModel.traffic_agent_sim_[tid]->processObstacles();
 		}
 	} else{
 
@@ -157,7 +157,7 @@ void POMDPSimulator::AddObstacle(){
 	        }
 
 	        for(int tid=0; tid<NumThreads;tid++){
-			 	worldModel.ped_sim_[tid]->addObstacle(obstacles[obst_num]);			
+			 	worldModel.traffic_agent_sim_[tid]->addObstacle(obstacles[obst_num]);			
 			}
 
 	        obst_num++;
@@ -165,7 +165,7 @@ void POMDPSimulator::AddObstacle(){
 	    }
 
 	    for(int tid=0; tid<NumThreads;tid++){
-			worldModel.ped_sim_[tid]->processObstacles();			    
+			worldModel.traffic_agent_sim_[tid]->processObstacles();			    
 		}
 	    
 	    file.close();
@@ -188,8 +188,8 @@ State* POMDPSimulator::Initialize(){
 	world_state.num = n_peds;
 
 	for(int i=0; i<n_peds; i++) {
-		world_state.peds[i] = randomPed();
-		world_state.peds[i].id = i;
+		world_state.agents[i] = randomPed();
+		world_state.agents[i].id = i;
 	}
 
 	num_of_peds_world = n_peds;
@@ -200,9 +200,9 @@ State* POMDPSimulator::Initialize(){
 
 	stateTracker->updateCar(world_state.car);
 
-	//update the peds in stateTracker
+	//update the agents in stateTracker
 	for(int i=0; i<num_of_peds_world; i++) {
-		Pedestrian p(world_state.peds[i].pos.x, world_state.peds[i].pos.y, world_state.peds[i].id);
+		Pedestrian p(world_state.agents[i].pos.x, world_state.agents[i].pos.y, world_state.agents[i].id);
 		stateTracker->updatePed(p);
 	}
 
@@ -234,13 +234,13 @@ State* POMDPSimulator::GetCurrentState() const{
 	current_state.car.vel = world_state.car.vel;
 	current_state.car.heading_dir = world_state.car.heading_dir;
 	current_state.num = num_of_peds_world;
-	std::vector<PedDistPair> sorted_peds = stateTracker->getSortedPeds();
+	std::vector<AgentDistPair> sorted_agents = stateTracker->getSortedAgents();
 
-	//update s.peds to the nearest n_peds peds
+	//update s.agents to the nearest n_peds agents
 	for(int i=0; i<num_of_peds_world; i++) {
-		//cout << sorted_peds[i].second.id << endl;
-		if(i<sorted_peds.size())
-			current_state.peds[i] = world_state.peds[sorted_peds[i].second.id];
+		//cout << sorted_agents[i].second.id << endl;
+		if(i<sorted_agents.size())
+			current_state.agents[i] = world_state.agents[sorted_agents[i].second->id];
 	}
 	return &current_state;
 }
@@ -251,20 +251,20 @@ bool POMDPSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	double reward;
 	stateTracker->updateCar(world_state.car);
 
-	//update the peds in stateTracker
+	//update the agents in stateTracker
 	for(int i=0; i<num_of_peds_world; i++) {
-		Pedestrian p(world_state.peds[i].pos.x, world_state.peds[i].pos.y, world_state.peds[i].id);
+		Pedestrian p(world_state.agents[i].pos.x, world_state.agents[i].pos.y, world_state.agents[i].id);
 		stateTracker->updatePed(p);
 	}
 
 #ifdef CROSS_CASE
 	int new_ped_count=0;
-	 while(new_ped_count<1 && numPedInCircle(world_state.peds, num_of_peds_world,world_state.car.pos.x,
+	 while(new_ped_count<1 && numPedInCircle(world_state.agents, num_of_peds_world,world_state.car.pos.x,
 			 world_state.car.pos.y)<n_peds && num_of_peds_world < ModelParams::N_PED_WORLD)
 	{
-		PedStruct new_ped= randomFarPed(world_state.car.pos.x, world_state.car.pos.y);
+		AgentStruct new_ped= randomFarPed(world_state.car.pos.x, world_state.car.pos.y);
 		new_ped.id = num_of_peds_world;
-		world_state.peds[num_of_peds_world]=new_ped;
+		world_state.agents[num_of_peds_world]=new_ped;
 
 		num_of_peds_world++;
 		world_state.num++;
@@ -372,25 +372,25 @@ double POMDPSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action){
 	return reward;
 }
 
-int POMDPSimulator::numPedInArea(PedStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world)
+int POMDPSimulator::numPedInArea(AgentStruct agents[ModelParams::N_PED_WORLD], int num_of_peds_world)
 {
 	int num_inside = 0;
 
 	for (int i=0; i<num_of_peds_world; i++)
 	{
-		if(peds[i].pos.x >= PED_X0 && peds[i].pos.x <= PED_X1 && peds[i].pos.y >= PED_Y0 && peds[i].pos.y <= PED_Y1) num_inside++;
+		if(agents[i].pos.x >= PED_X0 && agents[i].pos.x <= PED_X1 && agents[i].pos.y >= PED_Y0 && agents[i].pos.y <= PED_Y1) num_inside++;
 	}
 
 	return num_inside;
 }
 
-int POMDPSimulator::numPedInCircle(PedStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world, double car_x, double car_y)
+int POMDPSimulator::numPedInCircle(AgentStruct agents[ModelParams::N_PED_WORLD], int num_of_peds_world, double car_x, double car_y)
 {
 	int num_inside = 0;
 
 	for (int i=0; i<num_of_peds_world; i++)
 	{
-		if((peds[i].pos.x - car_x)*(peds[i].pos.x - car_x) + (peds[i].pos.y - car_y)*(peds[i].pos.y - car_y) <= ModelParams::LASER_RANGE * ModelParams::LASER_RANGE) num_inside++;
+		if((agents[i].pos.x - car_x)*(agents[i].pos.x - car_x) + (agents[i].pos.y - car_y)*(agents[i].pos.y - car_y) <= ModelParams::LASER_RANGE * ModelParams::LASER_RANGE) num_inside++;
 	}
 
 	return num_inside;
@@ -414,19 +414,19 @@ void POMDPSimulator::ImportPeds(std::string filename, PomdpStateWorld& world_sta
 			if(!str.empty() && i<n_peds)
 			{
 				istringstream ss(str);
-				ss>> world_state.peds[i].id
-				>> world_state.peds[i].goal
-				>> world_state.peds[i].pos.x
-				>> world_state.peds[i].pos.y
-				>> world_state.peds[i].speed;
+				ss>> world_state.agents[i].id
+				>> world_state.agents[i].intention
+				>> world_state.agents[i].pos.x
+				>> world_state.agents[i].pos.y
+				>> world_state.agents[i].speed;
 				i++;
 			}
 		}
-		cout<<"peds imported"<<endl;
+		cout<<"agents imported"<<endl;
 	}
 	else
 	{
-		cout<<"Empty peds file!"<<endl;
+		cout<<"Empty agents file!"<<endl;
 		exit(-1);
 	}
 }
@@ -437,18 +437,18 @@ void POMDPSimulator::ExportPeds(std::string filename, PomdpStateWorld& world_sta
 	fout<<n_peds<<endl;
 	for(int i=0; i<n_peds; i++)
 	{
-		fout<<world_state.peds[i].id<<" "
-				<<world_state.peds[i].goal<<" "
-				<<world_state.peds[i].pos.x<<" "
-				<<world_state.peds[i].pos.y<<" "
-				<<world_state.peds[i].speed<<endl;
+		fout<<world_state.agents[i].id<<" "
+				<<world_state.agents[i].intention<<" "
+				<<world_state.agents[i].pos.x<<" "
+				<<world_state.agents[i].pos.y<<" "
+				<<world_state.agents[i].speed<<endl;
 	}
 	fout<<endl;
 }
 
 
 #ifdef LINE_CASE
-PedStruct POMDPSimulator::randomPed() {
+AgentStruct POMDPSimulator::randomPed() {
 	int n_goals = worldModel.goals.size();
 	int goal = Random::RANDOM.NextInt(n_goals);
 	double x = Random::RANDOM.NextDouble(PED_X0, PED_X1);
@@ -462,11 +462,11 @@ PedStruct POMDPSimulator::randomPed() {
 		}
 	}
 	int id = 0;
-	return PedStruct(COORD(x, y), goal, id);
+	return AgentStruct(COORD(x, y), goal, id);
 }
 #elif defined(CROSS_CASE)
 
-PedStruct POMDPSimulator::randomPed() {
+AgentStruct POMDPSimulator::randomPed() {
    int goal;
    double goal0_x_min = /*14*/12, goal0_x_max = 19/*21*/;
    double goal0_y_min = 4.5, goal0_y_max = 11-0.5;
@@ -511,10 +511,10 @@ PedStruct POMDPSimulator::randomPed() {
 	   }
    }
    int id = 0;
-   return PedStruct(COORD(x, y), goal, id, speed);
+   return AgentStruct(COORD(x, y), goal, id, speed);
 }
 
-PedStruct POMDPSimulator::randomFarPed(double car_x, double car_y) { //generate pedestrians that are not close to the car
+AgentStruct POMDPSimulator::randomFarPed(double car_x, double car_y) { //generate pedestrians that are not close to the car
     int goal;
     double goal0_x_min = /*14*/28, goal0_x_max = /*21*/31;
     double goal0_y_min = /*4.5*/2, goal0_y_max = /*11-0.5*/12;
@@ -550,12 +550,12 @@ PedStruct POMDPSimulator::randomFarPed(double car_x, double car_y) { //generate 
     }
 
     int id = 0;
-    return PedStruct(COORD(x, y), goal, id);
+    return AgentStruct(COORD(x, y), goal, id);
 }
 #endif
 
 
-PedStruct POMDPSimulator::randomPedAtCircleEdge(double car_x, double car_y) {
+AgentStruct POMDPSimulator::randomPedAtCircleEdge(double car_x, double car_y) {
 	int n_goals = worldModel.goals.size();
 	int goal = Random::RANDOM.NextInt(n_goals);
 	double x, y;
@@ -589,22 +589,22 @@ PedStruct POMDPSimulator::randomPedAtCircleEdge(double car_x, double car_y) {
 		}
 	}
 	int id = 0;
-	return PedStruct(COORD(x, y), goal, id);
+	return AgentStruct(COORD(x, y), goal, id);
 }
 
 void POMDPSimulator::generateFixedPed(PomdpState &s) {
 
-	s.peds[0] = PedStruct(COORD(38.1984, 50.6322), 5, 0);
+	s.agents[0] = AgentStruct(COORD(38.1984, 50.6322), 5, 0);
 
-	s.peds[1] = PedStruct(COORD(35.5695, 46.2163), 4, 1);
+	s.agents[1] = AgentStruct(COORD(35.5695, 46.2163), 4, 1);
 
-	s.peds[2] = PedStruct(COORD(41.1636, 49.6807), 4, 2);
+	s.agents[2] = AgentStruct(COORD(41.1636, 49.6807), 4, 2);
 
-	s.peds[3] = PedStruct(COORD(35.1755, 41.4558), 4, 3);
+	s.agents[3] = AgentStruct(COORD(35.1755, 41.4558), 4, 3);
 
-	s.peds[4] = PedStruct(COORD(37.9329, 35.6085), 3, 4);
+	s.agents[4] = AgentStruct(COORD(37.9329, 35.6085), 3, 4);
 
-	s.peds[5] = PedStruct(COORD(41.0874, 49.6448), 5, 5);
+	s.agents[5] = AgentStruct(COORD(41.0874, 49.6448), 5, 5);
 }
 
 void POMDPSimulator::PrintWorldState(PomdpStateWorld state, ostream& out) {
@@ -618,20 +618,20 @@ void POMDPSimulator::PrintWorldState(PomdpStateWorld state, ostream& out) {
     double min_dist = std::numeric_limits<int>::max();
 
 	for(int i = 0; i < state.num; i ++) {
-		if(COORD::EuclideanDistance(state.peds[i].pos, carpos)<min_dist)
+		if(COORD::EuclideanDistance(state.agents[i].pos, carpos)<min_dist)
 		{
-			min_dist=COORD::EuclideanDistance(state.peds[i].pos, carpos);
+			min_dist=COORD::EuclideanDistance(state.agents[i].pos, carpos);
 			mindist_id=i;
 		}
-		out << "ped " << i << ": id / pos / vel / goal / dist2car / infront =  " << state.peds[i].id << " / "
-            << "(" << state.peds[i].pos.x << ", " << state.peds[i].pos.y << ") / "
-            << state.peds[i].speed << " / "
-            << state.peds[i].goal << " / "
-            << COORD::EuclideanDistance(state.peds[i].pos, carpos) << "/"
-			<< worldModel.inFront(state.peds[i].pos, state.car) << endl;
+		out << "ped " << i << ": id / pos / vel / goal / dist2car / infront =  " << state.agents[i].id << " / "
+            << "(" << state.agents[i].pos.x << ", " << state.agents[i].pos.y << ") / "
+            << state.agents[i].speed << " / "
+            << state.agents[i].intention << " / "
+            << COORD::EuclideanDistance(state.agents[i].pos, carpos) << "/"
+			<< worldModel.inFront(state.agents[i].pos, state.car) << endl;
 	}
     if (state.num > 0)
-        min_dist = COORD::EuclideanDistance(carpos, state.peds[/*0*/mindist_id].pos);
+        min_dist = COORD::EuclideanDistance(carpos, state.agents[/*0*/mindist_id].pos);
 	out << "MinDist: " << min_dist << endl;
 }
 
@@ -670,16 +670,16 @@ void POMDPSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_T
 	}
 	p_IL_data.plan = navpath; 
 
-	// peds for publish
+	// agents for publish
 	ped_is_despot::peds_info p_ped;
-	// only publish information for N_PED_IN peds for imitation learning
+	// only publish information for N_PED_IN agents for imitation learning
 	for (int i = 0; i < ModelParams::N_PED_IN; i++){
 		ped_is_despot::ped_info ped;
-        ped.ped_id = planning_state.peds[i].id;
-        ped.ped_goal_id = planning_state.peds[i].goal;
+        ped.ped_id = planning_state.agents[i].id;
+        ped.ped_goal_id = planning_state.agents[i].intention;
         ped.ped_speed = 1.2;
-        ped.ped_pos.x = planning_state.peds[i].pos.x;
-        ped.ped_pos.y = planning_state.peds[i].pos.y;
+        ped.ped_pos.x = planning_state.agents[i].pos.x;
+        ped.ped_pos.y = planning_state.agents[i].pos.y;
         ped.ped_pos.z = 0;
         p_ped.peds.push_back(ped);
     }
@@ -690,15 +690,16 @@ void POMDPSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_T
 	// ped belief for pushlish
 	int i=0;
 	ped_is_despot::peds_believes pbs;	
-	for(auto & kv: beliefTracker->peds)
+	for(auto & kv: beliefTracker->agent_beliefs)
 	{
 		ped_is_despot::ped_belief pb;
-		PedBelief belief = kv.second;
+		AgentBelief belief = kv.second;
 		pb.ped_x=belief.pos.x;
 		pb.ped_y=belief.pos.y;
 		pb.ped_id=belief.id;
-		for(auto & v : belief.prob_goals)
-			pb.belief_value.push_back(v);
+		for(auto & goal_probs : belief.prob_modes_goals)
+			for (auto v: goal_probs)
+				pb.belief_value.push_back(v);
 		pbs.believes.push_back(pb);
 	}
 	pbs.cmd_vel=stateTracker->carvel;

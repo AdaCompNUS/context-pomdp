@@ -165,6 +165,8 @@ private:
 
 	void TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len);
 	void CheckCurPath();
+
+	void setCarGoal(COORD car_goal);
 private:
 	Path path_from_topic;
 };

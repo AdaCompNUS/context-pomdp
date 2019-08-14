@@ -341,6 +341,8 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 
 	if(path->poses.size()==0) {
 		path_missing = true;
+
+		DEBUG("Path missing from topic");
 		return;
 	}else{
 		path_missing = false;
@@ -357,7 +359,21 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
-  if (b_use_drive_net_ == LETS_DRIVE || b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == IMITATION){
+	// cout << "Path start " << p[0] << " end " << p.back() << endl;
+
+	COORD path_end_from_goal = p.back() - COORD(goalx_, goaly_);
+
+	if (path_end_from_goal.Length() > 2.0f + 1e-3){
+		cerr << "Path end mismatch with car goal: path end = " <<
+				"(" << p.back().x << "," << p.back().y << ")" <<
+				", car goal=(" << goalx_ << "," << goaly_ << ")" << endl;
+		// raise(SIGABRT);
+		cerr << "reset car goal to path end" << endl;
+
+		setCarGoal(p.back());
+	}
+
+	if (b_use_drive_net_ == LETS_DRIVE || b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == IMITATION){
 		pathplan_ahead_ = 0;
 	}
 
@@ -418,12 +434,12 @@ bool Controller::getUnityPos(){
 	else
 		sendPathPlanStart(out_pose);
 
-	return true && SimulatorBase::ped_data_ready;
+	return true && SimulatorBase::agents_data_ready;
 }
 
 bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 
-	cerr << "DEBUG: Running step" << endl;
+	cerr << "DEBUG: Running pre step" << endl;
 
 	logger->CheckTargetTime();
 
@@ -436,24 +452,31 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 			return false;
 	}
 
-	cerr << "DEBUG: Updating belief" << endl;
-
+	cerr << "DEBUG: Pre-updating belief" << endl;
 
 	double start_t = get_time_second();
 //	solver->BeliefUpdate(last_action, last_obs);
 
-	const State* cur_state=world->GetCurrentState();
-	assert(cur_state);
+	State* cur_state = world->GetCurrentState();
 
+
+	DEBUG("current state get");
+
+	if(!cur_state)
+		ERR(string_sprintf("cur state NULL"));
+
+	DEBUG("copy for search");
 	State* search_state =static_cast<const PedPomdp*>(ped_pomdp_model)->CopyForSearch(cur_state);//create a new state for search
 
+	DEBUG("DeepUpdate");
 	static_cast<PedPomdpBelief*>(solver->belief())->DeepUpdate(
 			SolverPrior::nn_priors[0]->history_states(),
 			SolverPrior::nn_priors[0]->history_states_for_search(),
 			cur_state,
 			search_state, last_action);
 
-  if (Globals::config.use_prior && SolverPrior::history_mode == "track"){
+	DEBUG("Track");
+  	if (Globals::config.use_prior && SolverPrior::history_mode == "track"){
 		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
 		for(int i=0; i<SolverPrior::nn_priors.size();i++){
 			if (i > 0){
@@ -479,7 +502,7 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 
 	if(simulation_mode_ == UNITY){
 		unity_driving_simulator_->publishROSState();
-		ped_belief_->publishPedsPrediciton();
+		ped_belief_->publishAgentsPrediciton();
 	}
 
 	unity_driving_simulator_->beliefTracker->text();
@@ -528,7 +551,7 @@ void Controller::PredictPedsForSearch(State* search_state) {
 					static_cast<PomdpState*>(static_cast<const PedPomdp*>(ped_pomdp_model)->Copy(
 							&predicted));
 
-			static_cast<const PedPomdp*>(ped_pomdp_model)->PrintStatePeds(*predicted_state, string("predicted_peds"));
+			static_cast<const PedPomdp*>(ped_pomdp_model)->PrintStateAgents(*predicted_state, string("predicted_agents"));
 
       if (Globals::config.use_prior && SolverPrior::history_mode == "track"){
 				SolverPrior::nn_priors[0]->Add_tensor_hist(predicted_state);
@@ -666,7 +689,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 
 	if(simulation_mode_ == UNITY){
 		unity_driving_simulator_->publishROSState();
-		ped_belief_->publishPedsPrediciton();
+		ped_belief_->publishAgentsPrediciton();
 	}
 
 	unity_driving_simulator_->beliefTracker->text();
@@ -746,6 +769,14 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 			step_start_t);
 }
 
+
+void Controller::setCarGoal(COORD car_goal){
+	goalx_ = car_goal.x;
+	goaly_ = car_goal.y;
+
+	unity_driving_simulator_->setCarGoal(car_goal);
+}
+
 void Controller::CheckCurPath(){
 	if (path_missing){
 		cerr << "Path missing, fixing steering" << endl;
@@ -760,15 +791,6 @@ void Controller::CheckCurPath(){
 	}
 	else{
 		WorldSimulator::worldModel.path = path_from_topic;
-
-		COORD path_end_from_goal = path_from_topic.back() - COORD(goalx_, goaly_);
-
-		if (path_end_from_goal.Length() > 2.0f + 1e-3){
-			cerr << "Path end mismatch with car goal: path end = " <<
-					"(" << path_from_topic.back().x << "," << path_from_topic.back().x << ")" <<
-					", car goal=(" << goalx_ << "," << goaly_ << ")" << endl;
-			raise(SIGABRT);
-		}
 
 		COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos - COORD(goalx_, goaly_);
 
@@ -792,7 +814,6 @@ void Controller::CheckCurPath(){
 			SolverPrior::prior_discount_optact = 10.0;
 		}
 	}
-
 
 }
 

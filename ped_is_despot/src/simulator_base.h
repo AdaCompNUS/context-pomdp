@@ -95,7 +95,7 @@ public:
 
 
 public:
-	static bool ped_data_ready;
+	static bool agents_data_ready;
 };
 
 
