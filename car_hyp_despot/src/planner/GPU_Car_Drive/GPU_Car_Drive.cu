@@ -127,13 +127,13 @@ HOST void Dvc_PomdpState::CopyMainStateToGPU(Dvc_PomdpState* dvc_particles, int 
 	if(Globals::config.use_multi_thread_ && StreamManager::MANAGER.cuda_streams)
 	{
 		memcpy((void*)(Hst_tempPeds[GetCurrentStream()]+Data_block_size*scenarioID),
-				(const void*)hst_particle->peds,
+				(const void*)hst_particle->agents,
 				Data_block_size*sizeof(Dvc_PedStruct));
 	}
 	else
 	{
 		memcpy((void*)(Hst_tempPeds[0]+Data_block_size*scenarioID),
-				(const void*)hst_particle->peds,
+				(const void*)hst_particle->agents,
 				Data_block_size*sizeof(Dvc_PedStruct));
 	}
 }
@@ -227,13 +227,13 @@ HOST void Dvc_PomdpState::ReadPedsBackToCPU(const Dvc_PomdpState* dvc_particles,
 
 			if(Globals::config.use_multi_thread_ && StreamManager::MANAGER.cuda_streams)
 			{
-				memcpy((void*)car_state->peds,
+				memcpy((void*)car_state->agents,
 						(const void*)(Hst_tempPeds[ThreadID]+Data_block_size*i),
 						Data_block_size*sizeof(Dvc_PedStruct));
 			}
 			else
 			{
-				memcpy((void*)car_state->peds,
+				memcpy((void*)car_state->agents,
 						(const void*)(Hst_tempPeds[0]+Data_block_size*i),
 						Data_block_size*sizeof(Dvc_PedStruct));
 			}

@@ -17,14 +17,14 @@ public:
     Simulator(DSPOMDP* model, unsigned seed=0);
     ~Simulator();
 
-    int numPedInArea(PedStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world);
+    int numPedInArea(AgentStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world);
 
-    int numPedInCircle(PedStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world, double car_x, double car_y);
+    int numPedInCircle(AgentStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world, double car_x, double car_y);
     int run(int argc, char *argv[]);
 
-    PedStruct randomPed();
-    PedStruct randomFarPed(double car_x, double car_y);
-    PedStruct randomPedAtCircleEdge(double car_x, double car_y);
+    AgentStruct randomPed();
+    AgentStruct randomFarPed(double car_x, double car_y);
+    AgentStruct randomPedAtCircleEdge(double car_x, double car_y);
 
     void generateFixedPed(PomdpState &s);
 
@@ -55,12 +55,12 @@ public:
 
 	virtual State* Initialize();
 
-	virtual State* GetCurrentState() const;
+	virtual State* GetCurrentState();
 
 	virtual bool ExecuteAction(ACT_TYPE action, OBS_TYPE& obs);
 
 private:
-	int random_ped_mode(PedStruct& ped);
+	int random_ped_mode(AgentStruct& ped);
 };
 
 #endif

@@ -124,12 +124,33 @@ double Path::getlength(){
 	return path_len;
 }
 
-double Path::getCurDir(){
+double Path::getCurDir(int pos_along){
     auto& path = *this;
 
-    int end_pos = min(150, int(path.size())-1);
+    int end_pos = min(pos_along + 150, int(path.size())-1);
 
-	return COORD::SlopAngle(path[0], path[end_pos]);
+	return COORD::SlopAngle(path[pos_along], path[end_pos]);
+}
+
+double CapAngle(double x){
+    x = fmod(x,2*M_PI);
+    if (x < 0)
+        x += 2*M_PI;
+    return x;
+}
+
+COORD Path::GetCrossDir(int pos_along, bool dir){
+	auto& path = *this;
+	COORD& pos = path[pos_along];
+	double cur_dir = getCurDir(pos_along);
+	if (dir) // left, ccw
+		cur_dir = cur_dir + M_PI/2;
+	else // right.cw
+		cur_dir = cur_dir - M_PI/2; 
+
+	cur_dir = CapAngle(cur_dir);
+
+	return COORD(cos(cur_dir), sin(cur_dir));
 }
 
 void Path::text(){

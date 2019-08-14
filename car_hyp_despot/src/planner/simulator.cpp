@@ -126,7 +126,7 @@ State* Simulator::Initialize(){
 	worldModel.InitRVO();
 }
 
-State* Simulator::GetCurrentState() const{
+State* Simulator::GetCurrentState(){
 	static PomdpStateWorld current_state;
 
 	//cout << "[GetCurrentState] current num peds in simulator: " << num_of_peds_world << endl;

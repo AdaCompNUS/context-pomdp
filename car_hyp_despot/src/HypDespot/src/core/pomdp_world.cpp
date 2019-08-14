@@ -45,7 +45,7 @@ State* POMDPWorld::Initialize() {
 	return state_;
 }
 
-despot::State* POMDPWorld::GetCurrentState() const {
+despot::State* POMDPWorld::GetCurrentState() {
 	return state_;
 }
 

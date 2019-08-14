@@ -11,7 +11,9 @@ struct Path : std::vector<COORD> {
 	Path interpolate();
 	void cutjoin(const Path& p);
 	double getlength();
-	double getCurDir();
+	double getCurDir(int pos_along = 0);
+
+	COORD GetCrossDir(int, bool);
 
 	void text();
 
