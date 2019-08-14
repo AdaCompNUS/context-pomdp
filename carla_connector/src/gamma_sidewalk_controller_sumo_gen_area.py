@@ -53,6 +53,8 @@ class CrowdAgent:
         self.current_extend_direction = True
         self.res_dec_rate = random.uniform(0.2, 0.8)
 
+        self.actor.set_collision_enabled(False)
+
         # self.actor.set_simulate_physics(False)
 
         # if agent_tag is "People":
@@ -191,7 +193,7 @@ class CrowdAgent:
 
             desired_speed = norm(velocity)
             
-            # steer_tmp = get_signed_angle_diff(velocity, self.get_forward_direction())
+            steer_tmp = get_signed_angle_diff(velocity, self.get_forward_direction())
             # if steer_tmp > 60 or steer_tmp < -60:
             #     desired_speed = 0
 
@@ -199,7 +201,8 @@ class CrowdAgent:
 
             control = self.actor.get_control()
 
-            k2 = 1.0
+            k2 = 1.5
+            k3 = 2.5
             if desired_speed - cur_speed > 0:
                 control.throttle = k2 * (desired_speed - cur_speed)/desired_speed
                 control.brake = 0.0
@@ -208,7 +211,7 @@ class CrowdAgent:
                 control.brake = 0.0
             else:
                 control.throttle = 0
-                control.brake = 0 #k2 * (cur_speed - desired_speed)/cur_speed
+                control.brake = k3 * (cur_speed - desired_speed)/cur_speed
             #print "throttle: ", control.throttle
             global world
             if desired_speed == 0:
@@ -264,7 +267,7 @@ def draw_box(corners):
     world.debug.draw_line(start, end,  life_time=0.1)
 
 
-NUM_AGENTS = 300
+NUM_AGENTS = 100
 
 default_agent_pos = carla.Vector2D(10000, 10000)
 default_agent_bbox = []
@@ -320,9 +323,24 @@ if __name__ == '__main__':
     [map_x_min, map_x_max, map_y_max-gen_area_size, map_y_max]]
     area_idx = 0
 
+
+    polygon_table = occupancy_map.create_polygon_table(carla.Vector2D(map_x_min, map_y_min),carla.Vector2D(map_x_max, map_y_max),100,0.1)
+    for r in range(polygon_table.rows):
+        for c in range(polygon_table.columns):
+            for p in polygon_table.get(r, c):
+                obstacle = []
+                for i in reversed(range(len(p))): 
+                    v1 = p[i]
+                    obstacle.append(carla.Vector2D(v1.x, v1.y))
+                gamma.add_obstacle(obstacle)
+    gamma.process_obstacles()
+
+
     while True:
 
         while len(crowd_agents) < NUM_AGENTS:
+
+            agent_tag = random.choice(agent_tag_list)
 
             position = carla.Vector2D(0, 0)
             next_position = carla.Vector2D(0, 0)
@@ -334,24 +352,35 @@ if __name__ == '__main__':
                     gen_area = gen_areas[area_idx]
                     position = carla.Vector2D(random.uniform(gen_area[0], gen_area[1]), random.uniform(gen_area[2], gen_area[3]))
                 #position = carla.Vector2D(random.uniform(-200, 200), random.uniform(-200, 200))
-                route_point = network.get_nearest_route_point(position)
-                position = network.get_route_point_position(route_point)
+
+                route_point = None
+                if agent_tag == "People":
+                    route_point = sidewalk.get_nearest_route_point(position)
+                    position = sidewalk.get_route_point_position(route_point)
+                else:
+                    route_point = network.get_nearest_route_point(position)
+                    position = network.get_route_point_position(route_point)
+
                 if not in_bounds(position):
                     continue
-                route_points = network.get_next_route_points(route_point, 1.0)
-                if len(route_points) != 0:
-                    route_point = random.choice(route_points)
-                    next_position = network.get_route_point_position(route_point)
+
+                if agent_tag != "People":
+                    route_points = network.get_next_route_points(route_point, 1.0)
+                    if len(route_points) != 0:
+                        route_point = random.choice(route_points)
+                        next_position = network.get_route_point_position(route_point)
+                        break
+                else:
                     break
 
 
             forward = next_position - position
             yaw_deg = get_signed_angle_diff(forward, carla.Vector2D(1,0))
             rot = carla.Rotation(0, yaw_deg, 0)         
-            loc = carla.Location(position.x, position.y, 0.5)
+            loc = carla.Location(position.x, position.y, 0.2)
             trans = carla.Transform(loc, rot)
 
-            agent_tag = random.choice(agent_tag_list)
+            
             pref_speed = 1.0
             if agent_tag == "People":
                 actor = world.try_spawn_actor(
@@ -361,7 +390,7 @@ if __name__ == '__main__':
                 pref_speed = 0.5 + random.random() * 1.5
                 if actor:
                     crowd_agents.append(CrowdAgent(sidewalk, actor, pref_speed, agent_tag))
-                    world.wait_for_tick()
+                    #world.wait_for_tick()
             elif agent_tag == "Car":
                 actor = world.try_spawn_actor(
                     random.choice(cars_blueprints),
@@ -369,7 +398,7 @@ if __name__ == '__main__':
                 pref_speed = 5.0 + random.random() * 1.5
                 if actor:
                     crowd_agents.append(CrowdAgent(network, actor, pref_speed, agent_tag))
-                    world.wait_for_tick()
+                    #world.wait_for_tick()
             elif agent_tag == "Bicycle":
                 actor = world.try_spawn_actor(
                     random.choice(bikes_blueprints),
@@ -377,7 +406,7 @@ if __name__ == '__main__':
                 pref_speed = 3.0 + random.random() * 1.5
                 if actor:
                     crowd_agents.append(CrowdAgent(network, actor, pref_speed, agent_tag))
-                    world.wait_for_tick()
+                    #world.wait_for_tick()
             
                 #print "spawned agent: ", agent_tag, " at ", actor.get_location()
         # for i in range(0,3):
@@ -447,7 +476,9 @@ if __name__ == '__main__':
 
         for (i, crowd_agent) in enumerate(crowd_agents):
             if crowd_agent is not None:
-                crowd_agent.set_velocity(gamma.get_agent_velocity(i))
+                vel_to_exe = gamma.get_agent_velocity(i)
+                crowd_agent.set_velocity(vel_to_exe)
+                world.debug.draw_line(crowd_agent.actor.get_location()+carla.Vector3D(0,0,1), crowd_agent.actor.get_location()+carla.Vector3D(vel_to_exe.x, vel_to_exe.y ,0)+carla.Vector3D(0,0,1), color=carla.Color (0,255,0), life_time=0.1)
 
         crowd_agents = [w for w in crowd_agents if w is not None]
 
