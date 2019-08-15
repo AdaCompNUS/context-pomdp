@@ -1,12 +1,14 @@
 <launch>
   <node name="spawn_meshes" pkg="carla_connector2" type="spawn_meshes.py" output="screen"/>
   
-  <!--<node name="ego_vehicle" pkg="carla_connector2" type="ego_vehicle.py" output="screen"/>-->
+  <node name="ego_vehicle" pkg="carla_connector2" type="ego_vehicle.py" output="screen"/>
   
   <node name="gamma_crowd_controller" pkg="carla_connector2" type="gamma_crowd_controller.py" output="screen">
-    <param name="num_network_agents" value="10"/>
+    <param name="num_network_agents" value="100"/>
     <param name="num_sidewalk_agents" value="10"/>
     <param name="path_min_points" value="20"/>
     <param name="path_interval" value="1.0"/>
   </node>
+  
+  <node name="crowd_processor" pkg="carla_connector2" type="crowd_processor.py" output="screen"/>
 </launch>

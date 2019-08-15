@@ -3,7 +3,7 @@ time last_update
 
 # general
 int32 id
-std_msgs/String type
+string type
 
 # geometric information
 geometry_msgs/Pose pose

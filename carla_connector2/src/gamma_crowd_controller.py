@@ -6,11 +6,12 @@ import numpy as np
 import rospy
 
 from drunc import Drunc
+import carla
 from network_agent_path import NetworkAgentPath
 from sidewalk_agent_path import SidewalkAgentPath
-import carla
 from util import *
 import carla_connector2.msg
+from peds_unity_system.msg import car_info as CarInfo
 
 default_agent_pos = carla.Vector2D(10000, 10000)
 default_agent_bbox = []
@@ -36,9 +37,6 @@ class CrowdAgent(object):
     
     def get_bounding_box(self):
         return self.actor.bounding_box
-    
-    def get_rotation(self):
-        return self.actor.get_transform().rotation.yaw
     
     def get_forward_direction(self):
         forward = self.actor.get_transform().get_forward_vector()
@@ -176,7 +174,7 @@ class GammaCrowdController(Drunc):
         self.gamma = carla.RVOSimulator()
 
         self.walker_blueprints = self.world.get_blueprint_library().filter("walker.pedestrian.*")
-        self.vehicles_blueprints = self.world.get_blueprint_library().filter('vehicle.*')
+        self.vehicles_blueprints = self.world.get_blueprint_library().filter('vehicle.audi.*')
         self.bikes_blueprints = [x for x in self.vehicles_blueprints if int(x.get_attribute('number_of_wheels')) == 2]
         self.cars_blueprints = [x for x in self.vehicles_blueprints if int(x.get_attribute('number_of_wheels')) == 4]
         
@@ -192,12 +190,45 @@ class GammaCrowdController(Drunc):
                 '/crowd/sidewalk_agents', 
                 carla_connector2.msg.CrowdSidewalkAgentArray, 
                 queue_size=1)
+        self.il_car_info_sub = rospy.Subscriber(
+                '/IL_car_info',
+                CarInfo,
+                self.il_car_info_callback,
+                queue_size=1)
 
         for i in range(self.num_network_agents):
             self.gamma.add_agent(carla.AgentParams.get_default('Car'), i)
         
         for i in range(self.num_sidewalk_agents):
             self.gamma.add_agent(carla.AgentParams.get_default('People'), i)
+        
+        # For ego vehicle.
+        self.gamma.add_agent(carla.AgentParams.get_default('Car'), self.num_network_agents + self.num_sidewalk_agents)
+    
+    def il_car_info_callback(self, car_info):
+        self.ego_car_info = car_info
+        i = len(self.network_agents) + len(self.sidewalk_agents)
+               
+        if self.ego_car_info:
+            self.gamma.set_agent_position(i, carla.Vector2D(
+                self.ego_car_info.car_pos.x,
+                self.ego_car_info.car_pos.y))
+            self.gamma.set_agent_velocity(i, carla.Vector2D(
+                self.ego_car_info.car_vel.x,
+                self.ego_car_info.car_vel.y))
+            self.gamma.set_agent_heading(i, carla.Vector2D(
+                math.cos(np.deg2rad(self.ego_car_info.car_yaw)),
+                math.sin(np.deg2rad(self.ego_car_info.car_yaw))))
+            self.gamma.set_agent_bounding_box_corners(i, 
+                    [carla.Vector2D(v.x, v.y) for v in self.ego_car_info.car_bbox.points])
+            self.gamma.set_agent_pref_velocity(i, carla.Vector2D(
+                self.ego_car_info.car_pref_vel.x,
+                self.ego_car_info.car_pref_vel.y))
+        else:
+            self.gamma.set_agent_position(i, default_agent_pos)
+            self.gamma.set_agent_pref_velocity(i, carla.Vector2D(0, 0))
+            self.gamma.set_agent_velocity(i, carla.Vector2D(0, 0))
+            self.gamma.set_agent_bounding_box_corners(i, default_agent_bbox)
     
     def update(self):
         while len(self.network_agents) < self.num_network_agents:
@@ -261,7 +292,7 @@ class GammaCrowdController(Drunc):
                 self.gamma.set_agent_velocity(i, carla.Vector2D(0, 0))
                 self.gamma.set_agent_bounding_box_corners(i, default_agent_bbox)
                 commands.append(carla.command.DestroyActor(crowd_agent.actor.id))
-        
+
         self.gamma.do_step()
 
         for (i, crowd_agent) in enumerate(next_agents):
@@ -284,7 +315,7 @@ class GammaCrowdController(Drunc):
         for a in self.network_agents:
             network_agent_msg = carla_connector2.msg.CrowdNetworkAgent()
             network_agent_msg.id = a.get_id()
-            network_agent_msg.type = 'Car'
+            network_agent_msg.type = 'car'
             network_agent_msg.route_point.edge = a.path.route_points[0].edge
             network_agent_msg.route_point.lane = a.path.route_points[0].lane
             network_agent_msg.route_point.segment = a.path.route_points[0].segment
@@ -297,7 +328,7 @@ class GammaCrowdController(Drunc):
         for a in self.sidewalk_agents:
             sidewalk_agent_msg = carla_connector2.msg.CrowdSidewalkAgent()
             sidewalk_agent_msg.id = a.get_id()
-            sidewalk_agent_msg.type = 'People'
+            sidewalk_agent_msg.type = 'ped'
             sidewalk_agent_msg.route_point.polygon_id = a.path.route_points[0].polygon_id
             sidewalk_agent_msg.route_point.segment_id = a.path.route_points[0].segment_id
             sidewalk_agent_msg.route_point.offset = a.path.route_points[0].offset
