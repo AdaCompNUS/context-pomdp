@@ -6,8 +6,10 @@ import numpy as np
 
 import rospy
 import tf
-from geometry_msgs.msg import Twist, Pose, Point, Quaternion, Vector3, Polygon, Point32
+from geometry_msgs.msg import Twist, Pose, Point, Quaternion, Vector3, Polygon, Point32, PoseStamped
 from nav_msgs.msg import Odometry
+from nav_msgs.msg import Path as NavPath
+from std_msgs.msg import Float32
 
 from drunc import Drunc
 import carla
@@ -31,12 +33,24 @@ class EgoVehicle(Drunc):
         spawn_trans.location.z = 2.0
         spawn_trans.rotation.yaw = self.path.get_yaw()
         self.actor = self.world.spawn_actor(vehicle_bp, spawn_trans)
-            
+
+        self.cmd_speed = 0
+        self.cmd_accel = 0
+        self.cmd_steer = 0
+
+        self.cmd_speed_sub = rospy.Subscriber('/cmd_speed', Float32, self.cmd_speed_callback, queue_size=1)
+        self.cmd_accel_sub = rospy.Subscriber('/cmd_accel', Float32, self.cmd_accel_callback, queue_size=1)
+        self.cmd_steer_sub = rospy.Subscriber('/cmd_steer', Float32, self.cmd_steer_callback, queue_size=1)
+
         self.odom_broadcaster = tf.TransformBroadcaster()
-        self.odom_pub = rospy.Publisher("/odom", Odometry, queue_size=1)
+        self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=1)
         self.car_info_pub = rospy.Publisher('/IL_car_info', CarInfo, queue_size=1)
+        self.plan_pub = rospy.Publisher('/plan', NavPath, queue_size=1)
         
         self.world.on_tick(self.world_tick_callback)
+        self.update_timer = rospy.Timer(
+                rospy.Duration(0.1), 
+                self.update_timer_callback)
 
     def get_position(self):
         location = self.actor.get_location()
@@ -100,6 +114,42 @@ class EgoVehicle(Drunc):
 
         self.car_info_pub.publish(car_info_msg)
 
+    def publish_plan(self):
+        current_time = rospy.Time.now()
+
+        gui_path = NavPath()
+        gui_path.header.frame_id = 'map'
+        gui_path.header.stamp = current_time
+
+        # Exclude last point because no yaw information.
+        for i in range(len(self.path.route_points) - 1):
+            position = self.path.get_position(i)
+            yaw = self.path.get_yaw(i)
+
+            pose = PoseStamped()
+            pose.header.frame_id = 'map'
+            pose.header.stamp = current_time
+            pose.pose.position.x = position.x
+            pose.pose.position.y = position.y
+            pose.pose.position.z = 0
+            quaternion = tf.transformations.quaternion_from_euler(0, 0, yaw)
+            pose.pose.orientation.x = quaternion[0]
+            pose.pose.orientation.y = quaternion[1]
+            pose.pose.orientation.z = quaternion[2]
+            pose.pose.orientation.w = quaternion[3]
+            gui_path.poses.append(pose)
+        
+        self.plan_pub.publish(gui_path)
+
+    def cmd_speed_callback(self, speed):
+        self.cmd_speed = speed.data
+
+    def cmd_accel_callback(self, accel):
+        self.cmd_accel = accel.data
+
+    def cmd_steer_callback(self, steer):
+        self.cmd_steer = steer.data
+
     def world_tick_callback(self, snapshot):
         if not self.path.resize():
             print('Warning : path too short.')
@@ -113,6 +163,25 @@ class EgoVehicle(Drunc):
 
         self.publish_odom()
         self.publish_il_car_info()
+        self.publish_plan()
+
+    def update_timer_callback(self, timer):
+        # Calculate control and send to CARLA.
+        
+        control = self.actor.get_control()
+        control.gear = 1 
+        control.steer = self.cmd_steer
+        if self.cmd_accel > 0:
+            control.throttle = self.cmd_accel
+            control.brake = 0.0
+        elif self.cmd_accel == 0:
+            control.throttle = 0.0
+            control.brake = 0.0
+        else:
+            control.throttle = 0.0
+            control.brake = self.cmd_accel
+
+        self.actor.apply_control(control)
 
 if __name__ == '__main__':
     rospy.init_node('ego_vehicle')

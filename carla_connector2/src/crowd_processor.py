@@ -71,7 +71,7 @@ class CrowdProcessor(Drunc):
         for agent in agents:
             actor = self.world.get_actor(agent.id)
 
-            if (get_position(actor) - ego_car_position).length() > 50:
+            if actor is None or (get_position(actor) - ego_car_position).length() > 50:
                 continue
             
             agent_tmp = carla_connector2.msg.TrafficAgent()

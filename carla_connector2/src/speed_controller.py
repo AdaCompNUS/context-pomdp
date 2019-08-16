@@ -7,6 +7,7 @@ from util import *
 from path_smoothing import distance
 
 import rospy
+from std_msgs.msg import Float32
 from peds_unity_system.msg import peds_car_info as PedsCarInfo
 from peds_unity_system.msg import car_info as CarInfo # panpan
 from peds_unity_system.msg import peds_info as PedsInfo
@@ -29,7 +30,8 @@ class SpeedController(object):
         self.player_vel = None
         self.peds_pos = None
 
-        self.pub_cmd_vel = rospy.Publisher("cmd_vel", Twist, queue_size=1)
+        self.cmd_speed_pub = rospy.Publisher("/cmd_speed", Float32, queue_size=1)
+        self.cmd_accel_pub = rospy.Publisher("/cmd_accel", Float32, queue_size=1)
         rospy.Subscriber("/agent_array", TrafficAgentArray, self.cb_peds, queue_size=1)
         rospy.Subscriber("/IL_car_info", CarInfo, self.cb_car, queue_size=1)
 
@@ -57,29 +59,29 @@ class SpeedController(object):
 
 
     def compute_speed_and_publish(self, tick):
-        if self.player_pos == None or self.peds_pos == None:
+        if self.player_pos is None or self.peds_pos is None:
             return
 
-        cmd = Twist();
         curr_vel = self.calculate_player_speed()
-        cmd.angular.z = 0
+        cmd_speed = 0
+        cmd_accel = 0
 
         if self.proximity > 10:
-            cmd.linear.x = curr_vel + delta;
-            cmd.linear.y = acc
+            cmd_speed = curr_vel + delta;
+            cmd_accel = acc
         elif self.proximity > 8:
-            cmd.linear.x = curr_vel
-            cmd.linear.y = 0
+            cmd_speed = curr_vel
+            cmd_accel = 0
         elif self.proximity < 6:
-            cmd.linear.x = curr_vel - delta;
-            cmd.linear.y = -acc
+            cmd_speed = curr_vel - delta;
+            cmd_accel = -acc
 
-        if curr_vel >2 and cmd.linear.y > 0:
-            cmd.linear.x = curr_vel
-            cmd.linear.y = 0
+        if curr_vel > 2 and cmd_accel > 0:
+            cmd_speed = curr_vel
+            cmd_accel = 0
 
-        self.pub_cmd_vel.publish(cmd);
-
+        self.cmd_speed_pub.publish(cmd_speed)
+        self.cmd_accel_pub.publish(cmd_accel)
 
     def cb_peds(self, msg):
         self.peds_pos = [[ped.pose.position.x, ped.pose.position.y] for ped in msg.agents]
