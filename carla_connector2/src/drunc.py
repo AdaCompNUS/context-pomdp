@@ -1,8 +1,15 @@
 import os, sys, glob
-sys.path.append(glob.glob('/home/leeyiyuan/carla/PythonAPI/carla/dist/carla-*%d.%d-%s.egg' % (
-    sys.version_info.major,
-    sys.version_info.minor,
-    'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
+
+carla_root = os.path.expanduser("~/carla/")
+api_root = os.path.expanduser("~/carla/PythonAPI")
+try:
+    sys.path.append(glob.glob(api_root + '/carla/dist/carla-*%d.%d-%s.egg' % (
+        sys.version_info.major,
+        sys.version_info.minor,
+        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
+except IndexError:
+    print("Cannot locate the CARLA egg file!!!")
+    sys.exit()
 
 import carla
 import random
@@ -19,7 +26,7 @@ class Drunc(object):
         self.map_bounds_max = carla.Vector2D(1200, 1900)
         
         # Create network related objects.
-        with open('/home/leeyiyuan/carla/Data/map.net.xml', 'r') as file:
+        with open(carla_root + 'Data/map.net.xml', 'r') as file:
             map_data = file.read()
         self.network = carla.SumoNetwork.load(map_data)
         self.occupancy_map = self.network.create_occupancy_map()
