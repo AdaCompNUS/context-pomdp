@@ -147,11 +147,28 @@ public:
     std::vector<Path>& PathCandidates(int agent_id){
         auto it = id_map_paths.find(agent_id);
         if (it == id_map_paths.end()){
-            std::cout << "agent id " << agent_id <<
+            std::cout << __FILE__ << ": agent id " << agent_id <<
              " not found in id_map_paths" << std::endl;
-            raise(SIGABRT);
+
+            print_path_map();
+
+            std::vector<Path> ps;
+
+            id_map_paths[agent_id] = ps;
+            it = id_map_paths.find(agent_id);
+            // raise(SIGABRT);
         }
         return it->second;
+    }
+
+    void print_path_map(){
+        return;
+
+        cout << "id_map_paths: ";
+        for(auto it = id_map_paths.begin(); it != id_map_paths.end(); ++it) {
+            cout << " (" << it->first << ", l_" << it->second.size() << ")";
+        }
+        cout << endl;       
     }
 
 
@@ -169,7 +186,7 @@ public:
     COORD AttentivePedMeanDir(int ped_id, int goal_id);
 
     void add_car_agent(int num_peds, CarStruct& car);
-    void add_veh_agent(int id_in_sim, AgentBelief& veh);
+    void add_veh_agent(AgentBelief& veh);
 
     void PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> peds, CarStruct& car);
 
@@ -269,6 +286,9 @@ public:
     PomdpState getPomdpState();
     PomdpStateWorld getPomdpWorldState();
 
+    void text(const vector<AgentDistPair>& sorted_agents) const;  
+    void text(const vector<Pedestrian>& tracked_peds) const;
+    void text(const vector<Vehicle>& tracked_vehs) const;
     
     // Car state
     COORD carpos;
@@ -303,6 +323,8 @@ public:
 
     PomdpState text() const;
 
+    void text(const std::map<int, AgentBelief>&) const;
+
 public:
     double cur_time_stamp;
 
@@ -310,9 +332,10 @@ public:
     double cur_steering;
 };
 
-enum PED_MODES{
-	AGENT_ATT=0,
-	AGENT_DIS=1
+enum PED_MODES {
+	AGENT_ATT = 0,
+	AGENT_DIS = 1,
+    NUM_AGENT_TYPES = 2,
 };
 
 double cap_angle(double angle);

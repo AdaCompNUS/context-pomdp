@@ -185,14 +185,16 @@ State* WorldSimulator::GetCurrentState(){
 	updated_car.vel=real_speed_;
 	updated_car.heading_dir = poseToHeadingDir(out_pose);
 
+	// DEBUG("update");
 	stateTracker->updateCar(updated_car);
 	stateTracker->cleanAgents();
 
+	// DEBUG("state");
 	PomdpStateWorld state = stateTracker->getPomdpWorldState();
 
 	current_state.assign(state);
 
-	if (logging::level()>=3)
+	if (logging::level()>=4)
 		static_cast<PedPomdp*>(model_)->PrintWorldState(current_state);
 
 	current_state.time_stamp = SolverPrior::get_timestamp();
@@ -328,7 +330,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	// Updating cmd steering and speed. They will be send to vel_pulisher by timer
 	update_cmds_naive(buffered_action_, false);
 
-	publishCmdAction();
+	publishCmdAction(buffered_action_);
 
 	publishImitationData(*curr_state, action, step_reward, target_speed_);
 
@@ -412,7 +414,7 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 	SolverPrior::nn_priors[0]->Check_force_steer(stateTracker->car_heading_dir, 
 		worldModel.path.getCurDir(), stateTracker->carvel);
 
-	worldModel.path.text();
+	// worldModel.path.text();
 
 	cout << "[update_cmds_naive] Buffering action " << action << endl;
 
@@ -550,17 +552,19 @@ void WorldSimulator::AddObstacle(){
 
 void WorldSimulator::publishCmdAction(const ros::TimerEvent &e)
 {
-	publishCmdAction();
+	// for timer
+	publishCmdAction(buffered_action_);
 }
 
-void WorldSimulator::publishCmdAction()
+void WorldSimulator::publishCmdAction(ACT_TYPE action)
 {
 	geometry_msgs::Twist cmd;
 	cmd.linear.x = target_speed_;
 	cmd.linear.y = real_speed_;
+	cmd.linear.z = static_cast<PedPomdp*>(model_)->GetAcceleration(action);
 	cmd.angular.z = steering_; // GetSteering returns radii value
 	cout<<"[publishCmdAction] time stamp" << SolverPrior::nn_priors[0]->get_timestamp() <<endl;
-  cout << "[publishCmdAction]  target speed " << target_speed_ << " steering " << steering_ << endl;
+    cout << "[publishCmdAction] target speed " << target_speed_ << " steering " << steering_ << endl;
 	cmdPub_.publish(cmd);
 }
 
@@ -808,18 +812,25 @@ void agentArrayCallback(carla_connector::agent_array data){
 		}
 	}
 
-	for(int i=0;i<ped_list.size();i++)
+	for(auto& ped: ped_list)
 	{
-		WorldSimulator::stateTracker->updatePed(ped_list[i]);
+		WorldSimulator::stateTracker->updatePed(ped);
 	}
 
-	for(auto& veh : veh_list)
+	for(auto& veh: veh_list)
 	{
 		WorldSimulator::stateTracker->updateVeh(veh);
 	}
 
-	DEBUG(string_sprintf("ped_list len %d", ped_list.size()));
-	DEBUG(string_sprintf("veh_list len %d", veh_list.size()));
+	DEBUG("");
+
+	WorldSimulator::stateTracker->model.print_path_map();
+
+	// WorldSimulator::stateTracker->text(ped_list);
+	// WorldSimulator::stateTracker->text(veh_list);
+
+	// DEBUG(string_sprintf("ped_list len %d", ped_list.size()));
+	// DEBUG(string_sprintf("veh_list len %d", veh_list.size()));
     logd << "====================[ agentArrayCallback end ]=================" << endl;
 
 	SimulatorBase::agents_data_ready = true;
@@ -829,6 +840,9 @@ void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
 {
     logd << "======================[ pedPoseCallback ]= ts "<<
     		Globals::ElapsedTime()<< " ==================" << endl;
+
+  	DEBUG(string_sprintf("receive peds num %d", lPedLocal.ped_local.size()));
+
 
     if(lPedLocal.ped_local.size()==0) return;
 
@@ -847,6 +861,7 @@ void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
 	{
 		WorldSimulator::stateTracker->updatePed(ped_list[i]);
 	}
+
     logd << "====================[ pedPoseCallback end ]=================" << endl;
 
 	SimulatorBase::agents_data_ready = true;

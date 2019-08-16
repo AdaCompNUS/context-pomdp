@@ -169,7 +169,6 @@ private:
 
 	void InitRVOSetting();
 
-
 public:
 	// Let's drive
 	double GetAccelerationID(ACT_TYPE action, bool debug=false) const;

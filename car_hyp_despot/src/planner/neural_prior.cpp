@@ -1653,7 +1653,7 @@ std::vector<ACT_TYPE> PedNeuralSolverPrior::ComputeLegalActions(const State* sta
       act_start = 0;
       act_end = model->NumActions();
     }
-  } else {
+  } else { // decoupled POMDP
     double steer_to_path = pomdp_model->world_model->GetSteerToPath<PomdpState>(*pomdp_state);
    
     // steer_to_path = 0; //debugging 

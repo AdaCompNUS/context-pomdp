@@ -1773,7 +1773,12 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 
 //	int opt_act_start = 0;
 //	int opt_act_end = vnode->children().size();
-	assert(vnode->legal_actions().size() == vnode->children().size());
+	// if(vnode->legal_actions().size() != vnode->children().size()){
+	// 	cout << "vnode->legal_actions().size() mismatch with vnode->children().size(): " <<
+	// 		vnode->legal_actions().size() << " " << vnode->children().size() << endl;
+	// 	cout << "- node at level " << vnode->depth() << endl;
+	// 	raise(SIGABRT);
+	// }
 
 	int prior_ID = 0;
 	if (Globals::config.use_multi_thread_){
@@ -2369,11 +2374,10 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 				<< vnode->prior_action_probs().size() << " prior probs " << endl;
 		raise(SIGABRT);
 	}
-  else{
-      logd << "vnode level " << vnode->depth() << " " << vnode->legal_actions().size() << endl;
-  }
+	else{
+		logd << "vnode level " << vnode->depth() << " " << vnode->legal_actions().size() << endl;
+	}
  
-
 	for(ACT_TYPE action: vnode->legal_actions()){
 		logd << " Legal action " << action << endl;
 

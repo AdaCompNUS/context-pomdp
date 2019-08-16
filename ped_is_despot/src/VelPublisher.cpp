@@ -7,7 +7,7 @@
 #include "param.h"
 #include <despot/core/globals.h>
 
-
+int tick = 0;
 double freq = 12; //10;
 float time_scale = 1.0;
 //const double acceleration0 = 0.7;
@@ -77,17 +77,21 @@ public:
 
     void _publishSpeed()
     {
-
         geometry_msgs::Twist cmd;
 
         cmd.angular.z = steering; //0;
         cmd.linear.x = emergency_break? 0 : curr_vel;
+        cmd.linear.y = emergency_break? -1: (target_vel - curr_vel)*3.0; // target_acc;
+        // cmd.linear.y = (tick % 60 < 30)? 1 : -1;
+        // cmd.linear.y = 1;
 
+        tick ++;
         cmd_pub.publish(cmd);
-//		std::cout<<"vel publisher cmd steer "<<cmd.angular.z<<std::endl;
+		std::cout<<" ~~~~~~ vel publisher cmd steer="<< cmd.angular.z << ", acc="<< cmd.linear.y << std::endl;
     }
 
     double curr_vel, target_vel, init_curr_vel, steering;
+    double target_acc;
     int b_use_drive_net_;
     std::string drive_net_mode;
     ros::Subscriber vel_sub, steer_sub, action_sub, odom_sub;
@@ -122,9 +126,9 @@ class VelPublisher2 : public VelPublisher {
             steering = 0.0;
 			return;
 		}
-
         target_vel = pomdp_vel->linear.x;
         curr_vel = pomdp_vel->linear.y;
+        target_acc = pomdp_vel->linear.z;
         steering = pomdp_vel->angular.z;
 
 		if(target_vel <= 0.0001) {

@@ -189,15 +189,14 @@ bool PedPomdpBelief::DeepUpdate(const std::vector<const State*>& state_history,
 			}
 		}
 
-		DEBUG("update");
-		//Update and reorder the belief distributions for agents
+		// DEBUG("Update and reorder the belief distributions for agents");
+		//
 		beliefTracker->update();
 
-		DEBUG("print");
 		if (Globals::config.silence == false && DESPOT::Debug_mode)
 			beliefTracker->printBelief();
 
-		DEBUG("publish");
+		// DEBUG("publish planner peds topic");
 		publishPlannerPeds(*cur_state_search);
 	}
 	catch (exception e) {

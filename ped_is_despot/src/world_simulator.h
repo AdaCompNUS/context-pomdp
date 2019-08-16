@@ -92,7 +92,7 @@ public:
 	void publishPedsPrediciton();
 	void publishAction(int action, double reward);
 	void publishCmdAction(const ros::TimerEvent &e);
-	void publishCmdAction();
+	void publishCmdAction(ACT_TYPE);
 	void publishROSState();
 
 	void robotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
