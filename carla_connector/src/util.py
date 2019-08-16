@@ -102,9 +102,11 @@ def get_bounding_box_corners(actor):
         half_y_len = bbox.extent.y
         half_x_len = bbox.extent.x
 
-        if self.agent_tag == "People":
+        actor_flag = get_actor_flag(actor)
+        if actor_flag == "ped":
             half_y_len = 0.23
             half_x_len = 0.23
+
         corners = []
         corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
         corners.append(loc + half_x_len*forward_vec + half_y_len*sideward_vec)

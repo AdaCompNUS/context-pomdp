@@ -9,7 +9,7 @@
 #include <ped_is_despot/ped_info.h>
 #include <ped_is_despot/peds_believes.h>
 #include <nav_msgs/OccupancyGrid.h>
-#include <carla_connector/agent_array.h>
+#include <carla_connector2/TrafficAgentArray.h>
 
 #include "neural_prior.h"
 
@@ -26,7 +26,7 @@ bool SimulatorBase::agents_data_ready = false;
 double pub_frequency = 9.0;
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector);
-void agentArrayCallback(carla_connector::agent_array);
+void agentArrayCallback(carla_connector2::TrafficAgentArray);
 void receive_map_callback(nav_msgs::OccupancyGrid map);
 
 COORD poseToCoord(const tf::Stamped<tf::Pose>& pose) {
@@ -748,16 +748,16 @@ bool sortFn(Pedestrian p1,Pedestrian p2)
 	return p1.id<p2.id;
 }
 
-void agentArrayCallback(carla_connector::agent_array data){
+void agentArrayCallback(carla_connector2::TrafficAgentArray data){
 
 	DEBUG(string_sprintf("receive agent num %d", sizeof(data.agents)));
 
 	vector<Pedestrian> ped_list;
 	vector<Vehicle> veh_list;
 
-	for (carla_connector::traffic_agent& agent : data.agents){
+	for (carla_connector2::TrafficAgent& agent : data.agents){
 
-		std::string agent_type = agent.type.data;
+		std::string agent_type = agent.type;
 
 		cout << "get agent: " << agent.id <<" "<< agent_type << endl;
 

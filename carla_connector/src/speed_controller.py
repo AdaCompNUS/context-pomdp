@@ -127,7 +127,6 @@ class SpeedController(object):
                 print("Publishing speed, proximity {}, vel {}, acc {}".format(
                     self.proximity, cmd.linear.x, cmd.linear.y))
 
-
             self.pub_cmd_vel.publish(cmd);
 
 

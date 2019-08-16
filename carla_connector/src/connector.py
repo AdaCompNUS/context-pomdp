@@ -64,21 +64,24 @@ class Carla_Connector(object):
             self.processor = StateProcessor(
                 self.client, self.world, self.path_extractor)
             
-            print('-------------- Pursuit controller --------------')
+            # print('-------------- Pursuit controller --------------')
             self.pursuit = Pursuit(self.player, self.world, self.client, self.bp_lib)
-            
-            print('-------------- SpeedController --------------')
-            self.speed_control = SpeedController(self.player, self.client, self.world)
-            
+            # self.pursuit = None
+            # print('-------------- SpeedController --------------')
+            # self.speed_control = SpeedController(self.player, self.client, self.world)
+            self.speed_control = None
+
             print('Add main rendering camera')
             
             # self.add_lidar()
             self.add_camera()
 
             print("Enabling timer callbacks in all submodules")
-            self.pursuit.initialized = True
+            if self.pursuit:
+                self.pursuit.initialized = True
+            if self.speed_control:
+                self.speed_control.initialized = True
             self.processor.initialized = True
-            self.speed_control.initialized = True
             self.path_extractor.initialized = True
 
             print("Reset camera and enable camera following")
@@ -346,18 +349,18 @@ if __name__ == '__main__':
             3.0, 0.1,
             10.0)
 
-        print("launch crowd_controller")
+        # print("launch crowd_controller")
 
-        shell_cmd = 'python gamma_crowd_controller.py'
+        # shell_cmd = 'python gamma_crowd_controller.py'
 
-        crowd_out = open("Crowd_controller_log.txt", 'w')
+        # crowd_out = open("Crowd_controller_log.txt", 'w')
 
-        crowd_proc = subprocess.Popen(shell_cmd.split() ) #, stdout=crowd_out, stderr=crowd_out)
+        # crowd_proc = subprocess.Popen(shell_cmd.split() ) #, stdout=crowd_out, stderr=crowd_out)
         
         print("start carla_publishers node")
 
-        parent = ROSLaunchParent("mycore", [], is_core=True)     # run_id can be any string
-        parent.start()
+        # parent = ROSLaunchParent("mycore", [], is_core=True)     # run_id can be any string
+        # parent.start()
 
         rospy.init_node('carla_publishers')
         rospy.on_shutdown(myhook)
@@ -393,9 +396,11 @@ if __name__ == '__main__':
 
     finally:
         print("Terminating...")
-        connector.pursuit.initialized = False
+        if connector.pursuit:
+            connector.pursuit.initialized = False
         connector.processor.initialized = False
-        connector.speed_control.initialized = False
+        if connector.speed_control:
+            connector.speed_control.initialized = False
         connector.path_extractor.initialized = False
 
         if connector:
@@ -405,12 +410,12 @@ if __name__ == '__main__':
             if connector.camera_sensor: 
                 connector.camera_sensor.destroy()
 
-        parent.shutdown()
+        # parent.shutdown()
 
-        time.sleep(3)
+        # time.sleep(3)
 
-        os.kill(crowd_proc.pid, 9)
-        crowd_out.close()
+        # os.kill(crowd_proc.pid, 9)
+        # crowd_out.close()
         
 
         # p.join()

@@ -2,11 +2,15 @@
 from util import * 
 
 import rospy
+
 from std_msgs.msg import String
 from nav_msgs.msg import Path as NavPath
 from geometry_msgs.msg import PoseStamped
 import pdb
 import tf
+
+import tf2_ros
+import geometry_msgs.msg
 
 from carla import LaneNetwork
 from path_smoothing import interpolate_polyline, smoothing
@@ -22,7 +26,9 @@ class PathExtractor(object):
             self.player = player
             self.player_type = 'car'
             self.player_walking_dir = random.choice([True, False])
-            self.path = [] 
+            self.path = []
+
+            self.broadcaster = None 
 
             if map_type is "carla":
                 self.map = self.world.get_map()
@@ -56,6 +62,9 @@ class PathExtractor(object):
                 elif self.player_type is 'ped':
                     self.spawn_osm_pedestrian()
 
+                print("Publish odom static_transform")
+                self.publish_odom_transform()
+
             self.plan_pub = rospy.Publisher('plan', NavPath, queue_size=1)
             rospy.Timer(rospy.Duration(0.1), self.publish_path)
 
@@ -69,7 +78,7 @@ class PathExtractor(object):
             
             print("Crowd controller services ready")            
             
-            time.sleep(10)   # wait for crowd controller to finish generating crowd         
+            # time.sleep(5)   # wait for crowd controller to finish generating crowd         
             
             if map_type is "osm":
                 flag = String()
@@ -80,8 +89,10 @@ class PathExtractor(object):
                 
                 resp = self.add_ego_agent_srv(flag)
 
-                if not resp.success:
-                    print("!!!!!!! ego-player failed to be added to gamma")
+                while not resp.success:
+                    resp = self.add_ego_agent_srv(flag)
+                    print("ego-player failed to be added to gamma, try again")
+                    time.sleep(1)
         
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -143,6 +154,57 @@ class PathExtractor(object):
             yaw = 0.0
 
         return yaw
+
+    def get_cur_ros_pose(self):
+        cur_pose = geometry_msgs.msg.PoseStamped()
+        # cur_pose = geometry_msgs.msg.TransformStamped()
+   
+        cur_pose.header.stamp = rospy.Time.now()
+        cur_pose.header.frame_id = "/map"
+  
+        cur_pose.pose.position.x = self.player.get_location().x
+        cur_pose.pose.position.y = self.player.get_location().y
+        cur_pose.pose.position.z = self.player.get_location().z
+  
+        quat = tf.transformations.quaternion_from_euler(
+                float(0),float(0),float(self.player.get_transform().rotation.yaw))
+        cur_pose.pose.orientation.x = quat[0]
+        cur_pose.pose.orientation.y = quat[1]
+        cur_pose.pose.orientation.z = quat[2]
+        cur_pose.pose.orientation.w = quat[3]
+
+        return cur_pose
+
+    def get_cur_ros_transform(self):
+        transformStamped = geometry_msgs.msg.TransformStamped()
+   
+        transformStamped.header.stamp = rospy.Time.now()
+        transformStamped.header.frame_id = "map"
+        transformStamped.child_frame_id = 'odom'
+  
+        transformStamped.transform.translation.x = self.player.get_location().x
+        transformStamped.transform.translation.y = self.player.get_location().y
+        transformStamped.transform.translation.z = self.player.get_location().z
+  
+        quat = tf.transformations.quaternion_from_euler(
+                float(0),float(0),float(self.player.get_transform().rotation.yaw))
+        transformStamped.transform.rotation.x = quat[0]
+        transformStamped.transform.rotation.y = quat[1]
+        transformStamped.transform.rotation.z = quat[2]
+        transformStamped.transform.rotation.w = quat[3]
+
+        return transformStamped
+   
+
+    def publish_odom_transform(self):
+        self.broadcaster = tf2_ros.StaticTransformBroadcaster()
+
+        static_transformStamped = self.get_cur_ros_transform()
+        
+        self.broadcaster.sendTransform(static_transformStamped)
+
+        time.sleep(1)
+
 
     def spawn_osm_vehicle(self):
         if map_type is "osm":
@@ -445,7 +507,8 @@ class PathExtractor(object):
 
     def get_smooth_path(self, input_path):
         path = []
-
+        if len(input_path) == 0:
+            return []
         # put vehicle current location into path
         # ego_location = self.player.get_location()
         # path.append([ego_location.x,ego_location.y])
@@ -457,23 +520,22 @@ class PathExtractor(object):
             for route_point in input_path:
                 pos = self.get_position(route_point)
                 path.append([pos.x, pos.y])
-
+                
         path = numpy.array(path)
         interp_path = interpolate_polyline(path, len(input_path)*10)
         smooth_path = smoothing(interp_path)
 
         return smooth_path
 
-
-    def to_pose_stamped(self, way_point, current_time):
+    def to_pose_stamped(self, transform, current_time):
         pose = PoseStamped()
         pose.header.stamp = current_time
         pose.header.frame_id = "map"
-        pose.pose.position.x = way_point.transform.location.x
-        pose.pose.position.y = way_point.transform.location.y
+        pose.pose.position.x = transform.location.x
+        pose.pose.position.y = transform.location.y
         pose.pose.position.z = 0
 
-        yaw = way_point.transform.rotation.yaw
+        yaw = transform.rotation.yaw
 
         quaternion = tf.transformations.quaternion_from_euler(0, 0, yaw)
 
@@ -483,6 +545,10 @@ class PathExtractor(object):
         pose.pose.orientation.w = quaternion[3]
 
         return pose 
+
+    def to_pose_stamped_waypoint(self, way_point, current_time):
+        
+        return self.to_pose_stamped(way_point.transform, current_time) 
 
     def to_pose_stamped_route(self, route_point, current_time, actor_flag):
         pos = self.get_position(route_point, actor_flag)
