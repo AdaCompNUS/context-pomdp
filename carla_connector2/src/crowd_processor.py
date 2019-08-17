@@ -12,6 +12,7 @@ import carla_connector2.msg
 from peds_unity_system.msg import car_info as CarInfo # panpan
 from util import *
 
+# TODO Speed up spawning logic to prevent hangs in ROS.
 class CrowdProcessor(Drunc):
     def __init__(self):
         super(CrowdProcessor, self).__init__()
