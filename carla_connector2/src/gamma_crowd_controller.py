@@ -204,7 +204,14 @@ class GammaCrowdController(Drunc):
         
         # For ego vehicle.
         self.gamma.add_agent(carla.AgentParams.get_default('Car'), self.num_network_agents + self.num_sidewalk_agents)
-    
+   
+    def dispose(self):
+        commands = []
+        commands.extend(carla.command.DestroyActor(a.actor.id) for a in self.network_agents)
+        commands.extend(carla.command.DestroyActor(a.actor.id) for a in self.sidewalk_agents)
+        self.client.apply_batch(commands)
+        print('Destroyed crowd actors.')
+
     def il_car_info_callback(self, car_info):
         self.ego_car_info = car_info
         i = len(self.network_agents) + len(self.sidewalk_agents)
@@ -334,7 +341,6 @@ class GammaCrowdController(Drunc):
             sidewalk_agent_msg.route_point.offset = a.path.route_points[0].offset
             sidewalk_agents_msg.agents.append(sidewalk_agent_msg)
         self.sidewalk_agents_pub.publish(sidewalk_agents_msg)
-            
         
             
 if __name__ == '__main__':
@@ -345,3 +351,5 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         gamma_crowd_controller.update()
         rate.sleep()
+
+    gamma_crowd_controller.dispose()

@@ -46,12 +46,6 @@ class EgoVehicle(Drunc):
         self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=1)
         self.car_info_pub = rospy.Publisher('/IL_car_info', CarInfo, queue_size=1)
         self.plan_pub = rospy.Publisher('/plan', NavPath, queue_size=1)
-
-        print("Publish odom static_transform")
-        self.broadcaster = None
-        self.publish_odom_transform()
-
-        self.transformer = TransformListener()
         
         self.world.on_tick(self.world_tick_callback)
         self.update_timer = rospy.Timer(
@@ -61,90 +55,15 @@ class EgoVehicle(Drunc):
     def get_position(self):
         location = self.actor.get_location()
         return carla.Vector2D(location.x, location.y)
-
-    def get_cur_ros_transform(self):
-        transformStamped = geometry_msgs.msg.TransformStamped()
-   
-        transformStamped.header.stamp = rospy.Time.now()
-        transformStamped.header.frame_id = "map"
-        transformStamped.child_frame_id = 'odom'
-  
-        transformStamped.transform.translation.x = self.player.get_location().x
-        transformStamped.transform.translation.y = self.player.get_location().y
-        transformStamped.transform.translation.z = self.player.get_location().z
-  
-        quat = tf.transformations.quaternion_from_euler(
-                float(0),float(0),float(self.player.get_transform().rotation.yaw))
-        transformStamped.transform.rotation.x = quat[0]
-        transformStamped.transform.rotation.y = quat[1]
-        transformStamped.transform.rotation.z = quat[2]
-        transformStamped.transform.rotation.w = quat[3]
-
-        return transformStamped
-
-    def publish_odom_transform(self):
-        self.broadcaster = tf2_ros.StaticTransformBroadcaster()
-
-        static_transformStamped = self.get_cur_ros_transform()
-        
-        self.broadcaster.sendTransform(static_transformStamped)
-
-        time.sleep(1)
-
-    def get_transform_wrt_odom_frame(self):
-        cur_pose = self.extractor.get_cur_ros_pose()
-
-        transform = t.concatenate_matrices(
-            t.translation_matrix(trans), t.quaternion_matrix(rot))
-        inversed_transform = t.inverse_matrix(transform)
-
-        inv_translation = t.translation_from_matrix(inversed_transform)
-        inv_quaternion = t.quaternion_from_matrix(inversed_transform)
-
-        transformStamped = geometry_msgs.msg.TransformStamped()
-        transformStamped.transform.translation.x = inv_translation[0]
-        transformStamped.transform.translation.y = inv_translation[1]
-        transformStamped.transform.translation.z = inv_translation[2]
-        transformStamped.transform.rotation.x = inv_quaternion[0]
-        transformStamped.transform.rotation.y = inv_quaternion[1]
-        transformStamped.transform.rotation.z = inv_quaternion[2]
-        transformStamped.transform.rotation.w = inv_quaternion[3]
-
-        cur_transform_wrt_odom = tf2_geometry_msgs.do_transform_pose(
-            cur_pose, transformStamped)
-        
-        translation = cur_transform_wrt_odom.pose.position
-
-        quaternion = (
-                cur_transform_wrt_odom.pose.orientation.x,
-                cur_transform_wrt_odom.pose.orientation.y,
-                cur_transform_wrt_odom.pose.orientation.z,
-                cur_transform_wrt_odom.pose.orientation.w)
-
-        _, _, yaw = tf.transformations.euler_from_quaternion(quaternion)   
-
-        return translation, yaw
-
     
     def publish_odom(self):
         current_time = rospy.Time.now() 
 
-        # Wait for odom frame to be ready
-        has_odom = False
-        while (not has_odom):
-            try:
-                (trans, rot) = self.transformer.lookupTransform("map", "odom", rospy.Time(0))
-                has_odom = True
-            except:
-                print("odom map transform not exist yet")
-                time.sleep(1)
-        
         frame_id = "odom"
         child_frame_id = "base_link"
-
-        translation, yaw = self.get_transform_wrt_odom_frame()
-        pos = carla.Location(translation.x, translation.y, translation.z)
+        pos = self.actor.get_location()
         vel = self.actor.get_velocity()
+        yaw = self.actor.get_transform().rotation.yaw
         v_2d = np.array([vel.x, vel.y, 0])
         forward = np.array([math.cos(np.deg2rad(yaw)), math.sin(np.deg2rad(yaw)), 0])
         speed = np.vdot(forward, v_2d)
@@ -260,7 +179,7 @@ class EgoVehicle(Drunc):
             control.brake = 0.0
         else:
             control.throttle = 0.0
-            control.brake = -self.cmd_accel
+            control.brake = self.cmd_accel
 
         self.actor.apply_control(control)
 

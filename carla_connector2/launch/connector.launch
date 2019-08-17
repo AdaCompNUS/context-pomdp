@@ -1,6 +1,6 @@
 <launch>
   <node name="spawn_meshes" pkg="carla_connector2" type="spawn_meshes.py" output="screen"/>
-  
+ 
   <node name="ego_vehicle" pkg="carla_connector2" type="ego_vehicle.py" output="screen"/>
   
   <node name="speed_controller" pkg="carla_connector2" type="speed_controller.py" output="screen"/>

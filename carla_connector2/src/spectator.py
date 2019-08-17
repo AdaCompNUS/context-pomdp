@@ -16,8 +16,14 @@ class Spectator(Drunc):
 
         self.actor = None
         self.camera_sensor_actor = None
+    
+        cv2.startWindowThread()
+        cv2.namedWindow('spectator')
 
         self.world_tick_callback_id = self.world.on_tick(self.world_tick_callback)
+
+    def dispose(self):
+        cv2.destroyWindow('spectator')
 
     def world_tick_callback(self, snapshot):
         if self.actor is not None:
@@ -52,10 +58,6 @@ if __name__ == '__main__':
     rospy.init_node('spectator')
     spectator = Spectator()
 
-    # TODO Put in the correct place.
-    cv2.startWindowThread()
-    cv2.namedWindow('spectator')
-
     rospy.spin()
 
-    cv2.destroyWindow('spectator')
+    spectator.dispose()
