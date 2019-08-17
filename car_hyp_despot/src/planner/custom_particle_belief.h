@@ -91,6 +91,8 @@ public:
 
 	void publishMarker(int , AgentBelief & ped);
 
+	State* GetParticle(int i);
+
 	//inline int GetThreadID() const{return 0/*MapThread(this_thread::get_id())*/;}
 };
 

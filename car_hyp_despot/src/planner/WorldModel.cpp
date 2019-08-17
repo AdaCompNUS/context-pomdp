@@ -944,9 +944,31 @@ void WorldModel::cal_bb_extents(AgentBelief& b, AgentStruct& agent){
     COORD forward_vec = COORD(cos(b.heading_dir), sin(b.heading_dir));
     COORD sideward_vec = COORD(-sin(b.heading_dir), cos(b.heading_dir));
     
-    agent.bb_extent_x = 0.0; agent.bb_extent_y = 0.0;
+    if (agent.type == AgentType::ped){
+        agent.bb_extent_x = 0.3; agent.bb_extent_y = 0.3;        
+    }
+    else {
+        agent.bb_extent_x = 0.0; agent.bb_extent_y = 0.0;
+    }    
 
     for (auto& point: b.bb){
+        agent.bb_extent_x = max((point - agent.pos).dot(sideward_vec), agent.bb_extent_x);
+        agent.bb_extent_y = max((point - agent.pos).dot(forward_vec), agent.bb_extent_y);
+    }
+}
+
+void WorldModel::cal_bb_extents(AgentStruct& agent, std::vector<COORD>& bb, double heading_dir){
+    COORD forward_vec = COORD(cos(heading_dir), sin(heading_dir));
+    COORD sideward_vec = COORD(-sin(heading_dir), cos(heading_dir));
+    
+    if (agent.type == AgentType::ped){
+        agent.bb_extent_x = 0.3; agent.bb_extent_y = 0.3;        
+    }
+    else {
+        agent.bb_extent_x = 0.0; agent.bb_extent_y = 0.0;
+    }    
+
+    for (auto& point: bb){
         agent.bb_extent_x = max((point - agent.pos).dot(sideward_vec), agent.bb_extent_x);
         agent.bb_extent_y = max((point - agent.pos).dot(forward_vec), agent.bb_extent_y);
     }
@@ -1315,8 +1337,6 @@ AgentBelief WorldModel::initPedBelief(const Agent& agent) {
     b.vel = agent.vel;
     
     b.reset = agent.reset_intention;
-
-
     b.heading_dir = fetch_heading_dir(agent);
     b.cross_dir = fetch_cross_dir(agent);
 
@@ -1410,7 +1430,7 @@ void WorldStateTracker::tracIntention(Agent& des, const Agent& src, bool doPrint
 }
 
 void WorldStateTracker::trackVel(Agent& des, const Agent& src, bool& no_move, bool doPrint){
-    double duration =  get_timestamp() - des.last_update;
+    double duration =  src.time_stamp - des.time_stamp;
 
     if (duration < 0.1 / Globals::config.time_scale){
         no_move = false;
@@ -1456,7 +1476,8 @@ void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
             tracIntention(veh_list[i], veh, doPrint);
             tracBoundingBox(veh_list[i], veh, doPrint);
 
-            veh_list[i].last_update = get_timestamp();
+            veh_list[i].time_stamp = veh.time_stamp;
+            // veh_list[i].last_update = get_timestamp();
 
             break;
         }
@@ -1472,7 +1493,8 @@ void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
 
         veh_list.back().vel.x = 0.01; // to avoid subsequent runtime error
         veh_list.back().vel.y = 0.01; // to avoid subsequent runtime error
-        veh_list.back().last_update = get_timestamp();
+        // veh_list.back().last_update = get_timestamp();
+        veh_list.back().time_stamp = veh.time_stamp;
     }
 
     if (no_move){
@@ -1492,7 +1514,8 @@ void WorldStateTracker::updatePed(const Pedestrian& agent, bool doPrint){
             tracPos(ped_list[i], agent, doPrint);
             tracIntention(ped_list[i], agent, doPrint);
             tracCrossDirs(ped_list[i], agent, doPrint);
-            ped_list[i].last_update = get_timestamp();
+            ped_list[i].time_stamp = agent.time_stamp;
+            // ped_list[i].last_update = get_timestamp();
 
             break;
         }
@@ -1512,7 +1535,8 @@ void WorldStateTracker::updatePed(const Pedestrian& agent, bool doPrint){
 
         ped_list.back().vel.x = 0.01; // to avoid subsequent runtime error
         ped_list.back().vel.y = 0.01; // to avoid subsequent runtime error
-        ped_list.back().last_update = get_timestamp();
+        ped_list.back().time_stamp = agent.time_stamp;
+        // ped_list.back().last_update = get_timestamp();
 //        cout <<"[updatePed] new agent added" << agent.id << endl;
     }
 
@@ -1616,7 +1640,11 @@ void WorldStateTracker::setPomdpPed(AgentStruct& agent, const Agent& src){
     agent.speed = ModelParams::PED_SPEED;
     agent.intention = -1; // which path to take
     agent.pos_along_path = 0.0; // travel distance along the path
-    agent.cross_dir = -1; // which path to take
+    agent.cross_dir = fetch_cross_dir(src);; // which path to take
+    auto bb = fetch_bounding_box(src);
+    double heading = fetch_heading_dir(src);
+
+    model.cal_bb_extents(agent, bb, heading);
 }
 
 PomdpState WorldStateTracker::getPomdpState() {

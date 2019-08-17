@@ -167,7 +167,7 @@ class PathExtractor(object):
         cur_pose.pose.position.z = self.player.get_location().z
   
         quat = tf.transformations.quaternion_from_euler(
-                float(0),float(0),float(self.player.get_transform().rotation.yaw))
+                float(0),float(0),float(numpy.deg2rad(self.player.get_transform().rotation.yaw)))
         cur_pose.pose.orientation.x = quat[0]
         cur_pose.pose.orientation.y = quat[1]
         cur_pose.pose.orientation.z = quat[2]
@@ -187,7 +187,7 @@ class PathExtractor(object):
         transformStamped.transform.translation.z = self.player.get_location().z
   
         quat = tf.transformations.quaternion_from_euler(
-                float(0),float(0),float(self.player.get_transform().rotation.yaw))
+                float(0),float(0),float(numpy.deg2rad(self.player.get_transform().rotation.yaw)))
         transformStamped.transform.rotation.x = quat[0]
         transformStamped.transform.rotation.y = quat[1]
         transformStamped.transform.rotation.z = quat[2]
@@ -197,13 +197,14 @@ class PathExtractor(object):
    
 
     def publish_odom_transform(self):
+        time.sleep(2)
+
         self.broadcaster = tf2_ros.StaticTransformBroadcaster()
 
         static_transformStamped = self.get_cur_ros_transform()
         
         self.broadcaster.sendTransform(static_transformStamped)
 
-        time.sleep(1)
 
 
     def spawn_osm_vehicle(self):

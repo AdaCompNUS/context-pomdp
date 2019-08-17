@@ -9,7 +9,14 @@
 #include <ped_is_despot/ped_info.h>
 #include <ped_is_despot/peds_believes.h>
 #include <nav_msgs/OccupancyGrid.h>
+
+// #define CONNECTOR2
+
+#include <carla_connector/agent_array.h>
+
+#ifdef CONNECTOR2
 #include <carla_connector2/TrafficAgentArray.h>
+#endif
 
 #include "neural_prior.h"
 
@@ -26,7 +33,11 @@ bool SimulatorBase::agents_data_ready = false;
 double pub_frequency = 9.0;
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector);
-void agentArrayCallback(carla_connector2::TrafficAgentArray);
+#ifdef CONNECTOR2
+	void agentArrayCallback(carla_connector2::TrafficAgentArray);
+#else
+	void agentArrayCallback(carla_connector::agent_array);
+#endif
 void receive_map_callback(nav_msgs::OccupancyGrid map);
 
 COORD poseToCoord(const tf::Stamped<tf::Pose>& pose) {
@@ -148,6 +159,8 @@ State* WorldSimulator::GetCurrentState(){
 	// transpose to laser frame for ped avoidance
 	in_pose.setIdentity();
 	in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
+
+	// in_pose.frame_id_ = ModelParams::rosns + "odom";
 
 	// cout<<__FUNCTION__<<" global_frame_id: "<<global_frame_id<<" "<<endl;
 
@@ -414,7 +427,7 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered){
 	SolverPrior::nn_priors[0]->Check_force_steer(stateTracker->car_heading_dir, 
 		worldModel.path.getCurDir(), stateTracker->carvel);
 
-	// worldModel.path.text();
+	worldModel.path.text();
 
 	cout << "[update_cmds_naive] Buffering action " << action << endl;
 
@@ -748,21 +761,40 @@ bool sortFn(Pedestrian p1,Pedestrian p2)
 	return p1.id<p2.id;
 }
 
+#ifdef CONNECTOR2
 void agentArrayCallback(carla_connector2::TrafficAgentArray data){
+#else 
+void agentArrayCallback(carla_connector::agent_array data){
+#endif
 
 	DEBUG(string_sprintf("receive agent num %d", sizeof(data.agents)));
 
 	vector<Pedestrian> ped_list;
 	vector<Vehicle> veh_list;
 
-	for (carla_connector2::TrafficAgent& agent : data.agents){
+	int data_sec = data.header.stamp.sec;  // std_msgs::time
+	int data_nsec = data.header.stamp.sec;
 
+	double data_time_sec = data_sec + data_sec * 1e-9;
+
+	#ifdef CONNECTOR2
+	for (carla_connector2::TrafficAgent& agent : data.agents){
+	#else
+	for (carla_connector::traffic_agent& agent : data.agents){
+	#endif
+
+		#ifdef CONNECTOR2
 		std::string agent_type = agent.type;
+		#else
+		std::string agent_type = agent.type.data;
+		#endif
 
 		cout << "get agent: " << agent.id <<" "<< agent_type << endl;
 
 		if (agent_type == "car"){
 			Vehicle world_veh;
+
+			world_veh.time_stamp = data_time_sec;
 
 			world_veh.id = agent.id;
 			world_veh.w = agent.pose.position.x;
@@ -787,6 +819,8 @@ void agentArrayCallback(carla_connector2::TrafficAgentArray data){
 
 		} else if (agent_type == "ped"){
 			Pedestrian world_ped;
+
+			world_ped.time_stamp = data_time_sec;
 
 			world_ped.id = agent.id;
 			world_ped.w = agent.pose.position.x;

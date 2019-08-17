@@ -26,7 +26,6 @@ import pdb
 odom_broadcaster = tf.TransformBroadcaster()
 
 
-
 class StateProcessor(object):
     '''
     Get agents' state info from CARLA and publish them as ROS topics
@@ -149,6 +148,7 @@ class StateProcessor(object):
         # _, _, yaw = t.euler_from_matrix(cur_transform_wrt_odom)    
         _, _, yaw = tf.transformations.euler_from_quaternion(quaternion)   
 
+        # print("ego vehicle yaw={}".format(yaw))
         frame_id = "odom"
         child_frame_id = "base_link"
         pos = carla.Location(translation.x, translation.y, translation.z)
@@ -244,7 +244,7 @@ class StateProcessor(object):
                 agent_tmp.pose.position.x = actor.get_location().x
                 agent_tmp.pose.position.y = actor.get_location().y
                 agent_tmp.pose.position.z = actor.get_location().z
-                yaw = self.player.get_transform().rotation.yaw
+                yaw = numpy.deg2rad(actor.get_transform().rotation.yaw)
                 quat_tf = tf.transformations.quaternion_from_euler(0, 0, yaw)
 
                 agent_tmp.pose.orientation = Quaternion(quat_tf[0], quat_tf[1], quat_tf[2], quat_tf[3])

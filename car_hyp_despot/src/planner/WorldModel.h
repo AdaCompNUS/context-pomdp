@@ -113,6 +113,7 @@ public:
     void InitRVO();
 
     void cal_bb_extents(AgentBelief& bb, AgentStruct& agent);
+    void cal_bb_extents(AgentStruct& agent, std::vector<COORD>& bb, double heading_dir);
 
 	Path path;
     COORD car_goal;
@@ -271,7 +272,7 @@ public:
                 break;
             }
         }
-        if (timestamp() - agent.last_update > 0.2) 
+        if (timestamp() - agent.time_stamp > 1.0) // agent disappeared for 1 second
             insert=false;
         return insert;
     }

@@ -273,13 +273,14 @@ void Controller::InitializeDefaultParameters() {
 
 	if (b_use_drive_net_ == JOINT_POMDP) {
 		Globals::config.useGPU=false;
-    Globals::config.num_scenarios=10;
+    	Globals::config.num_scenarios=10;
 		Globals::config.NUM_THREADS=10;
 		Globals::config.discount=0.95;
 		Globals::config.search_depth=20;
 		Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/20;
 		Globals::config.pruning_constant=0.001;
 		Globals::config.exploration_constant = 0.1;
+		Globals::config.silence = true;
   }
 
 //	Globals::config.root_seed=1024;
@@ -460,22 +461,22 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 	State* cur_state = world->GetCurrentState();
 
 
-	DEBUG("current state get");
+	// DEBUG("current state get");
 
 	if(!cur_state)
 		ERR(string_sprintf("cur state NULL"));
 
-	DEBUG("copy for search");
+	// DEBUG("copy for search");
 	State* search_state =static_cast<const PedPomdp*>(ped_pomdp_model)->CopyForSearch(cur_state);//create a new state for search
 
-	DEBUG("DeepUpdate");
+	// DEBUG("DeepUpdate");
 	static_cast<PedPomdpBelief*>(solver->belief())->DeepUpdate(
 			SolverPrior::nn_priors[0]->history_states(),
 			SolverPrior::nn_priors[0]->history_states_for_search(),
 			cur_state,
 			search_state, last_action);
 
-	DEBUG("Track");
+	// DEBUG("Track");
   	if (Globals::config.use_prior && SolverPrior::history_mode == "track"){
 		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
 		for(int i=0; i<SolverPrior::nn_priors.size();i++){
@@ -712,6 +713,10 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
   if (b_use_drive_net_ == NO || b_use_drive_net_ == JOINT_POMDP){
 		cerr << "DEBUG: Search for action using " <<typeid(*solver).name()<< endl;
 		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(static_cast<const PedPomdp*>(ped_pomdp_model));
+		
+		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(
+			*static_cast<PedPomdpBelief*>(solver->belief())->GetParticle(0));
+
 		action = solver->Search().action;
 	}
 	else if (b_use_drive_net_ == LETS_DRIVE){

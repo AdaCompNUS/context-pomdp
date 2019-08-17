@@ -27,8 +27,8 @@ const_speed = 0.47
 
 goal_reached = 0
 
-use_steer_from_path = False # False, if True, steering will be calculated from path
-use_steer_from_pomdp = True # True, if True, steering will come from 'cmd_vel' topic
+use_steer_from_path = True # False, if True, steering will be calculated from path
+use_steer_from_pomdp = False # True, if True, steering will come from 'cmd_vel' topic
 
 def dist(a, b):
     return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2)
@@ -294,19 +294,25 @@ class Pursuit(object):
             control = self.player.get_control()
             control.steer =  self.car_steer # numpy.rad2deg(self.car_steer)
 
+            cur_vel = norm(self.player.get_velocity())
+            max_vel = 1.5
+
+            if cur_vel >= max_vel and self.car_acc >0:
+                self.car_acc = 0
+
             if self.car_acc > 0:
-                control.throttle = self.car_acc
+                control.throttle = min(self.car_acc, 1.0)
                 control.brake = 0.0
             elif self.car_acc == 0:
                 control.throttle = 0.0
                 control.brake = 0.0
             else:
                 control.throttle = 0
-                control.brake = -self.car_acc
+                control.brake = min(-self.car_acc,1.0)
 
             # if not mute_debug:
-            print("Updating carla control, throttle {}, brake {}, steer {}".format(
-                    control.throttle, control.brake, control.steer))
+            # print("Updating carla control, throttle {}, brake {}, steer {}".format(
+                    # control.throttle, control.brake, control.steer))
 
             self.player.apply_control(control)
             

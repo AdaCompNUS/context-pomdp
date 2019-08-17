@@ -615,13 +615,19 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 	    << state.car.vel << endl;
 	out << state.num << " pedestrians " << endl;
 	for (int i = 0; i < state.num; i ++) {
-		out << "agent " << i << ": id / pos / speed / vel / intention / dist2car / infront =  " << state.agents[i].id << " / "
+		out << "agent " << i << ": id / pos / speed / vel / intention / dist2car / infront =  " 
+			<< state.agents[i].id << " / "
 		    << "(" << state.agents[i].pos.x << ", " << state.agents[i].pos.y << ") / "
 		    << state.agents[i].speed << " / "
 		    << "(" << state.agents[i].vel.x << ", " << state.agents[i].vel.y << ") / "
 		    << state.agents[i].intention << " / "
-		    << COORD::EuclideanDistance(state.agents[i].pos, carpos) << "/"
-		    << world_model->inFront(state.agents[i].pos, state.car) << endl;
+		    << COORD::EuclideanDistance(state.agents[i].pos, carpos) << " / "
+		    << world_model->inFront(state.agents[i].pos, state.car)
+			<< " (mode) " << state.agents[i].mode
+			<< " (type) " << state.agents[i].type
+			<< " (bb) " << state.agents[i].bb_extent_x << " "
+			<< state.agents[i].bb_extent_y 
+			<< " (cross) " << state.agents[i].cross_dir << endl;
 	}
 	
 	double min_dist = -1;
@@ -665,12 +671,13 @@ void PedPomdp::PrintWorldState(const PomdpStateWorld& state, ostream& out) const
 			mindist_id = i;
 		}
 
-		out << "agent " << i << ": id / pos / speed / vel / intention / dist2car / infront =  " << state.agents[i].id << " / "
+		out << "agent " << i << ": id / pos / speed / vel / intention / dist2car / infront =  " 
+			<< state.agents[i].id << " / "
 		    << "(" << state.agents[i].pos.x << ", " << state.agents[i].pos.y << ") / "
 		    << state.agents[i].speed << " / "
 		    << "(" << state.agents[i].vel.x << ", " << state.agents[i].vel.y << ") / "
 		    << state.agents[i].intention << " / "
-		    << COORD::EuclideanDistance(state.agents[i].pos, carpos) << "/"
+		    << COORD::EuclideanDistance(state.agents[i].pos, carpos) << " / "
 		    << world_model->inFront(state.agents[i].pos, state.car)
 			<< " (mode) " << state.agents[i].mode
 			<< " (type) " << state.agents[i].type

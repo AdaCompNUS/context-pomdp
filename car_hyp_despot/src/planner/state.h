@@ -56,13 +56,13 @@ class Agent
 {
 public:
 	Agent() {
-		last_update = -1; vel.x = 0; vel.y = 0;
+		time_stamp = -1; vel.x = 0; vel.y = 0;
     }
 	Agent(double _w,double _h,int _id) {
-        w=_w;h=_h;id=_id;last_update = -1; vel.x = 0; vel.y = 0;
+        w=_w;h=_h;id=_id;time_stamp = -1; vel.x = 0; vel.y = 0;
     }
 	Agent(double _w,double _h) {w=_w;h=_h;
-		last_update = -1; vel.x = 0; vel.y = 0;
+		time_stamp = -1; vel.x = 0; vel.y = 0;
     }
 
     virtual AgentType type() const = 0;
@@ -70,7 +70,8 @@ public:
 	double w,h;
 	COORD vel;
 	int id;   //each pedestrian has a unique identity
-	double last_update;
+	double time_stamp;
+	// double last_update;
 
 	bool reset_intention;
 	std::vector<Path> paths;	

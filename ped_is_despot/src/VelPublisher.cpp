@@ -87,7 +87,7 @@ public:
 
         tick ++;
         cmd_pub.publish(cmd);
-		std::cout<<" ~~~~~~ vel publisher cmd steer="<< cmd.angular.z << ", acc="<< cmd.linear.y << std::endl;
+		// std::cout<<" ~~~~~~ vel publisher cmd steer="<< cmd.angular.z << ", acc="<< cmd.linear.y << std::endl;
     }
 
     double curr_vel, target_vel, init_curr_vel, steering;

@@ -298,6 +298,9 @@ void PedPomdpBelief::ResampleParticles(const PedPomdp* model){
 	}
 }
 
+State* PedPomdpBelief::GetParticle(int i){
+	return particles_[i];
+}
 
 void PedPomdpBelief::Update(ACT_TYPE action, OBS_TYPE obs) {
 	logi << "[PedPomdpBelief::Update] Doing nothing " << endl;
