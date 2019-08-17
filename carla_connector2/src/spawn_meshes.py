@@ -9,10 +9,8 @@ class SpawnMeshes(Drunc):
     def __init__(self):
         super(SpawnMeshes, self).__init__()
         
-        triangles = self.occupancy_map.get_mesh_triangles()
-        
         self.network_mesh_id = self.world.spawn_dynamic_mesh(
-            self.occupancy_map.get_mesh_triangles(), 
+            self.network_occupancy_map.get_mesh_triangles(), 
             '/Game/Carla/Static/GenericMaterials/Asphalt/M_Asphalt01')
         self.sidewalk_mesh_id = self.world.spawn_dynamic_mesh(
             self.sidewalk_occupancy_map.get_mesh_triangles(),
