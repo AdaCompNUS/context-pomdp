@@ -139,17 +139,34 @@ class CrowdProcessor(Drunc):
                         path_msg.poses.append(pose_msg)
                     agent_tmp.path_candidates.append(path_msg)
                 agent_tmp.cross_dirs = []
-                
                 self.topological_hash_map[agent.id] = topological_hash
 
             elif type(agent) is carla_connector2.msg.CrowdSidewalkAgent:
-                network_route_point = carla.SidewalkRoutePoint()
-                paths = [[network_route_point]]
-                topological_hash = ''
+                sidewalk_route_point = carla.SidewalkRoutePoint()
+                sidewalk_route_point.polygon_id = agent.route_point.polygon_id
+                sidewalk_route_point.segment_id = agent.route_point.segment_id
+                sidewalk_route_point.offset = agent.route_point.offset
 
-                agent_tmp.reset_intention = False
-                agent_tmp.path_candidates = []
-                agent_tmp.cross_dirs = [True]
+                path = [sidewalk_route_point]
+                for _ in range(20):
+                    path.append(self.sidewalk.get_next_route_point(path[-1], 1.0)) # TODO Add as ROS parameter.
+                topological_hash = '{},{}'.format(sidewalk_route_point.polygon_id, agent.route_orientation)
+
+                agent_tmp.reset_intention = self.topological_hash_map[agent.id] is None or self.topological_hash_map[agent.id] != topological_hash
+                path_msg = Path()
+                path_msg.header.frame_id = 'map'
+                path_msg.header.stamp = current_time
+                for route_point in path:
+                    route_point_position = self.sidewalk.get_route_point_position(route_point)
+                    pose_msg = PoseStamped()
+                    pose_msg.header.frame_id = 'map'
+                    pose_msg.header.stamp = current_time
+                    pose_msg.pose.position.x = route_point_position.x
+                    pose_msg.pose.position.y = route_point_position.y
+                    path_msg.poses.append(pose_msg)
+                agent_tmp.path_candidates = [path_msg]
+                agent_tmp.cross_dirs = [agent.route_orientation]
+                self.topological_hash_map[agent.id] = topological_hash
             
             agents_msg.agents.append(agent_tmp)
 

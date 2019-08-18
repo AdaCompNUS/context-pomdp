@@ -8,13 +8,13 @@ class SidewalkAgentPath:
         self.min_points = min_points
         self.interval = interval
         self.route_points = []
-        self.extend_direction = None
+        self.route_orientation = None
 
     @staticmethod
     def rand_path(drunc, min_points, interval):
         path = SidewalkAgentPath(drunc, min_points, interval)
         path.route_points = [drunc.rand_sidewalk_route_point()]
-        path.extend_direction = random.choice([True, False])
+        path.route_orientation = random.choice([True, False])
         path.resize()
         return path
 
@@ -24,10 +24,10 @@ class SidewalkAgentPath:
                 adjacent_route_points = self.drunc.sidewalk.get_adjacent_route_points(self.route_points[-1])
                 if adjacent_route_points:
                     self.route_points.append(adjacent_route_points[0])
-                    self.extend_direction = random.randint(0, 1) == 1
+                    self.route_orientation = random.randint(0, 1) == 1
                     continue
 
-            if self.extend_direction:
+            if self.route_orientation:
                 self.route_points.append(
                         self.drunc.sidewalk.get_next_route_point(self.route_points[-1], self.interval))
             else:
