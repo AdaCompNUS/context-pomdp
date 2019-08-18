@@ -5,12 +5,17 @@ import numpy as np
 import rospy
 import tf
 from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped, Point, Pose, Quaternion, Vector3, Polygon, Point32
+from nav_msgs.msg import Path
 
 from drunc import Drunc
 import carla
 import carla_connector2.msg
 from peds_unity_system.msg import car_info as CarInfo # panpan
 from util import *
+
+'''    
+def get_path_candidates(self, num_points, interval):
+'''
 
 # TODO Speed up spawning logic to prevent hangs in ROS.
 class CrowdProcessor(Drunc):
@@ -60,6 +65,8 @@ class CrowdProcessor(Drunc):
         if not self.ego_car_info:
             return
 
+        current_time = rospy.Time.now()
+
         ego_car_position = self.ego_car_info.car_pos
         ego_car_position = carla.Vector2D(
                 ego_car_position.x,
@@ -93,9 +100,52 @@ class CrowdProcessor(Drunc):
                 agent_tmp.bbox.points.append(Point32(
                     x=corner.x, y=corner.y, z=0.0))
 
-            agent_tmp.reset_intention = False # TODO: set this flag when intention changes
-            agent_tmp.path_candidates = []
-            agent_tmp.cross_dirs = [True]  #TODO: this is particular to each path
+            if type(agent) is carla_connector2.msg.CrowdNetworkAgent:
+                initial_route_point = carla.SumoNetworkRoutePoint()
+                initial_route_point.edge = agent.route_point.edge
+                initial_route_point.lane = agent.route_point.lane
+                initial_route_point.segment = agent.route_point.segment
+                initial_route_point.offset = agent.route_point.offset
+
+                paths = [[initial_route_point]]
+                topological_hash = ''
+            
+                #TODO Add 20, 1.0 as ROS paramters.
+                for _ in range(20):
+                    next_paths = []
+                    for path in paths:
+                        next_route_points = self.network.get_next_route_points(path[-1], 1.0)
+                        next_paths.extend(path + [route_point] for route_point in next_route_points)
+                        if len(next_route_points) > 1:
+                            topological_hash += '({},{},{},{}={})'.format(
+                                    path[-1].edge, path[-1].lane, path[-1].segment, path[-1].offset, 
+                                    len(next_route_points))
+                    paths = next_paths
+                
+                agent_tmp.reset_intention = False
+                for path in paths:
+                    path_msg = Path()
+                    path_msg.header.frame_id = 'map'
+                    path_msg.header.stamp = current_time
+                    for route_point in path:
+                        route_point_position = self.network.get_route_point_position(route_point)
+                        pose_msg = PoseStamped()
+                        pose_msg.header.frame_id = 'map'
+                        pose_msg.header.stamp = current_time
+                        pose_msg.pose.position.x = route_point_position.x
+                        pose_msg.pose.position.y = route_point_position.y
+                        path_msg.poses.append(pose_msg)
+                    agent_tmp.path_candidates.append(path_msg)
+                agent_tmp.cross_dirs = [True]
+
+            elif type(agent) is carla_connector2.msg.CrowdSidewalkAgent:
+                network_route_point = carla.SidewalkRoutePoint()
+                paths = [[network_route_point]]
+                topological_hash = ''
+
+                agent_tmp.reset_intention = False
+                agent_tmp.path_candidates = []
+                agent_tmp.cross_dirs = [True]
             
             agents_msg.agents.append(agent_tmp)
 
