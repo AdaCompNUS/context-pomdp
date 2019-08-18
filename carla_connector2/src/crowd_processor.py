@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 import numpy as np
+from collections import defaultdict
 
 import rospy
 import tf
@@ -26,6 +27,7 @@ class CrowdProcessor(Drunc):
         self.sidewalk_agents = []
         self.do_update = False
         self.ego_car_info = None
+        self.topological_hash_map = defaultdict(lambda: None) # TODO Expiry to prevent memory explosion.
 
         self.network_agents_sub = rospy.Subscriber(
                 '/crowd/network_agents', 
@@ -79,7 +81,7 @@ class CrowdProcessor(Drunc):
         for agent in agents:
             actor = self.world.get_actor(agent.id)
 
-            if actor is None or (get_position(actor) - ego_car_position).length() > 50:
+            if actor is None or (get_position(actor) - ego_car_position).length() > 50: # TODO Add as ROS parameter.
                 continue
             
             agent_tmp = carla_connector2.msg.TrafficAgent()
@@ -121,8 +123,8 @@ class CrowdProcessor(Drunc):
                                     path[-1].edge, path[-1].lane, path[-1].segment, path[-1].offset, 
                                     len(next_route_points))
                     paths = next_paths
-                
-                agent_tmp.reset_intention = False
+
+                agent_tmp.reset_intention = self.topological_hash_map[agent.id] is None or self.topological_hash_map[agent.id] != topological_hash
                 for path in paths:
                     path_msg = Path()
                     path_msg.header.frame_id = 'map'
@@ -136,7 +138,9 @@ class CrowdProcessor(Drunc):
                         pose_msg.pose.position.y = route_point_position.y
                         path_msg.poses.append(pose_msg)
                     agent_tmp.path_candidates.append(path_msg)
-                agent_tmp.cross_dirs = [True]
+                agent_tmp.cross_dirs = []
+                
+                self.topological_hash_map[agent.id] = topological_hash
 
             elif type(agent) is carla_connector2.msg.CrowdSidewalkAgent:
                 network_route_point = carla.SidewalkRoutePoint()
