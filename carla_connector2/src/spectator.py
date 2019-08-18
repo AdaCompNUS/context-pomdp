@@ -10,6 +10,8 @@ from drunc import Drunc
 import carla
 from carla import ColorConverter
 
+from nav_msgs.msg import Odometry
+
 class Spectator(Drunc):
     def __init__(self):
         super(Spectator, self).__init__()
@@ -59,6 +61,9 @@ class Spectator(Drunc):
 
 if __name__ == '__main__':
     rospy.init_node('spectator')
+    
+    data = rospy.wait_for_message('/odom', Odometry)
+
     spectator = Spectator()
 
     rospy.spin()

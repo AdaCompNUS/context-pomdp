@@ -8,6 +8,8 @@
 #include <ped_is_despot/peds_info.h>
 #include <ped_is_despot/ped_info.h>
 #include <ped_is_despot/peds_believes.h>
+#include "ros/ros.h"
+
 #include <nav_msgs/OccupancyGrid.h>
 
 #define CONNECTOR2
@@ -81,14 +83,12 @@ WorldSimulator::WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model, unsigned se
 	ros::NodeHandle n("~");
     n.param<std::string>("goal_file_name", worldModel.goal_file_name_, "null");
 
-
 	worldModel.InitPedGoals();
 	worldModel.InitRVO();
 	worldModel.car_goal=car_goal;
     AddObstacle();
 
     stateTracker=new WorldStateTracker(worldModel);
-
 }
 
 WorldSimulator::~WorldSimulator(){
@@ -121,11 +121,21 @@ bool WorldSimulator::Connect(){
 
     agentSub_ = nh.subscribe("agent_array", 1, agentArrayCallback); 
 
-   	//steerSub_ = nh.subscribe("IL_steer_cmd", 1, &WorldSimulator::update_il_steering, this);
+	clock_t begin = clock();
 
-//    timer_speed = nh.createTimer(ros::Duration(0.05), &WorldSimulator::publishCmdAction, this);
+    auto odom_data = ros::topic::waitForMessage<nav_msgs::Odometry>("odom");
+    auto car_data = ros::topic::waitForMessage<ped_is_despot::car_info>("IL_car_info");
+#ifdef CONNECTOR2
+	auto agent_data = ros::topic::waitForMessage<carla_connector2::TrafficAgentArray>("agent_array");
+#else
+	auto agent_data = ros::topic::waitForMessage<carla_connector::agent_array>("agent_array");
+#endif   
 
-//    timer_cmd_update = nh.createTimer(ros::Duration(1.0/pub_frequency), &WorldSimulator::update_cmds_buffered, this);
+	clock_t end = clock();
+	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+
+	logi << "[WorldSimulator] Simulator connected after waiting for " 
+		<< elapsed_secs << " s" << endl;
 
     return true;
 }

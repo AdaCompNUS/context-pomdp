@@ -15,4 +15,5 @@
   </node>
   
   <node name="crowd_processor" pkg="carla_connector2" type="crowd_processor.py" output="screen"/>
+  <node name="spectator" pkg="carla_connector2" type="spectator.py" output="screen"/>
 </launch>
