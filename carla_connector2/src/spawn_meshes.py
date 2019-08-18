@@ -15,7 +15,7 @@ class SpawnMeshes(Drunc):
         self.sidewalk_mesh_id = self.world.spawn_dynamic_mesh(
             self.sidewalk_occupancy_map.get_mesh_triangles(),
             '/Game/Carla/Static/GenericMaterials/M_Red')
-        self.world.wait_for_tick()
+        self.world.wait_for_tick(1.0)
 
     def dispose(self):
         self.world.destroy_dynamic_mesh(self.network_mesh_id)

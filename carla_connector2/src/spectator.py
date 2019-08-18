@@ -12,6 +12,7 @@ from carla import ColorConverter
 
 from nav_msgs.msg import Odometry
 
+# TODO Improve logic to allow registration against ego vehicle add/deletion/change.
 class Spectator(Drunc):
     def __init__(self):
         super(Spectator, self).__init__()
@@ -21,25 +22,6 @@ class Spectator(Drunc):
     
         cv2.startWindowThread()
         cv2.namedWindow('spectator')
-
-        self.world_tick_callback_id = self.world.on_tick(self.world_tick_callback)
-
-    def dispose(self):
-        if self.camera_sensor_actor is not None:
-            if self.camera_sensor_actor.is_alive:
-                if self.camera_sensor_actor.is_listening:
-                    self.camera_sensor_actor.stop()
-                self.camera_sensor_actor.destroy()
-
-        cv2.destroyWindow('spectator')
-
-    def world_tick_callback(self, snapshot):
-        if self.actor is not None:
-            if self.actor.is_alive:
-                return
-            else:
-                self.actor = None
-                self.camera_sensor_actor = None
         
         for actor in self.world.get_actors():
             if actor.is_alive and actor.attributes.get('role_name') == 'ego_vehicle':
@@ -57,6 +39,15 @@ class Spectator(Drunc):
                 carla.Transform(carla.Location(x=-32.0, z=24.0), carla.Rotation(pitch=-30.0)),
                 attach_to=self.actor)
             self.camera_sensor_actor.listen(self.camera_image_callback)
+
+    def dispose(self):
+        if self.camera_sensor_actor is not None:
+            if self.camera_sensor_actor.is_alive:
+                if self.camera_sensor_actor.is_listening:
+                    self.camera_sensor_actor.stop()
+                self.camera_sensor_actor.destroy()
+
+        cv2.destroyWindow('spectator')
 
     def camera_image_callback(self, image):
         array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))

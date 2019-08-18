@@ -18,7 +18,7 @@ class Drunc(object):
     def __init__(self):
         # Create connection to simulator.
         self.client = carla.Client('127.0.0.1', 2000)
-        self.client.set_timeout(5.0)
+        self.client.set_timeout(1.0)
         self.world = self.client.get_world()
 
         # Define bounds.

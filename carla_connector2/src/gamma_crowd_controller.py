@@ -248,7 +248,7 @@ class GammaCrowdController(Drunc):
             actor = self.world.try_spawn_actor(
                     random.choice(self.cars_blueprints),
                     trans)
-            self.world.wait_for_tick()
+            self.world.wait_for_tick(1.0)
             if actor:
                 self.network_agents.append(CrowdNetworkAgent(
                     actor, path, 
@@ -264,7 +264,7 @@ class GammaCrowdController(Drunc):
             actor = self.world.try_spawn_actor(
                     random.choice(self.walker_blueprints),
                     trans)
-            self.world.wait_for_tick()
+            self.world.wait_for_tick(1.0)
             if actor:
                 self.sidewalk_agents.append(CrowdSidewalkAgent(
                     actor, path, 
@@ -315,7 +315,7 @@ class GammaCrowdController(Drunc):
         self.sidewalk_agents = [a for a in next_agents if a and type(a) is CrowdSidewalkAgent]
         
         self.client.apply_batch(commands)
-        self.world.wait_for_tick()
+        self.world.wait_for_tick(1.0)
 
         network_agents_msg = carla_connector2.msg.CrowdNetworkAgentArray()
         network_agents_msg.header.stamp = rospy.Time.now()
