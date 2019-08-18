@@ -10,7 +10,7 @@
 #include <ped_is_despot/peds_believes.h>
 #include <nav_msgs/OccupancyGrid.h>
 
-// #define CONNECTOR2
+#define CONNECTOR2
 
 #include <carla_connector/agent_array.h>
 
@@ -330,7 +330,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	}
 	else if (worldModel.path.size()>0 && COORD::EuclideanDistance(stateTracker->carpos, worldModel.path[0])>4.0){
 		cerr << "=================== Path offset too high !!! Node shutting down" << endl;
-		ros::shutdown();
+		// ros::shutdown();
 	}
 	else{
 //		get_action_fix_latency(action);
@@ -767,16 +767,17 @@ void agentArrayCallback(carla_connector2::TrafficAgentArray data){
 void agentArrayCallback(carla_connector::agent_array data){
 #endif
 
-	DEBUG(string_sprintf("receive agent num %d", sizeof(data.agents)));
+	double data_sec = data.header.stamp.sec;  // std_msgs::time
+	double data_nsec = data.header.stamp.nsec;
+
+	double data_time_sec = data_sec + data_nsec * 1e-9;
+
+	DEBUG(string_sprintf("receive agent num %d at time %f \n", 
+		data.agents.size(), data_time_sec));
 
 	vector<Pedestrian> ped_list;
 	vector<Vehicle> veh_list;
-
-	int data_sec = data.header.stamp.sec;  // std_msgs::time
-	int data_nsec = data.header.stamp.sec;
-
-	double data_time_sec = data_sec + data_sec * 1e-9;
-
+	
 	#ifdef CONNECTOR2
 	for (carla_connector2::TrafficAgent& agent : data.agents){
 	#else

@@ -636,6 +636,53 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 	out << "MinDist: " << min_dist << endl;
 }
 
+PomdpState PedPomdp::PredictAgents(const PomdpState& ped_state) const {
+	PomdpState predicted_state = ped_state;
+
+	double steer_to_path = world_model->GetSteerToPath<PomdpState>(predicted_state);
+   	double acc = 1.0; // intend at max speed;
+
+	world_model->RobStepCurAction(predicted_state.car, acc, steer_to_path);
+
+	for(int i =0 ; i< predicted_state.num ; i++) {
+		auto & p = predicted_state.agents[i];
+
+		if(world_model->goal_mode == "goal") {
+            world_model->PedStepGoal(p, 1);
+        }
+        else if (world_model->goal_mode == "cur_vel") {
+            world_model->PedStepCurVel(p, 1);
+        }
+        else if (world_model->goal_mode == "path") {
+            world_model->PedStepPath(p, 1);
+        }
+    }
+
+    predicted_state.time_stamp = ped_state.time_stamp + 1.0 / ModelParams::control_freq;
+
+    return predicted_state;
+}
+
+void PedPomdp::ForwardAndVisualize(const State& sample, int step) const {
+	const PomdpState & state = static_cast<const PomdpState&> (sample);
+
+	PomdpState next_state = state;
+	for (int i = 0 ; i< step ; i++){
+		// forward
+		next_state = PredictAgents(next_state);
+
+		// print
+		PrintStateCar(next_state, string_sprintf("predicted_car_%d", i));
+		PrintStateAgents(next_state, string_sprintf("predicted_agents_%d", i));
+	}
+}
+
+void PedPomdp::PrintStateCar(const State& s, std::string msg, ostream& out) const {
+	const PomdpState & state = static_cast<const PomdpState&> (s);
+	out << msg << " ";
+	out << state.car.pos.x << " " << state.car.pos.y << endl;
+}
+
 void PedPomdp::PrintStateAgents(const State& s, std::string msg, ostream& out) const {
 
 	if (DESPOT::Debug_mode)

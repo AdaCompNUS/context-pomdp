@@ -495,14 +495,14 @@ class PathExtractor(object):
             
             route_paths = self.get_cur_paths(actor, path)
             path = route_paths[0]
-                # color_i = 255
-                # last_loc = None
-             #    for point in self.path:
-             #        pos = self.sidewalk.get_position(point)
-             #        loc = carla.Location(pos.x, pos.y, 0.1)
-             #        if last_loc is not None:
-             #            self.world.debug.draw_line(last_loc,loc,life_time = 0.1, color = carla.Color(color_i,color_i,0,0))
-             #        last_loc = carla.Location(pos.x, pos.y, 0.1)
+            color_i = 255
+            last_loc = None
+            for point in self.path:
+                pos = self.route_map.get_position(point)
+                loc = carla.Location(pos.x, pos.y, 0.1)
+                if last_loc is not None:
+                    self.world.debug.draw_line(last_loc,loc,life_time = 0.1, color = carla.Color(color_i,color_i,0,0))
+                last_loc = carla.Location(pos.x, pos.y, 0.1)
         
         return path
 
@@ -511,8 +511,8 @@ class PathExtractor(object):
         if len(input_path) == 0:
             return []
         # put vehicle current location into path
-        # ego_location = self.player.get_location()
-        # path.append([ego_location.x,ego_location.y])
+        ego_location = self.player.get_location()
+        path.append([ego_location.x,ego_location.y])
 
         if map_type is "carla":
             for way_point in input_path:

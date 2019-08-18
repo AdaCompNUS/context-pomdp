@@ -76,8 +76,8 @@ public:
     void RVO2AgentStep(AgentStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
     void RVO2AgentStep(PomdpStateWorld& state, Random& random);
     void PedStepGoal(AgentStruct& ped, int step=1);
-    void PedStepCurVel(AgentStruct& ped);
-    void PedStepPath(AgentStruct& agent);
+    void PedStepCurVel(AgentStruct& ped, int step=1);
+    void PedStepPath(AgentStruct& agent, int step=1);
 
     COORD GetGoalPos(const AgentStruct& ped, int intention_id=-1);
     COORD GetGoalPos(const AgentBelief& ped, int intention_id);
@@ -272,7 +272,7 @@ public:
                 break;
             }
         }
-        if (timestamp() - agent.time_stamp > 1.0) // agent disappeared for 1 second
+        if (timestamp() - agent.time_stamp > 0.2) // agent disappeared for 1 second
             insert=false;
         return insert;
     }

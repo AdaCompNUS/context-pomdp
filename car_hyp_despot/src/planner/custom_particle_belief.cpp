@@ -221,14 +221,14 @@ bool PedPomdpBelief::DeepUpdate(const State* cur_state){
 	return true;
 }
 
-void PedPomdpBelief::ResampleParticles(const PedPomdp* model){
+void PedPomdpBelief::ResampleParticles(const PedPomdp* model, bool do_prediction){
 
 	logd << "[PedPomdpBelief::ResampleParticles] Sample from belief tracker " 
 		<< beliefTracker << endl;
 
 	assert(beliefTracker);
 
-	bool do_prediction = true;
+	// bool do_prediction = true;
 	vector<PomdpState> samples = beliefTracker->sample(
 		max(2000,5*Globals::config.num_scenarios), do_prediction);
 

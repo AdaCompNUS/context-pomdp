@@ -915,9 +915,9 @@ void WorldModel::PedStepGoal(AgentStruct& agent, int step) {
     agent.pos.y += goal_vec.dh;
 }
 
-void WorldModel::PedStepCurVel(AgentStruct& agent) {
-  agent.pos.x += agent.vel.x * (1.0/freq);
-  agent.pos.y += agent.vel.y * (1.0/freq);
+void WorldModel::PedStepCurVel(AgentStruct& agent, int step) {
+  agent.pos.x += agent.vel.x * (float(step)/freq);
+  agent.pos.y += agent.vel.y * (float(step)/freq);
 }
 
 // std::vector<COORD> get_bounding_box_corners(AgentStruct& agent){
@@ -974,13 +974,13 @@ void WorldModel::cal_bb_extents(AgentStruct& agent, std::vector<COORD>& bb, doub
     }
 }
 
-void WorldModel::PedStepPath(AgentStruct& agent) {
+void WorldModel::PedStepPath(AgentStruct& agent, int step) {
     auto& path_candidates = PathCandidates(agent.id);
 
     if (agent.intention < path_candidates.size()){
         auto& path = path_candidates[agent.intention];
 
-        agent.pos_along_path = path.forward(agent.pos_along_path, agent.speed * (1.0/freq));
+        agent.pos_along_path = path.forward(agent.pos_along_path, agent.speed * (float(step)/freq));
         COORD new_pos = path[agent.pos_along_path];
         agent.vel = (new_pos - agent.pos) * freq;
         agent.pos = new_pos;   
@@ -1435,7 +1435,8 @@ void WorldStateTracker::trackVel(Agent& des, const Agent& src, bool& no_move, bo
     if (duration < 0.1 / Globals::config.time_scale){
         no_move = false;
 
-        DEBUG(string_sprintf("Update duration too short: %f", duration));
+        DEBUG(string_sprintf("Update duration too short for agent %d: %f, (%f-%f)", 
+            src.id, duration, src.time_stamp, des.time_stamp));
         return;
     }
 
@@ -1471,6 +1472,8 @@ void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
     bool no_move = true;
     for(;i<veh_list.size();i++) {
         if (veh_list[i].id==veh.id) {
+            logd <<"[updateVel] updating agent " << veh.id << endl;
+
             trackVel(veh_list[i], veh, no_move, doPrint);
             tracPos(veh_list[i], veh, doPrint);
             tracIntention(veh_list[i], veh, doPrint);
@@ -1487,6 +1490,8 @@ void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
     }
 
     if (i==veh_list.size()) {
+        logd << "[updateVel] updating new agent " << veh.id << endl;
+
         no_move = false;
 
         veh_list.push_back(veh);
@@ -1509,7 +1514,8 @@ void WorldStateTracker::updatePed(const Pedestrian& agent, bool doPrint){
     bool no_move = true;
     for(;i<ped_list.size();i++) {
         if (ped_list[i].id==agent.id) {
-
+            logd <<"[updatePed] updating agent " << agent.id << endl;
+    
             trackVel(ped_list[i], agent, no_move, doPrint);
             tracPos(ped_list[i], agent, doPrint);
             tracIntention(ped_list[i], agent, doPrint);
@@ -1529,7 +1535,7 @@ void WorldStateTracker::updatePed(const Pedestrian& agent, bool doPrint){
     if (i==ped_list.size()) {
     	no_move = false;
         //not found, new agent
-//    	cout <<"[updatePed] updating new agent" << agent.id << endl;
+   	    logd << "[updatePed] updating new agent " << agent.id << endl;
 
         ped_list.push_back(agent);
 
@@ -1982,10 +1988,10 @@ vector<AgentStruct> WorldBeliefTracker::predictAgents() {
                 model.PedStepGoal(agent, step + i);
             }
             else if (model.goal_mode == "cur_vel"){
-                model.PedStepCurVel(agent);
+                model.PedStepCurVel(agent, step + i);
             }
             else if (model.goal_mode == "path"){
-                model.PedStepPath(agent);
+                model.PedStepPath(agent, step + i);
             }
             
             prediction.push_back(agent);

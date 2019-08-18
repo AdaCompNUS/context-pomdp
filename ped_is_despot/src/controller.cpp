@@ -712,10 +712,13 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 	double step_reward;
   if (b_use_drive_net_ == NO || b_use_drive_net_ == JOINT_POMDP){
 		cerr << "DEBUG: Search for action using " <<typeid(*solver).name()<< endl;
-		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(static_cast<const PedPomdp*>(ped_pomdp_model));
+		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(
+			static_cast<const PedPomdp*>(ped_pomdp_model), predict_peds);
 		
-		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(
-			*static_cast<PedPomdpBelief*>(solver->belief())->GetParticle(0));
+		const State& sample = *static_cast<PedPomdpBelief*>(solver->belief())->GetParticle(0);
+		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
+
+		static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(sample, 10);// 3 steps		
 
 		action = solver->Search().action;
 	}
@@ -724,7 +727,8 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 		cerr << "DEBUG: Search for action using " <<typeid(*solver).name()<< " with NN prior." << endl;
 		assert(solver->belief());
 		cerr << "DEBUG: Sampling particles" << endl;
-		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(static_cast<const PedPomdp*>(ped_pomdp_model));
+		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(
+			static_cast<const PedPomdp*>(ped_pomdp_model), predict_peds);
 		cerr << "DEBUG: Launch search with NN prior" << endl;
 		action = solver->Search().action;
 

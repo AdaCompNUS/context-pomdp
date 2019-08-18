@@ -189,6 +189,12 @@ public:
 	static int GetSteerIDfromSteering(float steering);
 
 	bool validate_state(PomdpState& state) const;
+
+public:
+
+	void PrintStateCar(const State& s, std::string msg, ostream& out=cout) const;
+	void ForwardAndVisualize(const State& sample, int step) const;
+	PomdpState PredictAgents(const PomdpState& ped_state) const;
 };
 
 #endif

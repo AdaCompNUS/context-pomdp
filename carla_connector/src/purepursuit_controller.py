@@ -27,8 +27,8 @@ const_speed = 0.47
 
 goal_reached = 0
 
-use_steer_from_path = True # False, if True, steering will be calculated from path
-use_steer_from_pomdp = False # True, if True, steering will come from 'cmd_vel' topic
+use_steer_from_path = False # False, if True, steering will be calculated from path
+use_steer_from_pomdp = True # True, if True, steering will come from 'cmd_vel' topic
 
 def dist(a, b):
     return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2)

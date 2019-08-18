@@ -62,7 +62,7 @@ public:
 			ACT_TYPE action);
 	virtual bool DeepUpdate(const State* cur_state);
 
-	void ResampleParticles(const PedPomdp* model);
+	void ResampleParticles(const PedPomdp* model, bool pred = false);
 
 	virtual void Update(despot::ACT_TYPE, despot::OBS_TYPE);
 

@@ -353,10 +353,22 @@ class CrowdController:
 
     def create_new_agent(self):
         try:
+
+            if False: #self.player:
+                ego_position = self.player.get_location()
+
+                spawn_range_x = [max(-200, ego_position.x - 50), max(200, ego_position.x + 50)]
+                spawn_range_y = [max(-200, ego_position.y - 50), max(200, ego_position.y + 50)]
+            else:
+                spawn_range_x = [-200, 200]
+                spawn_range_y = [-200, 200]
+
             position = carla.Vector2D(0, 0)
             next_position = carla.Vector2D(0, 0)
             while True:
-                position = carla.Vector2D(random.uniform(-200, 200), random.uniform(-200, 200))
+                position = carla.Vector2D(
+                    random.uniform(spawn_range_x[0], spawn_range_x[1]), 
+                    random.uniform(spawn_range_y[0], spawn_range_y[1]))
                 route_point = self.route_map.get_nearest_route_point(position)
                 position = self.route_map.get_position(route_point)
                 if not in_bounds(position):
