@@ -29,9 +29,9 @@ class Drunc(object):
         with open(carla_root + 'Data/map.net.xml', 'r') as file:
             map_data = file.read()
         self.network = carla.SumoNetwork.load(map_data)
-        self.occupancy_map = self.network.create_occupancy_map()
+        self.network_occupancy_map = self.network.create_occupancy_map()
         self.sidewalk = carla.Sidewalk(
-            self.occupancy_map,
+            self.network_occupancy_map,
             self.map_bounds_min, self.map_bounds_max,
             3.0, 0.1,
             20.0)
