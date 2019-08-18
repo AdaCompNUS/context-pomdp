@@ -54,7 +54,6 @@ class EgoVehicle(Drunc):
         self.car_info_pub = rospy.Publisher('/IL_car_info', CarInfo, queue_size=1)
         self.plan_pub = rospy.Publisher('/plan', NavPath, queue_size=1)
 
-        print("Publish odom static_transform")
         self.broadcaster = None
         self.publish_odom_transform()
         self.transformer = TransformListener()
@@ -63,6 +62,9 @@ class EgoVehicle(Drunc):
         self.update_timer = rospy.Timer(
                 rospy.Duration(0.1), 
                 self.update_timer_callback)
+
+    def dispose(self):
+        self.actor.destroy()
 
     def get_position(self):
         location = self.actor.get_location()
@@ -110,23 +112,14 @@ class EgoVehicle(Drunc):
 
     def publish_odom_transform(self):
         self.broadcaster = tf2_ros.StaticTransformBroadcaster()
-
         static_transformStamped = self.get_cur_ros_transform()
-        
         self.broadcaster.sendTransform(static_transformStamped)
 
-        time.sleep(1)
-
     def get_transform_wrt_odom_frame(self):
-        # Wait for odom frame to be ready
-        has_odom = False
-        while (not has_odom):
-            try:
-                (trans, rot) = self.transformer.lookupTransform("map", "odom", rospy.Time(0))
-                has_odom = True
-            except:
-                print("odom map transform not exist yet")
-                time.sleep(1)
+        try:
+            (trans, rot) = self.transformer.lookupTransform("map", "odom", rospy.Time(0.2))
+        except:
+            return None
 
         cur_pose = self.get_cur_ros_pose()
 
@@ -162,12 +155,17 @@ class EgoVehicle(Drunc):
         return translation, yaw
 
     def publish_odom(self):
-        current_time = rospy.Time.now() 
+        # Check if result available.
+        result = self.get_transform_wrt_odom_frame()
+        if result is None:
+            return
 
+        current_time = rospy.Time.now() 
+        
         frame_id = "odom"
         child_frame_id = "base_link"
 
-        translation, yaw = self.get_transform_wrt_odom_frame()
+        (translation, yaw) = result
         pos = carla.Location(translation.x, translation.y, translation.z)
         vel = self.actor.get_velocity()
         v_2d = np.array([vel.x, vel.y, 0])
@@ -292,4 +290,7 @@ class EgoVehicle(Drunc):
 if __name__ == '__main__':
     rospy.init_node('ego_vehicle')
     ego_vehicle = EgoVehicle()
+
     rospy.spin()
+
+    ego_vehicle.dispose()

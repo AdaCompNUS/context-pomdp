@@ -23,6 +23,9 @@ class Spectator(Drunc):
         self.world_tick_callback_id = self.world.on_tick(self.world_tick_callback)
 
     def dispose(self):
+        if self.camera_sensor_actor is None:
+            self.camera_sensor_actor.destroy()
+
         cv2.destroyWindow('spectator')
 
     def world_tick_callback(self, snapshot):
