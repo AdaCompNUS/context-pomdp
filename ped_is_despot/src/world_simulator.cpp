@@ -782,6 +782,8 @@ void agentArrayCallback(carla_connector::agent_array data){
 
 	double data_time_sec = data_sec + data_nsec * 1e-9;
 
+	WorldSimulator::stateTracker->latest_time_stamp = data_time_sec;
+
 	DEBUG(string_sprintf("receive agent num %d at time %f \n", 
 		data.agents.size(), data_time_sec));
 
@@ -840,7 +842,6 @@ void agentArrayCallback(carla_connector::agent_array data){
 			world_ped.reset_intention = agent.reset_intention;
 
 			world_ped.cross_dir = agent.cross_dirs[0];
-		
 			for (auto& nav_path : agent.path_candidates){
 				Path new_path;
 				world_ped.paths.emplace_back(new_path);
@@ -867,12 +868,10 @@ void agentArrayCallback(carla_connector::agent_array data){
 		WorldSimulator::stateTracker->updateVeh(veh);
 	}
 
-	DEBUG("");
-
 	WorldSimulator::stateTracker->model.print_path_map();
 
-	// WorldSimulator::stateTracker->text(ped_list);
-	// WorldSimulator::stateTracker->text(veh_list);
+	WorldSimulator::stateTracker->text(ped_list);
+	WorldSimulator::stateTracker->text(veh_list);
 
 	// DEBUG(string_sprintf("ped_list len %d", ped_list.size()));
 	// DEBUG(string_sprintf("veh_list len %d", veh_list.size()));

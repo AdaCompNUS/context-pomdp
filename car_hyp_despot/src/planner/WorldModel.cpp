@@ -1924,6 +1924,10 @@ PomdpState WorldBeliefTracker::sample(bool predict) {
     for(int i=0; i < sorted_beliefs.size() && i < ModelParams::N_PED_IN; i++) {
 		auto& p = *sorted_beliefs[i];
 
+        if (p.type >= AgentType::num_values){
+            ERR(string_sprintf("non-initialized type in state: %d", p.type));
+        }   
+
 		if (COORD::EuclideanDistance(p.pos, car.pos) < ModelParams::LASER_RANGE) {
 			s.agents[s.num].pos = p.pos;
 //			s.agents[s.num].goal = p.sample_goal();
@@ -2598,7 +2602,7 @@ void WorldStateTracker::text(const vector<WorldStateTracker::AgentDistPair>& sor
 }
 
 void WorldStateTracker::text(const vector<Pedestrian>& tracked_peds) const{
-    if (logging::level()>=4){
+    if (logging::level()>=3){
         cout << "=> ped_list:" << endl;
         for (auto& agent: tracked_peds) {
             fprintf(stderr, "==> id / type / pos / vel / cross / reset: %d / %d / (%f %f) / (%f %f) / %d / %d \n", 
@@ -2608,7 +2612,7 @@ void WorldStateTracker::text(const vector<Pedestrian>& tracked_peds) const{
 }
 
 void WorldStateTracker::text(const vector<Vehicle>& tracked_vehs) const{
-    if (logging::level()>=4){
+    if (logging::level()>=3){
         cout << "=> veh_list:" << endl;
         for (auto& agent: tracked_vehs) {
             fprintf(stderr, "==> id / type / pos / vel / heading_dir / reset: %d / %d / (%f %f) / (%f %f) / %f / %d \n", 

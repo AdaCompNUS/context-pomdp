@@ -55,3 +55,16 @@ def get_bounding_box_corners(actor):
         corners.append(loc - half_x_len*forward_vec - half_y_len*sideward_vec)
         
         return corners
+
+def infront(ego_pos, ego_heading, exo_pos):
+    ped_dir = normalize(carla.Vector2D(exo_pos[1], ego_pos[1])
+     - carla.Vector2D(ego_pos[0], ego_pos[1]))
+    car_dir = carla.Vector2D(math.cos(ego_heading), math.sin(ego_heading))
+    proj = car_dir.x * ped_dir.x + car_dir.y * ped_dir.y
+
+    if proj > math.cos(3.1415/3.0):
+        return True
+    else:
+        return False
+
+

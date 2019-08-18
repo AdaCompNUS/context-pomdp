@@ -102,7 +102,8 @@ class EgoVehicle(Drunc):
         transformStamped.transform.translation.z = self.actor.get_location().z
   
         quat = tf.transformations.quaternion_from_euler(
-                float(0),float(0),float(self.actor.get_transform().rotation.yaw))
+                float(0),float(0),float(
+                    np.deg2rad(self.actor.get_transform().rotation.yaw)))
         transformStamped.transform.rotation.x = quat[0]
         transformStamped.transform.rotation.y = quat[1]
         transformStamped.transform.rotation.z = quat[2]
@@ -169,9 +170,9 @@ class EgoVehicle(Drunc):
         pos = carla.Location(translation.x, translation.y, translation.z)
         vel = self.actor.get_velocity()
         v_2d = np.array([vel.x, vel.y, 0])
-        forward = np.array([math.cos(np.deg2rad(yaw)), math.sin(np.deg2rad(yaw)), 0])
+        forward = np.array([math.cos(yaw), math.sin(yaw), 0])
         speed = np.vdot(forward, v_2d)
-        odom_quat = tf.transformations.quaternion_from_euler(0, 0, np.deg2rad(yaw))
+        odom_quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
         w_yaw = self.actor.get_angular_velocity().z
 
         self.odom_broadcaster.sendTransform(

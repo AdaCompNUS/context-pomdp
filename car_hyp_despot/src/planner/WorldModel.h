@@ -272,8 +272,10 @@ public:
                 break;
             }
         }
-        if (timestamp() - agent.time_stamp > 0.2) // agent disappeared for 1 second
+        if (latest_time_stamp - agent.time_stamp > 0.2){ // agent disappeared for 1 second
+            cout << "agent "<< agent.id << " disappeared for too long (>0.2s)." << endl;
             insert=false;
+        }
         return insert;
     }
 
@@ -299,6 +301,8 @@ public:
     //Ped states
     std::vector<Pedestrian> ped_list;
     std::vector<Vehicle> veh_list;
+
+    double latest_time_stamp;
 
     WorldModel& model;
 };

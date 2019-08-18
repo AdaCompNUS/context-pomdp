@@ -257,7 +257,7 @@ void PedPomdpBelief::ResampleParticles(const PedPomdp* model, bool do_prediction
 		while (2 * num_particles_ < 5000)
 			num_particles_ *= 2;
 		if (particles_.size() < num_particles_) {
-			logi << "[PedPomdpBelief::PedPomdpBelief] Splitting " << particles_.size()
+			logi << "[PedPomdpBelief::ResampleParticles] Splitting " << particles_.size()
 				<< " particles into " << num_particles_ << " particles." << endl;
 			vector<State*> new_particles;
 			int n = num_particles_ / particles_.size();
@@ -278,7 +278,7 @@ void PedPomdpBelief::ResampleParticles(const PedPomdp* model, bool do_prediction
 	}
 
 	if (fabs(State::Weight(particles_) - 1.0) > 1e-6) {
-		loge << "[PedPomdpBelief::PedPomdpBelief] Particle weights sum to " << State::Weight(particles_) << " instead of 1" << endl;
+		loge << "[PedPomdpBelief::ResampleParticles] Particle weights sum to " << State::Weight(particles_) << " instead of 1" << endl;
 		exit(1);
 	}
 
@@ -294,7 +294,8 @@ void PedPomdpBelief::ResampleParticles(const PedPomdp* model, bool do_prediction
 	}
 
 	for (int i =0; i < 10; i++){
-		static_cast<const PedPomdp*>(model_)->validate_state(*static_cast<PomdpState*>(particles_[i]));
+		static_cast<const PedPomdp*>(model_)->validate_state(
+			*static_cast<PomdpState*>(particles_[i]));
 	}
 }
 

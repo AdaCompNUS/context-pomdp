@@ -1021,17 +1021,20 @@ void PedPomdp::ImportStateList(std::vector<State*>& particles, std::istream& in)
 
 bool PedPomdp::validate_state(PomdpState& state) const {
 
-	if (state.agents[0].intention == -1){
-		ERR("non-initialized intention in state");
+	if (state.num >0) {
+		if (state.agents[0].intention == -1){
+			ERR("non-initialized intention in state");
+		}
+
+		if (state.agents[0].type >= AgentType::num_values){
+			PrintState(state);
+			ERR(string_sprintf("non-initialized type in state: %d", state.agents[0].type));
+		}	
+
+		if (state.agents[0].speed == 0){
+			ERR("non-initialized speed in state");
+		}	
 	}
-
-	if (state.agents[0].type >= AgentType::num_values){
-		ERR("non-initialized type in state");
-	}	
-
-	if (state.agents[0].speed == 0){
-		ERR("non-initialized speed in state");
-	}	
 }
 
 

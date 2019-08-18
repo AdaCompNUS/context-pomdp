@@ -95,6 +95,7 @@ class CrowdProcessor(Drunc):
 
             agent_tmp.reset_intention = False # TODO: set this flag when intention changes
             agent_tmp.path_candidates = []
+            agent_tmp.cross_dirs = [True]  #TODO: this is particular to each path
             
             agents_msg.agents.append(agent_tmp)
 

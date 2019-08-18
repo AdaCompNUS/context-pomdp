@@ -39,12 +39,15 @@ class SpeedController(object):
 
     def cal_proximty(self):
         player_pos = self.player_pos
+        player_yaw = self.player_yaw
+
         self.proximity = 10000000
 
         for ped_pos in self.peds_pos:
-            dist = distance(player_pos, ped_pos)
-            if dist < self.proximity:
-                self.proximity = dist
+            if infront(player_pos, player_yaw, ped_pos):
+                dist = distance(player_pos, ped_pos)
+                if dist < self.proximity:
+                    self.proximity = dist
 
     def calculate_player_speed(self):
         self.cal_proximty()
