@@ -17,6 +17,13 @@ from network_agent_path import NetworkAgentPath
 from peds_unity_system.msg import car_info as CarInfo # panpan
 from util import *
 
+import tf2_geometry_msgs
+import tf2_ros
+import geometry_msgs
+import time
+from tf import TransformListener
+import tf.transformations as tftrans
+
 class EgoVehicle(Drunc):
     def __init__(self):
         super(EgoVehicle, self).__init__()
@@ -46,6 +53,11 @@ class EgoVehicle(Drunc):
         self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=1)
         self.car_info_pub = rospy.Publisher('/IL_car_info', CarInfo, queue_size=1)
         self.plan_pub = rospy.Publisher('/plan', NavPath, queue_size=1)
+
+        print("Publish odom static_transform")
+        self.broadcaster = None
+        self.publish_odom_transform()
+        self.transformer = TransformListener()
         
         self.world.on_tick(self.world_tick_callback)
         self.update_timer = rospy.Timer(
@@ -55,15 +67,109 @@ class EgoVehicle(Drunc):
     def get_position(self):
         location = self.actor.get_location()
         return carla.Vector2D(location.x, location.y)
+
+    def get_cur_ros_pose(self):
+        cur_pose = geometry_msgs.msg.PoseStamped()
+        # cur_pose = geometry_msgs.msg.TransformStamped()
+   
+        cur_pose.header.stamp = rospy.Time.now()
+        cur_pose.header.frame_id = "/map"
+  
+        cur_pose.pose.position.x = self.actor.get_location().x
+        cur_pose.pose.position.y = self.actor.get_location().y
+        cur_pose.pose.position.z = self.actor.get_location().z
+  
+        quat = tf.transformations.quaternion_from_euler(
+                float(0),float(0),float(np.deg2rad(self.actor.get_transform().rotation.yaw)))
+        cur_pose.pose.orientation.x = quat[0]
+        cur_pose.pose.orientation.y = quat[1]
+        cur_pose.pose.orientation.z = quat[2]
+        cur_pose.pose.orientation.w = quat[3]
+
+        return cur_pose
     
+    def get_cur_ros_transform(self):
+        transformStamped = geometry_msgs.msg.TransformStamped()
+   
+        transformStamped.header.stamp = rospy.Time.now()
+        transformStamped.header.frame_id = "map"
+        transformStamped.child_frame_id = 'odom'
+  
+        transformStamped.transform.translation.x = self.actor.get_location().x
+        transformStamped.transform.translation.y = self.actor.get_location().y
+        transformStamped.transform.translation.z = self.actor.get_location().z
+  
+        quat = tf.transformations.quaternion_from_euler(
+                float(0),float(0),float(self.actor.get_transform().rotation.yaw))
+        transformStamped.transform.rotation.x = quat[0]
+        transformStamped.transform.rotation.y = quat[1]
+        transformStamped.transform.rotation.z = quat[2]
+        transformStamped.transform.rotation.w = quat[3]
+
+        return transformStamped    
+
+    def publish_odom_transform(self):
+        self.broadcaster = tf2_ros.StaticTransformBroadcaster()
+
+        static_transformStamped = self.get_cur_ros_transform()
+        
+        self.broadcaster.sendTransform(static_transformStamped)
+
+        time.sleep(1)
+
+    def get_transform_wrt_odom_frame(self):
+        # Wait for odom frame to be ready
+        has_odom = False
+        while (not has_odom):
+            try:
+                (trans, rot) = self.transformer.lookupTransform("map", "odom", rospy.Time(0))
+                has_odom = True
+            except:
+                print("odom map transform not exist yet")
+                time.sleep(1)
+
+        cur_pose = self.get_cur_ros_pose()
+
+        transform = tftrans.concatenate_matrices(
+            tftrans.translation_matrix(trans), tftrans.quaternion_matrix(rot))
+        inversed_transform = tftrans.inverse_matrix(transform)
+
+        inv_translation = tftrans.translation_from_matrix(inversed_transform)
+        inv_quaternion = tftrans.quaternion_from_matrix(inversed_transform)
+
+        transformStamped = geometry_msgs.msg.TransformStamped()
+        transformStamped.transform.translation.x = inv_translation[0]
+        transformStamped.transform.translation.y = inv_translation[1]
+        transformStamped.transform.translation.z = inv_translation[2]
+        transformStamped.transform.rotation.x = inv_quaternion[0]
+        transformStamped.transform.rotation.y = inv_quaternion[1]
+        transformStamped.transform.rotation.z = inv_quaternion[2]
+        transformStamped.transform.rotation.w = inv_quaternion[3]
+
+        cur_transform_wrt_odom = tf2_geometry_msgs.do_transform_pose(
+            cur_pose, transformStamped)
+        
+        translation = cur_transform_wrt_odom.pose.position
+
+        quaternion = (
+                cur_transform_wrt_odom.pose.orientation.x,
+                cur_transform_wrt_odom.pose.orientation.y,
+                cur_transform_wrt_odom.pose.orientation.z,
+                cur_transform_wrt_odom.pose.orientation.w)
+
+        _, _, yaw = tf.transformations.euler_from_quaternion(quaternion)   
+
+        return translation, yaw
+
     def publish_odom(self):
         current_time = rospy.Time.now() 
 
         frame_id = "odom"
         child_frame_id = "base_link"
-        pos = self.actor.get_location()
+
+        translation, yaw = self.get_transform_wrt_odom_frame()
+        pos = carla.Location(translation.x, translation.y, translation.z)
         vel = self.actor.get_velocity()
-        yaw = self.actor.get_transform().rotation.yaw
         v_2d = np.array([vel.x, vel.y, 0])
         forward = np.array([math.cos(np.deg2rad(yaw)), math.sin(np.deg2rad(yaw)), 0])
         speed = np.vdot(forward, v_2d)
