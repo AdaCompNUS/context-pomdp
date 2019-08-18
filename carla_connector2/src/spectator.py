@@ -23,8 +23,11 @@ class Spectator(Drunc):
         self.world_tick_callback_id = self.world.on_tick(self.world_tick_callback)
 
     def dispose(self):
-        if self.camera_sensor_actor is None:
-            self.camera_sensor_actor.destroy()
+        if self.camera_sensor_actor is not None:
+            if self.camera_sensor_actor.is_alive:
+                if self.camera_sensor_actor.is_listening:
+                    self.camera_sensor_actor.stop()
+                self.camera_sensor_actor.destroy()
 
         cv2.destroyWindow('spectator')
 
@@ -46,6 +49,7 @@ class Spectator(Drunc):
             # TODO Add as ROS parameters.
             camera_blueprint.set_attribute('image_size_x', '1920')
             camera_blueprint.set_attribute('image_size_y', '1080')
+            camera_blueprint.set_attribute('enable_postprocess_effects', 'False')
             self.camera_sensor_actor = self.world.spawn_actor(
                 camera_blueprint,
                 carla.Transform(carla.Location(x=-32.0, z=24.0), carla.Rotation(pitch=-30.0)),
