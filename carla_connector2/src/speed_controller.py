@@ -19,8 +19,7 @@ from geometry_msgs.msg import Twist
 freq = 10.0
 acc = 1.5
 delta = acc/freq
-max_speed = 3.0
-
+max_speed = 5.0
 
 class SpeedController(object):
     def __init__(self):
@@ -79,7 +78,7 @@ class SpeedController(object):
             cmd_speed = curr_vel - delta;
             cmd_accel = -acc
 
-        if curr_vel > 2 and cmd_accel > 0:
+        if curr_vel > max_speed and cmd_accel > 0:
             cmd_speed = curr_vel
             cmd_accel = 0
 

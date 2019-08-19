@@ -103,12 +103,14 @@ class Pursuit(object):
 
     def cb_car_info(self, car_info):
         self.car_info = car_info
+        self.length = (carla.Vector2D(car_info.front_axle_center.x, car_info.front_axle_center.y) -
+                carla.Vector2D(car_info.rear_axle_center.x, car_info.rear_axle_center.y)).length()
 
     def cb_pose_timer(self, event):
         if self.car_info is None:
             return
 
-        position = (self.car_info.car_pos.x, self.car_info.car_pos.y)
+        position = (self.car_info.rear_axle_center.x, self.car_info.rear_axle_center.y)
         pursuit_angle = self.path.pursuit_tan(position)
         pursuit_point = self.path.pursuit(position)
 
@@ -117,41 +119,25 @@ class Pursuit(object):
 
         car_yaw = np.deg2rad(self.car_info.car_yaw)
         last_steer = self.car_steer
-        self.car_steer = self.calc_angular(position, pursuit_angle, car_yaw)
-        angular_diff = self.calc_angular_diff(position, pursuit_point, car_yaw)
-        self.car_steer = 0.4 * self.car_steer + 0.4 * angular_diff
+        angular_offset = self.calc_angular_diff(position, pursuit_point, car_yaw)
+        offset = dist(position, pursuit_point)
+
+        relative_point = (offset * math.cos(angular_offset), offset * math.sin(angular_offset))
+        if relative_point[1] == 0:
+            self.car_steer = 0
+        else:
+            turning_radius = (relative_point[0]**2 + relative_point[1]**2) / (2 * abs(relative_point[1])) # Intersecting chords theorem.
+            steering_angle = math.atan2(self.length, turning_radius)
+            if relative_point[1] < 0:
+                steering_angle *= -1
+            self.car_steer = steering_angle / np.deg2rad(self.car_info.max_steer_angle)
+            self.car_steer = max(-1.0, min(1.0, self.car_steer))
 
         self.publish_steer()
 
-    def calc_angular(self, position, pursuit_angle, car_yaw):
-        target = pursuit_angle
-        r = angle_diff(target, car_yaw)# * RATIO_ANGULAR
-        if r > MAX_ANGULAR:
-            r = MAX_ANGULAR
-        if r < -MAX_ANGULAR:
-            r = -MAX_ANGULAR
-
-        steering = math.atan2(WHEEL_DIST*r,PURSUIT_DIST)
-        if steering < -MAX_STEERING:
-            steering = -MAX_STEERING
-        if steering > MAX_STEERING:
-            steering = MAX_STEERING
-        return steering
-
-
     def calc_angular_diff(self, position, pursuit_point, car_yaw):
         target = math.atan2(pursuit_point[1] - position[1], pursuit_point[0] - position[0])
-        r = angle_diff(target, car_yaw)# * RATIO_ANGULAR
-        if r > MAX_ANGULAR:
-            r = MAX_ANGULAR
-        if r < -MAX_ANGULAR:
-            r = -MAX_ANGULAR
-        return r
-
-    def calc_dir(self, position, pursuit_point):
-        move_dir =  np.array([pursuit_point[0] - position[0], pursuit_point[1] - position[1]])
-        move_dir = move_dir / np.linalg.norm(move_dir)
-        return move_dir
+        return angle_diff(target, car_yaw)
 
     def publish_steer(self):
         steer_to_pub = Float32()

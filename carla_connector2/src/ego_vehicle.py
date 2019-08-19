@@ -190,6 +190,7 @@ class EgoVehicle(Drunc):
         car_info_msg = CarInfo()
 
         pos = self.actor.get_location()
+        pos2D = carla.Vector2D(pos.x, pos.y)
         vel = self.actor.get_velocity()
         yaw = self.actor.get_transform().rotation.yaw
         v_2d = np.array([vel.x, vel.y, 0])
@@ -198,7 +199,7 @@ class EgoVehicle(Drunc):
         
         car_info_msg.car_pos.x = pos.x
         car_info_msg.car_pos.y = pos.y
-        car_info_msg.car_pos.z = 0
+        car_info_msg.car_pos.z = pos.z
         car_info_msg.car_yaw = yaw
         car_info_msg.car_speed = speed
         car_info_msg.car_steer = self.actor.get_control().steer             
@@ -211,6 +212,21 @@ class EgoVehicle(Drunc):
         for corner in corners:
             car_info_msg.car_bbox.points.append(Point32(
                 x=corner.x, y=corner.y, z=0.0))
+
+        wheels = self.actor.get_physics_control().wheels
+        # TODO I think that CARLA might have forgotten to divide by 100 here.
+        wheel_positions = [w.position / 100 for w in wheels]
+
+        front_axle_center = (wheel_positions[0] + wheel_positions[1]) / 2
+        rear_axle_center = (wheel_positions[2] + wheel_positions[3]) / 2
+        
+        car_info_msg.front_axle_center.x = front_axle_center.x
+        car_info_msg.front_axle_center.y = front_axle_center.y
+        car_info_msg.front_axle_center.z = front_axle_center.z
+        car_info_msg.rear_axle_center.x = rear_axle_center.x
+        car_info_msg.rear_axle_center.y = rear_axle_center.y
+        car_info_msg.rear_axle_center.z = rear_axle_center.z
+        car_info_msg.max_steer_angle = wheels[0].max_steer_angle
 
         self.car_info_pub.publish(car_info_msg)
 
