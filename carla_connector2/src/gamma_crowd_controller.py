@@ -218,7 +218,7 @@ class GammaCrowdController(Drunc):
 
         adding_obstacle = True
         if(adding_obstacle):
-            add_obstacles()
+            self.add_obstacles()
 
     def add_obstacles(self):
         polygon_table = self.network_occupancy_map.create_polygon_table(self.map_bounds_min,self.map_bounds_max,100,0.1)

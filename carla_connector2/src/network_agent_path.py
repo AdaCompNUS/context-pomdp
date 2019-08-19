@@ -31,19 +31,21 @@ class NetworkAgentPath:
 
     def cut(self, position):
         cut_index = 0
-        min_offset = 100000.0
+        min_offset = None
+        min_offset_index = None
         for i in range(len(self.route_points) / 2):
             route_point = self.route_points[i]
             offset = position - self.drunc.network.get_route_point_position(route_point)
             offset = offset.length() 
-            if offset < min_offset:
+            if min_offset == None or offset < min_offset:
                 min_offset = offset
+                min_offset_index = i
             if offset <= 1.0:
                 cut_index = i + 1
 
         # Invalid path because too far away.
         if min_offset > 1.0:
-            self.route_points = [self.drunc.network.get_nearest_route_point(position)]
+            self.route_points = self.route_points[min_offset_index:]
         else:
             self.route_points = self.route_points[cut_index:]
 
