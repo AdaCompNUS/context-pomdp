@@ -24,7 +24,7 @@ class CrowdAgent(object):
     def __init__(self, actor, preferred_speed):
         self.actor = actor
         self.preferred_speed = preferred_speed
-        self.actor.set_collision_enabled(False)
+        self.actor.set_collision_enabled(False) ## to check. Disable collision will generate vehicles that are overlapping
     
     def get_id(self):
         return self.actor.id
@@ -282,6 +282,27 @@ class GammaCrowdController(Drunc):
             self.gamma.set_agent_velocity(i, carla.Vector2D(0, 0))
             self.gamma.set_agent_bounding_box_corners(i, default_agent_bbox)
     
+    def det(self, vector1, vector2):
+        #return vector1.x() * vector2.y() - vector1.y() * vector2.x();
+        return vector1.y * vector2.x - vector1.x * vector2.y
+
+    def left_of(self, a, b, c): ## if c is at the left side of vector ab, then return Ture, False otherwise
+        if self.det(a - c, b - a) > 0:
+            return True
+        return False
+
+    def get_lane_constraints(self, position, heading):
+        left_lane_constrained = False
+        right_lane_constrained = False
+        nearest_pos_at_sidewalk = self.sidewalk.get_nearest_route_point(position)
+        nearest_pos_at_sidewalk = self.sidewalk.get_route_point_position(nearest_pos_at_sidewalk)
+        dist = (nearest_pos_at_sidewalk - position).length()
+        if dist < 1.5 + 2.0 + 0.6: ## 1.5 = sidewalk_width / 2; 2.0 = lane_width / 2; 0.6 is dist threshold
+            if self.left_of(position, position + heading, nearest_pos_at_sidewalk):
+                left_lane_constrained = True
+        return left_lane_constrained, right_lane_constrained
+
+
     def update(self):
         while len(self.network_agents) < self.num_network_agents:
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval)
@@ -338,7 +359,8 @@ class GammaCrowdController(Drunc):
                 self.gamma.set_agent_bounding_box_corners(i, crowd_agent.get_bounding_box_corners())
                 self.gamma.set_agent_pref_velocity(i, pref_vel)             
                 self.gamma.set_agent_path_forward(i, crowd_agent.get_path_forward())
-                self.gamma.set_agent_lane_constraints(i, False, True)  ## to check. It seems that we should set left_lane_constrained to false as currently we do because of the difference of the coordiante systems.
+                left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_forward_direction())
+                self.gamma.set_agent_lane_constraints(i, right_lane_constrained, left_lane_constrained)  ## to check. It seems that we should set left_lane_constrained to false as currently we do because of the difference of the coordiante systems.
             else:
                 next_agents.append(None)
                 self.gamma.set_agent_position(i, default_agent_pos)
