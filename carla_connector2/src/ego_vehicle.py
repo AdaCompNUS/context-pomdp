@@ -57,11 +57,6 @@ class EgoVehicle(Drunc):
         self.broadcaster = None
         self.publish_odom_transform()
         self.transformer = TransformListener()
-        
-        self.world.on_tick(self.world_tick_callback)
-        self.update_timer = rospy.Timer(
-                rospy.Duration(0.1), 
-                self.update_timer_callback)
 
     def dispose(self):
         self.actor.destroy()
@@ -255,24 +250,8 @@ class EgoVehicle(Drunc):
     def cmd_steer_callback(self, steer):
         self.cmd_steer = steer.data
 
-    def world_tick_callback(self, snapshot):
-        if not self.path.resize():
-            print('Warning : path too short.')
-            return
-
-        self.path.cut(self.get_position())
-        
-        if not self.path.resize():
-            print('Warning : path too short.')
-            return
-
-        self.publish_odom()
-        self.publish_il_car_info()
-        self.publish_plan()
-
-    def update_timer_callback(self, timer):
+    def update(self):
         # Calculate control and send to CARLA.
-        
         control = self.actor.get_control()
         control.gear = 1 
         control.steer = self.cmd_steer
@@ -285,13 +264,27 @@ class EgoVehicle(Drunc):
         else:
             control.throttle = 0.0
             control.brake = self.cmd_accel
-
         self.actor.apply_control(control)
+
+        # Publish info.
+        if not self.path.resize():
+            print('Warning : path too short.')
+            return
+        self.path.cut(self.get_position())
+        if not self.path.resize():
+            print('Warning : path too short.')
+            return
+        self.publish_odom()
+        self.publish_il_car_info()
+        self.publish_plan()
 
 if __name__ == '__main__':
     rospy.init_node('ego_vehicle')
     ego_vehicle = EgoVehicle()
 
-    rospy.spin()
+    rate = rospy.Rate(100)
+    while not rospy.is_shutdown():
+        ego_vehicle.update()
+        rate.sleep()
 
     ego_vehicle.dispose()
