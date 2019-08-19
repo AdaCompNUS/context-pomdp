@@ -45,7 +45,7 @@ class SidewalkAgentPath:
             offset = offset.length()
             if offset < min_offset:
                 min_offset = offset
-            if offset < 0.5:
+            if offset <= 1.0:
                 cut_index = i + 1
 
         self.route_points = self.route_points[cut_index:]
