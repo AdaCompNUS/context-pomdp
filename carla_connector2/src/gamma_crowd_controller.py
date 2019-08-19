@@ -24,6 +24,7 @@ class CrowdAgent(object):
     def __init__(self, actor, preferred_speed):
         self.actor = actor
         self.preferred_speed = preferred_speed
+        self.actor.set_collision_enabled(False)
     
     def get_id(self):
         return self.actor.id
@@ -97,6 +98,19 @@ class CrowdNetworkAgent(CrowdAgent):
 
         velocity = (target_position - position).make_unit_vector()
         return self.preferred_speed * velocity
+
+    def get_path_forward(self):
+        position = self.get_position()
+        if not self.path.resize():
+            return carla.Vector2D(0, 0)
+        self.path.cut(position)
+        if not self.path.resize():
+            return carla.Vector2D(0, 0)
+
+        first_position = self.path.get_position(0)
+        second_position = self.path.get_position(1)
+
+        return (second_position - first_position).make_unit_vector()
     
     def get_control(self, velocity):
         steer = get_signed_angle_diff(velocity, self.get_forward_direction())
@@ -169,6 +183,9 @@ class CrowdSidewalkAgent(CrowdAgent):
         target_position = self.path.get_position(0)
         velocity = (target_position - position).make_unit_vector()
         return self.preferred_speed * velocity
+
+    def get_path_forward(self):
+        return carla.Vector2D(0, 0)
     
     def get_control(self, velocity):
         velocity = velocity.make_unit_vector() * self.preferred_speed
@@ -216,7 +233,7 @@ class GammaCrowdController(Drunc):
         # For ego vehicle.
         self.gamma.add_agent(carla.AgentParams.get_default('Car'), self.num_network_agents + self.num_sidewalk_agents)
 
-        adding_obstacle = True
+        adding_obstacle = False
         if(adding_obstacle):
             self.add_obstacles()
 
@@ -241,8 +258,9 @@ class GammaCrowdController(Drunc):
 
     def il_car_info_callback(self, car_info):
         self.ego_car_info = car_info
-        i = len(self.network_agents) + len(self.sidewalk_agents)
-               
+        # i = len(self.network_agents) + len(self.sidewalk_agents) ## to check
+        i = self.num_network_agents + self.num_sidewalk_agents
+
         if self.ego_car_info:
             self.gamma.set_agent_position(i, carla.Vector2D(
                 self.ego_car_info.car_pos.x,
@@ -318,7 +336,9 @@ class GammaCrowdController(Drunc):
                 self.gamma.set_agent_velocity(i, crowd_agent.get_velocity())
                 self.gamma.set_agent_heading(i, crowd_agent.get_forward_direction())
                 self.gamma.set_agent_bounding_box_corners(i, crowd_agent.get_bounding_box_corners())
-                self.gamma.set_agent_pref_velocity(i, pref_vel)
+                self.gamma.set_agent_pref_velocity(i, pref_vel)             
+                self.gamma.set_agent_path_forward(i, crowd_agent.get_path_forward())
+                self.gamma.set_agent_lane_constraints(i, False, True)  ## to check. It seems that we should set left_lane_constrained to false as currently we do because of the difference of the coordiante systems.
             else:
                 next_agents.append(None)
                 self.gamma.set_agent_position(i, default_agent_pos)
