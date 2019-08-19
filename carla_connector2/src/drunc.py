@@ -32,7 +32,7 @@ class Drunc(object):
         self.network_occupancy_map = self.network.create_occupancy_map()
         self.sidewalk = carla.Sidewalk(
             self.network_occupancy_map,
-            self.map_bounds_min, self.map_bounds_max,
+            self.map_bounds_min, self.map_bounds_max, ## to check
             3.0, 0.1,
             20.0)
         self.sidewalk_occupancy_map = self.sidewalk.create_occupancy_map()

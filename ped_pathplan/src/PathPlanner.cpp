@@ -9,8 +9,8 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "path_planner_node");
 
     tf::TransformListener tf(ros::Duration(10));
-    costmap_2d::Costmap2DROS costmap("ped_costmap", *tf.getTF2BufferPtr());
-    // costmap_2d::Costmap2DROS costmap("ped_costmap", tf);
+    //costmap_2d::Costmap2DROS costmap("ped_costmap", *tf.getTF2BufferPtr());
+    costmap_2d::Costmap2DROS costmap("ped_costmap", tf);
 
     //navfn::NavfnROS p;
     ped_pathplan::PathPlanROS p;

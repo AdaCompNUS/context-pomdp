@@ -56,7 +56,7 @@ class CrowdNetworkAgent(CrowdAgent):
         self.path = path
 
     def get_agent_params(self):
-        return carla.AgentParams.get_default('Car')
+        return carla.AgentParams.get_default('Car') ## to check: where is bicycle?
 
     def get_bounding_box_corners(self):
         bbox = self.actor.bounding_box
@@ -78,13 +78,23 @@ class CrowdNetworkAgent(CrowdAgent):
     def get_preferred_velocity(self):
         position = self.get_position()
 
+        ## to check
         if not self.path.resize():
             return None
         self.path.cut(position)
         if not self.path.resize():
             return None
 
-        target_position = self.path.get_position(0)
+        target_position = self.path.get_position(3) ## to check
+
+        # cut_index = 0
+        # for i in range(10):
+        #     route_point = self.path.get_position(i)
+        #     offset = position - route_point
+        #     if offset.length() < 1.0:
+        #         cut_index = i + 1
+        # target_position = self.path.get_position(cut_index)
+
         velocity = (target_position - position).make_unit_vector()
         return self.preferred_speed * velocity
     
@@ -100,7 +110,7 @@ class CrowdNetworkAgent(CrowdAgent):
         k = 1.0
         steer = k * steer / (max_steering_angle - min_steering_angle) * 2.0
         desired_speed = velocity.length()
-        steer_tmp = get_signed_angle_diff(velocity, self.get_forward_direction())
+        #steer_tmp = get_signed_angle_diff(velocity, self.get_forward_direction())
         cur_speed = self.get_velocity().length()
         control = self.actor.get_control()
 
@@ -200,7 +210,8 @@ class GammaCrowdController(Drunc):
             self.gamma.add_agent(carla.AgentParams.get_default('Car'), i)
         
         for i in range(self.num_sidewalk_agents):
-            self.gamma.add_agent(carla.AgentParams.get_default('People'), i)
+            # self.gamma.add_agent(carla.AgentParams.get_default('People'), i) ## to check
+            self.gamma.add_agent(carla.AgentParams.get_default('People'), i + self.num_network_agents) ## to check
         
         # For ego vehicle.
         self.gamma.add_agent(carla.AgentParams.get_default('Car'), self.num_network_agents + self.num_sidewalk_agents)
@@ -348,7 +359,8 @@ if __name__ == '__main__':
     rospy.init_node('gamma_crowd_controller')
     gamma_crowd_controller = GammaCrowdController()
 
-    rate = rospy.Rate(100)
+    # rate = rospy.Rate(100) ## to check
+    rate = rospy.Rate(5)
     while not rospy.is_shutdown():
         gamma_crowd_controller.update()
         rate.sleep()
