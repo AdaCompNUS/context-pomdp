@@ -215,6 +215,22 @@ class GammaCrowdController(Drunc):
         
         # For ego vehicle.
         self.gamma.add_agent(carla.AgentParams.get_default('Car'), self.num_network_agents + self.num_sidewalk_agents)
+
+        adding_obstacle = True
+        if(adding_obstacle):
+            add_obstacles()
+
+    def add_obstacles(self):
+        polygon_table = self.network_occupancy_map.create_polygon_table(self.map_bounds_min,self.map_bounds_max,100,0.1)
+        for r in range(polygon_table.rows):
+            for c in range(polygon_table.columns):
+                for p in polygon_table.get(r, c):
+                    obstacle = []
+                    for i in reversed(range(len(p))): 
+                        v1 = p[i]
+                        obstacle.append(carla.Vector2D(v1.x, v1.y))
+                    self.gamma.add_obstacle(obstacle)
+        self.gamma.process_obstacles()
    
     def dispose(self):
         commands = []
@@ -359,8 +375,8 @@ if __name__ == '__main__':
     rospy.init_node('gamma_crowd_controller')
     gamma_crowd_controller = GammaCrowdController()
 
-    # rate = rospy.Rate(100) ## to check
-    rate = rospy.Rate(5)
+    rate = rospy.Rate(100) ## to check
+    #rate = rospy.Rate(5)
     while not rospy.is_shutdown():
         gamma_crowd_controller.update()
         rate.sleep()
