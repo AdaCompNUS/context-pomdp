@@ -24,6 +24,7 @@ class CrowdAgent(object):
     def __init__(self, actor, preferred_speed):
         self.actor = actor
         self.preferred_speed = preferred_speed
+        self.actor.set_collision_enabled(False)
     
     def get_id(self):
         return self.actor.id
@@ -216,7 +217,7 @@ class GammaCrowdController(Drunc):
         # For ego vehicle.
         self.gamma.add_agent(carla.AgentParams.get_default('Car'), self.num_network_agents + self.num_sidewalk_agents)
 
-        adding_obstacle = True
+        adding_obstacle = False
         if(adding_obstacle):
             self.add_obstacles()
 
