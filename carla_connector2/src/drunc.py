@@ -41,21 +41,26 @@ class Drunc(object):
         return self.map_bounds_min.x <= point.x <= self.map_bounds_max.x and \
                self.map_bounds_min.y <= point.y <= self.map_bounds_max.y
 
-    def rand_bounds_point(self):
-        return carla.Vector2D(
-                random.uniform(self.map_bounds_min.x, self.map_bounds_max.x),
-                random.uniform(self.map_bounds_min.y, self.map_bounds_max.y))
+    def rand_bounds_point(self, bounds_min=None, bounds_max=None):
+        if bounds_min is None:
+            bounds_min = self.map_bounds_min
+        if bounds_max is None:
+            bounds_max = self.map_bounds_max
 
-    def rand_network_route_point(self):
-        point = self.network.get_nearest_route_point(self.rand_bounds_point())
+        return carla.Vector2D(
+                random.uniform(bounds_min.x, bounds_max.x),
+                random.uniform(bounds_min.y, bounds_max.y))
+
+    def rand_network_route_point(self, bounds_min=None, bounds_max=None):
+        point = self.network.get_nearest_route_point(self.rand_bounds_point(bounds_min, bounds_max))
         while not self.in_bounds(self.network.get_route_point_position(point)):
             point = self.network.get_nearest_route_point(self.rand_bounds_point())
         return point
 
-    def rand_sidewalk_route_point(self):
-        point = self.sidewalk.get_nearest_route_point(self.rand_bounds_point())
+    def rand_sidewalk_route_point(self, bounds_min=None, bounds_max=None):
+        point = self.sidewalk.get_nearest_route_point(self.rand_bounds_point(bounds_min, bounds_max))
         while not self.in_bounds(self.sidewalk.get_route_point_position(point)):
-            point = self.sidewalk.get_nearest_route_point(self.rand_bounds_point())
+            point = self.sidewalk.get_nearest_route_point(self.rand_bounds_point(bounds_min, bounds_max))
         return point
 
     def draw_point(self, position, color=carla.Color(255, 0, 0), life_time=-1.0):
