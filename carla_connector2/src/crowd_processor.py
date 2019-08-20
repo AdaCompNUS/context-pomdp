@@ -83,6 +83,8 @@ class CrowdProcessor(Drunc):
 
             if actor is None or (get_position(actor) - ego_car_position).length() > 50: # TODO Add as ROS parameter.
                 continue
+
+            actor_pos = carla.Vector2D(actor.get_location().x, actor.get_location().y)
             
             agent_tmp = carla_connector2.msg.TrafficAgent()
             agent_tmp.last_update = current_time
@@ -129,13 +131,12 @@ class CrowdProcessor(Drunc):
                     path_msg = Path()
                     path_msg.header.frame_id = 'map'
                     path_msg.header.stamp = current_time
-                    for route_point in path:
-                        route_point_position = self.network.get_route_point_position(route_point)
+                    for path_point in [actor_pos] + [self.network.get_route_point_position(route_point) for route_point in path]:
                         pose_msg = PoseStamped()
                         pose_msg.header.frame_id = 'map'
                         pose_msg.header.stamp = current_time
-                        pose_msg.pose.position.x = route_point_position.x
-                        pose_msg.pose.position.y = route_point_position.y
+                        pose_msg.pose.position.x = path_point.x
+                        pose_msg.pose.position.y = path_point.y
                         path_msg.poses.append(pose_msg)
                     agent_tmp.path_candidates.append(path_msg)
                 agent_tmp.cross_dirs = []
@@ -156,13 +157,12 @@ class CrowdProcessor(Drunc):
                 path_msg = Path()
                 path_msg.header.frame_id = 'map'
                 path_msg.header.stamp = current_time
-                for route_point in path:
-                    route_point_position = self.sidewalk.get_route_point_position(route_point)
+                for path_point in [actor_pos] + [self.sidewalk.get_route_point_position(route_point) for route_point in path]:
                     pose_msg = PoseStamped()
                     pose_msg.header.frame_id = 'map'
                     pose_msg.header.stamp = current_time
-                    pose_msg.pose.position.x = route_point_position.x
-                    pose_msg.pose.position.y = route_point_position.y
+                    pose_msg.pose.position.x = path_point.x
+                    pose_msg.pose.position.y = path_point.y
                     path_msg.poses.append(pose_msg)
                 agent_tmp.path_candidates = [path_msg]
                 agent_tmp.cross_dirs = [agent.route_orientation]
