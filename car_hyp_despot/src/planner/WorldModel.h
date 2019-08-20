@@ -276,6 +276,10 @@ public:
             cout << "agent "<< agent.id << " disappeared for too long (>0.2s)." << endl;
             insert=false;
         }
+        else
+            ; // fprintf(stderr, "agent %d alive, latest_time_stamp = %f, agent time_stamp = %f \n", 
+                // agent.id, latest_time_stamp, agent.time_stamp);
+            
         return insert;
     }
 

@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
+#include <std_msgs/Float32.h>
 
 #include <csignal>
 #include <iostream>
@@ -64,6 +65,8 @@ public:
 
         ros::Timer timer = nh.createTimer(ros::Duration(1 / freq / time_scale), &VelPublisher::publishSpeed, this);
         cmd_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel",1);
+
+        cmd_accel_pub = nh.advertise<std_msgs::Float32>("cmd_accel", 1);
         ros::spin();
     }
 
@@ -81,12 +84,18 @@ public:
 
         cmd.angular.z = steering; //0;
         cmd.linear.x = emergency_break? 0 : curr_vel;
-        cmd.linear.y = emergency_break? -1: (target_vel - curr_vel)*3.0; // target_acc;
+        double pub_acc = emergency_break? -1: (target_vel - curr_vel)*3.0;
+        cmd.linear.y = pub_acc; // target_acc;
         // cmd.linear.y = (tick % 60 < 30)? 1 : -1;
         // cmd.linear.y = 1;
 
         tick ++;
         cmd_pub.publish(cmd);
+
+        std_msgs::Float32 acc_topic;
+        acc_topic.data = pub_acc;
+
+        cmd_accel_pub.publish(acc_topic);
 		// std::cout<<" ~~~~~~ vel publisher cmd steer="<< cmd.angular.z << ", acc="<< cmd.linear.y << std::endl;
     }
 
@@ -95,7 +104,7 @@ public:
     int b_use_drive_net_;
     std::string drive_net_mode;
     ros::Subscriber vel_sub, steer_sub, action_sub, odom_sub;
-    ros::Publisher cmd_pub;
+    ros::Publisher cmd_pub, cmd_accel_pub;
 
 
 };

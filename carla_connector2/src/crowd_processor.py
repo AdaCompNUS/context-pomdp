@@ -170,6 +170,8 @@ class CrowdProcessor(Drunc):
             
             agents_msg.agents.append(agent_tmp)
 
+        agents_msg.header.frame_id = 'map'
+        agents_msg.header.stamp = current_time    
         self.agents_pub.publish(agents_msg)
 
         self.do_update = False
@@ -178,7 +180,7 @@ if __name__ == '__main__':
     rospy.init_node('crowd_processor')
     crowd_processor = CrowdProcessor()
     
-    rate = rospy.Rate(100)
+    rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         crowd_processor.update()
         rate.sleep()
