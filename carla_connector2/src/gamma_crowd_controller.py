@@ -66,7 +66,7 @@ class CrowdNetworkAgent(CrowdAgent):
         sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction
 
         half_y_len = bbox.extent.y + 0.2
-        half_x_len = bbox.extent.x + 0.2
+        half_x_len = bbox.extent.x + 0.3
 
         corners = []
         corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
@@ -169,8 +169,8 @@ class CrowdSidewalkAgent(CrowdAgent):
         sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction. (rotating clockwise by 90 deg)
 
         # Hardcoded values for people.
-        half_y_len = 0.23
-        half_x_len = 0.23
+        half_y_len = 0.25
+        half_x_len = 0.25
 
         corners = []
         corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
