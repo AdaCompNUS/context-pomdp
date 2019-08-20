@@ -759,7 +759,7 @@ void WorldSimulator::speedCallback(nav_msgs::Odometry odo)
 //	cout<<"update real speed "<<odo.twist.twist.linear.x<<endl;
 	real_speed_=odo.twist.twist.linear.x;
 
-	if (real_speed_ > ModelParams::VEL_MAX*1.2){
+	if (real_speed_ > ModelParams::VEL_MAX*2.0){
 		cerr << "ERROR: Unusual car vel (too large): " << real_speed_ << endl;
 		raise(SIGABRT);
 	}

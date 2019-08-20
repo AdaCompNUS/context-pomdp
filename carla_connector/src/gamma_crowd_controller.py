@@ -357,8 +357,8 @@ class CrowdController:
             if False: #self.player:
                 ego_position = self.player.get_location()
 
-                spawn_range_x = [max(-200, ego_position.x - 50), max(200, ego_position.x + 50)]
-                spawn_range_y = [max(-200, ego_position.y - 50), max(200, ego_position.y + 50)]
+                spawn_range_x = [max(-200, ego_position.x - 50), min(200, ego_position.x + 50)]
+                spawn_range_y = [max(-200, ego_position.y - 50), min(200, ego_position.y + 50)]
             else:
                 spawn_range_x = [-200, 200]
                 spawn_range_y = [-200, 200]

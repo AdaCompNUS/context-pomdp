@@ -199,6 +199,7 @@ class GammaCrowdController(Drunc):
         self.network_agents = []
         self.sidewalk_agents = []
         self.gamma = carla.RVOSimulator()
+        self.ego_actor = None
 
         self.walker_blueprints = self.world.get_blueprint_library().filter("walker.pedestrian.*")
         self.vehicles_blueprints = self.world.get_blueprint_library().filter('vehicle.audi.*')
@@ -302,14 +303,35 @@ class GammaCrowdController(Drunc):
                 left_lane_constrained = True
         return left_lane_constrained, right_lane_constrained
 
+    def get_ego_range(self):
+        if self.ego_actor is None:
+            for actor in self.world.get_actors():
+                if actor.attributes.get('role_name') == 'ego_vehicle':
+                    self.ego_actor = actor
+                    break
+        if self.ego_actor is None:
+            return [-200, 200], [-200, 200] # TODO: I want to get the actual map range here
+        else:    
+            ego_position = self.ego_actor.get_location()
+            ego_range = 50
+            spawn_range_x = [
+                max(-200, ego_position.x - ego_range), 
+                min(200, ego_position.x + ego_range)]
+            spawn_range_y = [
+                max(-200, ego_position.y - ego_range), 
+                min(200 + self.path_interval[1], ego_position.y + ego_range)]
+
+            return spawn_range_x, spawn_range_y
 
     def update(self):
         while len(self.network_agents) < self.num_network_agents:
+            spawn_range_x, spawn_range_y = self.get_ego_range()            
+            # TODO: I want to spawn actor in the calculated range here
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
-            trans.location.z = 0.5
+            trans.location.z = 0.1
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
                     random.choice(self.cars_blueprints),
