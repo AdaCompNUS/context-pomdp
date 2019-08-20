@@ -10,11 +10,11 @@ class NetworkAgentPath:
         self.route_points = []
 
     @staticmethod
-    def rand_path(drunc, min_points, interval):
+    def rand_path(drunc, min_points, interval, bounds_min=None, bounds_max=None):
         spawn_point = None
         route_paths = None
         while not spawn_point or len(route_paths) < 1:
-            spawn_point = drunc.rand_network_route_point()
+            spawn_point = drunc.rand_network_route_point(bounds_min, bounds_max)
             route_paths = drunc.network.get_next_route_paths(spawn_point, min_points - 1, interval)
 
         path = NetworkAgentPath(drunc, min_points, interval)

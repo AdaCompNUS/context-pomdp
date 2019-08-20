@@ -11,9 +11,9 @@ class SidewalkAgentPath:
         self.route_orientation = None
 
     @staticmethod
-    def rand_path(drunc, min_points, interval):
+    def rand_path(drunc, min_points, interval, bounds_min=None, bounds_max=None):
         path = SidewalkAgentPath(drunc, min_points, interval)
-        path.route_points = [drunc.rand_sidewalk_route_point()]
+        path.route_points = [drunc.rand_sidewalk_route_point(bounds_min, bounds_max)]
         path.route_orientation = random.choice([True, False])
         path.resize()
         return path
