@@ -199,7 +199,7 @@ class CrowdSidewalkAgent(CrowdAgent):
         return carla.Vector2D(0, 0)
     
     def get_control(self, velocity):
-        velocity = velocity.make_unit_vector() * self.preferred_speed
+        # velocity = velocity.make_unit_vector() * self.preferred_speed
         return carla.WalkerControl(
                 carla.Vector3D(velocity.x, velocity.y, 0),
                 1.0, False)
