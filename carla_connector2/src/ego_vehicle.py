@@ -237,11 +237,11 @@ class EgoVehicle(Drunc):
         gui_path.header.frame_id = 'map'
         gui_path.header.stamp = current_time
 
+        
+        values = [(carla.Vector2D(self.actor.get_location().x, self.actor.get_location().y), self.actor.get_transform().rotation.yaw)]
         # Exclude last point because no yaw information.
-        for i in range(len(self.path.route_points) - 1):
-            position = self.path.get_position(i)
-            yaw = self.path.get_yaw(i)
-
+        values += [(self.path.get_position(i), self.path.get_yaw(i)) for i in range(len(self.path.route_points) - 1)]
+        for (position, yaw) in values:
             pose = PoseStamped()
             pose.header.frame_id = 'map'
             pose.header.stamp = current_time
