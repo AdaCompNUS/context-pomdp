@@ -65,8 +65,8 @@ class CrowdNetworkAgent(CrowdAgent):
         forward_vec = self.get_forward_direction().make_unit_vector() # the local x direction (left-handed coordinate system)
         sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction
 
-        half_y_len = bbox.extent.y
-        half_x_len = bbox.extent.x
+        half_y_len = bbox.extent.y + 0.2
+        half_x_len = bbox.extent.x + 0.3
 
         corners = []
         corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
@@ -166,11 +166,11 @@ class CrowdSidewalkAgent(CrowdAgent):
         bbox = self.actor.bounding_box
         loc = carla.Vector2D(bbox.location.x, bbox.location.y) + self.get_position()
         forward_vec = self.get_forward_direction().make_unit_vector() # the local x direction (left-handed coordinate system)
-        sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction
+        sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction. (rotating clockwise by 90 deg)
 
         # Hardcoded values for people.
-        half_y_len = 0.23
-        half_x_len = 0.23
+        half_y_len = 0.25
+        half_x_len = 0.25
 
         corners = []
         corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
@@ -199,7 +199,7 @@ class CrowdSidewalkAgent(CrowdAgent):
         return carla.Vector2D(0, 0)
     
     def get_control(self, velocity):
-        velocity = velocity.make_unit_vector() * self.preferred_speed
+        # velocity = velocity.make_unit_vector() * self.preferred_speed
         return carla.WalkerControl(
                 carla.Vector3D(velocity.x, velocity.y, 0),
                 1.0, False)
@@ -307,15 +307,20 @@ class GammaCrowdController(Drunc):
             return True
         return False
 
-    def get_lane_constraints(self, position, heading):
-        left_lane_constrained = False
-        right_lane_constrained = False
-        nearest_pos_at_sidewalk = self.sidewalk.get_nearest_route_point(position)
-        nearest_pos_at_sidewalk = self.sidewalk.get_route_point_position(nearest_pos_at_sidewalk)
-        dist = (nearest_pos_at_sidewalk - position).length()
-        if dist < 1.5 + 2.0 + 0.6: ## 1.5 = sidewalk_width / 2; 2.0 = lane_width / 2; 0.6 is dist threshold
-            if self.left_of(position, position + heading, nearest_pos_at_sidewalk):
-                left_lane_constrained = True
+    def get_lane_constraints(self, position, forward_vec):
+        # left_lane_constrained = False
+        # right_lane_constrained = False
+        # nearest_pos_at_sidewalk = self.sidewalk.get_nearest_route_point(position)
+        # nearest_pos_at_sidewalk = self.sidewalk.get_route_point_position(nearest_pos_at_sidewalk)
+        # dist = (nearest_pos_at_sidewalk - position).length()
+        # if dist < 1.5 + 2.0 + 0.6: ## 1.5 = sidewalk_width / 2; 2.0 = lane_width / 2; 0.6 is dist threshold
+        #     if self.left_of(position, position + forward_vec, nearest_pos_at_sidewalk):
+        #         left_lane_constrained = True
+        # return left_lane_constrained, right_lane_constrained
+        left_line_end = position + (1.5 + 2.0 + 0.8) * ((forward_vec.rotate(np.deg2rad(-90))).make_unit_vector())
+        right_line_end = position + (1.5 + 2.0 + 0.5) * ((forward_vec.rotate(np.deg2rad(90))).make_unit_vector())
+        left_lane_constrained = self.sidewalk.intersects(position, left_line_end)
+        right_lane_constrained = self.sidewalk.intersects(position, right_line_end)
         return left_lane_constrained, right_lane_constrained
 
     '''
@@ -416,7 +421,9 @@ class GammaCrowdController(Drunc):
                 self.gamma.set_agent_bounding_box_corners(i, crowd_agent.get_bounding_box_corners())
                 self.gamma.set_agent_pref_velocity(i, pref_vel)             
                 self.gamma.set_agent_path_forward(i, crowd_agent.get_path_forward())
-                left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_forward_direction())
+                # left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_forward_direction())
+                # left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_path_forward())
+                left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_path_forward())
                 self.gamma.set_agent_lane_constraints(i, right_lane_constrained, left_lane_constrained)  ## to check. It seems that we should set left_lane_constrained to false as currently we do because of the difference of the coordiante systems.
             else:
                 next_agents.append(None)
