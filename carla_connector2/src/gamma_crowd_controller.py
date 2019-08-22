@@ -24,7 +24,7 @@ class CrowdAgent(object):
     def __init__(self, actor, preferred_speed):
         self.actor = actor
         self.preferred_speed = preferred_speed
-        self.actor.set_collision_enabled(False) ## to check. Disable collision will generate vehicles that are overlapping
+        self.actor.set_collision_enabled(True) ## to check. Disable collision will generate vehicles that are overlapping
     
     def get_id(self):
         return self.actor.id
@@ -310,24 +310,24 @@ class GammaCrowdController(Drunc):
                     self.ego_actor = actor
                     break
         if self.ego_actor is None:
-            return [-200, 200], [-200, 200] # TODO: I want to get the actual map range here
+            return self.map_bounds_min, self.map_bounds_max # TODO: I want to get the actual map range here
         else:    
             ego_position = self.ego_actor.get_location()
-            ego_range = 50
-            spawn_range_x = [
-                max(-200, ego_position.x - ego_range), 
-                min(200, ego_position.x + ego_range)]
-            spawn_range_y = [
-                max(-200, ego_position.y - ego_range), 
-                min(200 + self.path_interval[1], ego_position.y + ego_range)]
+            ego_range = 400
+            spawn_min = carla.Vector2D(
+                max(self.map_bounds_min.x, ego_position.x - ego_range), 
+                max(self.map_bounds_min.y, ego_position.y - ego_range))
+            spawn_max = carla.Vector2D(
+                min(self.map_bounds_max.x, ego_position.x + ego_range),
+                min(self.map_bounds_max.y, ego_position.y + ego_range))
 
-            return spawn_range_x, spawn_range_y
+            return spawn_min, spawn_max
 
     def update(self):
         while len(self.network_agents) < self.num_network_agents:
-            spawn_range_x, spawn_range_y = self.get_ego_range()            
+            spawn_min, spawn_max = self.get_ego_range() 
             # TODO: I want to spawn actor in the calculated range here
-            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval)
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
@@ -343,7 +343,8 @@ class GammaCrowdController(Drunc):
                     5.0 + random.uniform(0.0, 1.5)))
       
         while len(self.sidewalk_agents) < self.num_sidewalk_agents:
-            path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval)
+            spawn_min, spawn_max = self.get_ego_range()
+            path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y

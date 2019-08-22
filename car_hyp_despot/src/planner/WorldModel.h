@@ -122,7 +122,7 @@ public:
     const double in_front_angle_cos;
     std::vector<RVO::RVOSimulator*> traffic_agent_sim_;
 
-    const std::string goal_mode = "cur_vel"; // "path", "goal"
+    const std::string goal_mode = "path"; // "cur_vel", "path", "goal"
 
     void rasie_unsupported_goal_mode(std::string function){
         std::cout << function << ": unsupported goal mode " 

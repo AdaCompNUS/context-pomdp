@@ -340,7 +340,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	}
 	else if (worldModel.path.size()>0 && COORD::EuclideanDistance(stateTracker->carpos, worldModel.path[0])>4.0){
 		cerr << "=================== Path offset too high !!! Node shutting down" << endl;
-		// ros::shutdown();
+		ros::shutdown();
 	}
 	else{
 //		get_action_fix_latency(action);
@@ -524,6 +524,9 @@ void WorldSimulator::AddObstacle(){
 		    worldModel.traffic_agent_sim_[tid]->processObstacles();
 		}
 	} else{
+		cout << "Skipping obstacle file " << obstacle_file_name_ << endl;
+		return;
+
 		cout << "Using obstacle file " << obstacle_file_name_ << endl;
 
 		int NumThreads=1/*Globals::config.NUM_THREADS*/;
@@ -757,8 +760,9 @@ bool WorldSimulator::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& i
 void WorldSimulator::speedCallback(nav_msgs::Odometry odo)
 {
 //	cout<<"update real speed "<<odo.twist.twist.linear.x<<endl;
-	real_speed_=odo.twist.twist.linear.x;
-
+	// real_speed_=odo.twist.twist.linear.x;
+	real_speed_=sqrt(odo.twist.twist.linear.x * odo.twist.twist.linear.x + 
+		odo.twist.twist.linear.y * odo.twist.twist.linear.y);
 	if (real_speed_ > ModelParams::VEL_MAX*2.0){
 		cerr << "ERROR: Unusual car vel (too large): " << real_speed_ << endl;
 		raise(SIGABRT);
@@ -828,6 +832,8 @@ void agentArrayCallback(carla_connector::agent_array data){
 						pose.pose.position.x, pose.pose.position.y);
 				}
 			}
+
+			cout << "vehicle has "<< agent.path_candidates.size() << " path_candidates" << endl;
 			veh_list.push_back(world_veh);
 
 		} else if (agent_type == "ped"){
@@ -850,6 +856,8 @@ void agentArrayCallback(carla_connector::agent_array data){
 						pose.pose.position.x, pose.pose.position.y);
 				}
 			}
+
+			cout << "ped has "<< agent.path_candidates.size() << " path_candidates" << endl;
 			
 			ped_list.push_back(world_ped);
 		}

@@ -1122,7 +1122,6 @@ void WorldModel::RobStep(CarStruct &car, double steering, Random& random) {
 	}
 }
 
-
 void WorldModel::RobStep(CarStruct &car, double steering, double& random) {
 	if(steering!=0){
         //assert(tan(steering)>0);
