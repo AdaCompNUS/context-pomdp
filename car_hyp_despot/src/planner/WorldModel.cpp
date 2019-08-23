@@ -992,10 +992,17 @@ void WorldModel::cal_bb_extents(AgentStruct& agent, std::vector<COORD>& bb, doub
 void WorldModel::PedStepPath(AgentStruct& agent, int step, bool doPrint) {
     auto& path_candidates = PathCandidates(agent.id);
 
-    if (agent.intention < path_candidates.size()){
-        auto& path = path_candidates[agent.intention];
+    int intention;
+    if(doPrint)
+        intention = 0;
+    else
+        intention = agent.intention;
+
+    if (intention < path_candidates.size()){
+        auto& path = path_candidates[intention];
         if(doPrint)
-            cout << "[PedStepPath]: path size " << path.size() << " agent_speed " << agent.speed << endl;
+            cout << "[PedStepPath]: agent " << agent.id << " path size " 
+                << path.size() << " speed " << agent.speed  << " forward distance " << agent.speed * (float(step)/freq) << endl;
         agent.pos_along_path = path.forward(agent.pos_along_path, agent.speed * (float(step)/freq));
         COORD new_pos = path[agent.pos_along_path];
         agent.vel = (new_pos - agent.pos) * freq;
@@ -1415,6 +1422,7 @@ void WorldStateTracker::tracIntention(Agent& des, const Agent& src, bool doPrint
     des.reset_intention = src.reset_intention;
     // des.paths = src.paths;
 
+    des.paths.resize(0);
     for (const Path& path: src.paths){
         des.paths.push_back(path.interpolate()); // reset the resolution of the path to ModelParams:PATH_STEP
     }

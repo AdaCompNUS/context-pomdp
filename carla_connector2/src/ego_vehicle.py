@@ -42,7 +42,7 @@ class EgoVehicle(Drunc):
             spawn_trans = carla.Transform()
             spawn_trans.location.x = spawn_position.x
             spawn_trans.location.y = spawn_position.y
-            spawn_trans.location.z = 0.2
+            spawn_trans.location.z = 0.5
             spawn_trans.rotation.yaw = self.path.get_yaw()
 
             self.actor = self.world.try_spawn_actor(vehicle_bp, spawn_trans)
