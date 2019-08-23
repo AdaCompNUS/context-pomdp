@@ -100,7 +100,7 @@ public:
 
         cmd_accel_pub.publish(acc_topic);
 
-        std::cout<<" ~~~~~~ vel publisher cur_vel="<< curr_vel << ", target_vel="<< target_vel << ", pub_acc=" << pub_acc << std::endl;
+        // std::cout<<" ~~~~~~ vel publisher cur_vel="<< curr_vel << ", target_vel="<< target_vel << ", pub_acc=" << pub_acc << std::endl;
 		// std::cout<<" ~~~~~~ vel publisher cmd steer="<< cmd.angular.z << ", acc="<< cmd.linear.y << std::endl;
     }
 

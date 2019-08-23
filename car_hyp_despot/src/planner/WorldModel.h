@@ -77,7 +77,7 @@ public:
     void RVO2AgentStep(PomdpStateWorld& state, Random& random);
     void PedStepGoal(AgentStruct& ped, int step=1);
     void PedStepCurVel(AgentStruct& ped, int step=1);
-    void PedStepPath(AgentStruct& agent, int step=1);
+    void PedStepPath(AgentStruct& agent, int step=1, bool doPrint = false);
 
     COORD GetGoalPos(const AgentStruct& ped, int intention_id=-1);
     COORD GetGoalPos(const AgentBelief& ped, int intention_id);
@@ -138,9 +138,7 @@ public:
     int NumPaths(int agent_id){ 
         auto it = id_map_num_paths.find(agent_id);
         if (it == id_map_num_paths.end()){
-            std::cout << "agent id " << agent_id <<
-             " not found in id_map_num_paths" << std::endl;
-            raise(SIGABRT);
+            ERR(string_sprintf("agent id %d not found in id_map_num_paths\n", agent_id));
         }
         return it->second;
     }
@@ -223,6 +221,8 @@ public:
     return guide_steer;
   }
 
+  void BicycleModel(CarStruct &car, double steering, double end_vel);
+
 };
 
 class WorldStateTracker {
@@ -242,6 +242,7 @@ public:
     void tracIntention(Agent& des, const Agent& src, bool);
     void tracBoundingBox(Vehicle& des, const Vehicle& src, bool);
     void tracCrossDirs(Pedestrian& des, const Pedestrian& src, bool);
+    void updatePathPool(Agent& des);
 
     void updateCar(const CarStruct car);
     void updateVel(double vel);

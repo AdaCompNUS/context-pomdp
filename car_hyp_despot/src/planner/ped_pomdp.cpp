@@ -654,7 +654,9 @@ PomdpState PedPomdp::PredictAgents(const PomdpState& ped_state) const {
             world_model->PedStepCurVel(p, 1);
         }
         else if (world_model->goal_mode == "path") {
-            world_model->PedStepPath(p, 1);
+            world_model->PedStepPath(p, 1, true);
+            if (i ==0) 
+            	cout << "[PredictAgents] agent " << p.id << " pos_along_path " << p.pos_along_path << " " << endl;
         }
     }
 

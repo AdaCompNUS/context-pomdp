@@ -344,7 +344,7 @@ class GammaCrowdController(Drunc):
             return spawn_min, spawn_max
 
     def update(self):
-        while len(self.network_agents) < self.num_network_agents:
+        while len(self.network_car_agents) < self.num_network_car_agents:
             spawn_min, spawn_max = self.get_ego_range() 
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
             trans = carla.Transform()
@@ -362,8 +362,8 @@ class GammaCrowdController(Drunc):
                     5.0 + random.uniform(0.0, 1.5)))
         
         while len(self.network_bike_agents) < self.num_network_bike_agents:
-            #spawn_range_x, spawn_range_y = self.get_ego_range()            
-            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval)
+            spawn_min, spawn_max = self.get_ego_range()            
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y

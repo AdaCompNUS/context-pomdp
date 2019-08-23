@@ -15,14 +15,17 @@ namespace ModelParams {
     int DRIVING_PLACE = 0;
 
 	double VEL_MAX=/*1.5*/ 3.0;
-
 	double LASER_RANGE = 50.0;
- 
+
+	double CAR_WIDTH = 2.0;
+	double CAR_LENGTH = 2.68;
+	double CAR_FRONT = 1.34;
+	double CAR_REAR = 1.34;
+	
 	std::string rosns="";
 	std::string laser_frame="/laser_frame";
 
 	std::string car_model = "audi_r8";// or pomdp_car
-
 
 	void print_params(){
 		printf("ModelParams:\n");

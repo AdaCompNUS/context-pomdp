@@ -65,8 +65,8 @@ bool inCollision(double ped_x, double ped_y, double car_x, double car_y, double 
 	double side_margin,front_margin, back_margin;
 	if(ModelParams::car_model == "pomdp_car"){
 		/// pomdp car
-		double car_width = CAR_WIDTH,
-					 car_length = CAR_LENGTH;
+		double car_width = ModelParams::CAR_WIDTH,
+					 car_length = ModelParams::CAR_LENGTH;
 		side_margin = car_width / 2.0 + CAR_SIDE_MARGIN + PED_SIZE;
 		front_margin = CAR_FRONT_MARGIN + PED_SIZE;
 		back_margin = car_length + CAR_SIDE_MARGIN + PED_SIZE;
@@ -79,6 +79,10 @@ bool inCollision(double ped_x, double ped_y, double car_x, double car_y, double 
 		side_margin = car_width / 2.0 + side_safe_margin;
 		front_margin = 3.6 + safe_margin;
 		back_margin = 0.8 + back_safe_margin;
+	} else if(ModelParams::car_model == "carla") {
+		side_margin = ModelParams::CAR_WIDTH / 2.0 + CAR_SIDE_MARGIN + PED_SIZE;
+		front_margin = ModelParams::CAR_FRONT + CAR_FRONT_MARGIN + PED_SIZE;
+		back_margin = ModelParams::CAR_REAR + CAR_SIDE_MARGIN + PED_SIZE;
 	}
 
 	return InRectangle(car_dir_x, car_dir_y, car_ped_x, car_ped_y, front_margin, back_margin, side_margin);
@@ -112,9 +116,8 @@ bool inRealCollision(double Mx, double My, double Hx, double Hy, double Ctheta) 
 
 	if(ModelParams::car_model == "pomdp_car"){
 		/// pomdp car
-		double car_width = CAR_WIDTH,
-					 car_length = CAR_LENGTH;
-
+		double car_width = ModelParams::CAR_WIDTH,
+					 car_length = ModelParams::CAR_LENGTH;
 		side_margin = car_width / 2.0 + PED_SIZE;
 		front_margin = 0.0 + PED_SIZE;
 		back_margin = car_length + PED_SIZE;
@@ -122,11 +125,14 @@ bool inRealCollision(double Mx, double My, double Hx, double Hy, double Ctheta) 
 		/// audi r8
 		double car_width = 1.9,
 				car_length = 4.4;
-
 		double safe_margin = 0.0, side_safe_margin = 0.0, back_safe_margin = 0.0;
 		side_margin = car_width / 2.0 + side_safe_margin;
 		front_margin = 3.6 + safe_margin;
 		back_margin = 0.8 + back_safe_margin;
+	} else if(ModelParams::car_model == "carla") {
+		side_margin = ModelParams::CAR_WIDTH / 2.0 + PED_SIZE;
+		front_margin = ModelParams::CAR_FRONT + PED_SIZE;
+		back_margin = ModelParams::CAR_REAR + PED_SIZE;
 	}
 
 	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);

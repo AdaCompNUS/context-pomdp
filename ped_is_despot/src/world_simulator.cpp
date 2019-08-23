@@ -340,7 +340,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	}
 	else if (worldModel.path.size()>0 && COORD::EuclideanDistance(stateTracker->carpos, worldModel.path[0])>4.0){
 		cerr << "=================== Path offset too high !!! Node shutting down" << endl;
-		ros::shutdown();
+		// ros::shutdown();
 	}
 	else{
 //		get_action_fix_latency(action);
@@ -808,7 +808,7 @@ void agentArrayCallback(carla_connector::agent_array data){
 
 		cout << "get agent: " << agent.id <<" "<< agent_type << endl;
 
-		if (agent_type == "car"){
+		if (agent_type == "car" || agent_type == "bike" ){
 			Vehicle world_veh;
 
 			world_veh.time_stamp = data_time_sec;
@@ -835,7 +835,6 @@ void agentArrayCallback(carla_connector::agent_array data){
 
 			cout << "vehicle has "<< agent.path_candidates.size() << " path_candidates" << endl;
 			veh_list.push_back(world_veh);
-
 		} else if (agent_type == "ped"){
 			Pedestrian world_ped;
 
@@ -964,12 +963,40 @@ geometry_msgs::PoseStamped WorldSimulator::getPoseAhead(const tf::Stamped<tf::Po
 	return posemsg;
 }
 
+double xylength(geometry_msgs::Point32 p){
+	return sqrt(p.x*p.x + p.y*p.y);
+}
+bool car_data_ready = false;
 
 void WorldSimulator::update_il_car(const ped_is_despot::car_info::ConstPtr car) {
     if (b_update_il == true){
     	p_IL_data.past_car = p_IL_data.cur_car;
     	p_IL_data.cur_car = *car;
     }
+
+    if (!car_data_ready){
+	    const ped_is_despot::car_info& ego_car= *car;
+	    ModelParams::CAR_FRONT = xylength(ego_car.front_axle_center);
+	    ModelParams::CAR_REAR = xylength(ego_car.rear_axle_center);
+	    ModelParams::CAR_LENGTH = ModelParams::CAR_FRONT + ModelParams::CAR_REAR;
+
+	    ModelParams::CAR_WIDTH = 0;
+	    float car_yaw = ego_car.car_yaw;
+	    COORD tan_dir(-cos(car_yaw), sin(car_yaw));
+	    for(auto& point : ego_car.car_bbox.points){
+	    	COORD p(point.x, point.y);
+	    	double proj = p.dot(tan_dir);
+	    	ModelParams::CAR_WIDTH = max(ModelParams::CAR_WIDTH, fabs(proj));
+	    }
+	    ModelParams::CAR_WIDTH = ModelParams::CAR_WIDTH * 2;
+
+	    DEBUG(string_sprintf("car dimension: font = %f , rear = %f, width = %f\n", 
+	    	ModelParams::CAR_FRONT, ModelParams::CAR_REAR, ModelParams::CAR_WIDTH));
+
+	    static_cast<const PedPomdp*>(model_)->InitGPUCarParams();
+
+	    car_data_ready = true;
+	}
 }
 
 //void WorldSimulator::update_il_steering(const std_msgs::Float32::ConstPtr steer){

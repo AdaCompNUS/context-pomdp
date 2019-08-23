@@ -29,17 +29,23 @@ class EgoVehicle(Drunc):
         super(EgoVehicle, self).__init__()
 
         # Create path.
-        self.path = NetworkAgentPath.rand_path(self, 20, 1.0)
-            
-        vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.bmw.*'))
-        vehicle_bp.set_attribute('role_name', 'ego_vehicle')
-        spawn_position = self.path.get_position()
-        spawn_trans = carla.Transform()
-        spawn_trans.location.x = spawn_position.x
-        spawn_trans.location.y = spawn_position.y
-        spawn_trans.location.z = 2.0
-        spawn_trans.rotation.yaw = self.path.get_yaw()
-        self.actor = self.world.spawn_actor(vehicle_bp, spawn_trans)
+        self.actor = None
+
+        while self.actor is None:
+
+            spawn_min, spawn_max = self.get_shrinked_range(scale=0.5)
+            self.path = NetworkAgentPath.rand_path(self, 20, 1.0, spawn_min, spawn_max)
+                
+            vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.bmw.*'))
+            vehicle_bp.set_attribute('role_name', 'ego_vehicle')
+            spawn_position = self.path.get_position()
+            spawn_trans = carla.Transform()
+            spawn_trans.location.x = spawn_position.x
+            spawn_trans.location.y = spawn_position.y
+            spawn_trans.location.z = 0.2
+            spawn_trans.rotation.yaw = self.path.get_yaw()
+
+            self.actor = self.world.try_spawn_actor(vehicle_bp, spawn_trans)
 
         self.cmd_speed = 0
         self.cmd_accel = 0
@@ -57,6 +63,25 @@ class EgoVehicle(Drunc):
         self.broadcaster = None
         self.publish_odom_transform()
         self.transformer = TransformListener()
+
+    def get_shrinked_range(self, scale = 1.0):
+        if scale == 1.0:
+            return self.map_bounds_min, self.map_bounds_max # TODO: I want to get the actual map range here
+        else: 
+            map_range = self.map_bounds_max - self.map_bounds_min
+            new_map_range = carla.Vector2D(map_range.x * scale, map_range.y * scale)
+            map_margin_range = map_range - new_map_range
+            map_margin_range.x = map_margin_range.x / 2.0
+            map_margin_range.y = map_margin_range.y / 2.0
+
+            spawn_min = carla.Vector2D(
+                self.map_bounds_min.x + map_margin_range.x, 
+                self.map_bounds_min.y + map_margin_range.y)
+            spawn_max = carla.Vector2D(
+                self.map_bounds_max.x - map_margin_range.x,
+                self.map_bounds_max.y - map_margin_range.y)
+
+            return spawn_min, spawn_max
 
     def dispose(self):
         self.actor.destroy()
@@ -266,6 +291,17 @@ class EgoVehicle(Drunc):
     def cmd_steer_callback(self, steer):
         self.cmd_steer = steer.data
 
+    def draw_path(self, path):
+        color_i = 255
+        last_loc = None
+        for i in range(len(path.route_points)):
+            pos = path.get_position(i)
+            loc = carla.Location(pos.x, pos.y, 0.1)
+            if last_loc is not None:
+                self.world.debug.draw_line(last_loc,loc,life_time = 0.1, 
+                    color = carla.Color(color_i,color_i,0,0))
+            last_loc = carla.Location(pos.x, pos.y, 0.1)
+
     def update(self):
         # Calculate control and send to CARLA.
         control = self.actor.get_control()
@@ -290,6 +326,7 @@ class EgoVehicle(Drunc):
         if not self.path.resize():
             print('Warning : path too short.')
             return
+        self.draw_path(self.path)
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()

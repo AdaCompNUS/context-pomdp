@@ -64,7 +64,7 @@ double Path::getYaw(int i) const {
 	return a;
 }
 
-Path Path::interpolate() {
+Path Path::interpolate() const {
     auto& path = *this;
 	Path p;
 

@@ -41,5 +41,9 @@ namespace Dvc_ModelParams {
 	DEVICE double GOAL_REWARD;
 	DEVICE double TIME_REWARD;
 
+    DEVICE double CAR_WIDTH;
+    DEVICE double CAR_LENGTH;
+    DEVICE double CAR_FRONT;
+    DEVICE double CAR_REAR;
 }
 
