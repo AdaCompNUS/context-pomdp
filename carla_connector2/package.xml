@@ -24,6 +24,7 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>peds_unity_system</exec_depend>
   <exec_depend>cluster_assoc</exec_depend>
+  <exec_depend>joy</exec_depend>
   <export>
   </export>
 </package>

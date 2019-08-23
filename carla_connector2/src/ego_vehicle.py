@@ -32,11 +32,10 @@ class EgoVehicle(Drunc):
         self.actor = None
 
         while self.actor is None:
-
             spawn_min, spawn_max = self.get_shrinked_range(scale=0.5)
             self.path = NetworkAgentPath.rand_path(self, 20, 1.0, spawn_min, spawn_max)
                 
-            vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.bmw.*'))
+            vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.bmw.grandtourer'))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')
             spawn_position = self.path.get_position()
             spawn_trans = carla.Transform()
@@ -262,11 +261,11 @@ class EgoVehicle(Drunc):
         gui_path.header.frame_id = 'map'
         gui_path.header.stamp = current_time
 
+        
+        values = [(carla.Vector2D(self.actor.get_location().x, self.actor.get_location().y), self.actor.get_transform().rotation.yaw)]
         # Exclude last point because no yaw information.
-        for i in range(len(self.path.route_points) - 1):
-            position = self.path.get_position(i)
-            yaw = self.path.get_yaw(i)
-
+        values += [(self.path.get_position(i), self.path.get_yaw(i)) for i in range(len(self.path.route_points) - 1)]
+        for (position, yaw) in values:
             pose = PoseStamped()
             pose.header.frame_id = 'map'
             pose.header.stamp = current_time
@@ -305,17 +304,20 @@ class EgoVehicle(Drunc):
     def update(self):
         # Calculate control and send to CARLA.
         control = self.actor.get_control()
-        control.gear = 1 
+        control.gear = 1
         control.steer = self.cmd_steer
         if self.cmd_accel > 0:
             control.throttle = self.cmd_accel
             control.brake = 0.0
+            control.reverse = False
         elif self.cmd_accel == 0:
             control.throttle = 0.0
             control.brake = 0.0
+            control.reverse = False
         else:
-            control.throttle = 0.0
-            control.brake = self.cmd_accel
+            control.throttle = -self.cmd_accel
+            control.brake = 0.0
+            control.reverse = True
         self.actor.apply_control(control)
 
         # Publish info.
