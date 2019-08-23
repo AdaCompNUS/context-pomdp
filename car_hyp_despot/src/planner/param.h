@@ -21,12 +21,15 @@ namespace ModelParams {
 	extern double COLLISION_DISTANCE;
 
 	extern double IN_FRONT_ANGLE_DEG;
-
 	extern double LASER_RANGE;
 	extern int DRIVING_PLACE;
-
 	extern double NOISE_PED_POS;
 
+	extern double CAR_WIDTH;
+	extern double CAR_LENGTH;
+	extern double CAR_FRONT; // car pos may not be measured at rear wheel
+	extern double CAR_REAR; // car pos may not be measured at rear wheel
+	
 	const double PATH_STEP = 0.05;
 	const double GOAL_TOLERANCE = 2;
 	const double PED_SPEED = 1.0;
@@ -79,8 +82,8 @@ namespace ModelParams {
 //#define PED_SIZE 0.25f
 //#define CAR_EXPAND_SIZE 0.2f
 
-#define CAR_WIDTH 2.0f
-#define CAR_LENGTH 2.68f
+// #define CAR_WIDTH 2.0f
+// #define CAR_LENGTH 2.68f
 #define CAR_SIDE_MARGIN 1.2f
 #define CAR_FRONT_MARGIN 1.5f
 #define PED_SIZE 0.25f

@@ -641,13 +641,11 @@ DEVICE bool Dvc_PedPomdp::Dvc_Step(Dvc_State& state, float rand_num, int action,
 			float car_ped_x = pedpos.x - car_pos.x,
 						 car_ped_y = pedpos.y - car_pos.y;
 
-/// car geometry for pomdp car
-			float car_width = CAR_WIDTH,
-						 car_length = CAR_LENGTH;
-			float side_margin = car_width / 2.0 + CAR_SIDE_MARGIN + PED_SIZE,
-					front_margin = CAR_FRONT_MARGIN + PED_SIZE,
-					back_margin = car_length + CAR_SIDE_MARGIN + PED_SIZE;
-/// end pomdp car
+/// car geometry for CARLA car
+			float side_margin = Dvc_ModelParams::CAR_WIDTH / 2.0 + CAR_SIDE_MARGIN + PED_SIZE;
+			float front_margin = Dvc_ModelParams::CAR_FRONT + CAR_FRONT_MARGIN + PED_SIZE;
+			float back_margin = Dvc_ModelParams::CAR_REAR + CAR_SIDE_MARGIN + PED_SIZE;
+/// end CARLA car
 
 			float car_tan_x = - car_dir_y, // direction after 90 degree anti-clockwise rotation
 						 car_tan_y = car_dir_x;
@@ -712,12 +710,16 @@ DEVICE bool Dvc_PedPomdp::Dvc_Step(Dvc_State& state, float rand_num, int action,
 			// State transition: car, bicycle model
 			if(steering!=0){
 				assert(tan(steering)>0);
-				float TurningRadius = CAR_LENGTH/tan(steering);
+				float TurningRadius = Dvc_ModelParams::CAR_LENGTH/tan(steering);
 				assert(TurningRadius>0);
 				float beta= pedpomdp_state.car.vel/freq/TurningRadius;
-				pedpomdp_state.car.pos.x=pedpomdp_state.car.pos.x+TurningRadius*(sin(pedpomdp_state.car.heading_dir+beta)-sin(pedpomdp_state.car.heading_dir));
-				pedpomdp_state.car.pos.y=pedpomdp_state.car.pos.y+TurningRadius*(cos(pedpomdp_state.car.heading_dir)-cos(pedpomdp_state.car.heading_dir+beta));
+				pedpomdp_state.car.pos.x += -Dvc_ModelParams::CAR_REAR * cos(pedpomdp_state.car.heading_dir) + 
+				TurningRadius*(sin(pedpomdp_state.car.heading_dir+beta)-sin(pedpomdp_state.car.heading_dir));
+				pedpomdp_state.car.pos.y += -Dvc_ModelParams::CAR_REAR * sin(pedpomdp_state.car.heading_dir) +
+				TurningRadius*(cos(pedpomdp_state.car.heading_dir)-cos(pedpomdp_state.car.heading_dir+beta));
 				pedpomdp_state.car.heading_dir=Dvc_cap_angle(pedpomdp_state.car.heading_dir+beta);
+				pedpomdp_state.car.pos.x += Dvc_ModelParams::CAR_REAR * cos(pedpomdp_state.car.heading_dir);
+        		pedpomdp_state.car.pos.y += Dvc_ModelParams::CAR_REAR * sin(pedpomdp_state.car.heading_dir);
 			}
 			else{
 				pedpomdp_state.car.pos.x+=(pedpomdp_state.car.vel/freq) * cos(pedpomdp_state.car.heading_dir);

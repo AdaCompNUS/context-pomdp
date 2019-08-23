@@ -611,7 +611,7 @@ int WorldModel::hasMinSteerPath(const PomdpState& state) {
     if (theta == 0) // can go through straight line
     	return int(ceil(d / (ModelParams::VEL_MAX/freq)));
 
-    double r = CAR_LENGTH / tan(ModelParams::MaxSteerAngle);
+    double r = ModelParams::CAR_LENGTH / tan(ModelParams::MaxSteerAngle);
     // double arc_len = min_turning_radii * theta;
     double chord_len = r * sin(theta) * 2;
 
@@ -643,7 +643,7 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
     if (theta == 0) // can go through straight line
     	return int(ceil(d / (ModelParams::VEL_MAX/freq)));
 
-    double r = CAR_LENGTH / tan(ModelParams::MaxSteerAngle);
+    double r = ModelParams::CAR_LENGTH / tan(ModelParams::MaxSteerAngle);
     // double arc_len = min_turning_radii * theta;
     double chord_len = r * sin(theta) * 2;
 
@@ -797,8 +797,16 @@ COORD WorldModel::GetGoalPosFromPaths(int agent_id, int intention_id, int pos_al
             COORD cross_dir= path.GetCrossDir(pos_along_path, agent_cross_dir); 
             return COORD(agent_pos.x + cross_dir.x/freq*3, agent_pos.y + cross_dir.y/freq*3);
         } else {
-            cout << "Agent type " << type << " should not have cross intention" << endl;
-            raise(SIGABRT);
+            cout << " intention_id";           
+            for (auto & path: path_candidates){
+                cerr << "candidate path:";
+                for (auto& point : path)
+                    cerr << point.x << " " << point.y << " ";
+                cerr << endl;
+            }
+            ERR(string_sprintf(
+                "Agent type %d should not have cross intention %d for num_intentions %d and num_paths %d\n", 
+                type, intention_id, GetNumIntentions(agent_id), path_candidates.size()));
         }
     }
     else if (intention_id == GetNumIntentions(agent_id)-1){ // stop intention
@@ -883,24 +891,31 @@ COORD WorldModel::GetGoalPos(const AgentBelief& agent, int intention_id){
 }
 
 int WorldModel::GetNumIntentions(const AgentStruct& agent){
-
-    // return NumPaths(agent.id) + 1; // number of paths + stop (agent has one more cross intention)
-
-    return 2; // current vel model
+    if (goal_mode == "path")
+        return NumPaths(agent.id) + 1; // number of paths + stop (agent has one more cross intention)
+    else if (goal_mode == "cur_vel")
+        return 2;
+    else if (goal_mode == "goal")
+        return goals.size();
 }
 
 
 int WorldModel::GetNumIntentions(const Agent& agent){
-
-    // return NumPaths(agent.id) + 1; // number of paths + stop (agent has one more cross intention)
-
-    return 2; // current vel model
+    if (goal_mode == "path")
+        return NumPaths(agent.id) + 1; // number of paths + stop (agent has one more cross intention)
+    else if (goal_mode == "cur_vel")
+        return 2;
+    else if (goal_mode == "goal")
+        return goals.size();
 }
 
 int WorldModel::GetNumIntentions(int agent_id){
-    // return NumPaths(agent_id) + 1; // number of paths + stop (agent has one more cross intention)
-
-    return 2; // current vel model
+    if (goal_mode == "path")
+        return NumPaths(agent_id) + 1; // number of paths + stop (agent has one more cross intention)
+    else if (goal_mode == "cur_vel")
+        return 2;
+    else if (goal_mode == "goal")
+        return goals.size();
 }
 
 void WorldModel::PedStepGoal(AgentStruct& agent, int step) {
@@ -974,12 +989,13 @@ void WorldModel::cal_bb_extents(AgentStruct& agent, std::vector<COORD>& bb, doub
     }
 }
 
-void WorldModel::PedStepPath(AgentStruct& agent, int step) {
+void WorldModel::PedStepPath(AgentStruct& agent, int step, bool doPrint) {
     auto& path_candidates = PathCandidates(agent.id);
 
     if (agent.intention < path_candidates.size()){
         auto& path = path_candidates[agent.intention];
-
+        if(doPrint)
+            cout << "[PedStepPath]: path size " << path.size() << " agent_speed " << agent.speed << endl;
         agent.pos_along_path = path.forward(agent.pos_along_path, agent.speed * (float(step)/freq));
         COORD new_pos = path[agent.pos_along_path];
         agent.vel = (new_pos - agent.pos) * freq;
@@ -1105,77 +1121,47 @@ void WorldModel::FixGPUVel(CarStruct &car)
 	car.vel=((int)(tmp+0.5))*(ModelParams::AccSpeed/freq);
 }
 
+void WorldModel::BicycleModel(CarStruct &car, double steering, double end_vel) {
+    if(steering!=0){
+        assert(tan(steering)!=0);
+        double TurningRadius = ModelParams::CAR_LENGTH/tan(steering);
+        assert(TurningRadius!=0);
+        double beta= end_vel/freq/TurningRadius;
+        car.pos.x = car.pos.x - ModelParams::CAR_REAR * cos(car.heading_dir) 
+            + TurningRadius*(sin(car.heading_dir+beta)-sin(car.heading_dir));
+        car.pos.y = car.pos.y - ModelParams::CAR_REAR * sin(car.heading_dir)
+            + TurningRadius*(cos(car.heading_dir)-cos(car.heading_dir+beta));
+        car.heading_dir = cap_angle(car.heading_dir+beta);
 
-void WorldModel::RobStep(CarStruct &car, double steering, Random& random) {
-	if(steering!=0){
-        assert(tan(steering)>0);
-		double TurningRadius = CAR_LENGTH/tan(steering);
-        assert(TurningRadius>0);
-		double beta= car.vel/freq/TurningRadius;
-		car.pos.x=car.pos.x+TurningRadius*(sin(car.heading_dir+beta)-sin(car.heading_dir));
-		car.pos.y=car.pos.y+TurningRadius*(cos(car.heading_dir)-cos(car.heading_dir+beta));
-		car.heading_dir=cap_angle(car.heading_dir+beta);
-	}
-	else{
-		car.pos.x+=(car.vel/freq) * cos(car.heading_dir);
-		car.pos.y+=(car.vel/freq) * sin(car.heading_dir);
-	}
+        car.pos.x += ModelParams::CAR_REAR * cos(car.heading_dir);
+        car.pos.y += ModelParams::CAR_REAR * sin(car.heading_dir);
+    }
+    else{
+        car.pos.x += (end_vel/freq) * cos(car.heading_dir);
+        car.pos.y += (end_vel/freq) * sin(car.heading_dir);
+    }   
 }
 
 
+void WorldModel::RobStep(CarStruct &car, double steering, Random& random) {
+	BicycleModel(car, steering, car.vel);
+}
+
 void WorldModel::RobStep(CarStruct &car, double steering, double& random) {
-	if(steering!=0){
-        //assert(tan(steering)>0);
-		double TurningRadius = CAR_LENGTH/tan(steering);
-        //assert(TurningRadius>0);
-		double beta= car.vel/freq/TurningRadius;
-		car.pos.x=car.pos.x+TurningRadius*(sin(car.heading_dir+beta)-sin(car.heading_dir));
-		car.pos.y=car.pos.y+TurningRadius*(cos(car.heading_dir)-cos(car.heading_dir+beta));
-		car.heading_dir=cap_angle(car.heading_dir+beta);
-	}
-	else{
-		car.pos.x+=(car.vel/freq) * cos(car.heading_dir);
-		car.pos.y+=(car.vel/freq) * sin(car.heading_dir);
-	}
+    BicycleModel(car, steering, car.vel);	
 }
 
 
 void WorldModel::RobStep(CarStruct &car, double& random, double acc, double steering) {
     double end_vel = car.vel + acc / freq;
     end_vel = max(min(end_vel, ModelParams::VEL_MAX), 0.0);
-
-    if(steering!=0){
-		assert(tan(steering)>0);
-		double TurningRadius = CAR_LENGTH/tan(steering);
-		assert(TurningRadius>0);
-		double beta= end_vel/freq/TurningRadius;
-		car.pos.x=car.pos.x+TurningRadius*(sin(car.heading_dir+beta)-sin(car.heading_dir));
-		car.pos.y=car.pos.y+TurningRadius*(cos(car.heading_dir)-cos(car.heading_dir+beta));
-		car.heading_dir=cap_angle(car.heading_dir+beta);
-	}
-	else{
-		car.pos.x+=(end_vel/freq) * cos(car.heading_dir);
-		car.pos.y+=(end_vel/freq) * sin(car.heading_dir);
-	}
+    BicycleModel(car, steering, end_vel);
 }
 
 void WorldModel::RobStep(CarStruct &car, Random& random, double acc, double steering) {
     double end_vel = car.vel + acc / freq;
     end_vel = max(min(end_vel, ModelParams::VEL_MAX), 0.0);
-
-    if(steering!=0){
-		assert(tan(steering)>0);
-		double TurningRadius = CAR_LENGTH/tan(steering);
-		assert(TurningRadius>0);
-		double beta= end_vel/freq/TurningRadius;
-		car.pos.x=car.pos.x+TurningRadius*(sin(car.heading_dir+beta)-sin(car.heading_dir));
-		car.pos.y=car.pos.y+TurningRadius*(cos(car.heading_dir)-cos(car.heading_dir+beta));
-		car.heading_dir=cap_angle(car.heading_dir+beta);
-	}
-	else{
-		car.pos.x+=(end_vel/freq) * cos(car.heading_dir);
-		car.pos.y+=(end_vel/freq) * sin(car.heading_dir);
-	}
+    BicycleModel(car, steering, end_vel);
 }
 
 
@@ -1411,12 +1397,8 @@ void WorldStateTracker::tracCrossDirs(Pedestrian& des, const Pedestrian& src, bo
     des.cross_dir=src.cross_dir;
 }
 
-void WorldStateTracker::tracIntention(Agent& des, const Agent& src, bool doPrint){
-    des.reset_intention = src.reset_intention;
-    des.paths = src.paths;
+void WorldStateTracker::updatePathPool(Agent& des){
     model.id_map_paths[des.id] = des.paths; 
-
-    // logi << "Adding agent " << des.id << " to id_map_paths" << endl;
 
     switch (des.type()){
         case AgentType::ped:
@@ -1427,6 +1409,17 @@ void WorldStateTracker::tracIntention(Agent& des, const Agent& src, bool doPrint
             cout << __FUNCTION__ <<": unsupported agent type " << des.type() << endl;
             raise(SIGABRT); break;
     }
+}
+
+void WorldStateTracker::tracIntention(Agent& des, const Agent& src, bool doPrint){
+    des.reset_intention = src.reset_intention;
+    // des.paths = src.paths;
+
+    for (const Path& path: src.paths){
+        des.paths.push_back(path.interpolate()); // reset the resolution of the path to ModelParams:PATH_STEP
+    }
+
+    updatePathPool(des);
 }
 
 void WorldStateTracker::trackVel(Agent& des, const Agent& src, bool& no_move, bool doPrint){
@@ -1500,6 +1493,8 @@ void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
         veh_list.back().vel.y = 0.01; // to avoid subsequent runtime error
         // veh_list.back().last_update = get_timestamp();
         veh_list.back().time_stamp = veh.time_stamp;
+
+        updatePathPool(veh_list.back());
     }
 
     if (no_move){
@@ -1542,7 +1537,8 @@ void WorldStateTracker::updatePed(const Pedestrian& agent, bool doPrint){
         ped_list.back().vel.x = 0.01; // to avoid subsequent runtime error
         ped_list.back().vel.y = 0.01; // to avoid subsequent runtime error
         ped_list.back().time_stamp = agent.time_stamp;
-        // ped_list.back().last_update = get_timestamp();
+
+        updatePathPool(ped_list.back());
 //        cout <<"[updatePed] new agent added" << agent.id << endl;
     }
 
@@ -2267,9 +2263,9 @@ void WorldModel::add_car_agent(int id_in_sim, CarStruct& car){
 
 	if(ModelParams::car_model == "pomdp_car"){
 		/// for pomdp car
-		car_x = car.pos.x - CAR_LENGTH/2.0f*cos(car_yaw);
-		car_y = car.pos.y - CAR_LENGTH/2.0f*sin(car_yaw);
-		double car_radius = sqrt(pow(CAR_WIDTH/2.0f, 2) + pow(CAR_LENGTH/2.0f,2)) + CAR_EXPAND_SIZE;
+		car_x = car.pos.x - ModelParams::CAR_LENGTH/2.0f*cos(car_yaw);
+		car_y = car.pos.y - ModelParams::CAR_LENGTH/2.0f*sin(car_yaw);
+		double car_radius = sqrt(pow(ModelParams::CAR_WIDTH/2.0f, 2) + pow(ModelParams::CAR_LENGTH/2.0f,2)) + CAR_EXPAND_SIZE;
 		traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
 		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
 	} else if(ModelParams::car_model == "audi_r8"){
@@ -2602,7 +2598,7 @@ void WorldStateTracker::text(const vector<WorldStateTracker::AgentDistPair>& sor
 }
 
 void WorldStateTracker::text(const vector<Pedestrian>& tracked_peds) const{
-    if (logging::level()>=3){
+    if (logging::level()>=4){
         cout << "=> ped_list:" << endl;
         for (auto& agent: tracked_peds) {
             fprintf(stderr, "==> id / type / pos / vel / cross / reset: %d / %d / (%f %f) / (%f %f) / %d / %d \n", 
@@ -2612,7 +2608,7 @@ void WorldStateTracker::text(const vector<Pedestrian>& tracked_peds) const{
 }
 
 void WorldStateTracker::text(const vector<Vehicle>& tracked_vehs) const{
-    if (logging::level()>=3){
+    if (logging::level()>=4){
         cout << "=> veh_list:" << endl;
         for (auto& agent: tracked_vehs) {
             fprintf(stderr, "==> id / type / pos / vel / heading_dir / reset: %d / %d / (%f %f) / (%f %f) / %f / %d \n", 

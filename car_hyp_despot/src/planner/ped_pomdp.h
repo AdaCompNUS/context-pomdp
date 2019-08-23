@@ -195,6 +195,10 @@ public:
 	void PrintStateCar(const State& s, std::string msg, ostream& out=cout) const;
 	void ForwardAndVisualize(const State& sample, int step) const;
 	PomdpState PredictAgents(const PomdpState& ped_state) const;
+
+public:
+	void InitGPUCarParams() const;
+
 };
 
 #endif

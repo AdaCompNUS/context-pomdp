@@ -9,7 +9,7 @@
 #include <despot/core/globals.h>
 
 int tick = 0;
-double freq = 12; //10;
+double pub_freq = 12; //10;
 float time_scale = 1.0;
 //const double acceleration0 = 0.7;
 //const double acceleration1 = 0.9;
@@ -41,7 +41,7 @@ public:
         cout << "=> use drive_net: " << b_use_drive_net_ << endl;
         cout << "=> drive_net mode: " << drive_net_mode << endl;
         cout << "=> time_scale: " << time_scale << endl;
-        cout << "=> vel pub freq: " << freq << endl;
+        cout << "=> vel pub pub_freq: " << pub_freq << endl;
 
         steering = 0;
     }
@@ -63,7 +63,7 @@ public:
         else if (b_use_drive_net_ == despot::NO || b_use_drive_net_ == despot::LETS_DRIVE ||b_use_drive_net_ == despot::JOINT_POMDP)
             action_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::actionCallBack, this);
 
-        ros::Timer timer = nh.createTimer(ros::Duration(1 / freq / time_scale), &VelPublisher::publishSpeed, this);
+        ros::Timer timer = nh.createTimer(ros::Duration(1 / pub_freq / time_scale), &VelPublisher::publishSpeed, this);
         cmd_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel",1);
 
         cmd_accel_pub = nh.advertise<std_msgs::Float32>("cmd_accel", 1);
@@ -84,7 +84,10 @@ public:
 
         cmd.angular.z = steering; //0;
         cmd.linear.x = emergency_break? 0 : curr_vel;
-        double pub_acc = emergency_break? -1: (target_vel - curr_vel)*3.0;
+        // double pub_acc = emergency_break? -1: (target_vel - curr_vel)*3.0;
+        double pub_acc = emergency_break? -1: target_acc/1.7 ;
+        if (curr_vel >= ModelParams::VEL_MAX)
+            pub_acc = max(0.0, pub_acc);
         cmd.linear.y = pub_acc; // target_acc;
         // cmd.linear.y = (tick % 60 < 30)? 1 : -1;
         // cmd.linear.y = 1;
@@ -96,6 +99,8 @@ public:
         acc_topic.data = pub_acc;
 
         cmd_accel_pub.publish(acc_topic);
+
+        // std::cout<<" ~~~~~~ vel publisher cur_vel="<< curr_vel << ", target_vel="<< target_vel << ", pub_acc=" << pub_acc << std::endl;
 		// std::cout<<" ~~~~~~ vel publisher cmd steer="<< cmd.angular.z << ", acc="<< cmd.linear.y << std::endl;
     }
 
@@ -144,6 +149,8 @@ class VelPublisher2 : public VelPublisher {
 
 			target_vel = 0.0;
 		}
+
+        cout << "VelPublisher get current vel from topic: " << curr_vel << endl;
     }
 
     void velCallBack(geometry_msgs::TwistConstPtr pomdp_vel) {
@@ -172,12 +179,12 @@ class VelPublisher2 : public VelPublisher {
     }
 
     void publishSpeed(const ros::TimerEvent& event) {
-        double delta = acceleration0 / freq;
+        double delta = acceleration0 / pub_freq;
         if(target_vel > curr_vel + delta) {
-			double delta = acceleration0 / freq;
+			double delta = acceleration0 / pub_freq;
             curr_vel += delta;
 		} else if(target_vel < curr_vel - delta) {
-			double delta = acceleration1 / freq;
+			double delta = acceleration1 / pub_freq;
             curr_vel -= delta;
 		} else
 			curr_vel = target_vel;

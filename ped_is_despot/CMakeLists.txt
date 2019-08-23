@@ -305,6 +305,10 @@ target_link_libraries(local_frame
    car_hyp_despot
 )
 
+target_link_libraries(vel_publisher
+   car_hyp_despot
+)
+
 
 
 # add_dependencies(ped_pomdp caffe2)
