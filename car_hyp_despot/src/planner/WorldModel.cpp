@@ -998,15 +998,19 @@ void WorldModel::PedStepPath(AgentStruct& agent, int step, bool doPrint) {
     else
         intention = agent.intention;
 
+    int old_path_pos = agent.pos_along_path;
+
     if (intention < path_candidates.size()){
         auto& path = path_candidates[intention];
-        if(doPrint)
-            cout << "[PedStepPath]: agent " << agent.id << " path size " 
-                << path.size() << " speed " << agent.speed  << " forward distance " << agent.speed * (float(step)/freq) << endl;
+        
         agent.pos_along_path = path.forward(agent.pos_along_path, agent.speed * (float(step)/freq));
         COORD new_pos = path[agent.pos_along_path];
         agent.vel = (new_pos - agent.pos) * freq;
-        agent.pos = new_pos;   
+        agent.pos = new_pos;
+
+        if(doPrint && agent.pos_along_path == old_path_pos)
+            cout << "[PedStepPath]: agent " << agent.id << " no move: path length " 
+                << path.size() << " speed " << agent.speed  << " forward distance " << agent.speed * (float(step)/freq) << endl;   
     }
 }
 

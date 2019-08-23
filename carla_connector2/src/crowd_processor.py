@@ -60,6 +60,17 @@ class CrowdProcessor(Drunc):
     def il_car_info_callback(self, car_info):
         self.ego_car_info = car_info
 
+    def draw_path(self, path_msg):
+        color_i = 255
+        last_loc = None
+        for pos_msg in path_msg.poses:
+            pos = pos_msg.pose.position
+            loc = carla.Location(pos.x, pos.y, 0.1)
+            if last_loc is not None:
+                self.world.debug.draw_line(last_loc,loc,life_time = 0.1, 
+                    color = carla.Color(color_i,0, color_i,0))
+            last_loc = carla.Location(pos.x, pos.y, 0.1)
+
     def update(self):
         if not self.do_update:
             return
@@ -138,6 +149,7 @@ class CrowdProcessor(Drunc):
                         pose_msg.pose.position.x = path_point.x
                         pose_msg.pose.position.y = path_point.y
                         path_msg.poses.append(pose_msg)
+                    self.draw_path(path_msg)
                     agent_tmp.path_candidates.append(path_msg)
                 agent_tmp.cross_dirs = []
                 self.topological_hash_map[agent.id] = topological_hash
@@ -164,6 +176,7 @@ class CrowdProcessor(Drunc):
                     pose_msg.pose.position.x = path_point.x
                     pose_msg.pose.position.y = path_point.y
                     path_msg.poses.append(pose_msg)
+                # self.draw_path(path_msg)
                 agent_tmp.path_candidates = [path_msg]
                 agent_tmp.cross_dirs = [agent.route_orientation]
                 self.topological_hash_map[agent.id] = topological_hash

@@ -87,6 +87,8 @@ public:
         // double pub_acc = emergency_break? -1: (target_vel - curr_vel)*3.0;
         double pub_acc = emergency_break? -1: target_acc/1.7 ;
         if (curr_vel >= ModelParams::VEL_MAX)
+            pub_acc = min(0.0, pub_acc);
+        if(curr_vel <= 0)
             pub_acc = max(0.0, pub_acc);
         cmd.linear.y = pub_acc; // target_acc;
         // cmd.linear.y = (tick % 60 < 30)? 1 : -1;

@@ -654,13 +654,16 @@ PomdpState PedPomdp::PredictAgents(const PomdpState& ped_state) const {
             world_model->PedStepCurVel(p, 1);
         }
         else if (world_model->goal_mode == "path") {
-            if (i ==0){
-            	cout << "[PredictAgents] agent " << p.id << " with "<< world_model->PathCandidates(p.id).size()
-            		<<" path_candidates, pos_along_path " << p.pos_along_path << " " << endl;
+        	int old_path_pos = p.pos_along_path;
+            if (true){	
         		world_model->PedStepPath(p, 1, true);
-        	}
-        	else
-        		world_model->PedStepPath(p, 1, false);
+			}
+			else
+				world_model->PedStepPath(p, 1, false);
+
+        	if(p.pos_along_path == old_path_pos)
+            	cout << "[PredictAgents] agent " << p.id << " no move with "<< world_model->PathCandidates(p.id).size()
+            		<<" path_candidates, pos_along_path " << p.pos_along_path << " " << endl;   
         }
     }
 
@@ -697,7 +700,7 @@ void PedPomdp::PrintStateAgents(const State& s, std::string msg, ostream& out) c
 	const PomdpState & state = static_cast<const PomdpState&> (s);
 
 	out << msg << " ";
-	for (int i = 0; i < 1/*state.num*/; i ++) {
+	for (int i = 0; i < state.num; i ++) {
 		out << state.agents[i].pos.x << " " << state.agents[i].pos.y << " ";
 	}
 	out << endl;
