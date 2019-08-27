@@ -33,7 +33,10 @@ class Spectator(Drunc):
             # TODO Add as ROS parameters.
             camera_blueprint.set_attribute('image_size_x', '1920')
             camera_blueprint.set_attribute('image_size_y', '1080')
-            camera_blueprint.set_attribute('enable_postprocess_effects', 'False')
+            camera_blueprint.set_attribute('enable_postprocess_effects', 'True')
+            camera_blueprint.set_attribute('motion_blur_intensity', '0.0')
+            camera_blueprint.set_attribute('motion_blur_max_distortion', '0.0')
+            camera_blueprint.set_attribute('motion_blur_min_object_screen_size', '0.0')
             self.camera_sensor_actor = self.world.spawn_actor(
                 camera_blueprint,
                 carla.Transform(carla.Location(x=-32.0, z=24.0), carla.Rotation(pitch=-30.0)),
