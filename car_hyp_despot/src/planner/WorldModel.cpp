@@ -1041,8 +1041,8 @@ double WorldModel::PurepursuitAngle(const CarStruct& car, COORD& pursuit_point) 
 
 double WorldModel::PurepursuitAngle(const AgentStruct& agent, COORD& pursuit_point) const{
     COORD rear_pos;
-    rear_pos.x = agent.pos.x - agent.bb_extent_y * 0.4 * cos(agent.heading_dir); 
-    rear_pos.y = agent.pos.y - agent.bb_extent_y * 0.4 * sin(agent.heading_dir);
+    rear_pos.x = agent.pos.x - agent.bb_extent_y * 2 * 0.4 * cos(agent.heading_dir); 
+    rear_pos.y = agent.pos.y - agent.bb_extent_y * 2 * 0.4 * sin(agent.heading_dir);
     
     double offset = (rear_pos-pursuit_point).Length();
     double target_angle = atan2(pursuit_point.y - rear_pos.y, pursuit_point.x - rear_pos.x);    
@@ -1054,7 +1054,7 @@ double WorldModel::PurepursuitAngle(const AgentStruct& agent, COORD& pursuit_poi
         return 0;
     else{
         double turning_radius = relative_point.Length() / (2 * abs(relative_point.y)); // Intersecting chords theorem.
-        double steering_angle = atan2(agent.bb_extent_y * 0.8, turning_radius);
+        double steering_angle = atan2(agent.bb_extent_y * 2 * 0.8, turning_radius);
         if (relative_point.y < 0)
             steering_angle *= -1;
         
@@ -1338,19 +1338,19 @@ void WorldModel::BicycleModel(AgentStruct &agent, double steering, double end_ve
     if(steering!=0){
         assert(tan(steering)!=0);
         // assuming front-real length is 0.8 * total car length
-        double TurningRadius = agent.bb_extent_y * 0.8 /tan(steering);
+        double TurningRadius = agent.bb_extent_y * 2 * 0.8 /tan(steering);
         assert(TurningRadius!=0);
         double beta= end_vel/freq/TurningRadius;
 
         COORD rear_pos;
-        rear_pos.x = agent.pos.x - agent.bb_extent_y * 0.4 * cos(agent.heading_dir); 
-        rear_pos.y = agent.pos.y - agent.bb_extent_y * 0.4 * sin(agent.heading_dir);
+        rear_pos.x = agent.pos.x - agent.bb_extent_y * 2 * 0.4 * cos(agent.heading_dir); 
+        rear_pos.y = agent.pos.y - agent.bb_extent_y * 2 * 0.4 * sin(agent.heading_dir);
         // move and rotate
         rear_pos.x += TurningRadius*(sin(agent.heading_dir+beta)-sin(agent.heading_dir));
         rear_pos.y += TurningRadius*(cos(agent.heading_dir)-cos(agent.heading_dir+beta));
         agent.heading_dir = cap_angle(agent.heading_dir+beta);
-        agent.pos.x = rear_pos.x + agent.bb_extent_y * 0.4 * cos(agent.heading_dir);
-        agent.pos.y = rear_pos.y + agent.bb_extent_y * 0.4 * sin(agent.heading_dir);
+        agent.pos.x = rear_pos.x + agent.bb_extent_y * 2 * 0.4 * cos(agent.heading_dir);
+        agent.pos.y = rear_pos.y + agent.bb_extent_y * 2 * 0.4 * sin(agent.heading_dir);
     }
     else{
         agent.pos.x += (end_vel/freq) * cos(agent.heading_dir);
