@@ -245,7 +245,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 //				pedpomdp_state->agents[i].pos.x,pedpomdp_state->agents[i].pos.y,pedpomdp_state->agents[i].intention);
 //	}
 
-	if(FIX_SCENARIO==1 || DESPOT::Print_nodes){
+	if(FIX_SCENARIO==1 || DESPOT::Print_nodes) {
 		if(CPUDoPrint && state_.scenario_id==CPUPrintPID){
 			printf("(CPU) Before step: scenario%d \n", state_.scenario_id);
 			printf("action= %d \n",action);
@@ -640,7 +640,7 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 		min_dist = COORD::EuclideanDistance(carpos, state.agents[0].pos);
 	out << "MinDist: " << min_dist << endl;
 
-	validate_state(state);
+	validate_state(state, __FUNCTION__);
 }
 
 PomdpState PedPomdp::PredictAgents(const PomdpState& ped_state) const {
@@ -1036,7 +1036,7 @@ void PedPomdp::ImportStateList(std::vector<State*>& particles, std::istream& in)
 	}
 }
 
-bool PedPomdp::validate_state(const PomdpState& state) const {
+bool PedPomdp::validate_state(const PomdpState& state, const char* msg) const {
 
 	for (int i = 0; i < state.num; i++) {
 		auto& agent = state.agents[i];
@@ -1055,17 +1055,17 @@ bool PedPomdp::validate_state(const PomdpState& state) const {
 		else if (agent.type == AgentType::car) {
 			double vel = agent.vel.Length();
 			if (fabs(vel - agent.speed) > 0.2){
-				ERR(string_sprintf("vel-speed mismatch: %f %f", 
-					vel, agent.speed));
+				ERR(string_sprintf("%s: vel-speed mismatch: %f %f", 
+					msg, vel, agent.speed));
 			}
 
-			auto& car = agent;
-			if (car.vel.Length()>1.0){
-				double diff = fabs(car.heading_dir - car.vel.GetAngle());
-	            if (diff > 0.8 && diff < 2*M_PI - 0.8)
-	                ERR(string_sprintf("heading-veldir mismatch: %f %f", 
-	                    car.heading_dir, car.vel.GetAngle()));
-			}
+			// auto& car = agent;
+			// if (car.vel.Length()>1.0){
+			// 	double diff = fabs(car.heading_dir - car.vel.GetAngle());
+	  //           if (diff > 0.8 && diff < 2*M_PI - 0.8)
+	  //               ERR(string_sprintf("heading-veldir mismatch: %f %f", 
+	  //                   car.heading_dir, car.vel.GetAngle()));
+			// }
 		}
 	}
 }

@@ -229,8 +229,9 @@ void PedPomdpBelief::ResampleParticles(const PedPomdp* model, bool do_prediction
 	assert(beliefTracker);
 
 	// bool do_prediction = true;
+	bool use_att_mode = model->use_rvo_in_search;
 	vector<PomdpState> samples = beliefTracker->sample(
-		max(2000,5*Globals::config.num_scenarios), do_prediction);
+		max(2000,5*Globals::config.num_scenarios), do_prediction, use_att_mode);
 
 	logd << "[PedPomdpBelief::ResampleParticles] Construct raw particles" << endl;
 
