@@ -664,7 +664,7 @@ PomdpState PedPomdp::PredictAgents(const PomdpState& ped_state) const {
         	int old_path_pos = p.pos_along_path;
         	double noise = Random::RANDOM.NextGaussian()* ModelParams::NOISE_GOAL_ANGLE;
             if (true){	
-        		world_model->AgentStepPath(p, 1, noise, true);
+        		world_model->AgentStepPath(p, 1, noise, false);
 			}
 			else
 				world_model->AgentStepPath(p, 1, noise, false);
