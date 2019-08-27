@@ -37,7 +37,7 @@ class EgoVehicle(Drunc):
             spawn_min, spawn_max = self.get_shrinked_range(scale=0.5)
             self.path = NetworkAgentPath.rand_path(self, 20, 1.0, spawn_min, spawn_max)
                 
-            vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.bmw.grandtourer'))
+            vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.audi.etron'))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')
             spawn_position = self.path.get_position()
             spawn_trans = carla.Transform()

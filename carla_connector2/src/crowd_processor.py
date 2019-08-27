@@ -159,10 +159,14 @@ class CrowdProcessor(Drunc):
                 sidewalk_route_point.polygon_id = agent.route_point.polygon_id
                 sidewalk_route_point.segment_id = agent.route_point.segment_id
                 sidewalk_route_point.offset = agent.route_point.offset
+                sidewalk_route_orientation = agent.route_orientation
 
                 path = [sidewalk_route_point]
                 for _ in range(20):
-                    path.append(self.sidewalk.get_next_route_point(path[-1], 1.0)) # TODO Add as ROS parameter.
+                    if sidewalk_route_orientation:
+                        path.append(self.sidewalk.get_next_route_point(path[-1], 1.0)) # TODO Add as ROS parameter.
+                    else:
+                        path.append(self.sidewalk.get_previous_route_point(path[-1], 1.0)) # TODO Add as ROS parameter.
                 topological_hash = '{},{}'.format(sidewalk_route_point.polygon_id, agent.route_orientation)
 
                 agent_tmp.reset_intention = self.topological_hash_map[agent.id] is None or self.topological_hash_map[agent.id] != topological_hash
@@ -176,7 +180,7 @@ class CrowdProcessor(Drunc):
                     pose_msg.pose.position.x = path_point.x
                     pose_msg.pose.position.y = path_point.y
                     path_msg.poses.append(pose_msg)
-                # self.draw_path(path_msg)
+                self.draw_path(path_msg)
                 agent_tmp.path_candidates = [path_msg]
                 agent_tmp.cross_dirs = [agent.route_orientation]
                 self.topological_hash_map[agent.id] = topological_hash
