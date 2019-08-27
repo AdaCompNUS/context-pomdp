@@ -36,6 +36,9 @@ class Drunc(object):
             3.0, 0.1,
             20.0)
         self.sidewalk_occupancy_map = self.sidewalk.create_occupancy_map()
+        self.landmark_map = carla.LandmarkMap.load(
+            carla_root + 'Data/map.osm',
+            carla.Vector2D(-11551102.28, -143022.13))
     
     def in_bounds(self, point):
         return self.map_bounds_min.x <= point.x <= self.map_bounds_max.x and \
