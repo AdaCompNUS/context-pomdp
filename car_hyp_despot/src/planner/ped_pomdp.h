@@ -188,7 +188,7 @@ public:
 	static int GetAccIDfromAcc(float acc);
 	static int GetSteerIDfromSteering(float steering);
 
-	bool validate_state(const PomdpState& state) const;
+	bool validate_state(const PomdpState& state, const char*) const;
 
 public:
 

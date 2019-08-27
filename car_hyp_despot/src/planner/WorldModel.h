@@ -27,9 +27,9 @@ struct AgentBelief {
     int sample_goal() const;
     int maxlikely_intention() const;
 
-    void sample_goal_mode(int& goal, int& mode) const;
+    void sample_goal_mode(int& goal, int& mode, bool use_att_mode = true) const;
 
-    void reset_belief();
+    void reset_belief(int new_size);
 };
 
 class WorldModel {
@@ -173,7 +173,7 @@ public:
         }
         cout << endl;       
     }
-
+    void ValidateIntention(int agent_id, int intention_id, const char*, int);
 
 public:
     std::string goal_file_name_;
@@ -241,6 +241,14 @@ public:
   // for exo-cars
   void BicycleModel(AgentStruct &car, double steering, double end_vel);
   double PurepursuitAngle(const AgentStruct& car, COORD& pursuit_point) const;
+
+public:
+
+    void RVO2SimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car);
+    COORD GetRVO2Vel(AgentStruct& agent, int i);
+
+    void AgentApplyRVO2Vel(AgentStruct& agent, COORD& rvo_vel);
+
 };
 
 class WorldStateTracker {
@@ -339,8 +347,8 @@ public:
     WorldBeliefTracker(WorldModel& _model, WorldStateTracker& _stateTracker): model(_model), stateTracker(_stateTracker) {}
 
     void update();
-    PomdpState sample(bool predict = false);
-    vector<PomdpState> sample(int num, bool predict = false);
+    PomdpState sample(bool predict = false, bool use_att_mode = true);
+    vector<PomdpState> sample(int num, bool predict = false, bool use_att_mode = true);
     vector<AgentStruct> predictAgents();
     PomdpState predictPedsCurVel(PomdpState*, double acc, double steering);
 
