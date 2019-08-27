@@ -14,10 +14,10 @@ class SpawnMeshes(Drunc):
             '/Game/Carla/Static/GenericMaterials/Masters/LowComplexity/M_Road1')
         self.sidewalk_mesh_id = self.world.spawn_dynamic_mesh(
             self.sidewalk_occupancy_map.get_mesh_triangles(),
-            '/Game/Carla/Static/GenericMaterials/Ground/Generic_Concrete_Material/M_Generic_Concrete')
+            '/Game/Carla/Static/GenericMaterials/Ground/GroundWheatField_Mat')
         self.landmarks_mesh_id = self.world.spawn_dynamic_mesh(
             self.landmark_map.get_mesh_triangles(20),
-            '/Game/Carla/Static/GenericMaterials/Masters/M_WallMaster')
+            '/Game/Carla/Static/GenericMaterials/Ground/Generic_Concrete_Material/M_Generic_Concrete')
         self.world.wait_for_tick(1.0)
 
     def dispose(self):
