@@ -54,7 +54,7 @@ bool InRectangle(double car_dir_x, double car_dir_y, double car_ped_x, double ca
  *
  * Check whether M is in the safety zone
  */
-bool inCollision(double ped_x, double ped_y, double car_x, double car_y, double Ctheta) {
+bool inCollision(double ped_x, double ped_y, double car_x, double car_y, double Ctheta, bool expand) {
 
 	/// car geometry
 	double car_dir_x = cos(Ctheta), // car direction
@@ -80,9 +80,10 @@ bool inCollision(double ped_x, double ped_y, double car_x, double car_y, double 
 		front_margin = 3.6 + safe_margin;
 		back_margin = 0.8 + back_safe_margin;
 	} else if(ModelParams::car_model == "carla") {
-		side_margin = ModelParams::CAR_WIDTH / 2.0 + CAR_SIDE_MARGIN + PED_SIZE;
-		front_margin = ModelParams::CAR_FRONT + CAR_FRONT_MARGIN + PED_SIZE;
-		back_margin = ModelParams::CAR_REAR + CAR_SIDE_MARGIN + PED_SIZE;
+		double expand_size = (expand)? PED_SIZE: 0.0;
+		side_margin = ModelParams::CAR_WIDTH / 2.0 + CAR_SIDE_MARGIN + expand_size;
+		front_margin = ModelParams::CAR_FRONT + CAR_FRONT_MARGIN + expand_size;
+		back_margin = ModelParams::CAR_FRONT + CAR_SIDE_MARGIN + expand_size;
 	}
 
 	return InRectangle(car_dir_x, car_dir_y, car_ped_x, car_ped_y, front_margin, back_margin, side_margin);
@@ -105,7 +106,7 @@ bool InFrontRectangle(double HNx, double HNy, double HMx, double HMy, double fro
 	return HM_HL * HM_HL <= HL_HL * side_margin * side_margin;
 }
 
-bool inRealCollision(double Mx, double My, double Hx, double Hy, double Ctheta) {
+bool inRealCollision(double Mx, double My, double Hx, double Hy, double Ctheta, bool expand) {
 
 	double HNx = cos(Ctheta), // car direction
 			     HNy = sin(Ctheta);
@@ -130,9 +131,10 @@ bool inRealCollision(double Mx, double My, double Hx, double Hy, double Ctheta) 
 		front_margin = 3.6 + safe_margin;
 		back_margin = 0.8 + back_safe_margin;
 	} else if(ModelParams::car_model == "carla") {
-		side_margin = ModelParams::CAR_WIDTH / 2.0 + PED_SIZE;
-		front_margin = ModelParams::CAR_FRONT + PED_SIZE;
-		back_margin = ModelParams::CAR_REAR + PED_SIZE;
+		double expand_size = (expand)? PED_SIZE: 0.0;
+		side_margin = ModelParams::CAR_WIDTH / 2.0 + expand_size;
+		front_margin = ModelParams::CAR_FRONT + expand_size;
+		back_margin = ModelParams::CAR_FRONT + expand_size;
 	}
 
 	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);

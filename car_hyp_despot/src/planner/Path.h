@@ -8,7 +8,7 @@ struct Path : std::vector<COORD> {
     double mindist(COORD pos);
     int forward(int i, double len) const;
 	double getYaw(int i) const;
-	Path interpolate() const;
+	Path interpolate(double max_len = 10000.0) const;
 	void cutjoin(const Path& p);
 	double getlength();
 	double getCurDir(int pos_along = 0);

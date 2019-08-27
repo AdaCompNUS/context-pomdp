@@ -644,7 +644,7 @@ DEVICE bool Dvc_PedPomdp::Dvc_Step(Dvc_State& state, float rand_num, int action,
 /// car geometry for CARLA car
 			float side_margin = Dvc_ModelParams::CAR_WIDTH / 2.0 + CAR_SIDE_MARGIN + PED_SIZE;
 			float front_margin = Dvc_ModelParams::CAR_FRONT + CAR_FRONT_MARGIN + PED_SIZE;
-			float back_margin = Dvc_ModelParams::CAR_REAR + CAR_SIDE_MARGIN + PED_SIZE;
+			float back_margin = Dvc_ModelParams::CAR_FRONT + CAR_SIDE_MARGIN + PED_SIZE;
 /// end CARLA car
 
 			float car_tan_x = - car_dir_y, // direction after 90 degree anti-clockwise rotation
@@ -710,7 +710,7 @@ DEVICE bool Dvc_PedPomdp::Dvc_Step(Dvc_State& state, float rand_num, int action,
 			// State transition: car, bicycle model
 			if(steering!=0){
 				assert(tan(steering)>0);
-				float TurningRadius = Dvc_ModelParams::CAR_LENGTH/tan(steering);
+				float TurningRadius = Dvc_ModelParams::CAR_WHEEL_DIST/tan(steering);
 				assert(TurningRadius>0);
 				float beta= pedpomdp_state.car.vel/freq/TurningRadius;
 				pedpomdp_state.car.pos.x += -Dvc_ModelParams::CAR_REAR * cos(pedpomdp_state.car.heading_dir) + 

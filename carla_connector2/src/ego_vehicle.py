@@ -28,9 +28,11 @@ class EgoVehicle(Drunc):
     def __init__(self):
         super(EgoVehicle, self).__init__()
 
+        # time.sleep(2)
+
         # Create path.
         self.actor = None
-
+        self.speed = 0.0
         while self.actor is None:
             spawn_min, spawn_max = self.get_shrinked_range(scale=0.5)
             self.path = NetworkAgentPath.rand_path(self, 20, 1.0, spawn_min, spawn_max)
@@ -45,6 +47,8 @@ class EgoVehicle(Drunc):
             spawn_trans.rotation.yaw = self.path.get_yaw()
 
             self.actor = self.world.try_spawn_actor(vehicle_bp, spawn_trans)
+
+        time.sleep(1) # wait for the vehicle to drop
 
         self.cmd_speed = 0
         self.cmd_accel = 0
@@ -194,6 +198,14 @@ class EgoVehicle(Drunc):
         odom_quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
         w_yaw = self.actor.get_angular_velocity().z
 
+        pi_2 = 2*3.1415926
+        print_yaw = yaw
+        if yaw < 0:
+            print_yaw = yaw + pi_2
+        if yaw >= pi_2:
+            print_yaw = yaw - pi_2
+        # print("yaw of base_link = {}".format(print_yaw))
+
         self.odom_broadcaster.sendTransform(
             (pos.x, pos.y, pos.z),
             odom_quat,
@@ -205,6 +217,10 @@ class EgoVehicle(Drunc):
         odom = Odometry()
         odom.header.stamp = current_time
         odom.header.frame_id = frame_id
+        # get pos and yaw w.r.t. the map frame
+        pos = self.actor.get_location()
+        yaw = np.deg2rad(self.actor.get_transform().rotation.yaw)
+        odom_quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
         odom.pose.pose = Pose(Point(pos.x, pos.y, 0), Quaternion(*odom_quat))
         odom.child_frame_id = child_frame_id
         odom.twist.twist = Twist(Vector3(vel.x, vel.y, vel.z), Vector3(0, 0, w_yaw))
@@ -216,10 +232,11 @@ class EgoVehicle(Drunc):
         pos = self.actor.get_location()
         pos2D = carla.Vector2D(pos.x, pos.y)
         vel = self.actor.get_velocity()
-        yaw = self.actor.get_transform().rotation.yaw
+        yaw = np.deg2rad(self.actor.get_transform().rotation.yaw)
         v_2d = np.array([vel.x, vel.y, 0])
-        forward = np.array([math.cos(np.deg2rad(yaw)), math.sin(np.deg2rad(yaw)), 0])
+        forward = np.array([math.cos(yaw), math.sin(yaw), 0])
         speed = np.vdot(forward, v_2d)
+        self.speed = speed
         
         car_info_msg.car_pos.x = pos.x
         car_info_msg.car_pos.y = pos.y
@@ -272,7 +289,7 @@ class EgoVehicle(Drunc):
             pose.pose.position.x = position.x
             pose.pose.position.y = position.y
             pose.pose.position.z = 0
-            quaternion = tf.transformations.quaternion_from_euler(0, 0, yaw)
+            quaternion = tf.transformations.quaternion_from_euler(0, 0, np.deg2rad(yaw))
             pose.pose.orientation.x = quaternion[0]
             pose.pose.orientation.y = quaternion[1]
             pose.pose.orientation.z = quaternion[2]
@@ -303,6 +320,7 @@ class EgoVehicle(Drunc):
 
     def update(self):
         # Calculate control and send to CARLA.
+        # print("controlling vehicle with acc={} cur_vel={}".format(self.cmd_accel, self.speed))
         control = self.actor.get_control()
         control.gear = 1
         control.steer = self.cmd_steer

@@ -241,17 +241,19 @@ __global__ void PassCarParams(
 		double CAR_FRONT,
 		double CAR_REAR,
 		double CAR_LENGTH,
+		double CAR_WHEEL_DIST,
 		double CAR_WIDTH
 		) {
 	Dvc_ModelParams::CAR_FRONT = CAR_FRONT;
 	Dvc_ModelParams::CAR_REAR = CAR_REAR;
 	Dvc_ModelParams::CAR_LENGTH = CAR_LENGTH;
+	Dvc_ModelParams::CAR_WHEEL_DIST = CAR_WHEEL_DIST;
 	Dvc_ModelParams::CAR_WIDTH = CAR_WIDTH;
 }
 
 void PedPomdp::InitGPUCarParams() const {
 	PassCarParams<<<1,1,1>>>(ModelParams::CAR_FRONT, ModelParams::CAR_REAR, 
-		ModelParams::CAR_LENGTH, ModelParams::CAR_WIDTH);
+		ModelParams::CAR_LENGTH, ModelParams::CAR_WHEEL_DIST, ModelParams::CAR_WIDTH);
 	HANDLE_ERROR(cudaDeviceSynchronize());
 	// HANDLE_ERROR(cudaMemcpy(&Dvc_ModelParams::CAR_LENGTH, &ModelParams::CAR_LENGTH, sizeof(double), cudaMemcpyHostToDevice));
 	// HANDLE_ERROR(cudaMemcpy(&Dvc_ModelParams::CAR_WIDTH, &ModelParams::CAR_WIDTH, sizeof(double), cudaMemcpyHostToDevice));

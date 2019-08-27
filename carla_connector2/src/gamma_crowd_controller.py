@@ -285,8 +285,8 @@ class GammaCrowdController(Drunc):
                 self.ego_car_info.car_vel.x,
                 self.ego_car_info.car_vel.y))
             self.gamma.set_agent_heading(i, carla.Vector2D(
-                math.cos(np.deg2rad(self.ego_car_info.car_yaw)),
-                math.sin(np.deg2rad(self.ego_car_info.car_yaw))))
+                math.cos(self.ego_car_info.car_yaw),
+                math.sin(self.ego_car_info.car_yaw)))
             self.gamma.set_agent_bounding_box_corners(i, 
                     [carla.Vector2D(v.x, v.y) for v in self.ego_car_info.car_bbox.points])
             self.gamma.set_agent_pref_velocity(i, carla.Vector2D(

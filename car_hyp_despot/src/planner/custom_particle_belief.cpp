@@ -293,10 +293,10 @@ void PedPomdpBelief::ResampleParticles(const PedPomdp* model, bool do_prediction
 			initial_particles_.push_back(model_->Copy(particles_[i]));
 	}
 
-	for (int i =0; i < 10; i++){
-		static_cast<const PedPomdp*>(model_)->validate_state(
-			*static_cast<PomdpState*>(particles_[i]));
-	}
+	// for (int i =0; i < 10; i++){
+	// 	static_cast<const PedPomdp*>(model_)->validate_state(
+	// 		*static_cast<PomdpState*>(particles_[i]));
+	// }
 }
 
 State* PedPomdpBelief::GetParticle(int i){

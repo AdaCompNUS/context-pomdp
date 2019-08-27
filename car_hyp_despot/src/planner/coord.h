@@ -60,8 +60,23 @@ struct COORD
 
   static bool get_dir(double a, double b);
 
-  double Length(){
+  double GetAngle() const  //[0,2*pi)
+  {
+    double angle = atan2(y,x);
+    if (angle < 0)
+      angle += 2*M_PI;
+    if (angle >= 2*M_PI)
+      angle -= 2*M_PI;
+  }
+  double Length() const{
 	  return sqrt(x*x + y*y);
+  }
+
+  void AdjustLength(double length){
+    if(Length()<0.001) return;   //vector length close to 0
+    double rate=length/Length();
+    x*=rate;
+    y*=rate;
   }
 
 /*

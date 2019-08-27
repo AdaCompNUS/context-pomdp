@@ -102,7 +102,7 @@ public:
 
 
 	bool getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
-
+	tf::Stamped<tf::Pose>GetBaseLinkPose();
 	geometry_msgs::PoseStamped getPoseAhead(const tf::Stamped<tf::Pose>& carpose);
 	double StepReward(PomdpStateWorld& state, ACT_TYPE action);
 
@@ -113,6 +113,9 @@ public:
 	double last_acc_;
 
 	//double real_speed_;
+	COORD odom_vel_;
+	double odom_heading_;
+	double baselink_heading_;
 	//double target_speed_;
 
     //double steering_;

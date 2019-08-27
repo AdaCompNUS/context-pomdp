@@ -49,6 +49,7 @@ namespace Dvc_ModelParams {
 
     DEVICE extern double CAR_WIDTH;
     DEVICE extern double CAR_LENGTH;
+    DEVICE extern double CAR_WHEEL_DIST;
     DEVICE extern double CAR_FRONT; // car pos may not be measured at rear wheel
     DEVICE extern double CAR_REAR; // car pos may not be measured at rear wheel
 };
