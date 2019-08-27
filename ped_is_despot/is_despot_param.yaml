@@ -18,7 +18,7 @@ reward_factor_vel: 4
 reward_base_crash_vel: 0.5
 belief_smoothing: 0.05
 noise_robvel: 0.05
-noise_goal_angle_deg: 45
+noise_goal_angle_deg: 5
 max_vel: 6.0 
 #collision_distance: 1.5
 collision_distance: 0.5

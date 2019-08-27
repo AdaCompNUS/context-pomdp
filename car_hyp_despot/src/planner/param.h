@@ -27,6 +27,7 @@ namespace ModelParams {
 
 	extern double CAR_WIDTH;
 	extern double CAR_LENGTH;
+	extern double CAR_WHEEL_DIST;
 	extern double CAR_FRONT; // car pos may not be measured at rear wheel
 	extern double CAR_REAR; // car pos may not be measured at rear wheel
 	
@@ -40,7 +41,7 @@ namespace ModelParams {
 	const bool debug=false;
 
 	const double control_freq=3;
-	const double AccSpeed=1.5;
+	const double AccSpeed=3.0;
 	const double NumAcc=1;
 
 	const double MaxSteerAngle=35/180.0*M_PI;
@@ -85,7 +86,7 @@ namespace ModelParams {
 // #define CAR_WIDTH 2.0f
 // #define CAR_LENGTH 2.68f
 #define CAR_SIDE_MARGIN 1.2f
-#define CAR_FRONT_MARGIN 1.5f
+#define CAR_FRONT_MARGIN 3.0f
 #define PED_SIZE 0.25f
 #define CAR_EXPAND_SIZE 0.0f
 

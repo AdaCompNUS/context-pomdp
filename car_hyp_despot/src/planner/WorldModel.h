@@ -75,9 +75,13 @@ public:
     void RVO2AgentStep(AgentStruct peds[], double& random, int num_ped); //no interaction between car and pedestrian
     void RVO2AgentStep(AgentStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
     void RVO2AgentStep(PomdpStateWorld& state, Random& random);
-    void PedStepGoal(AgentStruct& ped, int step=1);
-    void PedStepCurVel(AgentStruct& ped, int step=1);
-    void PedStepPath(AgentStruct& agent, int step=1, bool doPrint = false);
+    void PedStepGoal(AgentStruct& ped, int step=1, double noise=0.0);
+    void PedStepCurVel(AgentStruct& ped, int step=1, double noise=0.0);
+    void PedStepPath(AgentStruct& agent, int step=1, double noise=0.0, bool doPrint = false);
+    void VehStepGoal(AgentStruct& ped, int step=1, double noise=0.0);
+    void VehStepPath(AgentStruct& agent, int step=1, double noise=0.0, bool doPrint = false);
+    void AgentStepGoal(AgentStruct& ped, int step=1, double noise=0.0);
+    void AgentStepPath(AgentStruct& agent, int step=1, double noise=0.0, bool doPrint = false);
 
     COORD GetGoalPos(const AgentStruct& ped, int intention_id=-1);
     COORD GetGoalPos(const AgentBelief& ped, int intention_id);
@@ -197,13 +201,21 @@ public:
   template<typename T>
   double GetSteerToPath(const T& state) const {
     COORD car_goal= path[path.forward(path.nearest(state.car.pos), 5.0)]; // target at 3 meters ahead along the path
-    COORD dir = car_goal - state.car.pos;
+    
+    // return PurepursuitAngle(state.car, car_goal);
+    
+    return PControlAngle<CarStruct>(state.car, car_goal);
+  }
+
+  template<typename T>
+  double PControlAngle(const T& car, COORD& car_goal) const{
+    COORD dir = car_goal - car.pos;
     double theta = atan2(dir.y, dir.x);
 
     if(theta<0)
       theta+=2*M_PI;
 
-    theta = theta - state.car.heading_dir;
+    theta = theta - car.heading_dir;
 
     while (theta > 2*M_PI)
       theta -= 2*M_PI;
@@ -217,12 +229,18 @@ public:
       guide_steer = max((theta - 2*M_PI), -ModelParams::MaxSteerAngle); //-Dvc_ModelParams::MaxSteerAngle;//CW
     else
       guide_steer = 0;//ahead
-
     return guide_steer;
   }
 
-  void BicycleModel(CarStruct &car, double steering, double end_vel);
+  double GetPrefSpeed(const Agent& agent);
 
+  // for ego-car
+  void BicycleModel(CarStruct &car, double steering, double end_vel);
+  double PurepursuitAngle(const CarStruct& car, COORD& pursuit_point) const;
+
+  // for exo-cars
+  void BicycleModel(AgentStruct &car, double steering, double end_vel);
+  double PurepursuitAngle(const AgentStruct& car, COORD& pursuit_point) const;
 };
 
 class WorldStateTracker {
@@ -232,6 +250,7 @@ public:
     WorldStateTracker(WorldModel& _model): model(_model) {
     	car_heading_dir = 0;
     	carvel = 0;
+        car_odom_heading = -10;
     }
 
     void updatePed(const Pedestrian& ped, bool doPrint = false);
@@ -284,6 +303,8 @@ public:
         return insert;
     }
 
+    void ValidateCar(const char* func);
+
     void setPomdpCar(CarStruct& car);
     void setPomdpPed(AgentStruct& agent, const Agent& src);
 
@@ -302,6 +323,7 @@ public:
     COORD carpos;
     double carvel;
     double car_heading_dir;
+    double car_odom_heading;
 
     //Ped states
     std::vector<Pedestrian> ped_list;
@@ -334,6 +356,8 @@ public:
     PomdpState text() const;
 
     void text(const std::map<int, AgentBelief>&) const;
+
+    void ValidateCar(const char* func);
 
 public:
     double cur_time_stamp;

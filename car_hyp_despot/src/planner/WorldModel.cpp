@@ -277,7 +277,7 @@ bool WorldModel::inFront(const COORD ped_pos, const CarStruct car) const {
     }
 	double d0 = COORD::EuclideanDistance(car.pos, ped_pos);
 	//if(d0<=0) return true;
-	if(d0 <= /*0.7*/3.5) return true;
+	if(d0 <= 0.7/*3.5*/) return true;
 	double dot = DotProduct(cos(car.heading_dir), sin(car.heading_dir),
 			ped_pos.x - car.pos.x, ped_pos.y - car.pos.y);
 	double cosa = (d0>0)? dot / (d0): 0;
@@ -293,8 +293,8 @@ bool WorldModel::inFront(const COORD ped_pos, const CarStruct car) const {
  *
  * Check whether M is in the safety zone
  */
-bool inCollision(double Px, double Py, double Cx, double Cy, double Ctheta);
-bool inRealCollision(double Px, double Py, double Cx, double Cy, double Ctheta);
+bool inCollision(double Px, double Py, double Cx, double Cy, double Ctheta, bool expand=true);
+bool inRealCollision(double Px, double Py, double Cx, double Cy, double Ctheta, bool expand=true);
 
 bool WorldModel::inCollision(const PomdpState& state) {
 	const COORD& car_pos = state.car.pos;
@@ -312,8 +312,9 @@ bool WorldModel::inCollision(const PomdpState& state) {
             }    
         }
         else if (agent.type == AgentType::car){
-            if (CheckCarWithVehicle(state.car, agent, 0))
-                return true;
+            if (inFront(agent.pos, state.car))
+                if (CheckCarWithVehicle(state.car, agent, 0))
+                    return true;
         }
         else{
             ERR(string_sprintf("unsupported agent type"));
@@ -344,8 +345,9 @@ bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id) {
 
         }
         else if (agent.type == AgentType::car){
-            if (CheckCarWithVehicle(state.car, agent, 1)){
-                id = agent.id;
+            if (inFront(agent.pos, state.car))
+                if (CheckCarWithVehicle(state.car, agent, 1)){
+                    id = agent.id;
             }
         }
         else{
@@ -611,7 +613,7 @@ int WorldModel::hasMinSteerPath(const PomdpState& state) {
     if (theta == 0) // can go through straight line
     	return int(ceil(d / (ModelParams::VEL_MAX/freq)));
 
-    double r = ModelParams::CAR_LENGTH / tan(ModelParams::MaxSteerAngle);
+    double r = ModelParams::CAR_WHEEL_DIST / tan(ModelParams::MaxSteerAngle);
     // double arc_len = min_turning_radii * theta;
     double chord_len = r * sin(theta) * 2;
 
@@ -643,7 +645,7 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
     if (theta == 0) // can go through straight line
     	return int(ceil(d / (ModelParams::VEL_MAX/freq)));
 
-    double r = ModelParams::CAR_LENGTH / tan(ModelParams::MaxSteerAngle);
+    double r = ModelParams::CAR_WHEEL_DIST / tan(ModelParams::MaxSteerAngle);
     // double arc_len = min_turning_radii * theta;
     double chord_len = r * sin(theta) * 2;
 
@@ -724,53 +726,81 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
 }
 
 void WorldModel::PedStep(AgentStruct &agent, Random& random) {
-    const COORD& goal = GetGoalPos(agent);
-	if (goal.x == -1 && goal.y == -1) {  //stop intention
-		return;
-	}
 
-	MyVector goal_vec(goal.x - agent.pos.x, goal.y - agent.pos.y);
-    double a = goal_vec.GetAngle();
-	double noise = random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
-    a += noise;
+    double noise = random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
+    if(goal_mode == "goal") {
+        AgentStepGoal(agent, 1, noise);
+    }
+    else if (goal_mode == "cur_vel") {
+        PedStepCurVel(agent, 1, noise);
+    }
+    else if (goal_mode == "path") {
+        AgentStepPath(agent, 1, noise);
+    }
 
-	//TODO noisy speed
-    MyVector move(a, agent.speed/freq, 0);
-    agent.pos.x += move.dw;
-    agent.pos.y += move.dh;
-    return;
+ //    const COORD& goal = GetGoalPos(agent);
+	// if (goal.x == -1 && goal.y == -1) {  //stop intention
+	// 	return;
+	// }
+
+	// MyVector goal_vec(goal.x - agent.pos.x, goal.y - agent.pos.y);
+ //    double a = goal_vec.GetAngle();
+	// double noise = random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
+ //    a += noise;
+
+	// //TODO noisy speed
+ //    MyVector move(a, agent.speed/freq, 0);
+ //    agent.pos.x += move.dw;
+ //    agent.pos.y += move.dh;
+ //    return;
 }
 
 void WorldModel::PedStep(AgentStruct &agent, double& random) {
 
-    const COORD& goal = GetGoalPos(agent);
-	if (goal.x == -1 && goal.y == -1) {  //stop intention
-		return;
-	}
+    double noise = sqrt(-2 * log(random));
+    if(FIX_SCENARIO!=1 && !CPUDoPrint){
+        random=QuickRandom::RandGeneration(random);
+    }
+    noise *= cos(2 * M_PI * random)* ModelParams::NOISE_GOAL_ANGLE;
+    
+    if(goal_mode == "goal") {
+        AgentStepGoal(agent, 1, noise);
+    }
+    else if (goal_mode == "cur_vel") {
+        PedStepCurVel(agent, 1, noise);
+    }
+    else if (goal_mode == "path") {
+        AgentStepPath(agent, 1, noise);
+    }
 
-	MyVector goal_vec(goal.x - agent.pos.x, goal.y - agent.pos.y);
+//     const COORD& goal = GetGoalPos(agent);
+// 	if (goal.x == -1 && goal.y == -1) {  //stop intention
+// 		return;
+// 	}
 
-	if(goal_vec.GetLength() >= 0.5 ){
+// 	MyVector goal_vec(goal.x - agent.pos.x, goal.y - agent.pos.y);
 
-		double a = goal_vec.GetAngle();
+// 	if(goal_vec.GetLength() >= 0.5 ){
 
-		//double noise = random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
-		double noise = sqrt(-2 * log(random));
-		if(FIX_SCENARIO!=1 && !CPUDoPrint){
-			random=QuickRandom::RandGeneration(random);
-		}
+// 		double a = goal_vec.GetAngle();
 
-		noise *= cos(2 * M_PI * random)* ModelParams::NOISE_GOAL_ANGLE;
-		a += noise;
+// 		//double noise = random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
+// 		double noise = sqrt(-2 * log(random));
+// 		if(FIX_SCENARIO!=1 && !CPUDoPrint){
+// 			random=QuickRandom::RandGeneration(random);
+// 		}
 
-		//TODO noisy speed
-//		cout << "agent vel = " << agent.vel << endl;
-		MyVector move(a, agent.speed/freq, 0);
-		agent.pos.x += move.dw;
-		agent.pos.y += move.dh;
-	}
+// 		noise *= cos(2 * M_PI * random)* ModelParams::NOISE_GOAL_ANGLE;
+// 		a += noise;
 
-    return;
+// 		//TODO noisy speed
+// //		cout << "agent vel = " << agent.vel << endl;
+// 		MyVector move(a, agent.speed/freq, 0);
+// 		agent.pos.x += move.dw;
+// 		agent.pos.y += move.dh;
+// 	}
+
+    // return;
 }
 
 
@@ -813,8 +843,8 @@ COORD WorldModel::GetGoalPosFromPaths(int agent_id, int intention_id, int pos_al
         return COORD(agent_pos.x, agent_pos.y);
     }
     else{
-        cout << "Intention ID larger than # intentions for agent " << agent_id << endl;
-        raise(SIGABRT);
+        ERR(string_sprintf("Intention ID %d excesses # intentions %d for agent %d of type %d\n", 
+            intention_id, GetNumIntentions(agent_id), agent_id, type));
     }
 }
 
@@ -837,6 +867,13 @@ std::vector<COORD> fetch_bounding_box(const Agent& agent) {
 
 double fetch_heading_dir(const Agent& agent) {
     if (agent.type()==AgentType::car){
+        auto* car = static_cast<const Vehicle*>(&agent);
+        if (car->vel.Length()>1.0){
+            double diff = fabs(car->heading_dir - car->vel.GetAngle());
+            if (diff > 0.8 && diff < 2*M_PI - 0.8)
+                ERR(string_sprintf("heading-veldir mismatch: %f %f", 
+                    car->heading_dir, car->vel.GetAngle()));
+        }
         return static_cast<const Vehicle*>(&agent)->heading_dir;
     }
     else
@@ -918,23 +955,112 @@ int WorldModel::GetNumIntentions(int agent_id){
         return goals.size();
 }
 
-void WorldModel::PedStepGoal(AgentStruct& agent, int step) {
+void WorldModel::AgentStepGoal(AgentStruct& agent, int step, double noise) {
+    if (agent.type == AgentType::ped)
+        PedStepGoal(agent, step, noise);
+    else if (agent.type == AgentType::car)
+        VehStepGoal(agent, step, noise);
+    else
+        ERR(string_sprintf(
+            "unsupported agent mode %d", agent.type));
+}
+
+void WorldModel::PedStepGoal(AgentStruct& agent, int step, double noise) {
   const COORD& goal = goals[agent.intention];
 	if (goal.x == -1 && goal.y == -1) {  //stop intention
 		return;
 	}
 
-	MyVector goal_vec(goal.x - agent.pos.x, goal.y - agent.pos.y);
-    goal_vec.AdjustLength(step * agent.speed / freq);
-    agent.pos.x += goal_vec.dw;
-    agent.pos.y += goal_vec.dh;
+	COORD goal_vec(goal.x - agent.pos.x, goal.y - agent.pos.y);
+    if (noise!=0){
+        double a = goal_vec.GetAngle(); 
+        a += noise;
+        MyVector move(a, step * agent.speed/freq, 0);
+        agent.pos.x += move.dw;
+        agent.pos.y += move.dh;    
+    } else{
+        goal_vec.AdjustLength(step * agent.speed / freq);
+        agent.pos.x += goal_vec.x;
+        agent.pos.y += goal_vec.y;
+    }
 }
 
-void WorldModel::PedStepCurVel(AgentStruct& agent, int step) {
-  agent.pos.x += agent.vel.x * (float(step)/freq);
-  agent.pos.y += agent.vel.y * (float(step)/freq);
+void WorldModel::VehStepGoal(AgentStruct& agent, int step, double noise) {
+  const COORD& goal = goals[agent.intention];
+    if (goal.x == -1 && goal.y == -1) {  //stop intention
+        return;
+    }
+
+    COORD goal_vec(goal.x - agent.pos.x, goal.y - agent.pos.y);
+    goal_vec.AdjustLength(3.0);// lookahead 3 meters
+
+    COORD pursuit_point = goal_vec + agent.pos;
+    // double steering = PurepursuitAngle(agent, pursuit_point);
+    double steering = PControlAngle<AgentStruct>(agent, pursuit_point);
+    
+    steering += noise;
+    BicycleModel(agent, steering, agent.speed);
 }
 
+void WorldModel::PedStepCurVel(AgentStruct& agent, int step, double noise) {
+    if (noise!=0){
+        double a = agent.vel.GetAngle(); 
+        a += noise;
+        MyVector move(a, step * agent.vel.Length()/freq, 0);
+        agent.pos.x += move.dw;
+        agent.pos.y += move.dh;
+    }
+    else{
+        agent.pos.x += agent.vel.x * (float(step)/freq);
+        agent.pos.y += agent.vel.y * (float(step)/freq);
+    }
+}
+
+double WorldModel::PurepursuitAngle(const CarStruct& car, COORD& pursuit_point) const{
+    COORD rear_pos;
+    rear_pos.x = car.pos.x - ModelParams::CAR_REAR * cos(car.heading_dir); 
+    rear_pos.y = car.pos.y - ModelParams::CAR_REAR * sin(car.heading_dir);
+    
+    double offset = (rear_pos-pursuit_point).Length();
+    double target_angle = atan2(pursuit_point.y - rear_pos.y, pursuit_point.x - rear_pos.x);    
+    double angular_offset = cap_angle(target_angle - car.heading_dir);
+
+    COORD relative_point(
+        offset * cos(angular_offset), offset * sin(angular_offset));
+    if (relative_point.x == 0)
+        return 0;
+    else{
+        double turning_radius = relative_point.Length() / (2 * abs(relative_point.y)); // Intersecting chords theorem.
+        double steering_angle = atan2(ModelParams::CAR_WHEEL_DIST, turning_radius);
+        if (relative_point.y < 0)
+            steering_angle *= -1;
+        
+        return steering_angle;
+    }
+}
+
+double WorldModel::PurepursuitAngle(const AgentStruct& agent, COORD& pursuit_point) const{
+    COORD rear_pos;
+    rear_pos.x = agent.pos.x - agent.bb_extent_y * 0.4 * cos(agent.heading_dir); 
+    rear_pos.y = agent.pos.y - agent.bb_extent_y * 0.4 * sin(agent.heading_dir);
+    
+    double offset = (rear_pos-pursuit_point).Length();
+    double target_angle = atan2(pursuit_point.y - rear_pos.y, pursuit_point.x - rear_pos.x);    
+    double angular_offset = cap_angle(target_angle - agent.heading_dir);
+
+    COORD relative_point(
+        offset * cos(angular_offset), offset * sin(angular_offset));
+    if (relative_point.x == 0)
+        return 0;
+    else{
+        double turning_radius = relative_point.Length() / (2 * abs(relative_point.y)); // Intersecting chords theorem.
+        double steering_angle = atan2(agent.bb_extent_y * 0.8, turning_radius);
+        if (relative_point.y < 0)
+            steering_angle *= -1;
+        
+        return steering_angle;
+    }
+}
 // std::vector<COORD> get_bounding_box_corners(AgentStruct& agent){
 //     COORD forward_vec = COORD(cos(agent.heading_dir), sin(agent.heading_dir));
 //     COORD sideward_vec = COORD(-sin(agent.heading_dir), cos(agent.heading_dir));
@@ -989,7 +1115,17 @@ void WorldModel::cal_bb_extents(AgentStruct& agent, std::vector<COORD>& bb, doub
     }
 }
 
-void WorldModel::PedStepPath(AgentStruct& agent, int step, bool doPrint) {
+void WorldModel::AgentStepPath(AgentStruct& agent, int step, double noise, bool doPrint) {
+    if (agent.type == AgentType::ped)
+        PedStepPath(agent, step, noise, doPrint);
+    else if (agent.type == AgentType::car)
+        VehStepPath(agent, step, noise, doPrint);
+    else
+        ERR(string_sprintf(
+            "unsupported agent mode %d", agent.type));
+}
+
+void WorldModel::PedStepPath(AgentStruct& agent, int step, double noise, bool doPrint) {
     auto& path_candidates = PathCandidates(agent.id);
 
     int intention;
@@ -1005,11 +1141,54 @@ void WorldModel::PedStepPath(AgentStruct& agent, int step, bool doPrint) {
         
         agent.pos_along_path = path.forward(agent.pos_along_path, agent.speed * (float(step)/freq));
         COORD new_pos = path[agent.pos_along_path];
+        
+        if (noise!=0){
+            COORD goal_vec = new_pos - agent.pos;
+            double a = goal_vec.GetAngle(); 
+            a += noise;
+            MyVector move(a, step * agent.speed/freq, 0);
+            agent.pos.x += move.dw;
+            agent.pos.y += move.dh;
+        }
+        else{
+            agent.pos = new_pos;
+        }
+
         agent.vel = (new_pos - agent.pos) * freq;
-        agent.pos = new_pos;
 
         if(doPrint && agent.pos_along_path == old_path_pos)
-            cout << "[PedStepPath]: agent " << agent.id << " no move: path length " 
+            logd << "[PedStepPath]: agent " << agent.id << " no move: path length " 
+                << path.size() << " speed " << agent.speed  << " forward distance " << agent.speed * (float(step)/freq) << endl;   
+    }
+}
+
+
+void WorldModel::VehStepPath(AgentStruct& agent, int step, double noise, bool doPrint) {
+    auto& path_candidates = PathCandidates(agent.id);
+
+    int intention;
+    if(doPrint)
+        intention = 0;
+    else
+        intention = agent.intention;
+
+    int old_path_pos = agent.pos_along_path;
+
+    if (intention < path_candidates.size()){
+        auto& path = path_candidates[intention];
+        int pursuit_pos = path.forward(agent.pos_along_path, 3.0);
+        COORD pursuit_point = path[pursuit_pos];
+
+        // double steering = PurepursuitAngle(agent, pursuit_point);
+        double steering = PControlAngle<AgentStruct>(agent, pursuit_point);
+    
+        steering += noise;
+        BicycleModel(agent, steering, agent.speed);
+
+        agent.pos_along_path = path.nearest(agent.pos);
+
+        if(doPrint && agent.pos_along_path == old_path_pos)
+            logd << "[PedStepPath]: agent " << agent.id << " no move: path length " 
                 << path.size() << " speed " << agent.speed  << " forward distance " << agent.speed * (float(step)/freq) << endl;   
     }
 }
@@ -1135,17 +1314,19 @@ void WorldModel::FixGPUVel(CarStruct &car)
 void WorldModel::BicycleModel(CarStruct &car, double steering, double end_vel) {
     if(steering!=0){
         assert(tan(steering)!=0);
-        double TurningRadius = ModelParams::CAR_LENGTH/tan(steering);
+        double TurningRadius = ModelParams::CAR_WHEEL_DIST/tan(steering);
         assert(TurningRadius!=0);
         double beta= end_vel/freq/TurningRadius;
-        car.pos.x = car.pos.x - ModelParams::CAR_REAR * cos(car.heading_dir) 
-            + TurningRadius*(sin(car.heading_dir+beta)-sin(car.heading_dir));
-        car.pos.y = car.pos.y - ModelParams::CAR_REAR * sin(car.heading_dir)
-            + TurningRadius*(cos(car.heading_dir)-cos(car.heading_dir+beta));
-        car.heading_dir = cap_angle(car.heading_dir+beta);
 
-        car.pos.x += ModelParams::CAR_REAR * cos(car.heading_dir);
-        car.pos.y += ModelParams::CAR_REAR * sin(car.heading_dir);
+        COORD rear_pos;
+        rear_pos.x = car.pos.x - ModelParams::CAR_REAR * cos(car.heading_dir); 
+        rear_pos.y = car.pos.y - ModelParams::CAR_REAR * sin(car.heading_dir);
+        // move and rotate
+        rear_pos.x += TurningRadius*(sin(car.heading_dir+beta)-sin(car.heading_dir));
+        rear_pos.y += TurningRadius*(cos(car.heading_dir)-cos(car.heading_dir+beta));
+        car.heading_dir = cap_angle(car.heading_dir+beta);
+        car.pos.x = rear_pos.x + ModelParams::CAR_REAR * cos(car.heading_dir);
+        car.pos.y = rear_pos.y + ModelParams::CAR_REAR * sin(car.heading_dir);
     }
     else{
         car.pos.x += (end_vel/freq) * cos(car.heading_dir);
@@ -1153,6 +1334,29 @@ void WorldModel::BicycleModel(CarStruct &car, double steering, double end_vel) {
     }   
 }
 
+void WorldModel::BicycleModel(AgentStruct &agent, double steering, double end_vel) {
+    if(steering!=0){
+        assert(tan(steering)!=0);
+        // assuming front-real length is 0.8 * total car length
+        double TurningRadius = agent.bb_extent_y * 0.8 /tan(steering);
+        assert(TurningRadius!=0);
+        double beta= end_vel/freq/TurningRadius;
+
+        COORD rear_pos;
+        rear_pos.x = agent.pos.x - agent.bb_extent_y * 0.4 * cos(agent.heading_dir); 
+        rear_pos.y = agent.pos.y - agent.bb_extent_y * 0.4 * sin(agent.heading_dir);
+        // move and rotate
+        rear_pos.x += TurningRadius*(sin(agent.heading_dir+beta)-sin(agent.heading_dir));
+        rear_pos.y += TurningRadius*(cos(agent.heading_dir)-cos(agent.heading_dir+beta));
+        agent.heading_dir = cap_angle(agent.heading_dir+beta);
+        agent.pos.x = rear_pos.x + agent.bb_extent_y * 0.4 * cos(agent.heading_dir);
+        agent.pos.y = rear_pos.y + agent.bb_extent_y * 0.4 * sin(agent.heading_dir);
+    }
+    else{
+        agent.pos.x += (end_vel/freq) * cos(agent.heading_dir);
+        agent.pos.y += (end_vel/freq) * sin(agent.heading_dir);
+    }   
+}
 
 void WorldModel::RobStep(CarStruct &car, double steering, Random& random) {
 	BicycleModel(car, steering, car.vel);
@@ -1260,16 +1464,13 @@ void WorldModel::updatePedBelief(AgentBelief& b, const Agent& curr_agent) {
 
     bool debug=false;
 
+    b.bb = fetch_bounding_box(curr_agent);
+    b.heading_dir = fetch_heading_dir(curr_agent);
+    b.cross_dir = fetch_cross_dir(curr_agent);
+    
     if(!curr_agent.reset_intention){
 
         b.goal_paths = PathCandidates(b.id);
-
-        if (curr_agent.type()==AgentType::car){
-            b.bb = static_cast<const Vehicle*>(&curr_agent)->bb;
-            b.heading_dir = static_cast<const Vehicle*>(&curr_agent)->heading_dir;
-        } else if (curr_agent.type() == AgentType::ped){
-            b.cross_dir = static_cast<const Pedestrian*>(&curr_agent)->cross_dir;    
-        }
 
         for(int i=0; i<GetNumIntentions(curr_agent); i++) {
 
@@ -1315,7 +1516,6 @@ void WorldModel::updatePedBelief(AgentBelief& b, const Agent& curr_agent) {
         for(double& w : b.prob_modes_goals[AGENT_DIS]) {
             w /= total_weight;
         }
-
     }
 
     COORD cur_pos(curr_agent.w, curr_agent.h);
@@ -1325,17 +1525,24 @@ void WorldModel::updatePedBelief(AgentBelief& b, const Agent& curr_agent) {
 	b.pos = cur_pos;
 }
 
+double WorldModel::GetPrefSpeed(const Agent& agent){
+    if (agent.type() == AgentType::car)
+        return agent.vel.Length();
+    else    
+        return ModelParams::PED_SPEED;
+}
+
 AgentBelief WorldModel::initPedBelief(const Agent& agent) {
     AgentBelief b;
     b.id = agent.id;
     b.type = agent.type();
     b.pos = COORD(agent.w, agent.h);
-    b.speed = ModelParams::PED_SPEED;
+    b.speed = GetPrefSpeed(agent);
     b.vel = agent.vel;
-    
     b.reset = agent.reset_intention;
     b.heading_dir = fetch_heading_dir(agent);
     b.cross_dir = fetch_cross_dir(agent);
+    b.bb = fetch_bounding_box(agent);
 
     // b.speed = ModelParams::PED_SPEED;
     //    cout << "AGENT_DIS + 1= "<< AGENT_DIS + 1 << endl;
@@ -1427,8 +1634,10 @@ void WorldStateTracker::tracIntention(Agent& des, const Agent& src, bool doPrint
     // des.paths = src.paths;
 
     des.paths.resize(0);
+
+
     for (const Path& path: src.paths){
-        des.paths.push_back(path.interpolate()); // reset the resolution of the path to ModelParams:PATH_STEP
+        des.paths.push_back(path.interpolate(des.vel.Length() * 10.0)); // reset the resolution of the path to ModelParams:PATH_STEP
     }
 
     updatePathPool(des);
@@ -1572,6 +1781,17 @@ void WorldStateTracker::updateCar(const CarStruct car) {
     carpos=car.pos;
     carvel=car.vel;
     car_heading_dir=car.heading_dir;
+    ValidateCar(__FUNCTION__);
+}
+
+void WorldStateTracker::ValidateCar(const char* func){
+    if (car_odom_heading == -10) // initial value
+        return; 
+    if (fabs(car_heading_dir - car_odom_heading)> 0.1){
+        ERR(string_sprintf(
+            "%s: car_heading in stateTracker different from odom: %f, %f",
+            func, car_heading_dir, car_odom_heading));
+    }
 }
 
 bool WorldStateTracker::emergency() {
@@ -1656,9 +1876,9 @@ void WorldStateTracker::setPomdpPed(AgentStruct& agent, const Agent& src){
     agent.pos_along_path = 0.0; // travel distance along the path
     agent.cross_dir = fetch_cross_dir(src);; // which path to take
     auto bb = fetch_bounding_box(src);
-    double heading = fetch_heading_dir(src);
+    agent.heading_dir = fetch_heading_dir(src);
 
-    model.cal_bb_extents(agent, bb, heading);
+    model.cal_bb_extents(agent, bb, agent.heading_dir);
 }
 
 PomdpState WorldStateTracker::getPomdpState() {
@@ -1924,7 +2144,19 @@ void WorldBeliefTracker::text(const std::map<int, AgentBelief>& agent_bs) const{
     }
 }
 
+void WorldBeliefTracker::ValidateCar(const char* func){
+    if (stateTracker.car_odom_heading == -10) // initial value
+        return;
+    if (fabs(car.heading_dir - stateTracker.car_odom_heading)> 0.1){
+        ERR(string_sprintf(
+            "%s: car_heading in stateTracker different from odom: %f, %f",
+            func, car.heading_dir, stateTracker.car_odom_heading));
+    }
+}
+
 PomdpState WorldBeliefTracker::sample(bool predict) {
+    ValidateCar(__FUNCTION__);
+
     PomdpState s;
     s.car = car;
 
@@ -1938,7 +2170,6 @@ PomdpState WorldBeliefTracker::sample(bool predict) {
 
 		if (COORD::EuclideanDistance(p.pos, car.pos) < ModelParams::LASER_RANGE) {
 			s.agents[s.num].pos = p.pos;
-//			s.agents[s.num].goal = p.sample_goal();
 			p.sample_goal_mode(s.agents[s.num].intention, s.agents[s.num].mode);
 			s.agents[s.num].id = p.id;
             s.agents[s.num].vel = p.vel;
@@ -1946,6 +2177,7 @@ PomdpState WorldBeliefTracker::sample(bool predict) {
             s.agents[s.num].pos_along_path = 0; // assuming that paths are up to date here
             s.agents[s.num].cross_dir = p.cross_dir;
             s.agents[s.num].type = p.type;
+            s.agents[s.num].heading_dir = p.heading_dir;
             model.cal_bb_extents(p, s.agents[s.num]);
 			s.num ++;
 		}
@@ -1997,13 +2229,13 @@ vector<AgentStruct> WorldBeliefTracker::predictAgents() {
             AgentStruct agent = agent_pred;
 
             if(model.goal_mode == "goal"){
-                model.PedStepGoal(agent, step + i);
+                model.AgentStepGoal(agent, step + i);
             }
             else if (model.goal_mode == "cur_vel"){
                 model.PedStepCurVel(agent, step + i);
             }
             else if (model.goal_mode == "path"){
-                model.PedStepPath(agent, step + i);
+                model.AgentStepPath(agent, step + i);
             }
             
             prediction.push_back(agent);
@@ -2301,6 +2533,29 @@ void WorldModel::add_car_agent(int id_in_sim, CarStruct& car){
 		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+3, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
 		traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+3,-4);
 	}
+    else if(ModelParams::car_model == "carla"){
+
+        //TODO: this should use the car dimension from topic
+        double car_radius = 1.15f;
+        double car_radius_large = 1.6f;
+
+        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+        traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
+        traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim,-1);
+
+        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56 * 2.33 * cos(car_yaw), car.pos.y + 1.4* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+        traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+1, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
+        traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+1,-2);
+
+        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56*3.66 * cos(car_yaw), car.pos.y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+        traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+2, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
+        traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+2,-3);
+
+        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56*5 * cos(car_yaw), car.pos.y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius_large, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+        traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+3, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
+        traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+3,-4);
+
+    }
 }
 
 double get_heading_dir(COORD vel){
@@ -2545,14 +2800,18 @@ bool WorldModel::CheckCarWithObstacles(const CarStruct& car, int flag){
 
 bool WorldModel::CheckCarWithVehicle(const CarStruct& car, const AgentStruct& veh, int flag) {
     bool result = false;
+
+    COORD tan_dir(-sin(veh.heading_dir), cos(veh.heading_dir));
+    COORD along_dir(cos(veh.heading_dir), sin(veh.heading_dir));
+    
     result = result | CheckCarWithObsLine(car, 
-        veh.pos + COORD(veh.bb_extent_x, veh.bb_extent_y), veh.pos + COORD(-veh.bb_extent_x, veh.bb_extent_y), flag);
+        veh.pos + tan_dir * veh.bb_extent_x, veh.pos + along_dir * veh.bb_extent_y, flag);
     result = result | CheckCarWithObsLine(car, 
-        veh.pos + COORD(-veh.bb_extent_x, veh.bb_extent_y), veh.pos + COORD(-veh.bb_extent_x, -veh.bb_extent_y), flag);
+        veh.pos + tan_dir * veh.bb_extent_x, veh.pos - along_dir * veh.bb_extent_y, flag);
     result = result | CheckCarWithObsLine(car, 
-        veh.pos + COORD(-veh.bb_extent_x, -veh.bb_extent_y), veh.pos + COORD(veh.bb_extent_x, -veh.bb_extent_y), flag);
+        veh.pos - tan_dir * veh.bb_extent_x, veh.pos - along_dir * veh.bb_extent_y, flag);
     result = result | CheckCarWithObsLine(car, 
-        veh.pos + COORD(veh.bb_extent_x, -veh.bb_extent_y), veh.pos + COORD(veh.bb_extent_x, veh.bb_extent_y), flag);
+        veh.pos - tan_dir * veh.bb_extent_x, veh.pos + along_dir * veh.bb_extent_y, flag);
     return result;
 }
 
@@ -2574,11 +2833,11 @@ bool WorldModel::CheckCarWithObsLine(const CarStruct& car, COORD start_point, CO
 		double ny = sy + dy*u;
 
 		if (flag ==0){
-			if(::inCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir))
+			if(::inCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir, false))
 				return true;
 		}
 		else{
-			if(::inRealCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir))
+			if(::inRealCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir, false))
 				return true;
 		}
 		//if(::inCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir))

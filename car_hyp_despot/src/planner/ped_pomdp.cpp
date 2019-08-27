@@ -271,7 +271,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
  	// Safety control: collision; Terminate upon collision
 	int col_agent = 0;
-  if(state.car.vel > 0.001 && world_model->inCollision(state, col_agent) ) { /// collision occurs only when car is moving
+  if(state.car.vel > 0.001 && world_model->inCollision(state, col_agent)) { /// collision occurs only when car is moving
     reward = CrashPenalty(state);
 
     logd << "assigning collision reward " << reward << endl;
@@ -612,7 +612,11 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 
 	out << "car pos / heading / vel = " << "(" << carpos.x << ", " << carpos.y << ") / "
 	    << state.car.heading_dir << " / "
-	    << state.car.vel << endl;
+	    << state.car.vel 
+	    << " car dim " 
+	    << ModelParams::CAR_WIDTH
+	    << " " << ModelParams::CAR_LENGTH
+	    << endl;
 	out << state.num << " pedestrians " << endl;
 	for (int i = 0; i < state.num; i ++) {
 		out << "agent " << i << ": id / pos / speed / vel / intention / dist2car / infront =  " 
@@ -627,20 +631,23 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 			<< " (type) " << state.agents[i].type
 			<< " (bb) " << state.agents[i].bb_extent_x << " "
 			<< state.agents[i].bb_extent_y 
-			<< " (cross) " << state.agents[i].cross_dir << endl;
+			<< " (cross) " << state.agents[i].cross_dir 
+			<< " (heading) " << state.agents[i].heading_dir << endl;
 	}
 	
 	double min_dist = -1;
 	if (state.num > 0)
 		min_dist = COORD::EuclideanDistance(carpos, state.agents[0].pos);
 	out << "MinDist: " << min_dist << endl;
+
+	validate_state(state);
 }
 
 PomdpState PedPomdp::PredictAgents(const PomdpState& ped_state) const {
 	PomdpState predicted_state = ped_state;
 
 	double steer_to_path = world_model->GetSteerToPath<PomdpState>(predicted_state);
-   	double acc = 1.0; // intend at max speed;
+   	double acc = 0.0; // intend at cur speed;
 
 	world_model->RobStepCurAction(predicted_state.car, acc, steer_to_path);
 
@@ -648,21 +655,22 @@ PomdpState PedPomdp::PredictAgents(const PomdpState& ped_state) const {
 		auto & p = predicted_state.agents[i];
 
 		if(world_model->goal_mode == "goal") {
-            world_model->PedStepGoal(p, 1);
+            world_model->AgentStepGoal(p, 1);
         }
         else if (world_model->goal_mode == "cur_vel") {
             world_model->PedStepCurVel(p, 1);
         }
         else if (world_model->goal_mode == "path") {
         	int old_path_pos = p.pos_along_path;
+        	double noise = Random::RANDOM.NextGaussian()* ModelParams::NOISE_GOAL_ANGLE;
             if (true){	
-        		world_model->PedStepPath(p, 1, true);
+        		world_model->AgentStepPath(p, 1, noise, true);
 			}
 			else
-				world_model->PedStepPath(p, 1, false);
+				world_model->AgentStepPath(p, 1, noise, false);
 
         	if(p.pos_along_path == old_path_pos)
-            	cout << "[PredictAgents] agent " << p.id << " no move with "<< world_model->PathCandidates(p.id).size()
+            	logd << "[PredictAgents] agent " << p.id << " no move with "<< world_model->PathCandidates(p.id).size()
             		<<" path_candidates, pos_along_path " << p.pos_along_path << " " << endl;   
         }
     }
@@ -1028,21 +1036,37 @@ void PedPomdp::ImportStateList(std::vector<State*>& particles, std::istream& in)
 	}
 }
 
-bool PedPomdp::validate_state(PomdpState& state) const {
+bool PedPomdp::validate_state(const PomdpState& state) const {
 
-	if (state.num >0) {
-		if (state.agents[0].intention == -1){
+	for (int i = 0; i < state.num; i++) {
+		auto& agent = state.agents[i];
+		if (agent.intention == -1){
 			ERR("non-initialized intention in state");
 		}
 
-		if (state.agents[0].type >= AgentType::num_values){
-			PrintState(state);
-			ERR(string_sprintf("non-initialized type in state: %d", state.agents[0].type));
+		if (agent.type >= AgentType::num_values){
+			// PrintState(state);
+			ERR(string_sprintf("non-initialized type in state: %d", agent.type));
 		}	
 
-		if (state.agents[0].speed == 0){
+		if (agent.speed == -1){
 			ERR("non-initialized speed in state");
-		}	
+		}
+		else if (agent.type == AgentType::car) {
+			double vel = agent.vel.Length();
+			if (fabs(vel - agent.speed) > 0.2){
+				ERR(string_sprintf("vel-speed mismatch: %f %f", 
+					vel, agent.speed));
+			}
+
+			auto& car = agent;
+			if (car.vel.Length()>1.0){
+				double diff = fabs(car.heading_dir - car.vel.GetAngle());
+	            if (diff > 0.8 && diff < 2*M_PI - 0.8)
+	                ERR(string_sprintf("heading-veldir mismatch: %f %f", 
+	                    car.heading_dir, car.vel.GetAngle()));
+			}
+		}
 	}
 }
 

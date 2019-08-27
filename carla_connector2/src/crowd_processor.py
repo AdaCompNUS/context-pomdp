@@ -149,7 +149,7 @@ class CrowdProcessor(Drunc):
                         pose_msg.pose.position.x = path_point.x
                         pose_msg.pose.position.y = path_point.y
                         path_msg.poses.append(pose_msg)
-                    self.draw_path(path_msg)
+                    # self.draw_path(path_msg)
                     agent_tmp.path_candidates.append(path_msg)
                 agent_tmp.cross_dirs = []
                 self.topological_hash_map[agent.id] = topological_hash

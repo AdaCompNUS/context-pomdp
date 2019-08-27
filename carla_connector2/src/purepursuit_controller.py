@@ -117,7 +117,7 @@ class Pursuit(object):
         if pursuit_angle is None:
             return
 
-        car_yaw = np.deg2rad(self.car_info.car_yaw)
+        car_yaw = self.car_info.car_yaw
         last_steer = self.car_steer
         angular_offset = self.calc_angular_diff(position, pursuit_point, car_yaw)
         offset = dist(position, pursuit_point)

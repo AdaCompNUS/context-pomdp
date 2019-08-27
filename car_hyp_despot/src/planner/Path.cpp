@@ -64,7 +64,7 @@ double Path::getYaw(int i) const {
 	return a;
 }
 
-Path Path::interpolate() const {
+Path Path::interpolate(double max_len) const {
     auto& path = *this;
 	Path p;
 
@@ -72,6 +72,7 @@ Path Path::interpolate() const {
 	double t=0, ti=0;
 	for(int i=0; i<path.size()-1; i++) {
         double d = COORD::EuclideanDistance(path[i], path[i+1]);
+        // assert(d < 1001.0);
 		double dx = (path[i+1].x-path[i].x) / d;
 		double dy = (path[i+1].y-path[i].y) / d;
 		double sx = path[i].x;
@@ -85,6 +86,9 @@ Path Path::interpolate() const {
 				p.push_back(COORD(nx, ny));
 
 			t += step;
+
+			if (p.size()* ModelParams::PATH_STEP >= max_len)
+				break;
 		}
 
 		ti += d;

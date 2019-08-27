@@ -18,7 +18,7 @@ struct AgentStruct {
 	
 	AgentStruct(){
 		id = -1;
-    	speed = ModelParams::PED_SPEED;
+    	speed = -1;
     	mode = 1;//PED_DIS;
   	}
 	
@@ -26,7 +26,7 @@ struct AgentStruct {
 		pos = a;
 		intention = b;
 		id = c;
-    	speed = ModelParams::PED_SPEED;
+    	speed = -1;
     	mode = 1;//PED_DIS;
 	}
 	
@@ -48,6 +48,7 @@ struct AgentStruct {
     double speed;
     COORD vel; // heading dir, for cur_vel motion model
     // std::vector<COORD> bb;
+    double heading_dir;
     double bb_extent_x, bb_extent_y;
 };
 

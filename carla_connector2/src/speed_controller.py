@@ -90,7 +90,7 @@ class SpeedController(object):
 
     def cb_car(self, msg):
         self.player_pos = [msg.car_pos.x, msg.car_pos.y]
-        self.player_yaw = msg.car_yaw
+        self.player_yaw = np.rad2deg(msg.car_yaw)
         self.player_vel = [msg.car_vel.x, msg.car_vel.y]
 
 if __name__ == '__main__':

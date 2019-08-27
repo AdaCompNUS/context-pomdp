@@ -158,6 +158,22 @@ State* WorldSimulator::Initialize(){
 	return NULL;
 }
 
+tf::Stamped<tf::Pose> WorldSimulator::GetBaseLinkPose(){
+	tf::Stamped<tf::Pose> in_pose, out_pose;
+	// transpose to laser frame for ped avoidance
+	in_pose.setIdentity();
+	in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
+
+	while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
+		cerr<<"transform error within GetCurrentState"<<endl;
+		cout<<"laser frame "<<in_pose.frame_id_<<endl;
+		ros::Rate err_retry_rate(10);
+        err_retry_rate.sleep();
+	}
+
+	return out_pose;
+}
+
 /**
  * [Optional]
  * To help construct initial belief to print debug informations in Logger
@@ -165,30 +181,8 @@ State* WorldSimulator::Initialize(){
 State* WorldSimulator::GetCurrentState(){
 	
 	/* Get current car coordinates */
-    tf::Stamped<tf::Pose> in_pose, out_pose;
-	// transpose to laser frame for ped avoidance
-	in_pose.setIdentity();
-	in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
-
-	// in_pose.frame_id_ = ModelParams::rosns + "odom";
-
-	// cout<<__FUNCTION__<<" global_frame_id: "<<global_frame_id<<" "<<endl;
-
-	/*if(!getObjectPose(global_frame_id, in_pose, out_pose)) {
-		cerr<<"transform error within GetCurrentState"<<endl;
-		cout<<"laser frame "<<in_pose.frame_id_<<endl;
-		ros::Rate err_retry_rate(10);
-        err_retry_rate.sleep();
-        return NULL; // no up-to-date state
-	}*/
-
-	while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
-		cerr<<"transform error within GetCurrentState"<<endl;
-		cout<<"laser frame "<<in_pose.frame_id_<<endl;
-		ros::Rate err_retry_rate(10);
-        err_retry_rate.sleep();
-        //return NULL; // no up-to-date state
-	}
+    
+    tf::Stamped<tf::Pose> out_pose = GetBaseLinkPose();
 
 	CarStruct updated_car;
 	COORD coord;
@@ -340,7 +334,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	}
 	else if (worldModel.path.size()>0 && COORD::EuclideanDistance(stateTracker->carpos, worldModel.path[0])>4.0){
 		cerr << "=================== Path offset too high !!! Node shutting down" << endl;
-		// ros::shutdown();
+		ros::shutdown();
 	}
 	else{
 //		get_action_fix_latency(action);
@@ -759,13 +753,22 @@ bool WorldSimulator::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& i
 
 void WorldSimulator::speedCallback(nav_msgs::Odometry odo)
 {
-//	cout<<"update real speed "<<odo.twist.twist.linear.x<<endl;
-	// real_speed_=odo.twist.twist.linear.x;
-	real_speed_=sqrt(odo.twist.twist.linear.x * odo.twist.twist.linear.x + 
-		odo.twist.twist.linear.y * odo.twist.twist.linear.y);
-	if (real_speed_ > ModelParams::VEL_MAX*2.0){
-		cerr << "ERROR: Unusual car vel (too large): " << real_speed_ << endl;
-		raise(SIGABRT);
+	odom_vel_ = COORD(odo.twist.twist.linear.x, odo.twist.twist.linear.y);
+	// real_speed_=sqrt(odo.twist.twist.linear.x * odo.twist.twist.linear.x + 
+		// odo.twist.twist.linear.y * odo.twist.twist.linear.y);
+	odom_heading_ = tf::getYaw(odo.pose.pose.orientation);
+
+	COORD along_dir(cos(odom_heading_), sin(odom_heading_));
+
+	real_speed_ = odom_vel_.dot(along_dir);
+
+	tf::Stamped<tf::Pose> out_pose = GetBaseLinkPose();
+	baselink_heading_ = poseToHeadingDir(out_pose);
+
+	stateTracker->car_odom_heading = baselink_heading_;
+
+	if (real_speed_ > ModelParams::VEL_MAX*1.3){
+		ERR(string_sprintf("Unusual car vel (too large): %f",real_speed_));
 	}
 }
 
@@ -875,6 +878,8 @@ void agentArrayCallback(carla_connector::agent_array data){
 		WorldSimulator::stateTracker->updateVeh(veh);
 	}
 
+	DEBUG("Finish agent update");
+
 	WorldSimulator::stateTracker->model.print_path_map();
 
 	WorldSimulator::stateTracker->text(ped_list);
@@ -974,22 +979,35 @@ void WorldSimulator::update_il_car(const ped_is_despot::car_info::ConstPtr car) 
     	p_IL_data.cur_car = *car;
     }
 
-    if (!car_data_ready){
+    if (/*!car_data_ready*/true){
 	    const ped_is_despot::car_info& ego_car= *car;
-	    ModelParams::CAR_FRONT = xylength(ego_car.front_axle_center);
-	    ModelParams::CAR_REAR = xylength(ego_car.rear_axle_center);
-	    ModelParams::CAR_LENGTH = ModelParams::CAR_FRONT + ModelParams::CAR_REAR;
+	    ModelParams::CAR_FRONT = COORD(ego_car.front_axle_center.x - ego_car.car_pos.x, ego_car.front_axle_center.y - ego_car.car_pos.y).Length();
+	    ModelParams::CAR_REAR = COORD(ego_car.rear_axle_center.y - ego_car.car_pos.y, ego_car.rear_axle_center.y - ego_car.car_pos.y).Length();
+	    ModelParams::CAR_WHEEL_DIST = ModelParams::CAR_FRONT + ModelParams::CAR_REAR;
 
 	    ModelParams::CAR_WIDTH = 0;
+	    ModelParams::CAR_LENGTH = 0;
 	    float car_yaw = ego_car.car_yaw;
-	    COORD tan_dir(-cos(car_yaw), sin(car_yaw));
+
+	    if (fabs(car_yaw - odom_heading_) > 0.4 && fabs(car_yaw - odom_heading_) < 2*M_PI-0.4)
+	    	if (odom_heading_!=0)
+	    		ERR(string_sprintf("Il topic car_yaw incorrect: %f , truth %f",
+	    			car_yaw, odom_heading_));
+
+	    COORD tan_dir(-sin(car_yaw), cos(car_yaw));
+	    COORD along_dir(cos(car_yaw), sin(car_yaw));
 	    for(auto& point : ego_car.car_bbox.points){
-	    	COORD p(point.x, point.y);
+	    	// fprintf(stderr,"car bb point: (%f, %f)\n", point.x, point.y);
+	    	COORD p(point.x- ego_car.car_pos.x, point.y- ego_car.car_pos.y);
+	    	// fprintf(stderr,"car bb point dir: (%f, %f)\n", p.x, p.y);
 	    	double proj = p.dot(tan_dir);
 	    	ModelParams::CAR_WIDTH = max(ModelParams::CAR_WIDTH, fabs(proj));
+	    	proj = p.dot(along_dir);
+	    	ModelParams::CAR_LENGTH = max(ModelParams::CAR_LENGTH, fabs(proj));
 	    }
 	    ModelParams::CAR_WIDTH = ModelParams::CAR_WIDTH * 2;
-
+	    ModelParams::CAR_LENGTH = ModelParams::CAR_LENGTH * 2;
+		ModelParams::CAR_FRONT = ModelParams::CAR_LENGTH;
 	    DEBUG(string_sprintf("car dimension: font = %f , rear = %f, width = %f\n", 
 	    	ModelParams::CAR_FRONT, ModelParams::CAR_REAR, ModelParams::CAR_WIDTH));
 

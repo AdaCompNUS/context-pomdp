@@ -96,17 +96,6 @@ nh(_nh), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file
         //return 1;
     }
 
-/// for golfcart
- /*   Path p;
-    COORD start = COORD(-205, -142.5);
-    COORD goal = COORD(-189, -142.5);
-    p.push_back(start);
-    p.push_back(goal);
-    worldModel.setPath(p.interpolate());
-    fixed_path_ = true;
-*/
-
-/// for audi r8
 	cerr <<"DEBUG: Entering Controller()"<<endl;
 
     simulation_mode_ = UNITY;
@@ -716,6 +705,12 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 			static_cast<const PedPomdp*>(ped_pomdp_model), predict_peds);
 		
 		const State& sample = *static_cast<PedPomdpBelief*>(solver->belief())->GetParticle(0);
+		
+		cout << "Car odom velocity " << unity_driving_simulator_->odom_vel_.x << " "
+			<< unity_driving_simulator_->odom_vel_.y << endl;
+		cout << "Car odom heading " << unity_driving_simulator_->odom_heading_ << endl;
+		cout << "Car base_link heading " << unity_driving_simulator_->baselink_heading_ << endl;
+		
 		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
 
 		static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(sample, 10);// 3 steps		
