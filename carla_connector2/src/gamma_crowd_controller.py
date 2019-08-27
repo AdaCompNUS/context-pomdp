@@ -470,7 +470,7 @@ class GammaCrowdController(Drunc):
             sidewalk_agent_msg.route_point.polygon_id = a.path.route_points[0].polygon_id
             sidewalk_agent_msg.route_point.segment_id = a.path.route_points[0].segment_id
             sidewalk_agent_msg.route_point.offset = a.path.route_points[0].offset
-            sidewalk_agent_msg.route_orientation = a.path.route_orientation
+            sidewalk_agent_msg.route_orientation = a.path.route_orientations[0]
             sidewalk_agents_msg.agents.append(sidewalk_agent_msg)
         self.sidewalk_agents_pub.publish(sidewalk_agents_msg)
         
