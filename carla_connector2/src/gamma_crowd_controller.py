@@ -482,7 +482,13 @@ class GammaCrowdController(Drunc):
         return (bounds_min, bounds_max)
 
     def update(self):
-        intersecting_lanes = 
+        bounds = get_bounds(None)
+        intersecting_lanes = bounds is None ? [] : self.network.query_intersect(*bounds)
+        intersecting_lanes = [
+                (
+                    self.network.edges[rp.edge].lanes[rp.lane].shape[rp.segment],
+                    self.network.edges[rp.edge].lanes[rp.lane].shape[rp.segment + 1]
+                ) for rp in intersection_lanes]
         feasible_lane_list = []
         while len(self.network_car_agents) < self.num_network_car_agents:
             path = None
