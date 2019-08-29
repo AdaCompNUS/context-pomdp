@@ -427,6 +427,10 @@ class GammaCrowdController(Drunc):
 
     def get_spawn_range(self, spawn_size = 100, center_pos = None):
         # if it has specified the center position for spawnning the agents
+
+        if center_pos is None:
+            center_pos = get_ego_pos()
+
         if center_pos is not None:
             spawn_min = carla.Vector2D(
                 max(self.map_bounds_min.x, center_pos.x - spawn_size), 
@@ -436,29 +440,43 @@ class GammaCrowdController(Drunc):
                 min(self.map_bounds_max.y, center_pos.y + spawn_size))
             return spawn_min, spawn_max
 
-        # if it does not specify the center position, then use ego vehicle's position
+        else
+            return self.map_bounds_min, self.map_bounds_max 
+
+    def get_ego_pos(self):
         if self.ego_actor is None:
             for actor in self.world.get_actors():
                 if actor.attributes.get('role_name') == 'ego_vehicle':
                     self.ego_actor = actor
                     break
-        if self.ego_actor is None:
-            return self.map_bounds_min, self.map_bounds_max # TODO: I want to get the actual map range here
-        else:    
-            ego_position = self.ego_actor.get_location()
-            spawn_min = carla.Vector2D(
-                max(self.map_bounds_min.x, ego_position.x - spawn_size), 
-                max(self.map_bounds_min.y, ego_position.y - spawn_size))
-            spawn_max = carla.Vector2D(
-                min(self.map_bounds_max.x, ego_position.x + spawn_size),
-                min(self.map_bounds_max.y, ego_position.y + spawn_size))
-
-            return spawn_min, spawn_max
+        if self.ego_actor is not None:
+            return carla.Vector2D(ego_position.x, ego_position.y)
+        else:
+            return None
 
     def get_feasible_lanes(self, intersecting_lanes, center_pos = None, spawn_size_min = 100, spawn_size_max = 150):
+
+        if center_pos is None:
+            if self.ego_actor is None:
+                for actor in self.world.get_actors():
+                    if actor.attributes.get('role_name') == 'ego_vehicle':
+                        self.ego_actor = actor
+                        break
+            if self.ego_actor is None:
+                return self.map_bounds_min, self.map_bounds_max # TODO: I want to get the actual map range here
+            else:    
+                ego_position = self.ego_actor.get_location()
+                spawn_min = carla.Vector2D(
+                    max(self.map_bounds_min.x, ego_position.x - spawn_size), 
+                    max(self.map_bounds_min.y, ego_position.y - spawn_size))
+                spawn_max = carla.Vector2D(
+                    min(self.map_bounds_max.x, ego_position.x + spawn_size),
+                    min(self.map_bounds_max.y, ego_position.y + spawn_size))
+
         feasible_lane_list = []
         for lane in intersecting_lanes:
             feasible_lane = []
+
 
 
             feasible_lane_list.append(feasible_lane)
