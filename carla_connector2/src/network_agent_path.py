@@ -21,6 +21,19 @@ class NetworkAgentPath:
         path.route_points = random.choice(route_paths)
         return path
 
+    @staticmethod
+    def rand_path_fron_feasible_lanes(drunc, min_points, interval, feasible_lane_list):
+        spawn_point = None
+        route_paths = None
+        while not spawn_point or len(route_paths) < 1:
+            lane = random.choice(feasible_lane_list)
+            spawn_point = lane[0] + random.uniform(0.0, 1.0) * (lane[1] - lane[0]) ## Vector2D
+            spawn_point = drunc.network.get_nearest_route_point(spawn_point) ## change to route point
+            route_paths = drunc.network.get_next_route_paths(spawn_point, min_points - 1, interval)
+
+        path = NetworkAgentPath(drunc, min_points, interval)
+        path.route_points = random.choice(route_paths)
+        return path
     def resize(self):
         while len(self.route_points) < self.min_points:
             next_points = self.drunc.network.get_next_route_points(self.route_points[-1], self.interval)

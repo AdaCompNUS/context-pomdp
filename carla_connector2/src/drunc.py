@@ -22,8 +22,13 @@ class Drunc(object):
         self.world = self.client.get_world()
 
         # Define bounds.
-        self.map_bounds_min = carla.Vector2D(450, 1100)
-        self.map_bounds_max = carla.Vector2D(1200, 1900)
+        # for singapore:
+        # self.map_bounds_min = carla.Vector2D(450, 1100)
+        # self.map_bounds_max = carla.Vector2D(1200, 1900)
+
+        # for msekel square:
+        self.map_bounds_min = carla.Vector2D(-110, -5)
+        self.map_bounds_max = carla.Vector2D(1450, 1100)
         
         # Create network related objects.
         with open(carla_root + 'Data/meskel_square.net.xml', 'r') as file:
