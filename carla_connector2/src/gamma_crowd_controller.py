@@ -470,6 +470,17 @@ class GammaCrowdController(Drunc):
             feasible_lane_list.append(feasible_lane)
         return feasible_lane_list
 
+    def get_bounds(self, center_pos = None, spawn_size = 150):
+
+        if center_pos is None:
+            center_pos = get_ego_pos()
+            if center_pos is None:
+                return None
+        bounds_min = carla.Vector2D(center_pos.x - spawn_size.x, center_pos.y - spawn_size.y)
+        bounds_max = carla.Vector2D(center_pos.x + spawn_size.x, center_pos.y + spawn_size.y)
+
+        return (bounds_min, bounds_max)
+
     def update(self):
         intersecting_lanes = 
         feasible_lane_list = []
