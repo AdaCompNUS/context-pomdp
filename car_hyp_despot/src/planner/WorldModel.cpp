@@ -255,6 +255,8 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
 	else
 		acceleration= carvel >= ModelParams::VEL_MAX-1e-4 ? 0 : ModelParams::AccSpeed;
 
+    acceleration = ModelParams::AccSpeed; // debugging
+
 	logd << __FUNCTION__ <<"] Calculate action ID"<< endl;
 	return PedPomdp::GetActionID(steering, acceleration);
 }
@@ -277,7 +279,7 @@ bool WorldModel::inFront(const COORD ped_pos, const CarStruct car) const {
     }
 	double d0 = COORD::EuclideanDistance(car.pos, ped_pos);
 	//if(d0<=0) return true;
-	if(d0 <= 0.7/*3.5*/) return true;
+	// if(d0 <= 0.7/*3.5*/) return true;
 	double dot = DotProduct(cos(car.heading_dir), sin(car.heading_dir),
 			ped_pos.x - car.pos.x, ped_pos.y - car.pos.y);
 	double cosa = (d0>0)? dot / (d0): 0;
@@ -295,6 +297,8 @@ bool WorldModel::inFront(const COORD ped_pos, const CarStruct car) const {
  */
 bool inCollision(double Px, double Py, double Cx, double Cy, double Ctheta, bool expand=true);
 bool inRealCollision(double Px, double Py, double Cx, double Cy, double Ctheta, bool expand=true);
+std::vector<COORD> ComputeRect(COORD pos, double heading, double ref_to_front_side, double ref_to_back_side, double ref_front_side_angle, double ref_back_side_angle);
+bool InCollision(std::vector<COORD> rect_1, std::vector<COORD> rect_2);
 
 bool WorldModel::inCollision(const PomdpState& state) {
 	const COORD& car_pos = state.car.pos;
@@ -311,10 +315,9 @@ bool WorldModel::inCollision(const PomdpState& state) {
                 return true;
             }    
         }
-        else if (agent.type == AgentType::car){
-            if (inFront(agent.pos, state.car))
-                if (CheckCarWithVehicle(state.car, agent, 0))
-                    return true;
+        else if (agent.type == AgentType::car){    
+            if (CheckCarWithVehicle(state.car, agent, 0))
+                return true;
         }
         else{
             ERR(string_sprintf("unsupported agent type"));
@@ -345,9 +348,8 @@ bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id) {
 
         }
         else if (agent.type == AgentType::car){
-            if (inFront(agent.pos, state.car))
-                if (CheckCarWithVehicle(state.car, agent, 1)){
-                    id = agent.id;
+            if (CheckCarWithVehicle(state.car, agent, 1)){
+                id = agent.id;
             }
         }
         else{
@@ -2432,7 +2434,7 @@ COORD WorldModel::GetRVO2Vel(AgentStruct& agent, int i){
     new_pos.y=traffic_agent_sim_[threadID]->getAgentPosition(i).y();// + random.NextGaussian() * (traffic_agent_sim_[threadID]->getAgentPosition(agent).y() - agents[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
 
     DEBUG("End rvo vel");
-    return (new_pos - agent.pos); 
+    return (new_pos - agent.pos) * freq; 
 }
 
 void WorldModel::AgentApplyRVO2Vel(AgentStruct& agent, COORD& rvo_vel) {
@@ -2796,6 +2798,10 @@ void WorldModel::AddObstacle(std::vector<RVO::Vector2> obs){
 }
 
 bool WorldModel::CheckCarWithObstacles(const CarStruct& car, int flag){
+
+    return false; // only for the carla project.
+
+
 	COORD obs_first_point(Globals::NEG_INFTY, Globals::NEG_INFTY);
 	COORD obs_last_point;
 
@@ -2818,9 +2824,49 @@ bool WorldModel::CheckCarWithObstacles(const CarStruct& car, int flag){
 	return false;
 }
 
-bool WorldModel::CheckCarWithVehicle(const CarStruct& car, const AgentStruct& veh, int flag) {
-    bool result = false;
 
+bool WorldModel::CheckCarWithVehicle(const CarStruct& car, const AgentStruct& veh, int flag) {
+    if (!inFront(veh.pos, car))
+        return false;
+
+    // double side_margin, front_margin, back_margin;
+
+    // flag = 1; // debugging
+    // if(flag!=0){
+    //     side_margin = ModelParams::CAR_WIDTH / 2.0;
+    //     front_margin = ModelParams::CAR_FRONT;
+    //     back_margin = ModelParams::CAR_FRONT;   
+    // }
+    // else {
+    //     side_margin = ModelParams::CAR_WIDTH / 2.0 + CAR_SIDE_MARGIN;
+    //     front_margin = ModelParams::CAR_FRONT + CAR_FRONT_MARGIN;
+    //     back_margin = ModelParams::CAR_FRONT + CAR_SIDE_MARGIN;
+    // }
+
+    // double ref_to_front_side = sqrt(front_margin*front_margin + side_margin*side_margin);
+    // double ref_to_back_side = sqrt(back_margin*back_margin + side_margin*side_margin);
+    // double ref_front_side_angle = atan(side_margin/front_margin);      
+    // double ref_back_side_angle = atan(side_margin/back_margin);
+ 
+    // std::vector<COORD> car_rect = ::ComputeRect(car.pos, car.heading_dir, ref_to_front_side, ref_to_back_side,
+    //     ref_front_side_angle, ref_back_side_angle);
+
+    // side_margin = veh.bb_extent_x;
+    // front_margin = veh.bb_extent_y;
+    // back_margin = veh.bb_extent_y;
+
+    // ref_to_front_side = sqrt(front_margin*front_margin + side_margin*side_margin);
+    // ref_to_back_side = sqrt(back_margin*back_margin + side_margin*side_margin);
+    // ref_front_side_angle = atan(side_margin/front_margin);      
+    // ref_back_side_angle = atan(side_margin/back_margin);
+ 
+    // std::vector<COORD> veh_rect = ::ComputeRect(veh.pos, veh.heading_dir, ref_to_front_side, ref_to_back_side,
+    //     ref_front_side_angle, ref_back_side_angle);
+
+    // return ::InCollision(car_rect, veh_rect);
+    
+    bool result = false;
+    
     COORD tan_dir(-sin(veh.heading_dir), cos(veh.heading_dir));
     COORD along_dir(cos(veh.heading_dir), sin(veh.heading_dir));
     

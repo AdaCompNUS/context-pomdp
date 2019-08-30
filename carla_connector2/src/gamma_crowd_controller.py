@@ -333,7 +333,7 @@ class GammaCrowdController(Drunc):
             return self.map_bounds_min, self.map_bounds_max # TODO: I want to get the actual map range here
         else:    
             ego_position = self.ego_actor.get_location()
-            ego_range = 200
+            ego_range = 150
             spawn_min = carla.Vector2D(
                 max(self.map_bounds_min.x, ego_position.x - ego_range), 
                 max(self.map_bounds_min.y, ego_position.y - ego_range))

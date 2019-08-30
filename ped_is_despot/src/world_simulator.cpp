@@ -809,7 +809,7 @@ void agentArrayCallback(carla_connector::agent_array data){
 		std::string agent_type = agent.type.data;
 		#endif
 
-		cout << "get agent: " << agent.id <<" "<< agent_type << endl;
+		// cout << "get agent: " << agent.id <<" "<< agent_type << endl;
 
 		if (agent_type == "car" || agent_type == "bike" ){
 			Vehicle world_veh;
@@ -836,7 +836,7 @@ void agentArrayCallback(carla_connector::agent_array data){
 				}
 			}
 
-			cout << "vehicle has "<< agent.path_candidates.size() << " path_candidates" << endl;
+			// cout << "vehicle has "<< agent.path_candidates.size() << " path_candidates" << endl;
 			veh_list.push_back(world_veh);
 		} else if (agent_type == "ped"){
 			Pedestrian world_ped;
@@ -859,7 +859,7 @@ void agentArrayCallback(carla_connector::agent_array data){
 				}
 			}
 
-			cout << "ped has "<< agent.path_candidates.size() << " path_candidates" << endl;
+			// cout << "ped has "<< agent.path_candidates.size() << " path_candidates" << endl;
 			
 			ped_list.push_back(world_ped);
 		}
@@ -1007,7 +1007,7 @@ void WorldSimulator::update_il_car(const ped_is_despot::car_info::ConstPtr car) 
 	    }
 	    ModelParams::CAR_WIDTH = ModelParams::CAR_WIDTH * 2;
 	    ModelParams::CAR_LENGTH = ModelParams::CAR_LENGTH * 2;
-		ModelParams::CAR_FRONT = ModelParams::CAR_LENGTH;
+		ModelParams::CAR_FRONT = ModelParams::CAR_LENGTH / 2.0;
 	    DEBUG(string_sprintf("car dimension: font = %f , rear = %f, width = %f\n", 
 	    	ModelParams::CAR_FRONT, ModelParams::CAR_REAR, ModelParams::CAR_WIDTH));
 
