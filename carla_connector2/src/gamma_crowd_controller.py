@@ -247,6 +247,7 @@ class GammaCrowdController(Drunc):
                 CarInfo,
                 self.il_car_info_callback,
                 queue_size=1)
+        self.initialized = False
 
         for i in range(self.num_network_car_agents):
             self.gamma.add_agent(carla.AgentParams.get_default('Car'), i)
@@ -574,8 +575,8 @@ class GammaCrowdController(Drunc):
 
         return (bounds_min, bounds_max)
 
-    def get_intersecting_lanes(self, center_pos = None):
-        bounds = self.get_bounds(center_pos)
+    def get_intersecting_lanes(self, center_pos = None, spawn_size = 150):
+        bounds = self.get_bounds(center_pos, spawn_size)
         if bounds is None:
             return []
         intersecting_lanes = self.network.query_intersect(*bounds)
@@ -587,19 +588,22 @@ class GammaCrowdController(Drunc):
         return intersecting_lanes
 
     def update(self):
-        center_pos = carla.Vector2D(450, 400)
-        intersecting_lanes = self.get_intersecting_lanes(center_pos)
-        feasible_lane_list = self.get_feasible_lanes(intersecting_lanes, center_pos = center_pos)
-        if len(feasible_lane_list) == 0:
-            print("feasible_lane_list len == 0 ********************")
+        if not self.initialized: ## the first time
+            self.feasible_lane_list = []
+            self.initialized = True
+        else:
+            #self.center_pos = carla.Vector2D(450, 400)
+            spawn_size_min = 150
+            spawn_size_max = 200
+            self.intersecting_lanes = self.get_intersecting_lanes(spawn_size = spawn_size_max )
+            self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
         while len(self.network_car_agents) < self.num_network_car_agents:
             path = None
-            if len(feasible_lane_list) == 0:
-                print("feasible_lane_list len == 0 ********************")
+            if len(self.feasible_lane_list) == 0:
                 spawn_min, spawn_max = self.get_spawn_range() 
                 path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
             else:
-                path = NetworkAgentPath.rand_path_fron_feasible_lanes(self, self.path_min_points, self.path_interval, feasible_lane_list)
+                path = NetworkAgentPath.rand_path_fron_feasible_lanes(self, self.path_min_points, self.path_interval, self.feasible_lane_list)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
@@ -617,11 +621,11 @@ class GammaCrowdController(Drunc):
         
         while len(self.network_bike_agents) < self.num_network_bike_agents:
             path = None
-            if len(feasible_lane_list) == 0:
+            if len(self.feasible_lane_list) == 0:
                 spawn_min, spawn_max = self.get_spawn_range() 
                 path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
             else:
-                path = NetworkAgentPath.rand_path_fron_feasible_lanes(self, self.path_min_points, self.path_interval, feasible_lane_list)
+                path = NetworkAgentPath.rand_path_fron_feasible_lanes(self, self.path_min_points, self.path_interval, self.feasible_lane_list)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
@@ -670,8 +674,8 @@ class GammaCrowdController(Drunc):
             self.gamma.set_agent(i, crowd_agent.get_agent_params())
             pref_vel = crowd_agent.get_preferred_velocity()
             if pref_vel:
-                self.draw_line(crowd_agent.get_position(), pref_vel, carla.Color (255,0,0))
-                self.draw_line(crowd_agent.get_position(), crowd_agent.get_velocity(), carla.Color (0,255,0))
+                #self.draw_line(crowd_agent.get_position(), pref_vel, carla.Color (255,0,0))
+                #self.draw_line(crowd_agent.get_position(), crowd_agent.get_velocity(), carla.Color (0,255,0))
                 next_agents.append(crowd_agent)
                 self.gamma.set_agent_position(i, crowd_agent.get_position())
                 self.gamma.set_agent_velocity(i, crowd_agent.get_velocity())
@@ -716,7 +720,7 @@ class GammaCrowdController(Drunc):
 
                 vel_to_exe = self.gamma.get_agent_velocity(i)
 
-                self.draw_line(crowd_agent.get_position(), vel_to_exe, carla.Color (0,0,255))
+                #self.draw_line(crowd_agent.get_position(), vel_to_exe, carla.Color (0,0,255))
 
                 cur_vel = crowd_agent.actor.get_velocity()
 
@@ -725,7 +729,7 @@ class GammaCrowdController(Drunc):
                 angle_diff = get_signed_angle_diff(vel_to_exe, cur_vel)
                 if angle_diff > 30 or angle_diff < -30:
                     vel_to_exe = 0.5 * (vel_to_exe + cur_vel)
-                    self.draw_line(crowd_agent.get_position(), vel_to_exe, carla.Color (255,255,255))
+                    #self.draw_line(crowd_agent.get_position(), vel_to_exe, carla.Color (255,255,255))
 
 
                 # cur_loc = crowd_agent.actor.get_location()
