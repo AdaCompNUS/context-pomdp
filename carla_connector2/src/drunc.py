@@ -22,11 +22,16 @@ class Drunc(object):
         self.world = self.client.get_world()
 
         # Define bounds.
-        self.map_bounds_min = carla.Vector2D(450, 1100)
-        self.map_bounds_max = carla.Vector2D(1200, 1900)
+        # for singapore:
+        # self.map_bounds_min = carla.Vector2D(450, 1100)
+        # self.map_bounds_max = carla.Vector2D(1200, 1900)
+
+        # for msekel square:
+        self.map_bounds_min = carla.Vector2D(-110, -5)
+        self.map_bounds_max = carla.Vector2D(1450, 1100)
         
         # Create network related objects.
-        with open(carla_root + 'Data/map.net.xml', 'r') as file:
+        with open(carla_root + 'Data/meskel_square.net.xml', 'r') as file:
             map_data = file.read()
         self.network = carla.SumoNetwork.load(map_data)
         self.network_occupancy_map = self.network.create_occupancy_map()
@@ -36,9 +41,12 @@ class Drunc(object):
             3.0, 0.1,
             20.0)
         self.sidewalk_occupancy_map = self.sidewalk.create_occupancy_map()
-        self.landmark_map = carla.LandmarkMap.load(
-            carla_root + 'Data/map.osm',
-            carla.Vector2D(-11551102.28, -143022.13))
+        self.landmarks = carla.Landmark.load(
+            carla_root + 'Data/meskel_square.osm',
+            carla.Vector2D(-4314645.11,-1006806.79)) # Meskel Square
+            # NUS : carla.Vector2D(-11551102.28, -143022.13))
+        self.landmarks = [l for l in self.landmarks if not self.network_occupancy_map.intersects(l.outline)]
+        self.landmarks = [l for l in self.landmarks if not self.sidewalk_occupancy_map.intersects(l.outline)]
     
     def in_bounds(self, point):
         return self.map_bounds_min.x <= point.x <= self.map_bounds_max.x and \
