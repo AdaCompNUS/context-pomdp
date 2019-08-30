@@ -2506,6 +2506,8 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 		bool terminal = model->Step(*copy, streams.Entry(copy->scenario_id),
 		                            qnode->edge(), reward, obs);
 
+		model->PrintState(*copy); // debugging
+
 		DisableDebugInfo();
 
 		step_reward += reward * copy->weight;
@@ -2518,8 +2520,8 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 		} else {
 			model->Free(copy);
 		}
-
 	}
+
 	step_reward = Globals::Discount(parent->depth()) * step_reward
 	              - Globals::config.pruning_constant;	//pruning_constant is used for regularization
 	qnode->step_reward = step_reward;

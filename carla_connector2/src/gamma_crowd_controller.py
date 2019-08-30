@@ -451,6 +451,15 @@ class GammaCrowdController(Drunc):
                     break
         if self.ego_actor is not None:
             ego_position = self.ego_actor.get_location()
+
+            ego_range = 150
+            spawn_min = carla.Vector2D(
+                max(self.map_bounds_min.x, ego_position.x - ego_range), 
+                max(self.map_bounds_min.y, ego_position.y - ego_range))
+            spawn_max = carla.Vector2D(
+                min(self.map_bounds_max.x, ego_position.x + ego_range),
+                min(self.map_bounds_max.y, ego_position.y + ego_range))
+
             return carla.Vector2D(ego_position.x, ego_position.y)
         else:
             return None

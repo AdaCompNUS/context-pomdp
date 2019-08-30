@@ -333,9 +333,15 @@ class EgoVehicle(Drunc):
             control.brake = 0.0
             control.reverse = False
         else:
-            control.throttle = -self.cmd_accel
-            control.brake = 0.0
-            control.reverse = True
+            if self.speed <= 1.5: # no reverse
+                control.throttle = 0                
+                control.brake = 1.0
+                control.reverse = False
+            else:
+                control.throttle = -self.cmd_accel
+                control.brake = 0.0
+                control.reverse = True
+
         self.actor.apply_control(control)
 
         # Publish info.
