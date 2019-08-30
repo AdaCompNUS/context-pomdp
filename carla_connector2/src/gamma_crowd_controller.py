@@ -596,23 +596,55 @@ class GammaCrowdController(Drunc):
                 ) for rp in intersecting_lanes]
         return intersecting_lanes
 
+    def get_lane_prob_list(self, feasible_lane_list):
+        dist_total = 0.0
+        prob_list = []
+        for lane in feasible_lane_list:
+            dist = (lane[0]-lane[1]).length()
+            prob_list.append(dist)
+            dist_total += dist
+
+        for i in range(len(prob_list)):
+            prob_list[i] /= dist_total
+
+        return prob_list
+
+
+
     def update(self):
+        # self.center_pos = carla.Vector2D(450, 400)
+        # spawn_size_min = 10
+        # spawn_size_max = 200
+        # self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max)
+        # self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, center_pos = self.center_pos, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
+
+        # for lane in self.feasible_lane_list:
+        #     self.draw_line(lane[0], lane[1] - lane[0], carla.Color (255,0,0))
+
+        # self.lane_prob_list = self.get_lane_prob_list(self.feasible_lane_list)
+        # self.initialized = True
         if not self.initialized: ## the first time
-            self.feasible_lane_list = []
+            self.center_pos = carla.Vector2D(450, 400)
+            spawn_size_min = 10
+            spawn_size_max = 300
+            self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max)
+            self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, center_pos = self.center_pos, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
+            self.lane_prob_list = self.get_lane_prob_list(self.feasible_lane_list)
             self.initialized = True
         else:
-            #self.center_pos = carla.Vector2D(450, 400)
+            self.center_pos = carla.Vector2D(450, 400)
             spawn_size_min = 150
             spawn_size_max = 200
-            self.intersecting_lanes = self.get_intersecting_lanes(spawn_size = spawn_size_max )
-            self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
+            self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max )
+            self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, center_pos = self.center_pos, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
+            self.lane_prob_list = self.get_lane_prob_list(self.feasible_lane_list)
         while len(self.network_car_agents) < self.num_network_car_agents:
             path = None
             if len(self.feasible_lane_list) == 0:
                 spawn_min, spawn_max = self.get_spawn_range() 
                 path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
             else:
-                path = NetworkAgentPath.rand_path_fron_feasible_lanes(self, self.path_min_points, self.path_interval, self.feasible_lane_list)
+                path = NetworkAgentPath.rand_path_fron_feasible_lanes(self, self.path_min_points, self.path_interval, self.feasible_lane_list, prob_list = self.lane_prob_list)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
@@ -634,7 +666,7 @@ class GammaCrowdController(Drunc):
                 spawn_min, spawn_max = self.get_spawn_range() 
                 path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
             else:
-                path = NetworkAgentPath.rand_path_fron_feasible_lanes(self, self.path_min_points, self.path_interval, self.feasible_lane_list)
+                path = NetworkAgentPath.rand_path_fron_feasible_lanes(self, self.path_min_points, self.path_interval, self.feasible_lane_list, prob_list = self.lane_prob_list)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
