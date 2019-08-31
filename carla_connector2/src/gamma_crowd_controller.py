@@ -503,7 +503,7 @@ class GammaCrowdController(Drunc):
             points_in_rect.append(lane[1])
 
         return points_in_rect, intersections
-        
+
     # def compute_intersections(self, rect, lane):
     #     points_in_rect = [] 
     #     intersections = []
@@ -594,7 +594,7 @@ class GammaCrowdController(Drunc):
                         feasible_lane_list.append([points_in_rect[0], intersections[0]])
                 elif num_intersections == 0:
                     if len(points_in_rect) == 2: # len(points_in_rect) could be zero if the lane is outside rect
-                        feasible_lane_list.append([points_in_rect[0], points_in_rect[0]])
+                        feasible_lane_list.append([points_in_rect[0], points_in_rect[1]])
                 # if num_intersections > 2: #lane is overlapping with one edge of rect
                 #     continue
                
