@@ -486,12 +486,6 @@ class GammaCrowdController(Drunc):
             end = rect[i+1]
             intersect = self.compute_intersection_of_two_lines(start, end, lane[0], lane[1])
             if intersect is not None:
-                if lane[0] not in points_in_rect:
-                    if self.left_of(start, end, lane[0]):
-                        points_in_rect.append(lane[0])
-                if lane[1] not in points_in_rect:
-                    if self.left_of(start, end, lane[1]):
-                        points_in_rect.append(lane[1])
                 if intersect not in intersections:
                     intersections.append(intersect)
 
@@ -499,17 +493,50 @@ class GammaCrowdController(Drunc):
         end = rect[0]
         intersect = self.compute_intersection_of_two_lines(start, end, lane[0], lane[1])
         if intersect is not None:
-            if lane[0] not in points_in_rect:
-                if self.left_of(start, end, lane[0]):
-                    points_in_rect.append(lane[0])
-            if lane[1] not in points_in_rect:
-                if self.left_of(start, end, lane[1]):
-                    points_in_rect.append(lane[1])
             if intersect not in intersections:
                 intersections.append(intersect)
 
+        if self.in_polygon(lane[0], rect):
+            points_in_rect.append(lane[0])
+
+        if self.in_polygon(lane[1], rect):
+            points_in_rect.append(lane[1])
 
         return points_in_rect, intersections
+        
+    # def compute_intersections(self, rect, lane):
+    #     points_in_rect = [] 
+    #     intersections = []
+
+    #     for i in range(len(rect)-1):
+    #         start = rect[i]
+    #         end = rect[i+1]
+    #         intersect = self.compute_intersection_of_two_lines(start, end, lane[0], lane[1])
+    #         if intersect is not None:
+    #             if lane[0] not in points_in_rect:
+    #                 if self.left_of(start, end, lane[0]):
+    #                     points_in_rect.append(lane[0])
+    #             if lane[1] not in points_in_rect:
+    #                 if self.left_of(start, end, lane[1]):
+    #                     points_in_rect.append(lane[1])
+    #             if intersect not in intersections:
+    #                 intersections.append(intersect)
+
+    #     start = rect[len(rect)-1]
+    #     end = rect[0]
+    #     intersect = self.compute_intersection_of_two_lines(start, end, lane[0], lane[1])
+    #     if intersect is not None:
+    #         if lane[0] not in points_in_rect:
+    #             if self.left_of(start, end, lane[0]):
+    #                 points_in_rect.append(lane[0])
+    #         if lane[1] not in points_in_rect:
+    #             if self.left_of(start, end, lane[1]):
+    #                 points_in_rect.append(lane[1])
+    #         if intersect not in intersections:
+    #             intersections.append(intersect)
+
+
+    #     return points_in_rect, intersections
 
 
     def get_feasible_lanes(self, intersecting_lanes, center_pos = None, spawn_size_min = 100, spawn_size_max = 150):
