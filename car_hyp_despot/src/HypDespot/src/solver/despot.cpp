@@ -2506,8 +2506,6 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 		bool terminal = model->Step(*copy, streams.Entry(copy->scenario_id),
 		                            qnode->edge(), reward, obs);
 
-		model->PrintState(*copy); // debugging
-
 		DisableDebugInfo();
 
 		step_reward += reward * copy->weight;

@@ -262,7 +262,7 @@ void Controller::InitializeDefaultParameters() {
 
 	if (b_use_drive_net_ == JOINT_POMDP) {
 		Globals::config.useGPU=false;
-    	Globals::config.num_scenarios=1;
+    	Globals::config.num_scenarios=20;
 		Globals::config.NUM_THREADS=10;
 		Globals::config.discount=0.95;
 		Globals::config.search_depth=20;
@@ -713,7 +713,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 		
 		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
 
-		static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(sample, 10);// 3 steps		
+		// static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(sample, 10);// 3 steps		
 
 		action = solver->Search().action;
 	}

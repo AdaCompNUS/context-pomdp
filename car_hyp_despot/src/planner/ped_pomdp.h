@@ -77,6 +77,8 @@ public:
 
 	double GetMaxReward() const;
 
+	double Reward(const State& state, ACT_TYPE action) const;
+
 	ParticleUpperBound* CreateParticleUpperBound(string name = "DEFAULT") const;
 	ScenarioUpperBound* CreateScenarioUpperBound(string name = "DEFAULT",
 		string particle_bound_name = "DEFAULT") const;

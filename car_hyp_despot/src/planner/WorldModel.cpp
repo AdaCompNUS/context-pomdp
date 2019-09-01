@@ -255,7 +255,7 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
 	else
 		acceleration= carvel >= ModelParams::VEL_MAX-1e-4 ? 0 : ModelParams::AccSpeed;
 
-    acceleration = ModelParams::AccSpeed; // debugging
+    // acceleration = ModelParams::AccSpeed; // debugging
 
 	logd << __FUNCTION__ <<"] Calculate action ID"<< endl;
 	return PedPomdp::GetActionID(steering, acceleration);
@@ -467,7 +467,11 @@ bool WorldModel::inCollision(const PomdpState& state, int &id) {
     }
 
     if(CheckCarWithObstacles(state.car,0))
-    	return true;
+    	id = -2;  // with obstacles
+
+    if (id != -1){
+        return true;
+    }
 
     return false;
 }
@@ -498,16 +502,18 @@ bool WorldModel::inCollision(const PomdpStateWorld& state, int &id) {
             ERR(string_sprintf("unsupported agent type"));
         }
 
-        if (id != -1){
+        if (id != -1)
             logd << "[WorldModel::inRealCollision] car_pos: ("<< car_pos.x <<","<< car_pos.y<<"), heading: ("
                 << std::cos(state.car.heading_dir) <<","<< std::sin(state.car.heading_dir)<<"), agent_pos: ("
                 << agent.pos.x <<","<< agent.pos.y<<")\n";
-            return true;
-        }
     }
 
     if(CheckCarWithObstacles(state.car,0))
-    	return true;
+    	id = -2;
+
+    if (id != -1){
+        return true;
+    }
 
     return false;
 }
@@ -1481,7 +1487,7 @@ void WorldModel::updatePedBelief(AgentBelief& b, const Agent& curr_agent) {
     b.heading_dir = fetch_heading_dir(curr_agent);
     b.cross_dir = fetch_cross_dir(curr_agent);
     
-    if(!curr_agent.reset_intention){
+    if(true/*!curr_agent.reset_intention*/){
 
         b.goal_paths = PathCandidates(b.id);
 
@@ -2083,7 +2089,16 @@ void AgentBelief::sample_goal_mode(int& goal, int& mode, bool use_att_mode) cons
     double r = Random::RANDOM.NextDouble();
 
     if (use_att_mode){
+        // sample full modes
         bool done = false;
+
+        double total_prob = 0;
+        for (auto& goal_probs: prob_modes_goals){
+            total_prob += accumulate(goal_probs.begin(), goal_probs.end(), 0);
+        }
+
+        r = r * total_prob;
+        
         for (int ped_type = 0 ; ped_type < prob_modes_goals.size() ; ped_type++){
             auto& goal_probs = prob_modes_goals[ped_type];
             for (int ped_goal = 0 ; ped_goal < goal_probs.size() ; ped_goal++){
@@ -2107,9 +2122,8 @@ void AgentBelief::sample_goal_mode(int& goal, int& mode, bool use_att_mode) cons
         if(goal > 10){
             cout << "the rest r = " << r << endl;
         }
-    } else {
-        // only sample for distracted mode
-        int ped_type = AGENT_DIS;
+    } else { // only sample for attentive mode
+        int ped_type = AGENT_ATT;
         auto& goal_probs = prob_modes_goals[ped_type];
         double total_prob = accumulate(goal_probs.begin(), goal_probs.end(), 0);
         r = r * total_prob;
@@ -2156,7 +2170,7 @@ void WorldBeliefTracker::printBelief() const {
 }
 
 PomdpState WorldBeliefTracker::text() const{
-	if (logging::level()>=4){
+	if (logging::level()>=3){
 		for(int i=0; i < sorted_beliefs.size() && i < min(6,ModelParams::N_PED_IN); i++) {
 			auto& p = *sorted_beliefs[i];
 			cout << "[WorldBeliefTracker::text] " << this << "->p:" << &p << endl;
@@ -2380,7 +2394,7 @@ void WorldModel::ValidateIntention(int agent_id, int intention_id, const char* m
 
 void WorldModel::RVO2SimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car){
 
-    DEBUG("start_rvo_sim");
+    // DEBUG("start_rvo_sim");
     int threadID=GetThreadID();
 
     // Construct a new set of agents every time
@@ -2403,9 +2417,14 @@ void WorldModel::RVO2SimulateAgents(AgentStruct agents[], int num_agents, CarStr
                     traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
                 } else {
                     // Agent is far away from its goal, set preferred velocity as unit vector towards i's goal.
+                    double pref_speed = 0.0;
+                    if (agents[i].type == AgentType::car)
+                        pref_speed = 5.0;
+                    else if (agents[i].type == AgentType::ped)
+                        pref_speed = ModelParams::PED_SPEED;
                     traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, 
                         normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i))
-                        *agents[i].speed);
+                        */*agents[i].speed*/pref_speed);
                 }
             }
         }
@@ -2421,11 +2440,11 @@ void WorldModel::RVO2SimulateAgents(AgentStruct agents[], int num_agents, CarStr
 
     traffic_agent_sim_[threadID]->doStep();
 
-    DEBUG("End rvo sim");
+    // DEBUG("End rvo sim");
 }
 
 COORD WorldModel::GetRVO2Vel(AgentStruct& agent, int i){
-    DEBUG("End rvo vel");
+    // DEBUG("End rvo vel");
     int threadID=GetThreadID();
     assert(agent.mode==AGENT_ATT);
 
@@ -2433,12 +2452,12 @@ COORD WorldModel::GetRVO2Vel(AgentStruct& agent, int i){
     new_pos.x=traffic_agent_sim_[threadID]->getAgentPosition(i).x();// + random.NextGaussian() * (traffic_agent_sim_[threadID]->getAgentPosition(agent).x() - agents[i].pos.x)/5.0; //random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
     new_pos.y=traffic_agent_sim_[threadID]->getAgentPosition(i).y();// + random.NextGaussian() * (traffic_agent_sim_[threadID]->getAgentPosition(agent).y() - agents[i].pos.y)/5.0;//random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
 
-    DEBUG("End rvo vel");
+    // DEBUG("End rvo vel");
     return (new_pos - agent.pos) * freq; 
 }
 
 void WorldModel::AgentApplyRVO2Vel(AgentStruct& agent, COORD& rvo_vel) {
-    DEBUG("Start rvo apply vel");
+    // DEBUG("Start rvo apply vel");
     COORD old_pos = agent.pos;
     double rvo_speed = rvo_vel.Length();
     if (agent.type == AgentType::car){
@@ -2458,7 +2477,7 @@ void WorldModel::AgentApplyRVO2Vel(AgentStruct& agent, COORD& rvo_vel) {
     }
     agent.vel = (agent.pos - old_pos)*freq;
 
-    DEBUG("End rvo apply vel");
+    // DEBUG("End rvo apply vel");
 }
 
 void WorldModel::RVO2AgentStep(PomdpStateWorld& state, Random& random){

@@ -123,7 +123,7 @@ public:
 
 void PedPomdp::InitRVOSetting()
 {
-    use_rvo_in_search = false;
+    use_rvo_in_search = true;
     use_rvo_in_simulation = true;
     //	if (use_rvo_in_simulation)
     //		ModelParams::LASER_RANGE = 8.0;
@@ -269,6 +269,47 @@ double PedPomdp::MovementPenalty(const PomdpStateWorld &state, float steering) c
     {
         return ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
     }
+}
+
+double PedPomdp::Reward(const State& _state, ACT_TYPE action) const{
+    const PomdpState &state = static_cast<const PomdpState &>(_state);
+    double reward = 0.0;
+    if (world_model->isGlobalGoal(state.car))
+    {
+        reward = ModelParams::GOAL_REWARD;
+
+        cout << "assigning goal reward " << reward << endl;
+        return reward;
+    }
+
+    // Safety control: collision; Terminate upon collision
+    int col_agent = 0;
+    if(state.car.vel > 0.001 && world_model->inCollision(state, col_agent))   /// collision occurs only when car is moving
+    {
+        reward = CrashPenalty(state);
+
+        cout << "assigning collision reward " << reward << endl;
+        return reward;
+    }
+
+    // Smoothness control
+    double acc_reward = ActionPenalty(GetAccelerationID(action));
+    reward+=acc_reward;
+    cout << "assigning action reward " << acc_reward << endl;
+
+    // Speed control: Encourage higher speed
+    double steering = GetSteering(action);
+    double move_reward;
+    if (Globals::config.use_prior)
+        move_reward = MovementPenalty(state);
+    else
+    {
+        move_reward = MovementPenalty(state, steering);
+    }
+    cout << "assigning move reward " << acc_reward << endl;
+    cout << "Scaling factor="<< ModelParams::REWARD_FACTOR_VEL << ", car_vel=" << state.car.vel << ", VEL_MAX="<< ModelParams::VEL_MAX << endl;
+
+    reward += move_reward;
 }
 
 bool PedPomdp::Step(State &state_, double rNum, int action, double &reward, uint64_t &obs) const
@@ -746,45 +787,53 @@ void PedPomdp::PrintState(const State &s, ostream &out) const
 
 PomdpState PedPomdp::PredictAgents(const PomdpState &ped_state) const
 {
-    PomdpState predicted_state = ped_state;
+    PomdpState* predicted_state = static_cast<PomdpState*>(Copy(&ped_state));
 
-    double steer_to_path = world_model->GetSteerToPath<PomdpState>(predicted_state);
-    double acc = ModelParams::AccSpeed; // intend at cur speed;
+    double steer_to_path = world_model->GetSteerToPath<PomdpState>(*predicted_state);
+    // double acc = ModelParams::AccSpeed; // intend at cur speed;
+    // ACT_TYPE action = GetActionID(steer_to_path, acc);
+    ACT_TYPE action = GetActionID(GetSteerIDfromSteering(steer_to_path), 2);
 
-    world_model->RobStepCurAction(predicted_state.car, acc, steer_to_path);
+    OBS_TYPE dummy_obs;
+    double dummy_reward;
 
-    for(int i = 0 ; i < predicted_state.num ; i++)
-    {
-        auto &p = predicted_state.agents[i];
+    double rNum = Random::RANDOM.NextDouble();
+    Step(*predicted_state, rNum, action, dummy_reward, dummy_obs);
 
-        if(world_model->goal_mode == "goal")
-        {
-            world_model->AgentStepGoal(p, 1);
-        }
-        else if (world_model->goal_mode == "cur_vel")
-        {
-            world_model->PedStepCurVel(p, 1);
-        }
-        else if (world_model->goal_mode == "path")
-        {
-            int old_path_pos = p.pos_along_path;
-            double noise = Random::RANDOM.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
-            if (true)
-            {
-                world_model->AgentStepPath(p, 1, noise, false);
-            }
-            else
-                world_model->AgentStepPath(p, 1, noise, false);
+    // world_model->RobStepCurAction(predicted_state.car, acc, steer_to_path);
 
-            if(p.pos_along_path == old_path_pos)
-                logd << "[PredictAgents] agent " << p.id << " no move with " << world_model->PathCandidates(p.id).size()
-                     << " path_candidates, pos_along_path " << p.pos_along_path << " " << endl;
-        }
-    }
+    // for(int i = 0 ; i < predicted_state.num ; i++)
+    // {
+    //     auto &p = predicted_state.agents[i];
 
-    predicted_state.time_stamp = ped_state.time_stamp + 1.0 / ModelParams::control_freq;
+    //     if(world_model->goal_mode == "goal")
+    //     {
+    //         world_model->AgentStepGoal(p, 1);
+    //     }
+    //     else if (world_model->goal_mode == "cur_vel")
+    //     {
+    //         world_model->PedStepCurVel(p, 1);
+    //     }
+    //     else if (world_model->goal_mode == "path")
+    //     {
+    //         int old_path_pos = p.pos_along_path;
+    //         double noise = Random::RANDOM.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
+    //         if (true)
+    //         {
+    //             world_model->AgentStepPath(p, 1, noise, false);
+    //         }
+    //         else
+    //             world_model->AgentStepPath(p, 1, noise, false);
 
-    return predicted_state;
+    //         if(p.pos_along_path == old_path_pos)
+    //             logd << "[PredictAgents] agent " << p.id << " no move with " << world_model->PathCandidates(p.id).size()
+    //                  << " path_candidates, pos_along_path " << p.pos_along_path << " " << endl;
+    //     }
+    // }
+	// 
+    // predicted_state.time_stamp = ped_state.time_stamp + 1.0 / ModelParams::control_freq;
+
+    return *predicted_state;
 }
 
 void PedPomdp::ForwardAndVisualize(const State &sample, int step) const
@@ -807,12 +856,11 @@ void PedPomdp::PrintStateCar(const State &s, std::string msg, ostream &out) cons
 {
     const PomdpState &state = static_cast<const PomdpState &> (s);
     out << msg << " ";
-    out << state.car.pos.x << " " << state.car.pos.y << endl;
+    out << state.car.pos.x << " " << state.car.pos.y << " " << state.car.heading_dir << endl;
 }
 
 void PedPomdp::PrintStateAgents(const State &s, std::string msg, ostream &out) const
 {
-
     if (DESPOT::Debug_mode)
         return;
 
@@ -821,7 +869,10 @@ void PedPomdp::PrintStateAgents(const State &s, std::string msg, ostream &out) c
     out << msg << " ";
     for (int i = 0; i < state.num; i ++)
     {
-        out << state.agents[i].pos.x << " " << state.agents[i].pos.y << " ";
+        out << state.agents[i].pos.x << " " << state.agents[i].pos.y << " "
+        	<< state.agents[i].heading_dir << " "
+        	<< state.agents[i].bb_extent_x << " "
+        	<< state.agents[i].bb_extent_y << " ";
     }
     out << endl;
 }
@@ -1216,12 +1267,12 @@ bool PedPomdp::validate_state(const PomdpState &state, const char *msg) const
         }
         else if (agent.type == AgentType::car)
         {
-            double vel = agent.vel.Length();
-            if (fabs(vel - agent.speed) > 0.2)
-            {
-                ERR(string_sprintf("%s: vel-speed mismatch: %f %f",
-                                   msg, vel, agent.speed));
-            }
+            // double vel = agent.vel.Length();
+            // if (fabs(vel - agent.speed) > 0.2)
+            // {
+            //     ERR(string_sprintf("%s: vel-speed mismatch: %f %f",
+            //                        msg, vel, agent.speed));
+            // }
 
             // auto& car = agent;
             // if (car.vel.Length()>1.0){

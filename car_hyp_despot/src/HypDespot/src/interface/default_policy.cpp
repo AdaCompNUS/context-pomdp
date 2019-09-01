@@ -41,7 +41,12 @@ ValuedAction DefaultPolicy::RecursiveValue(const vector<State*>& particles,
 		|| (history.Size() - initial_depth_
 			>= Globals::config.max_policy_sim_len)) {
 
-		return particle_lower_bound_->Value(particles);
+		auto blb_value = particle_lower_bound_->Value(particles);
+
+		if(initial_depth_ == 0 && particles[0]->scenario_id == 0)
+			cout << "rollout blb value: " << blb_value.value << endl;
+
+		return blb_value;
 	} else {
 		ACT_TYPE action = Action(particles, streams, history);
     
@@ -57,6 +62,12 @@ ValuedAction DefaultPolicy::RecursiveValue(const vector<State*>& particles,
 			State* particle = particles[i];
 			bool terminal = model_->Step(*particle,
 				streams.Entry(particle->scenario_id), action, reward, obs);
+
+			if(initial_depth_ == 0 && particle->scenario_id == 0){
+				cout << "rollout state with reward " << reward << endl;
+				model_->Reward(*particle, action);
+				model_->PrintState(*particle);
+			}
 
 			value += reward * particle->weight;
 
