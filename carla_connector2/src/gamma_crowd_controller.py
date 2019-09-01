@@ -224,6 +224,11 @@ class GammaCrowdController(Drunc):
         self.gamma = carla.RVOSimulator()
         self.ego_actor = None
 
+        while self.ego_actor is None:
+            for actor in self.world.get_actors():
+                if actor.attributes.get('role_name') == 'ego_vehicle':
+                    self.ego_actor = actor
+
         self.walker_blueprints = self.world.get_blueprint_library().filter("walker.pedestrian.*")
         self.vehicles_blueprints = self.world.get_blueprint_library().filter('vehicle.*')
         self.cars_blueprints = [x for x in self.vehicles_blueprints if int(x.get_attribute('number_of_wheels')) == 4]
@@ -647,7 +652,7 @@ class GammaCrowdController(Drunc):
             else:
                 self.center_pos = self.get_ego_pos()
             spawn_size_min = 10
-            spawn_size_max = 300
+            spawn_size_max = 100
 
             self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max)
             self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, center_pos = self.center_pos, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
