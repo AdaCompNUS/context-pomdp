@@ -262,7 +262,7 @@ void Controller::InitializeDefaultParameters() {
 
 	if (b_use_drive_net_ == JOINT_POMDP) {
 		Globals::config.useGPU=false;
-    	Globals::config.num_scenarios=20;
+    	Globals::config.num_scenarios=1;
 		Globals::config.NUM_THREADS=10;
 		Globals::config.discount=0.95;
 		Globals::config.search_depth=20;

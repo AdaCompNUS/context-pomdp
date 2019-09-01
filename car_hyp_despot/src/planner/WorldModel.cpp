@@ -556,7 +556,7 @@ bool WorldModel::isMovingAway(const PomdpState& state, int agent) {
 	const auto& pedpos = state.agents[agent].pos;
 	const auto& goalpos = GetGoalPos(state.agents[agent]);
 
-	if (goalpos.x == -1 && goalpos.y == -1)
+	if (state.agents[agent].intention == GetNumIntentions(agent)-1)
 		return false;
 
 	return DotProduct(goalpos.x - pedpos.x, goalpos.y - pedpos.y,
@@ -977,7 +977,7 @@ void WorldModel::AgentStepGoal(AgentStruct& agent, int step, double noise) {
 
 void WorldModel::PedStepGoal(AgentStruct& agent, int step, double noise) {
   const COORD& goal = goals[agent.intention];
-	if (goal.x == -1 && goal.y == -1) {  //stop intention
+	if (agent.intention == GetNumIntentions(agent.id)-1) {  //stop intention
 		return;
 	}
 
@@ -997,7 +997,7 @@ void WorldModel::PedStepGoal(AgentStruct& agent, int step, double noise) {
 
 void WorldModel::VehStepGoal(AgentStruct& agent, int step, double noise) {
   const COORD& goal = goals[agent.intention];
-    if (goal.x == -1 && goal.y == -1) {  //stop intention
+    if (agent.intention == GetNumIntentions(agent.id)-1) {  //stop intention
         return;
     }
 
@@ -1222,7 +1222,7 @@ double WorldModel::agentMoveProb(COORD prev, const Agent& agent, int intention_i
     bool debug=false;
 	// CHECK: beneficial to add back noise?
 	if(debug) cout<<"intention id "<<intention_id<<endl;
-	if (goal.x == -1 && goal.y == -1) {  //stop intention 
+	if (intention_id == GetNumIntentions(agent.id)-1) {  //stop intention 
 		return (move_dist < sensor_noise) ? 0.4 : 0;
 	} else {
 		if (move_dist < sensor_noise) return 0;
@@ -1280,7 +1280,7 @@ double WorldModel::agentMoveProb(COORD prev, const Agent& agent, int intention_i
     bool debug=false;
 	// CHECK: beneficial to add back noise?
 	if(debug) cout<<"intention id "<<intention_id<<endl;
-	if (goal.x == -1 && goal.y == -1) {  //stop intention
+	if (intention_id == GetNumIntentions(agent.id)-1) {  //stop intention
 		logd <<"stop intention" << endl;
 
 		return (move_dist < sensor_noise) ? 0.4 : 0;
@@ -1487,7 +1487,8 @@ void WorldModel::updatePedBelief(AgentBelief& b, const Agent& curr_agent) {
     b.heading_dir = fetch_heading_dir(curr_agent);
     b.cross_dir = fetch_cross_dir(curr_agent);
     
-    if(true/*!curr_agent.reset_intention*/){
+    // cout  << "curr_agent.reset_intention = " << curr_agent.reset_intention << ", id =" << curr_agent.id << endl;
+    if(/*true*/!curr_agent.reset_intention){
 
         b.goal_paths = PathCandidates(b.id);
 
@@ -1815,7 +1816,7 @@ void WorldStateTracker::updateCar(const CarStruct car) {
 void WorldStateTracker::ValidateCar(const char* func){
     if (car_odom_heading == -10) // initial value
         return; 
-    if (fabs(car_heading_dir - car_odom_heading)> 0.1){
+    if (fabs(car_heading_dir - car_odom_heading)> 0.1 && fabs(car_heading_dir - car_odom_heading)< 2*M_PI-0.1){
         ERR(string_sprintf(
             "%s: car_heading in stateTracker different from odom: %f, %f",
             func, car_heading_dir, car_odom_heading));
@@ -1964,6 +1965,8 @@ void AgentBelief::reset_belief(int new_size){
         accum_prob += accumulate(prob_goals.begin(),prob_goals.end(),0);
     }
 
+    assert(accum_prob != 0);
+
     // normalize distribution
     for (auto& prob_goals: prob_modes_goals){
         for (auto& prob : prob_goals)
@@ -2039,7 +2042,7 @@ void WorldBeliefTracker::update() {
         model.updatePedBelief(kv.second, *newagents[kv.first]);
     }
 
-    // DEBUG("add new agent_beliefs");
+    DEBUG("add new agent_beliefs");
     // 
     for(const auto& kv: newagents) {
 		auto& p = *kv.second;
@@ -2094,8 +2097,15 @@ void AgentBelief::sample_goal_mode(int& goal, int& mode, bool use_att_mode) cons
 
         double total_prob = 0;
         for (auto& goal_probs: prob_modes_goals){
-            total_prob += accumulate(goal_probs.begin(), goal_probs.end(), 0);
+            // total_prob += std::accumulate(goal_probs.begin(), goal_probs.end(), 0);
+            for (auto p: goal_probs)
+                total_prob += p;
         }
+
+        assert(total_prob!=0);
+
+        // cout << prob_modes_goals << endl;
+        // cout << __FUNCTION__ << " total_prob=" << total_prob << endl; 
 
         r = r * total_prob;
         
@@ -2103,7 +2113,7 @@ void AgentBelief::sample_goal_mode(int& goal, int& mode, bool use_att_mode) cons
             auto& goal_probs = prob_modes_goals[ped_type];
             for (int ped_goal = 0 ; ped_goal < goal_probs.size() ; ped_goal++){
                 r -= prob_modes_goals[ped_type][ped_goal];
-                if(r <= 0) {
+                if(r <= 0.001) {
                     goal = ped_goal;
                     mode = ped_type;
                     done = true;
@@ -2123,9 +2133,13 @@ void AgentBelief::sample_goal_mode(int& goal, int& mode, bool use_att_mode) cons
             cout << "the rest r = " << r << endl;
         }
     } else { // only sample for attentive mode
-        int ped_type = AGENT_ATT;
+        int ped_type = AGENT_DIS;
         auto& goal_probs = prob_modes_goals[ped_type];
-        double total_prob = accumulate(goal_probs.begin(), goal_probs.end(), 0);
+        double total_prob = 0; //accumulate(goal_probs.begin(), goal_probs.end(), 0);
+        for (auto p: goal_probs)
+            total_prob += p;
+
+        assert(total_prob!=0);
         r = r * total_prob;
         for (int ped_goal = 0 ; ped_goal < goal_probs.size() ; ped_goal++){
             r -= prob_modes_goals[ped_type][ped_goal];
@@ -2171,18 +2185,18 @@ void WorldBeliefTracker::printBelief() const {
 
 PomdpState WorldBeliefTracker::text() const{
 	if (logging::level()>=3){
-		for(int i=0; i < sorted_beliefs.size() && i < min(6,ModelParams::N_PED_IN); i++) {
+		for(int i=0; i < sorted_beliefs.size() && i < min(20,ModelParams::N_PED_IN); i++) {
 			auto& p = *sorted_beliefs[i];
 			cout << "[WorldBeliefTracker::text] " << this << "->p:" << &p << endl;
-			cout << " sorted agent " << i << endl;
+			cout << " sorted agent " << p.id << endl;
 
 			cout << "-prob_modes_goals: " << p.prob_modes_goals << endl;
-			for (int i=0;i<p.prob_modes_goals.size();i++){
-				for (int j=0;j<p.prob_modes_goals[i].size();j++){
-					cout << p.prob_modes_goals[i][j] << " ";
-				}
-				cout<< endl;
-			}
+			// for (int i=0;i<p.prob_modes_goals.size();i++){
+			// 	for (int j=0;j<p.prob_modes_goals[i].size();j++){
+			// 		cout << p.prob_modes_goals[i][j] << " ";
+			// 	}
+			// 	cout<< endl;
+			// }
 		}
 	}
 }
@@ -2521,7 +2535,7 @@ void WorldModel::RVO2AgentStep(AgentStruct agents[], double& random, int num_age
 COORD WorldModel::DistractedPedMeanDir(AgentStruct& agent, int intention_id) {
 	COORD dir(0,0);
 	const COORD& goal = GetGoalPos(agent, intention_id);
-	if (goal.x == -1 && goal.y == -1) {  //stop intention
+	if (intention_id == GetNumIntentions(agent.id)-1) {  //stop intention
 		return dir;
 	}
 
