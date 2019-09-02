@@ -34,7 +34,16 @@ class EgoVehicle(Drunc):
         self.actor = None
         self.speed = 0.0
         while self.actor is None:
-            spawn_min, spawn_max = self.get_shrinked_range(scale=0.5)
+            spawn_min, spawn_max = self.get_shrinked_range(scale=0.8)
+
+            # y-shaped region
+            # spawn_min = carla.Vector2D(900.4, 350.33) 
+            # spawn_max = carla.Vector2D(1000.4, 450.33)
+
+            # single road without building
+            # spawn_min = carla.Vector2D(1036.5-20, 507.21-20)
+            # spawn_max = carla.Vector2D(1036.5+20, 507.21+20)
+            
             self.path = NetworkAgentPath.rand_path(self, 20, 1.0, spawn_min, spawn_max)
                 
             vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.audi.etron'))

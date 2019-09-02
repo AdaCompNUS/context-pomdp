@@ -652,7 +652,7 @@ class GammaCrowdController(Drunc):
             else:
                 self.center_pos = self.get_ego_pos()
             spawn_size_min = 10
-            spawn_size_max = 100
+            spawn_size_max = 50 #100
 
             self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max)
             self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, center_pos = self.center_pos, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
@@ -663,12 +663,13 @@ class GammaCrowdController(Drunc):
                 self.center_pos = carla.Vector2D(450, 400)
             else:
                 self.center_pos = self.get_ego_pos()
-            spawn_size_min = 150
-            spawn_size_max = 200
+            spawn_size_min = 10 #150
+            spawn_size_max = 50 #200
             spawn_min, spawn_max = self.get_spawn_range()
             self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max )
             self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, center_pos = self.center_pos, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
             self.lane_prob_list = self.get_lane_prob_list(self.feasible_lane_list)
+
         while len(self.network_car_agents) < self.num_network_car_agents:
             path = None
             if len(self.feasible_lane_list) == 0:

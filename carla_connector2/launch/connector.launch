@@ -8,9 +8,9 @@
   <node name="purepursuit_controller" pkg="carla_connector2" type="purepursuit_controller.py" output="screen"/>
 
   <node name="gamma_crowd_controller" pkg="carla_connector2" type="gamma_crowd_controller.py" output="screen">
-    <param name="num_network_car_agents" value="50"/>
-    <param name="num_network_bike_agents" value="50"/>
-    <param name="num_sidewalk_agents" value="50"/>
+    <param name="num_network_car_agents" value="0"/>
+    <param name="num_network_bike_agents" value="0"/>
+    <param name="num_sidewalk_agents" value="100"/>
     <param name="path_min_points" value="20"/>
     <param name="path_interval" value="1.0"/>
   </node>
