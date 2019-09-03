@@ -34,10 +34,10 @@ class EgoVehicle(Drunc):
         self.actor = None
         self.speed = 0.0
         while self.actor is None:
-            spawn_min, spawn_max = self.get_shrinked_range(scale=0.01, shift_x=-0.145, shift_y= -0.19, draw_range=False)
+            spawn_min, spawn_max = self.get_shrinked_range(scale=0.01, shift_x=0.030, shift_y= -0.108, draw_range=False)
 
             # the complex cross 
-            # scale=0.01, shift_x=-0.135, shift_y= -0.19
+            # scale=0.01, shift_x=-0.135 (-0.145), shift_y= -0.19
 
             # y-shape
             # scale=0.01, shift_x=0.030, shift_y= -0.108
