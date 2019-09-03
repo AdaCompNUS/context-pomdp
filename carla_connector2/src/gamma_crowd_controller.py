@@ -425,11 +425,11 @@ class GammaCrowdController(Drunc):
         right_line_end = position + (1.5 + 2.0 + 0.5) * ((forward_vec.rotate(np.deg2rad(90))).make_unit_vector())
         left_lane_constrained_by_sidewalk = self.sidewalk.intersects(position, left_line_end)
         right_lane_constrained_by_sidewalk = self.sidewalk.intersects(position, right_line_end)
-        left_lane_constrained_by_vehicle, right_lane_constrained_by_vehicle = self.get_lane_constraints_by_vehicle(position, forward_vec)
+        #left_lane_constrained_by_vehicle, right_lane_constrained_by_vehicle = self.get_lane_constraints_by_vehicle(position, forward_vec)
 
         #return True, True
-        return left_lane_constrained_by_sidewalk or left_lane_constrained_by_vehicle, right_lane_constrained_by_sidewalk or right_lane_constrained_by_vehicle
-        #return left_lane_constrained_by_sidewalk, right_lane_constrained_by_sidewalk
+        #return left_lane_constrained_by_sidewalk or left_lane_constrained_by_vehicle, right_lane_constrained_by_sidewalk or right_lane_constrained_by_vehicle
+        return left_lane_constrained_by_sidewalk, right_lane_constrained_by_sidewalk
 
     def get_spawn_range(self, spawn_size = 100, center_pos = None):
         # if it has specified the center position for spawnning the agents
