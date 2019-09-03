@@ -34,13 +34,20 @@ class EgoVehicle(Drunc):
         self.actor = None
         self.speed = 0.0
         while self.actor is None:
-            spawn_min, spawn_max = self.get_shrinked_range(scale=0.01, shift_x=0.030, shift_y= -0.108, draw_range=False)
 
-            # the complex cross 
-            # scale=0.01, shift_x=-0.135 (-0.145), shift_y= -0.19
+            # # the complex cross 
+            scale=0.01
+            shift_x=-0.135 #(-0.145), 
+            shift_y= -0.19
 
             # y-shape
-            # scale=0.01, shift_x=0.030, shift_y= -0.108
+            # scale=0.01
+            # shift_x=0.030
+            # shift_y= -0.108
+            
+            spawn_min, spawn_max = self.get_shrinked_range(scale=scale, shift_x=shift_x, shift_y= shift_x, draw_range=False)
+
+
 
             # a narrow road for peds to cross
             # spawn_min = carla.Vector2D(903.4-20, 1531.7-20)
@@ -66,6 +73,8 @@ class EgoVehicle(Drunc):
             spawn_trans.rotation.yaw = self.path.get_yaw()
 
             self.actor = self.world.try_spawn_actor(vehicle_bp, spawn_trans)
+
+            self.actor.set_collision_enabled(False)
 
         time.sleep(1) # wait for the vehicle to drop
 

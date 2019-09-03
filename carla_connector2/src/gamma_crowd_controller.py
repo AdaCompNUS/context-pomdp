@@ -29,7 +29,7 @@ class CrowdAgent(object):
     def __init__(self, actor, preferred_speed):
         self.actor = actor
         self.preferred_speed = preferred_speed
-        self.actor.set_collision_enabled(True) ## to check. Disable collision will generate vehicles that are overlapping
+        self.actor.set_collision_enabled(False) ## to check. Disable collision will generate vehicles that are overlapping
     
     def get_id(self):
         return self.actor.id
@@ -70,8 +70,10 @@ class CrowdNetworkAgent(CrowdAgent):
         forward_vec = self.get_forward_direction().make_unit_vector() # the local x direction (left-handed coordinate system)
         sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction
 
-        half_y_len = bbox.extent.y + 0.3
-        half_x_len = bbox.extent.x + 0.4
+        half_y_len = bbox.extent.y #+ 0.3
+        half_x_len = bbox.extent.x #+ 0.4
+
+
 
         corners = []
         corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
@@ -177,8 +179,8 @@ class CrowdSidewalkAgent(CrowdAgent):
         sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction. (rotating clockwise by 90 deg)
 
         # Hardcoded values for people.
-        half_y_len = 0.22
-        half_x_len = 0.22
+        half_y_len = 0.25
+        half_x_len = 0.25
 
         # half_y_len = bbox.extent.y
         # half_x_len = bbox.extent.x
@@ -266,7 +268,7 @@ class GammaCrowdController(Drunc):
         # For ego vehicle.
         self.gamma.add_agent(carla.AgentParams.get_default('Car'), self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents)
 
-        adding_obstacle = False
+        adding_obstacle = True
         if(adding_obstacle):
             self.add_obstacles()
 
@@ -338,7 +340,7 @@ class GammaCrowdController(Drunc):
         return a.x * b.x + a.y * b.y
 
     def draw_line(self, pos, vec, color=carla.Color (255,0,0)):
-        height = 1
+        height = 3
         start = carla.Vector3D(pos.x,pos.y,height)
         end = carla.Vector3D(pos.x+vec.x,pos.y+vec.y,height)
         self.world.debug.draw_line(start, end,  color=color, life_time=0.1)
@@ -431,7 +433,7 @@ class GammaCrowdController(Drunc):
         #return left_lane_constrained_by_sidewalk or left_lane_constrained_by_vehicle, right_lane_constrained_by_sidewalk or right_lane_constrained_by_vehicle
         return left_lane_constrained_by_sidewalk, right_lane_constrained_by_sidewalk
 
-    def get_spawn_range(self, spawn_size = 100, center_pos = None):
+    def get_spawn_range(self, spawn_size = 150, center_pos = None):
         # if it has specified the center position for spawnning the agents
 
         if center_pos is None:
@@ -657,7 +659,7 @@ class GammaCrowdController(Drunc):
             else:
                 self.center_pos = self.get_ego_pos()
             spawn_size_min = 0
-            spawn_size_max = 50 #100
+            spawn_size_max = 150 #100
 
             self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max)
             self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, center_pos = self.center_pos, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
@@ -668,8 +670,8 @@ class GammaCrowdController(Drunc):
                 self.center_pos = carla.Vector2D(450, 400)
             else:
                 self.center_pos = self.get_ego_pos()
-            spawn_size_min = 10 #150
-            spawn_size_max = 50 #200
+            spawn_size_min = 100#10 #150
+            spawn_size_max = 150#50 #200
             spawn_min, spawn_max = self.get_spawn_range()
             self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max )
             self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, center_pos = self.center_pos, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
@@ -752,8 +754,8 @@ class GammaCrowdController(Drunc):
             self.gamma.set_agent(i, crowd_agent.get_agent_params())
             pref_vel = crowd_agent.get_preferred_velocity()
             if pref_vel:
-                #self.draw_line(crowd_agent.get_position(), pref_vel, carla.Color (255,0,0))
-                #self.draw_line(crowd_agent.get_position(), crowd_agent.get_velocity(), carla.Color (0,255,0))
+                self.draw_line(crowd_agent.get_position(), pref_vel, carla.Color (255,0,0))
+                self.draw_line(crowd_agent.get_position(), crowd_agent.get_velocity(), carla.Color (0,255,0))
                 next_agents.append(crowd_agent)
                 self.gamma.set_agent_position(i, crowd_agent.get_position())
                 self.gamma.set_agent_velocity(i, crowd_agent.get_velocity())
@@ -761,15 +763,15 @@ class GammaCrowdController(Drunc):
                 self.gamma.set_agent_bounding_box_corners(i, crowd_agent.get_bounding_box_corners())
                 self.gamma.set_agent_pref_velocity(i, pref_vel)             
                 self.gamma.set_agent_path_forward(i, crowd_agent.get_path_forward())
-                # left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_forward_direction())
-                # left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_path_forward())
-                # start = timeit.default_timer()
-                left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_path_forward())
-                # run_time = timeit.default_timer() - start
-                # print("get_lane_constraints ======================")
-                # print(run_time)
-                #self.gamma.set_agent_lane_constraints(i, False, True)
-                self.gamma.set_agent_lane_constraints(i, right_lane_constrained, left_lane_constrained)  ## to check. It seems that we should set left_lane_constrained to false as currently we do because of the difference of the coordiante systems.
+            #     # left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_forward_direction())
+            #     # left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_path_forward())
+            #     # start = timeit.default_timer()
+            #     left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_path_forward())
+            #     # run_time = timeit.default_timer() - start
+            #     # print("get_lane_constraints ======================")
+            #     # print(run_time)
+            #     #self.gamma.set_agent_lane_constraints(i, False, True)
+            #     self.gamma.set_agent_lane_constraints(i, right_lane_constrained, left_lane_constrained)  ## to check. It seems that we should set left_lane_constrained to false as currently we do because of the difference of the coordiante systems.
             else:
                 next_agents.append(None)
                 self.gamma.set_agent_position(i, default_agent_pos)
