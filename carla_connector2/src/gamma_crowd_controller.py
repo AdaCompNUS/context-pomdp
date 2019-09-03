@@ -29,7 +29,7 @@ class CrowdAgent(object):
     def __init__(self, actor, preferred_speed):
         self.actor = actor
         self.preferred_speed = preferred_speed
-        self.actor.set_collision_enabled(False) ## to check. Disable collision will generate vehicles that are overlapping
+        self.actor.set_collision_enabled(True) ## to check. Disable collision will generate vehicles that are overlapping
     
     def get_id(self):
         return self.actor.id
@@ -166,7 +166,7 @@ class CrowdSidewalkAgent(CrowdAgent):
     def __init__(self, actor, path, preferred_speed):
         super(CrowdSidewalkAgent, self).__init__(actor, preferred_speed)
         self.path = path
-    
+        
     def get_agent_params(self):
         return carla.AgentParams.get_default('People')
     
@@ -632,6 +632,11 @@ class GammaCrowdController(Drunc):
 
         return prob_list
 
+    def in_ego_bounds(self, point):
+        bounds_min, bounds_max = self.get_spawn_range()
+
+        return bounds_min.x <= point.x <= bounds_max.x and \
+               bounds_min.y <= point.y <= bounds_max.y
 
 
     def update(self):
@@ -651,7 +656,7 @@ class GammaCrowdController(Drunc):
                 self.center_pos = carla.Vector2D(450, 400)
             else:
                 self.center_pos = self.get_ego_pos()
-            spawn_size_min = 10
+            spawn_size_min = 0
             spawn_size_max = 50 #100
 
             self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max)
@@ -735,7 +740,7 @@ class GammaCrowdController(Drunc):
         
         next_agents = []
         for (i, crowd_agent) in enumerate(self.network_car_agents + self.network_bike_agents + self.sidewalk_agents):
-            if not self.in_bounds(crowd_agent.get_position()) or crowd_agent.get_position3D().z < -10:
+            if not self.in_ego_bounds(crowd_agent.get_position()) or crowd_agent.get_position3D().z < -10:
                 next_agents.append(None)
                 self.gamma.set_agent_position(i, default_agent_pos)
                 self.gamma.set_agent_pref_velocity(i, carla.Vector2D(0, 0))

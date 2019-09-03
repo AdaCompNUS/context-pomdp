@@ -244,10 +244,10 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
 
 	// TODO set as a param
 	logd << __FUNCTION__ <<"] Calculate min dist"<< endl;
-	if (mindist < /*2*/3.5) {
+	if (mindist < 2/*3.5*/) {
 		acceleration= (carvel <= 0.01) ? 0 : -ModelParams::AccSpeed;
 	}
-	else if (mindist < /*4*/5) {
+	else if (mindist < 4/*5*/) {
 		if (carvel > 1.0+1e-4) acceleration= -ModelParams::AccSpeed;
 		else if (carvel < 0.5-1e-4) acceleration= ModelParams::AccSpeed;
 		else acceleration= 0.0;

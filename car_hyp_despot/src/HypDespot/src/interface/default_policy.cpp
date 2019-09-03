@@ -63,7 +63,7 @@ ValuedAction DefaultPolicy::RecursiveValue(const vector<State*>& particles,
 			bool terminal = model_->Step(*particle,
 				streams.Entry(particle->scenario_id), action, reward, obs);
 
-			if(true && initial_depth_ == 0 && particle->scenario_id == 0){
+			if(false && initial_depth_ == 0 && particle->scenario_id == 0){
 				cout << "rollout state with reward " << reward << endl;
 				// model_->Reward(*particle, action);
 				model_->PrintState(*particle);

@@ -14,13 +14,14 @@ except IndexError:
 import carla
 import random
 
-map_location = "singapore" # "msekel"
+# map_location = "singapore" 
+map_location = "msekel"
 
 class Drunc(object):
     def __init__(self):
         # Create connection to simulator.
         self.client = carla.Client('127.0.0.1', 2000)
-        self.client.set_timeout(1.0)
+        self.client.set_timeout(10.0)
         self.world = self.client.get_world()
 
         # Define bounds.

@@ -262,7 +262,7 @@ void Controller::InitializeDefaultParameters() {
 
 	if (b_use_drive_net_ == JOINT_POMDP) {
 		Globals::config.useGPU=false;
-    	Globals::config.num_scenarios=1;
+    	Globals::config.num_scenarios=5;
 		Globals::config.NUM_THREADS=10;
 		Globals::config.discount=0.95;
 		Globals::config.search_depth=20;
@@ -840,7 +840,12 @@ void Controller::TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len){
 void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* logger) {
 
 //	sleep(2);
-    while(path_from_topic.size()==0 || SolverPrior::nn_priors[0]->Size(true) < 4){
+	int pre_step_count = 0;
+	if (Globals::config.use_prior)
+		pre_step_count = 4;
+	else
+		pre_step_count = 0;
+    while(path_from_topic.size()==0 || SolverPrior::nn_priors[0]->Size(true) < pre_step_count){
     	logi << "Executing pre-step" << endl;
     	RunPreStep(solver, world, logger);
 		ros::spinOnce();

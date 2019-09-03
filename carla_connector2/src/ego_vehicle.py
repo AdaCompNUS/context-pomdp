@@ -34,13 +34,23 @@ class EgoVehicle(Drunc):
         self.actor = None
         self.speed = 0.0
         while self.actor is None:
-            spawn_min, spawn_max = self.get_shrinked_range(scale=0.8)
+            spawn_min, spawn_max = self.get_shrinked_range(scale=0.01, shift_x=-0.145, shift_y= -0.19, draw_range=False)
 
-            # y-shaped region
+            # the complex cross 
+            # scale=0.01, shift_x=-0.135, shift_y= -0.19
+
+            # y-shape
+            # scale=0.01, shift_x=0.030, shift_y= -0.108
+
+            # a narrow road for peds to cross
+            # spawn_min = carla.Vector2D(903.4-20, 1531.7-20)
+            # spawn_max = carla.Vector2D(903.4+20, 1531.7+20)
+            
+            # y-shaped region, msekel, for cars
             # spawn_min = carla.Vector2D(900.4, 350.33) 
             # spawn_max = carla.Vector2D(1000.4, 450.33)
 
-            # single road without building
+            # single road without building, msekel
             # spawn_min = carla.Vector2D(1036.5-20, 507.21-20)
             # spawn_max = carla.Vector2D(1036.5+20, 507.21+20)
             
@@ -76,7 +86,7 @@ class EgoVehicle(Drunc):
         self.publish_odom_transform()
         self.transformer = TransformListener()
 
-    def get_shrinked_range(self, scale = 1.0):
+    def get_shrinked_range(self, scale = 1.0, shift_x = 0.0, shift_y = 0.0, draw_range = False):
         if scale == 1.0:
             return self.map_bounds_min, self.map_bounds_max # TODO: I want to get the actual map range here
         else: 
@@ -86,12 +96,24 @@ class EgoVehicle(Drunc):
             map_margin_range.x = map_margin_range.x / 2.0
             map_margin_range.y = map_margin_range.y / 2.0
 
+            shift = carla.Vector2D(shift_x * map_range.x, shift_y * map_range.y) 
+
             spawn_min = carla.Vector2D(
                 self.map_bounds_min.x + map_margin_range.x, 
-                self.map_bounds_min.y + map_margin_range.y)
+                self.map_bounds_min.y + map_margin_range.y) + shift
             spawn_max = carla.Vector2D(
                 self.map_bounds_max.x - map_margin_range.x,
-                self.map_bounds_max.y - map_margin_range.y)
+                self.map_bounds_max.y - map_margin_range.y) + shift
+
+            if draw_range:
+                self.world.debug.draw_arrow(
+                    carla.Location(spawn_min.x, spawn_min.y, 0), 
+                    carla.Location(spawn_max.x, spawn_min.y, 0), 
+                    thickness = 3.0, arrow_size = 3.0, color = carla.Color(255,0,0))
+                self.world.debug.draw_arrow(
+                    carla.Location(spawn_min.x, spawn_min.y, 0), 
+                    carla.Location(spawn_min.x, spawn_max.y, 0), 
+                    thickness = 3.0, arrow_size = 3.0, color = carla.Color(0,255,0))
 
             return spawn_min, spawn_max
 
@@ -350,6 +372,11 @@ class EgoVehicle(Drunc):
                 control.throttle = -self.cmd_accel
                 control.brake = 0.0
                 control.reverse = True
+
+        # debugging freezing the robot
+        # control.throttle = 0                
+        # control.brake = 1.0
+        # control.reverse = False 
 
         self.actor.apply_control(control)
 
