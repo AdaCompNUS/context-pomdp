@@ -15,7 +15,7 @@ import carla
 import random
 
 # map_location = "singapore" 
-map_location = "msekel"
+map_location = "meskel"
 
 class Drunc(object):
     def __init__(self):
@@ -28,7 +28,7 @@ class Drunc(object):
         if map_location == "singapore":
             self.map_bounds_min = carla.Vector2D(450, 1100)
             self.map_bounds_max = carla.Vector2D(1200, 1900)
-        elif map_location == "msekel":
+        elif map_location == "meskel":
             self.map_bounds_min = carla.Vector2D(-110, -5)
             self.map_bounds_max = carla.Vector2D(1450, 1100)
         
@@ -36,27 +36,27 @@ class Drunc(object):
         if map_location == "singapore":
             with open(carla_root + 'Data/map.net.xml', 'r') as file:
                 map_data = file.read()
-        elif map_location == "msekel":
+        elif map_location == "meskel":
             with open(carla_root + 'Data/meskel_square.net.xml', 'r') as file:
                 map_data = file.read()
         self.network = carla.SumoNetwork.load(map_data)
         self.network_occupancy_map = self.network.create_occupancy_map()
-        self.sidewalk = carla.Sidewalk(
-            self.network_occupancy_map,
-            self.map_bounds_min, self.map_bounds_max, ## to check
-            3.0, 0.1,
-            20.0)
-        self.sidewalk_occupancy_map = self.sidewalk.create_occupancy_map()
+        self.sidewalk = self.network_occupancy_map.create_sidewalk(1.5)
+        self.sidewalk_occupancy_map = self.sidewalk.create_occupancy_map(3.0)
+       
+        self.landmarks = []
+        '''
         if map_location == "singapore":
             self.landmarks = carla.Landmark.load(
             carla_root + 'Data/map.osm',
             carla.Vector2D(-11551102.28, -143022.13))
-        elif map_location == "msekel":
+        elif map_location == "meskel":
             self.landmarks = carla.Landmark.load(
             carla_root + 'Data/meskel_square.osm',
             carla.Vector2D(-4314645.11,-1006806.79)) 
         self.landmarks = [l for l in self.landmarks if not self.network_occupancy_map.intersects(l.outline)]
         self.landmarks = [l for l in self.landmarks if not self.sidewalk_occupancy_map.intersects(l.outline)]
+        '''
     
     def in_bounds(self, point):
         return self.map_bounds_min.x <= point.x <= self.map_bounds_max.x and \

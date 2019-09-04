@@ -268,11 +268,12 @@ class GammaCrowdController(Drunc):
         # For ego vehicle.
         self.gamma.add_agent(carla.AgentParams.get_default('Car'), self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents)
 
-        adding_obstacle = False
+        adding_obstacle = True
         if(adding_obstacle):
             self.add_obstacles()
 
     def add_obstacles(self):
+        '''
         polygon_table = self.network_occupancy_map.create_polygon_table(self.map_bounds_min,self.map_bounds_max,100,0.1)
         for r in range(polygon_table.rows):
             for c in range(polygon_table.columns):
@@ -282,6 +283,7 @@ class GammaCrowdController(Drunc):
                         v1 = p[i]
                         obstacle.append(carla.Vector2D(v1.x, v1.y))
                     self.gamma.add_obstacle(obstacle)
+        '''
         self.gamma.process_obstacles()
    
     def dispose(self):
@@ -687,7 +689,7 @@ class GammaCrowdController(Drunc):
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
-            trans.location.z = 0.1
+            trans.location.z = 1.0
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
                     random.choice(self.cars_blueprints),
@@ -709,7 +711,7 @@ class GammaCrowdController(Drunc):
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
-            trans.location.z = 0.1
+            trans.location.z = 1.0
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
                     random.choice(self.bikes_blueprints),
