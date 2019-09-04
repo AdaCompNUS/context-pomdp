@@ -11,8 +11,8 @@
 <!--     <param name="num_network_car_agents" value="60"/>
     <param name="num_network_bike_agents" value="60"/>
     <param name="num_sidewalk_agents" value="5"/> -->
-    <param name="num_network_car_agents" value="60"/>
-    <param name="num_network_bike_agents" value="60"/>
+    <param name="num_network_car_agents" value="50"/>
+    <param name="num_network_bike_agents" value="50"/>
     <param name="num_sidewalk_agents" value="5"/>
     <param name="path_min_points" value="20"/>
     <param name="path_interval" value="1.0"/>
