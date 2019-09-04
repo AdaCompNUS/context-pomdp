@@ -273,17 +273,11 @@ class GammaCrowdController(Drunc):
             self.add_obstacles()
 
     def add_obstacles(self):
-        '''
-        polygon_table = self.network_occupancy_map.create_polygon_table(self.map_bounds_min,self.map_bounds_max,100,0.1)
-        for r in range(polygon_table.rows):
-            for c in range(polygon_table.columns):
-                for p in polygon_table.get(r, c):
-                    obstacle = []
-                    for i in reversed(range(len(p))): 
-                        v1 = p[i]
-                        obstacle.append(carla.Vector2D(v1.x, v1.y))
-                    self.gamma.add_obstacle(obstacle)
-        '''
+        polygon_map = carla.OccupancyMap.from_bounds(self.map_bounds_min, self.map_bounds_max)
+        polygon_map = polygon_map.union(self.network_occupancy_map)
+        for triangle in polygon_map.get_triangles():
+            self.gamma.add_obstacle([triangle.v2, triangle.v1, triangle.v1])
+        
         self.gamma.process_obstacles()
    
     def dispose(self):
@@ -694,7 +688,7 @@ class GammaCrowdController(Drunc):
             actor = self.world.try_spawn_actor(
                     random.choice(self.cars_blueprints),
                     trans)
-            self.world.wait_for_tick(1.0)
+            self.world.wait_for_tick(5.0)
             if actor:
                 self.network_car_agents.append(CrowdNetworkCarAgent(
                     actor, path, 
@@ -716,7 +710,7 @@ class GammaCrowdController(Drunc):
             actor = self.world.try_spawn_actor(
                     random.choice(self.bikes_blueprints),
                     trans)
-            self.world.wait_for_tick(1.0)
+            self.world.wait_for_tick(5.0)
             if actor:
                 self.network_bike_agents.append(CrowdNetworkBikeAgent(
                     actor, path, 
@@ -734,7 +728,7 @@ class GammaCrowdController(Drunc):
             actor = self.world.try_spawn_actor(
                     random.choice(self.walker_blueprints),
                     trans)
-            self.world.wait_for_tick(1.0)
+            self.world.wait_for_tick(5.0)
             if actor:
                 self.sidewalk_agents.append(CrowdSidewalkAgent(
                     actor, path, 
@@ -796,7 +790,7 @@ class GammaCrowdController(Drunc):
         simu_time = cur_time - prev_time
         prev_time = cur_time
 
-        #simu_time = 0.05 #self.world.wait_for_tick(1.0).timestamp.delta_seconds
+        #simu_time = 0.05 #self.world.wait_for_tick(5.0).timestamp.delta_seconds
         for (i, crowd_agent) in enumerate(next_agents):
             if crowd_agent:
 
@@ -836,7 +830,7 @@ class GammaCrowdController(Drunc):
         self.sidewalk_agents = [a for a in next_agents if a and type(a) is CrowdSidewalkAgent]
         
         self.client.apply_batch(commands)
-        self.world.wait_for_tick(1.0)
+        self.world.wait_for_tick(5.0)
 
         network_agents_msg = carla_connector2.msg.CrowdNetworkAgentArray()
         network_agents_msg.header.stamp = rospy.Time.now()
