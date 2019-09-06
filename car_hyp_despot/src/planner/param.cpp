@@ -11,7 +11,7 @@ namespace ModelParams {
 	double NOISE_PED_VEL = 0.3; //use 0 for debugging
     double NOISE_PED_POS = 0.2; // 0.6;
     double COLLISION_DISTANCE = 1.5;
-	double IN_FRONT_ANGLE_DEG = 120;
+	double IN_FRONT_ANGLE_DEG = 150;
     int DRIVING_PLACE = 0;
 
 	double VEL_MAX=/*1.5*/ 6.0;

@@ -92,10 +92,13 @@ class CrowdProcessor(Drunc):
         for agent in agents:
             actor = self.world.get_actor(agent.id)
 
-            if actor is None: # or (get_position(actor) - ego_car_position).length() > 50: # TODO Add as ROS parameter.
+            if actor is None: 
                 continue
 
             actor_pos = carla.Vector2D(actor.get_location().x, actor.get_location().y)
+
+            if (actor_pos - ego_car_position).length() > 50: # TODO Add as ROS parameter.
+                continue
             
             agent_tmp = carla_connector2.msg.TrafficAgent()
             agent_tmp.last_update = current_time

@@ -37,7 +37,7 @@ class EgoVehicle(Drunc):
 
             # # the complex cross 
             scale=0.01
-            shift_x=-0.135 #(-0.145), 
+            shift_x=-0.145 #(-0.145), 
             shift_y= -0.19
 
             # y-shape
@@ -45,7 +45,7 @@ class EgoVehicle(Drunc):
             # shift_x=0.030
             # shift_y= -0.108
             
-            spawn_min, spawn_max = self.get_shrinked_range(scale=scale, shift_x=shift_x, shift_y= shift_x, draw_range=False)
+            spawn_min, spawn_max = self.get_shrinked_range(scale=scale, shift_x=shift_x, shift_y= shift_y, draw_range=False)
 
 
 

@@ -754,8 +754,8 @@ class GammaCrowdController(Drunc):
             self.gamma.set_agent(i, crowd_agent.get_agent_params())
             pref_vel = crowd_agent.get_preferred_velocity()
             if pref_vel:
-                self.draw_line(crowd_agent.get_position(), pref_vel, carla.Color (255,0,0))
-                self.draw_line(crowd_agent.get_position(), crowd_agent.get_velocity(), carla.Color (0,255,0))
+                # self.draw_line(crowd_agent.get_position(), pref_vel, carla.Color (255,0,0))
+                # self.draw_line(crowd_agent.get_position(), crowd_agent.get_velocity(), carla.Color (0,255,0))
                 next_agents.append(crowd_agent)
                 self.gamma.set_agent_position(i, crowd_agent.get_position())
                 self.gamma.set_agent_velocity(i, crowd_agent.get_velocity())

@@ -255,7 +255,7 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
 	else
 		acceleration= carvel >= ModelParams::VEL_MAX-1e-4 ? 0 : ModelParams::AccSpeed;
 
-    // acceleration = ModelParams::AccSpeed; // debugging
+    acceleration = ModelParams::AccSpeed; // debugging
 
 	logd << __FUNCTION__ <<"] Calculate action ID"<< endl;
 	return PedPomdp::GetActionID(steering, acceleration);
@@ -2594,23 +2594,22 @@ void WorldModel::add_car_agent(int id_in_sim, CarStruct& car){
         //TODO: this should use the car dimension from topic
         double car_radius = 1.15f;
         double car_radius_large = 1.6f;
+        double shift = 1.0;
 
-        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, 
+            car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
         traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
         traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim,-1);
 
-        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56 * 2.33 * cos(car_yaw), car.pos.y + 1.4* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + shift * cos(car_yaw), car.pos.y + shift * sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, 
+            car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
         traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+1, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
         traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+1,-2);
 
-        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56*3.66 * cos(car_yaw), car.pos.y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
+        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x - shift * cos(car_yaw), car.pos.y - shift * sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, 
+            car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
         traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+2, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
         traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+2,-3);
-
-        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56*5 * cos(car_yaw), car.pos.y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius_large, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-        traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+3, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-        traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+3,-4);
-
     }
 }
 
@@ -2862,56 +2861,56 @@ bool WorldModel::CheckCarWithVehicle(const CarStruct& car, const AgentStruct& ve
     if (!inFront(veh.pos, car))
         return false;
 
-    // double side_margin, front_margin, back_margin;
+    double side_margin, front_margin, back_margin;
 
     // flag = 1; // debugging
-    // if(flag!=0){
-    //     side_margin = ModelParams::CAR_WIDTH / 2.0;
-    //     front_margin = ModelParams::CAR_FRONT;
-    //     back_margin = ModelParams::CAR_FRONT;   
-    // }
-    // else {
-    //     side_margin = ModelParams::CAR_WIDTH / 2.0 + CAR_SIDE_MARGIN;
-    //     front_margin = ModelParams::CAR_FRONT + CAR_FRONT_MARGIN;
-    //     back_margin = ModelParams::CAR_FRONT + CAR_SIDE_MARGIN;
-    // }
+    if(flag == 1){ // real collision
+        side_margin = ModelParams::CAR_WIDTH / 2.0;
+        front_margin = ModelParams::CAR_FRONT;
+        back_margin = ModelParams::CAR_FRONT;   
+    }
+    else if (flag == 0) { // in search 
+        side_margin = ModelParams::CAR_WIDTH / 2.0 + CAR_SIDE_MARGIN;
+        front_margin = ModelParams::CAR_FRONT + CAR_FRONT_MARGIN;
+        back_margin = ModelParams::CAR_FRONT + CAR_SIDE_MARGIN;
+    }
 
-    // double ref_to_front_side = sqrt(front_margin*front_margin + side_margin*side_margin);
-    // double ref_to_back_side = sqrt(back_margin*back_margin + side_margin*side_margin);
-    // double ref_front_side_angle = atan(side_margin/front_margin);      
-    // double ref_back_side_angle = atan(side_margin/back_margin);
+    double ref_to_front_side = sqrt(front_margin*front_margin + side_margin*side_margin);
+    double ref_to_back_side = sqrt(back_margin*back_margin + side_margin*side_margin);
+    double ref_front_side_angle = atan(side_margin/front_margin);      
+    double ref_back_side_angle = atan(side_margin/back_margin);
  
-    // std::vector<COORD> car_rect = ::ComputeRect(car.pos, car.heading_dir, ref_to_front_side, ref_to_back_side,
-    //     ref_front_side_angle, ref_back_side_angle);
+    std::vector<COORD> car_rect = ::ComputeRect(car.pos, car.heading_dir, ref_to_front_side, ref_to_back_side,
+        ref_front_side_angle, ref_back_side_angle);
 
-    // side_margin = veh.bb_extent_x;
-    // front_margin = veh.bb_extent_y;
-    // back_margin = veh.bb_extent_y;
+    side_margin = veh.bb_extent_x;
+    front_margin = veh.bb_extent_y;
+    back_margin = veh.bb_extent_y;
 
-    // ref_to_front_side = sqrt(front_margin*front_margin + side_margin*side_margin);
-    // ref_to_back_side = sqrt(back_margin*back_margin + side_margin*side_margin);
-    // ref_front_side_angle = atan(side_margin/front_margin);      
-    // ref_back_side_angle = atan(side_margin/back_margin);
+    ref_to_front_side = sqrt(front_margin*front_margin + side_margin*side_margin);
+    ref_to_back_side = sqrt(back_margin*back_margin + side_margin*side_margin);
+    ref_front_side_angle = atan(side_margin/front_margin);      
+    ref_back_side_angle = atan(side_margin/back_margin);
  
-    // std::vector<COORD> veh_rect = ::ComputeRect(veh.pos, veh.heading_dir, ref_to_front_side, ref_to_back_side,
-    //     ref_front_side_angle, ref_back_side_angle);
+    std::vector<COORD> veh_rect = ::ComputeRect(veh.pos, veh.heading_dir, ref_to_front_side, ref_to_back_side,
+        ref_front_side_angle, ref_back_side_angle);
 
-    // return ::InCollision(car_rect, veh_rect);
+    return ::InCollision(car_rect, veh_rect);
     
-    bool result = false;
+    // bool result = false;
     
-    COORD tan_dir(-sin(veh.heading_dir), cos(veh.heading_dir));
-    COORD along_dir(cos(veh.heading_dir), sin(veh.heading_dir));
+    // COORD tan_dir(-sin(veh.heading_dir), cos(veh.heading_dir));
+    // COORD along_dir(cos(veh.heading_dir), sin(veh.heading_dir));
     
-    result = result || CheckCarWithObsLine(car, 
-        veh.pos + tan_dir * veh.bb_extent_x, veh.pos + along_dir * veh.bb_extent_y, flag);
-    result = result || CheckCarWithObsLine(car, 
-        veh.pos + tan_dir * veh.bb_extent_x, veh.pos - along_dir * veh.bb_extent_y, flag);
-    result = result || CheckCarWithObsLine(car, 
-        veh.pos - tan_dir * veh.bb_extent_x, veh.pos - along_dir * veh.bb_extent_y, flag);
-    result = result || CheckCarWithObsLine(car, 
-        veh.pos - tan_dir * veh.bb_extent_x, veh.pos + along_dir * veh.bb_extent_y, flag);
-    return result;
+    // result = result || CheckCarWithObsLine(car, 
+    //     veh.pos + tan_dir * veh.bb_extent_x, veh.pos + along_dir * veh.bb_extent_y, flag);
+    // result = result || CheckCarWithObsLine(car, 
+    //     veh.pos + tan_dir * veh.bb_extent_x, veh.pos - along_dir * veh.bb_extent_y, flag);
+    // result = result || CheckCarWithObsLine(car, 
+    //     veh.pos - tan_dir * veh.bb_extent_x, veh.pos - along_dir * veh.bb_extent_y, flag);
+    // result = result || CheckCarWithObsLine(car, 
+    //     veh.pos - tan_dir * veh.bb_extent_x, veh.pos + along_dir * veh.bb_extent_y, flag);
+    // return result;
 }
 
 bool WorldModel::CheckCarWithObsLine(const CarStruct& car, COORD start_point, COORD end_point, int flag){
