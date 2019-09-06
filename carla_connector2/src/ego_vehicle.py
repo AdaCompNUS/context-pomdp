@@ -35,7 +35,7 @@ class EgoVehicle(Drunc):
         self.speed = 0.0
         while self.actor is None:
 
-            # # the complex cross 
+            # the complex cross 
             scale=0.01
             shift_x=-0.145 #(-0.145), 
             shift_y= -0.19
