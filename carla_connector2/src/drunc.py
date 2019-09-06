@@ -45,18 +45,16 @@ class Drunc(object):
         self.sidewalk_occupancy_map = self.sidewalk.create_occupancy_map(3.0)
        
         self.landmarks = []
-        '''
         if map_location == "singapore":
             self.landmarks = carla.Landmark.load(
             carla_root + 'Data/map.osm',
-            carla.Vector2D(-11551102.28, -143022.13))
+            self.network.offset)
         elif map_location == "meskel":
             self.landmarks = carla.Landmark.load(
             carla_root + 'Data/meskel_square.osm',
-            carla.Vector2D(-4314645.11,-1006806.79)) 
-        self.landmarks = [l for l in self.landmarks if not self.network_occupancy_map.intersects(l.outline)]
-        self.landmarks = [l for l in self.landmarks if not self.sidewalk_occupancy_map.intersects(l.outline)]
-        '''
+            self.network.offset)
+        self.landmarks = [l.difference(self.network_occupancy_map).difference(self.sidewalk_occupancy_map) for l in self.landmarks]
+        self.landmarks = [l for l in self.landmarks if not l.is_empty]
     
     def in_bounds(self, point):
         return self.map_bounds_min.x <= point.x <= self.map_bounds_max.x and \
