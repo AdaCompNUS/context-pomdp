@@ -91,6 +91,30 @@ bool inCollision(double ped_x, double ped_y, double car_x, double car_y, double 
 	return InRectangle(car_dir_x, car_dir_y, car_ped_x, car_ped_y, front_margin, back_margin, side_margin);
 }
 
+bool inCarlaCollision(double ped_x, double ped_y, double car_x, double car_y, double Ctheta, double car_extent_x, double car_extent_y, bool flag) {
+	
+	/// car geometry
+	double car_dir_x = cos(Ctheta), // car direction
+				 car_dir_y = sin(Ctheta);
+	double car_ped_x = ped_x - car_x,
+				 car_ped_y = ped_y - car_y;
+
+	// flag = 1; // debugging
+
+	double side_margin,front_margin, back_margin;
+	if (flag == 0){ // in search 
+		side_margin = car_extent_x + CAR_SIDE_MARGIN;
+		front_margin = car_extent_y + CAR_FRONT_MARGIN;
+		back_margin = car_extent_y + CAR_SIDE_MARGIN;
+	} else { // real collision
+		side_margin = car_extent_x;
+		front_margin = car_extent_y;
+		back_margin = car_extent_y;
+	}
+
+	return InRectangle(car_dir_x, car_dir_y, car_ped_x, car_ped_y, front_margin, back_margin, side_margin);
+}
+
 
 bool InFrontRectangle(double HNx, double HNy, double HMx, double HMy, double front_margin, double back_margin, double side_margin) {
 	double HLx = - HNy, // direction after 90 degree anticlockwise rotation
@@ -150,7 +174,7 @@ bool Xor(bool a, bool b){
 bool IsCcw(COORD p0, COORD p1, COORD p2){
   COORD u = p1 - p0;
   COORD v = p2 - p1;
-  return (u.x*v.y - v.x*u.y)>0;
+  return (u.x*v.y - v.x*u.y)>0; // >0
 }
  
 //is segment p0_p1 intersects with segment q0_q1

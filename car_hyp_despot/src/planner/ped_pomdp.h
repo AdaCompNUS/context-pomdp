@@ -201,6 +201,10 @@ public:
 public:
 	void InitGPUCarParams() const;
 
+public:
+	void CheckPreCollision(const State*);
+	void PrintStateIDs(const State&);
+
 };
 
 #endif
