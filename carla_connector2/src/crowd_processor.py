@@ -1,5 +1,8 @@
 #!/usr/bin/env python2
 
+from drunc import Drunc
+import carla
+
 import numpy as np
 from collections import defaultdict
 
@@ -8,8 +11,6 @@ import tf
 from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped, Point, Pose, Quaternion, Vector3, Polygon, Point32
 from nav_msgs.msg import Path
 
-from drunc import Drunc
-import carla
 import carla_connector2.msg
 from peds_unity_system.msg import car_info as CarInfo # panpan
 from util import *

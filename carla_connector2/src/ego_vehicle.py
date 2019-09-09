@@ -1,5 +1,8 @@
 #!/usr/bin/env python2
 
+from drunc import Drunc
+import carla
+
 import random
 import math
 import numpy as np
@@ -11,8 +14,6 @@ from nav_msgs.msg import Odometry
 from nav_msgs.msg import Path as NavPath
 from std_msgs.msg import Float32
 
-from drunc import Drunc
-import carla
 from network_agent_path import NetworkAgentPath
 from peds_unity_system.msg import car_info as CarInfo # panpan
 from util import *

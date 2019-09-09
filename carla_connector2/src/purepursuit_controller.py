@@ -1,10 +1,11 @@
 #!/usr/bin/env python2
 
+from drunc import Drunc
+import carla
+
 import numpy as np
 
 from util import * 
-from drunc import Drunc
-import carla
 
 import rospy
 import csv

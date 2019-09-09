@@ -1,13 +1,14 @@
 #!/usr/bin/env python2
 
+from drunc import Drunc
+import carla
+
 import random
 
 import numpy as np
 import cv2
 
 import rospy
-from drunc import Drunc
-import carla
 from carla import ColorConverter
 
 from nav_msgs.msg import Odometry

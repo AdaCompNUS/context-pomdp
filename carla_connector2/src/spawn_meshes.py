@@ -18,7 +18,7 @@ class SpawnMeshes(Drunc):
         
         if self.sidewalk_occupancy_map_mesh_triangles is not None:
             commands.append(carla.command.SpawnDynamicMesh(
-                self.sidewalk_occupancy_map_mesh_triangles,
+                self.sidewalk.create_occupancy_map(3.0).get_mesh_triangles(),
                 '/Game/Carla/Static/GenericMaterials/Ground/GroundWheatField_Mat'))
 
         if self.landmarks is not None:

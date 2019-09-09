@@ -1,12 +1,13 @@
 #!/usr/bin/env python2
 
+from drunc import Drunc
+import carla
+
 import math
 import random
 import numpy as np
 import rospy
 
-from drunc import Drunc
-import carla
 from network_agent_path import NetworkAgentPath
 from sidewalk_agent_path import SidewalkAgentPath
 from util import *
@@ -733,7 +734,7 @@ class GammaCrowdController(Drunc):
                 self.sidewalk_agents.append(CrowdSidewalkAgent(
                     actor, path, 
                     0.5 + random.uniform(0.0, 1.0)))
-    
+        
         commands = []
         
         next_agents = []

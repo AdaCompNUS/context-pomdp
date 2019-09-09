@@ -28,18 +28,14 @@ class Drunc(object):
         if map_location == "singapore":
             self.map_bounds_min = carla.Vector2D(450, 1100)
             self.map_bounds_max = carla.Vector2D(1200, 1900)
-        elif map_location == "meskel":
+        elif map_location == "meskel_square":
             self.map_bounds_min = carla.Vector2D(-110, -5)
             self.map_bounds_max = carla.Vector2D(1450, 1100)
         
         # Create network related objects.
-        print("Loading SUMO network...")
         self.network = carla.SumoNetwork.load(carla_root + 'Data/' + map_location + '.net.xml')
-        
-        print("Loading SUMO network occupancy map...")
         self.network_occupancy_map = carla.OccupancyMap.load(carla_root + 'Data/' + map_location + '.wkt')
 
-        print("Loading SUMO network occupancy map mesh triangles...")
         with open(carla_root + 'Data/' + map_location + '.mesh', 'r') as file:
             network_mesh_data = file.read()
         network_mesh_data = network_mesh_data.split(',')
@@ -50,13 +46,9 @@ class Drunc(object):
                 float(network_mesh_data[i + 1]), 
                 float(network_mesh_data[i + 2])))
 
-        print("Calculating sidewalk...")
         self.sidewalk = self.network_occupancy_map.create_sidewalk(1.5)
-
-        print("Loading sidewalk occupancy map...")
         self.sidewalk_occupancy_map = carla.OccupancyMap.load(carla_root + 'Data/' + map_location + '.sidewalk.wkt')
 
-        print("Loading sidewalk occupancy map mesh triangles...")
         with open(carla_root + 'Data/' + map_location + '.sidewalk.mesh', 'r') as file:
             sidewalk_mesh_data = file.read()
         sidewalk_mesh_data = sidewalk_mesh_data.split(',')
@@ -69,13 +61,10 @@ class Drunc(object):
 
         self.landmarks = []
         '''
-        print("Loading landmarks...")
         self.landmarks = carla.Landmark.load(carla_root + 'Data/' + map_location + '.osm', self.network.offset)
         self.landmarks = [l.difference(self.network_occupancy_map).difference(self.sidewalk_occupancy_map) for l in self.landmarks]
         self.landmarks = [l for l in self.landmarks if not l.is_empty]
         '''
-
-        print("All data loaded.")
     
     def in_bounds(self, point):
         return self.map_bounds_min.x <= point.x <= self.map_bounds_max.x and \
