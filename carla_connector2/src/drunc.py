@@ -14,8 +14,8 @@ except IndexError:
 import carla
 import random
 
-#map_location = "map" # NUS 
-map_location = "meskel_square"
+map_location = "map" # NUS 
+#map_location = "meskel_square"
 
 class Drunc(object):
     def __init__(self):
@@ -25,7 +25,7 @@ class Drunc(object):
         self.world = self.client.get_world()
 
         # Define bounds.
-        if map_location == "singapore":
+        if map_location == "map":
             self.map_bounds_min = carla.Vector2D(450, 1100)
             self.map_bounds_max = carla.Vector2D(1200, 1900)
         elif map_location == "meskel_square":
