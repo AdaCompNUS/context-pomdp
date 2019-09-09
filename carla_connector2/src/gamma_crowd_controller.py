@@ -273,8 +273,8 @@ class GammaCrowdController(Drunc):
             self.add_obstacles()
 
     def add_obstacles(self):
-        polygon_map = carla.OccupancyMap.from_bounds(self.map_bounds_min, self.map_bounds_max)
-        polygon_map = polygon_map.union(self.network_occupancy_map)
+        polygon_map = carla.OccupancyMap(self.map_bounds_min, self.map_bounds_max)
+        polygon_map = polygon_map.difference(self.network_occupancy_map)
         for triangle in polygon_map.get_triangles():
             self.gamma.add_obstacle([triangle.v2, triangle.v1, triangle.v1])
         

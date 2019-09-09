@@ -14,8 +14,8 @@ except IndexError:
 import carla
 import random
 
-# map_location = "singapore" 
-map_location = "meskel"
+#map_location = "map" # NUS 
+map_location = "meskel_square"
 
 class Drunc(object):
     def __init__(self):
@@ -33,28 +33,49 @@ class Drunc(object):
             self.map_bounds_max = carla.Vector2D(1450, 1100)
         
         # Create network related objects.
-        if map_location == "singapore":
-            with open(carla_root + 'Data/map.net.xml', 'r') as file:
-                map_data = file.read()
-        elif map_location == "meskel":
-            with open(carla_root + 'Data/meskel_square.net.xml', 'r') as file:
-                map_data = file.read()
-        self.network = carla.SumoNetwork.load(map_data)
-        self.network_occupancy_map = self.network.create_occupancy_map()
+        print("Loading SUMO network...")
+        self.network = carla.SumoNetwork.load(carla_root + 'Data/' + map_location + '.net.xml')
+        
+        print("Loading SUMO network occupancy map...")
+        self.network_occupancy_map = carla.OccupancyMap.load(carla_root + 'Data/' + map_location + '.wkt')
+
+        print("Loading SUMO network occupancy map mesh triangles...")
+        with open(carla_root + 'Data/' + map_location + '.mesh', 'r') as file:
+            network_mesh_data = file.read()
+        network_mesh_data = network_mesh_data.split(',')
+        self.network_occupancy_map_mesh_triangles = []
+        for i in range(0, len(network_mesh_data), 3):
+            self.network_occupancy_map_mesh_triangles.append(carla.Vector3D(
+                float(network_mesh_data[i]), 
+                float(network_mesh_data[i + 1]), 
+                float(network_mesh_data[i + 2])))
+
+        print("Calculating sidewalk...")
         self.sidewalk = self.network_occupancy_map.create_sidewalk(1.5)
-        self.sidewalk_occupancy_map = self.sidewalk.create_occupancy_map(3.0)
-       
+
+        print("Loading sidewalk occupancy map...")
+        self.sidewalk_occupancy_map = carla.OccupancyMap.load(carla_root + 'Data/' + map_location + '.sidewalk.wkt')
+
+        print("Loading sidewalk occupancy map mesh triangles...")
+        with open(carla_root + 'Data/' + map_location + '.sidewalk.mesh', 'r') as file:
+            sidewalk_mesh_data = file.read()
+        sidewalk_mesh_data = sidewalk_mesh_data.split(',')
+        self.sidewalk_occupancy_map_mesh_triangles = []
+        for i in range(0, len(sidewalk_mesh_data), 3):
+            self.sidewalk_occupancy_map_mesh_triangles.append(carla.Vector3D(
+                float(sidewalk_mesh_data[i]), 
+                float(sidewalk_mesh_data[i + 1]), 
+                float(sidewalk_mesh_data[i + 2])))
+
         self.landmarks = []
-        if map_location == "singapore":
-            self.landmarks = carla.Landmark.load(
-            carla_root + 'Data/map.osm',
-            self.network.offset)
-        elif map_location == "meskel":
-            self.landmarks = carla.Landmark.load(
-            carla_root + 'Data/meskel_square.osm',
-            self.network.offset)
+        '''
+        print("Loading landmarks...")
+        self.landmarks = carla.Landmark.load(carla_root + 'Data/' + map_location + '.osm', self.network.offset)
         self.landmarks = [l.difference(self.network_occupancy_map).difference(self.sidewalk_occupancy_map) for l in self.landmarks]
         self.landmarks = [l for l in self.landmarks if not l.is_empty]
+        '''
+
+        print("All data loaded.")
     
     def in_bounds(self, point):
         return self.map_bounds_min.x <= point.x <= self.map_bounds_max.x and \
