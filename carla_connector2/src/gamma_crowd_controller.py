@@ -8,6 +8,7 @@ import random
 import numpy as np
 import rospy
 
+from std_msgs.msg import Bool
 from network_agent_path import NetworkAgentPath
 from sidewalk_agent_path import SidewalkAgentPath
 from util import *
@@ -862,6 +863,8 @@ class GammaCrowdController(Drunc):
             
 if __name__ == '__main__':
     rospy.init_node('gamma_crowd_controller')
+    rospy.wait_for_message("/meshes_spawned", Bool)
+
     gamma_crowd_controller = GammaCrowdController()
 
     rate = rospy.Rate(100) ## to check

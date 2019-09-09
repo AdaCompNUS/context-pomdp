@@ -10,6 +10,7 @@ import rospy
 import tf
 from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped, Point, Pose, Quaternion, Vector3, Polygon, Point32
 from nav_msgs.msg import Path
+from std_msgs.msg import Bool
 
 import carla_connector2.msg
 from peds_unity_system.msg import car_info as CarInfo # panpan
@@ -200,6 +201,7 @@ class CrowdProcessor(Drunc):
 if __name__ == '__main__':
     rospy.init_node('crowd_processor')
     crowd_processor = CrowdProcessor()
+    rospy.wait_for_message("/meshes_spawned", Bool)
     
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
