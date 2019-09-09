@@ -280,8 +280,10 @@ enum {
 };
 
 
-bool WorldModel::inFront(const COORD ped_pos, const CarStruct car) const {
-    if(ModelParams::IN_FRONT_ANGLE_DEG >= 180.0) {
+bool WorldModel::inFront(const COORD ped_pos, const CarStruct car, double infront_angle_deg) const {
+    if (infront_angle_deg == -1)
+        infront_angle_deg = ModelParams::IN_FRONT_ANGLE_DEG;
+    if(infront_angle_deg >= 180.0) {
         // inFront check is disabled
         return true;
     }
@@ -318,7 +320,10 @@ bool WorldModel::inCollision(const PomdpState& state) {
         if (i >= state.num) 
             break;
         i++;
-        
+
+        if (!inFront(agent.pos, state.car))
+            continue;
+            
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
             if(::inCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y, state.car.heading_dir)) {
@@ -340,8 +345,12 @@ bool WorldModel::inCollision(const PomdpState& state) {
     return false;
 }
 
-bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id) {
+bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id, double infront_angle) {
     id=-1;
+    if (infront_angle == -1){
+        infront_angle = ModelParams::IN_FRONT_ANGLE_DEG;
+    }
+
     const COORD& car_pos = state.car.pos;
 
     int i = 0;
@@ -350,12 +359,14 @@ bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id) {
             break;
         i++;
 
+        if (!inFront(agent.pos, state.car, infront_angle))
+            continue;
+            
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
             if(::inRealCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y, state.car.heading_dir)) {
                 id=agent.id;
             }
-
         }
         else if (agent.type == AgentType::car){
             if (CheckCarWithVehicle(state.car, agent, 1)){
@@ -380,15 +391,21 @@ bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id) {
     return false;
 }
 
-bool WorldModel::inRealCollision(const PomdpStateWorld& state) {
+bool WorldModel::inRealCollision(const PomdpStateWorld& state, double infront_angle_deg) {
     const COORD& car_pos = state.car.pos;
-
     int id = -1;
+    if (infront_angle_deg == -1){
+        infront_angle_deg = ModelParams::IN_FRONT_ANGLE_DEG;
+    }
+
     int i = 0;
     for(auto& agent: state.agents) {
         if (i >= state.num) 
             break;
         i++;
+
+        if (!inFront(agent.pos, state.car, infront_angle_deg))
+            continue;
         
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
@@ -427,6 +444,9 @@ bool WorldModel::inCollision(const PomdpStateWorld& state) {
         if (i >= state.num) 
             break;
         i++;
+
+        if (!inFront(agent.pos, state.car))
+            continue;
         
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
@@ -458,6 +478,9 @@ bool WorldModel::inCollision(const PomdpState& state, int &id) {
         if (i >= state.num) 
             break;
         i++;
+
+        if (!inFront(agent.pos, state.car))
+            continue;
 
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
@@ -499,6 +522,9 @@ bool WorldModel::inCollision(const PomdpStateWorld& state, int &id) {
         if (i >= state.num) 
             break;
         i++;
+
+        if (!inFront(agent.pos, state.car))
+            continue;
 
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
@@ -2202,7 +2228,7 @@ void WorldBeliefTracker::printBelief() const {
 }
 
 PomdpState WorldBeliefTracker::text() const{
-	if (logging::level()>=3){
+	if (logging::level()>=4){
 		for(int i=0; i < sorted_beliefs.size() && i < min(20,ModelParams::N_PED_IN); i++) {
 			auto& p = *sorted_beliefs[i];
 			cout << "[WorldBeliefTracker::text] " << this << "->p:" << &p << endl;
@@ -2876,7 +2902,7 @@ bool WorldModel::CheckCarWithObstacles(const CarStruct& car, int flag){
 
 
 bool WorldModel::CheckCarWithVehicle(const CarStruct& car, const AgentStruct& veh, int flag) {
-    // if (!inFront(veh.pos, car))
+    // if (!inFront(veh.pos, car, infront_angle_deg))
     //     return false;
 
     // double side_margin, front_margin, back_margin;

@@ -472,7 +472,7 @@ bool PedPomdp::Step(PomdpStateWorld &state, double rNum, int action, double &rew
         return true;
     }
 
-    if(state.car.vel > 0.001 && world_model->inRealCollision(state) )   /// collision occurs only when car is moving
+    if(state.car.vel > 0.001 && world_model->inRealCollision(state, 120.0) )   /// collision occurs only when car is moving
     {
         reward = CrashPenalty(state);
         return true;

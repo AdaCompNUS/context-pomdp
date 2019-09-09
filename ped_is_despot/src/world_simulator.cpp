@@ -233,7 +233,7 @@ double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action){
 
 	PedPomdp* pedpomdp_model = static_cast<PedPomdp*>(model_);
 
-	if(state.car.vel > 0.001 && worldModel.inRealCollision(state) ) { /// collision occurs only when car is moving
+	if(state.car.vel > 0.001 && worldModel.inRealCollision(state, 120.0) ) { /// collision occurs only when car is moving
 		reward = pedpomdp_model->CrashPenalty(state);
 		return reward;
 	}
@@ -295,7 +295,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	// 	cout << "pre-col ped: " << collision_peds_id<<endl;
 	// }
 	
-	if( curr_state->car.vel > 0.001 * time_scale_ && worldModel.inRealCollision(*curr_state,collision_peds_id) ) {
+	if( curr_state->car.vel > 0.5 * time_scale_ && worldModel.inRealCollision(*curr_state,collision_peds_id, 120.0) ) {
 		cout << "--------------------------- collision = 1 ----------------------------" << endl;
 		cout << "collision ped: " << collision_peds_id<<endl;
 		
@@ -1020,8 +1020,8 @@ void WorldSimulator::update_il_car(const ped_is_despot::car_info::ConstPtr car) 
 	    ModelParams::CAR_WIDTH = ModelParams::CAR_WIDTH * 2;
 	    ModelParams::CAR_LENGTH = ModelParams::CAR_LENGTH * 2;
 		ModelParams::CAR_FRONT = ModelParams::CAR_LENGTH / 2.0;
-	    DEBUG(string_sprintf("car dimension: font = %f , rear = %f, width = %f\n", 
-	    	ModelParams::CAR_FRONT, ModelParams::CAR_REAR, ModelParams::CAR_WIDTH));
+	    // DEBUG(string_sprintf("car dimension: font = %f , rear = %f, width = %f\n", 
+	    	// ModelParams::CAR_FRONT, ModelParams::CAR_REAR, ModelParams::CAR_WIDTH));
 
 	    static_cast<const PedPomdp*>(model_)->InitGPUCarParams();
 

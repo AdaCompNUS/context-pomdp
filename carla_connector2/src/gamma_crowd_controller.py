@@ -26,6 +26,14 @@ default_agent_bbox.append(default_agent_pos + carla.Vector2D(1,1))
 default_agent_bbox.append(default_agent_pos + carla.Vector2D(-1,1))
 default_agent_bbox.append(default_agent_pos + carla.Vector2D(-1,-1))
 
+def get_position(actor):
+    pos3D = actor.get_location()
+    return carla.Vector2D(pos3D.x, pos3D.y)
+    
+def get_forward_direction(actor):
+    forward = actor.get_transform().get_forward_vector()
+    return carla.Vector2D(forward.x, forward.y)
+
 class CrowdAgent(object):
     def __init__(self, actor, preferred_speed):
         self.actor = actor
@@ -65,16 +73,14 @@ class CrowdNetworkAgent(CrowdAgent):
     def get_agent_params(self):
         return carla.AgentParams.get_default('Car')
 
-    def get_bounding_box_corners(self):
+    def get_bounding_box_corners(self, expand = 0.0):
         bbox = self.actor.bounding_box
         loc = carla.Vector2D(bbox.location.x, bbox.location.y) + self.get_position()
         forward_vec = self.get_forward_direction().make_unit_vector() # the local x direction (left-handed coordinate system)
         sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction
 
-        half_y_len = bbox.extent.y #+ 0.3
-        half_x_len = bbox.extent.x #+ 0.4
-
-
+        half_y_len = bbox.extent.y + expand
+        half_x_len = bbox.extent.x + expand
 
         corners = []
         corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
@@ -280,6 +286,23 @@ class GammaCrowdController(Drunc):
             self.gamma.add_obstacle([triangle.v2, triangle.v1, triangle.v1])
         
         self.gamma.process_obstacles()
+
+    def get_bounding_box_corners(self, actor, expand = 0.0):
+        bbox = actor.bounding_box
+        loc = carla.Vector2D(bbox.location.x, bbox.location.y) + get_position(actor)
+        forward_vec = get_forward_direction(actor).make_unit_vector() # the local x direction (left-handed coordinate system)
+        sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction
+
+        half_y_len = bbox.extent.y + expand
+        half_x_len = bbox.extent.x + expand
+
+        corners = []
+        corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
+        corners.append(loc + half_x_len*forward_vec + half_y_len*sideward_vec)
+        corners.append(loc + half_x_len*forward_vec - half_y_len*sideward_vec)
+        corners.append(loc - half_x_len*forward_vec - half_y_len*sideward_vec)
+        
+        return corners
    
     def dispose(self):
         commands = []
@@ -303,8 +326,10 @@ class GammaCrowdController(Drunc):
             self.gamma.set_agent_heading(i, carla.Vector2D(
                 math.cos(self.ego_car_info.car_yaw),
                 math.sin(self.ego_car_info.car_yaw)))
-            self.gamma.set_agent_bounding_box_corners(i, 
-                    [carla.Vector2D(v.x, v.y) for v in self.ego_car_info.car_bbox.points])
+            # self.gamma.set_agent_bounding_box_corners(i, 
+                    # [carla.Vector2D(v.x, v.y) for v in self.ego_car_info.car_bbox.points])
+            self.find_ego_actor()
+            self.gamma.set_agent_bounding_box_corners(i, self.get_bounding_box_corners(self.ego_actor, 0.5))
             self.gamma.set_agent_pref_velocity(i, carla.Vector2D(
                 self.ego_car_info.car_pref_vel.x,
                 self.ego_car_info.car_pref_vel.y))
@@ -448,16 +473,19 @@ class GammaCrowdController(Drunc):
             return self.map_bounds_min, self.map_bounds_max 
 
     def get_ego_pos(self):
-        if self.ego_actor is None:
-            for actor in self.world.get_actors():
-                if actor.attributes.get('role_name') == 'ego_vehicle':
-                    self.ego_actor = actor
-                    break
+        self.find_ego_actor()
         if self.ego_actor is not None:
             ego_position = self.ego_actor.get_location()
             return carla.Vector2D(ego_position.x, ego_position.y)
         else:
             return None
+
+    def find_ego_actor(self):
+        if self.ego_actor is None:
+            for actor in self.world.get_actors():
+                if actor.attributes.get('role_name') == 'ego_vehicle':
+                    self.ego_actor = actor
+                    break
 
     def compute_intersection_of_two_lines(self, ps, pe, qs, qe):
         ## implement based on http://www.cs.swan.ac.uk/~cssimon/line_intersection.html
