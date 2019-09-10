@@ -472,7 +472,7 @@ bool PedPomdp::Step(PomdpStateWorld &state, double rNum, int action, double &rew
         return true;
     }
 
-    if(state.car.vel > 0.001 && world_model->inRealCollision(state) )   /// collision occurs only when car is moving
+    if(state.car.vel > 0.001 && world_model->inRealCollision(state, 120.0) )   /// collision occurs only when car is moving
     {
         reward = CrashPenalty(state);
         return true;
@@ -883,15 +883,54 @@ void PedPomdp::PrintWorldState(const PomdpStateWorld &state, ostream &out) const
     out << "World state:\n";
     auto &carpos = state.car.pos;
 
+    // out << "Distance to goal: " << (world_model->car_goal - carpos).Length() << endl;
+
+    // out << "car pos / heading / vel = " << "(" << carpos.x << ", " << carpos.y << ") / "
+    //     << state.car.heading_dir << " / "
+    //     << state.car.vel << endl;
+    // out << state.num << " pedestrians " << endl;
+    // int mindist_id = 0;
+    // double min_dist = std::numeric_limits<int>::max();
+
+    // for (int i = 0; i < state.num; i ++)
+    // {
+    //     if (COORD::EuclideanDistance(state.agents[i].pos, carpos) < min_dist)
+    //     {
+    //         min_dist = COORD::EuclideanDistance(state.agents[i].pos, carpos);
+    //         mindist_id = i;
+    //     }
+
+    //     out << "agent " << i << ": id / pos / speed / vel / intention / dist2car / infront =  "
+    //         << state.agents[i].id << " / "
+    //         << "(" << state.agents[i].pos.x << ", " << state.agents[i].pos.y << ") / "
+    //         << state.agents[i].speed << " / "
+    //         << "(" << state.agents[i].vel.x << ", " << state.agents[i].vel.y << ") / "
+    //         << state.agents[i].intention << " / "
+    //         << COORD::EuclideanDistance(state.agents[i].pos, carpos) << " / "
+    //         << world_model->inFront(state.agents[i].pos, state.car)
+    //         << " (mode) " << state.agents[i].mode
+    //         << " (type) " << state.agents[i].type
+    //         << " (bb) " << state.agents[i].bb_extent_x << " "
+    //         << state.agents[i].bb_extent_y << endl;
+    // }
+    // if (state.num > 0)
+    //     min_dist = COORD::EuclideanDistance(carpos, state.agents[/*0*/mindist_id].pos);
+    // out << "MinDist: " << min_dist << endl;
+
     out << "Distance to goal: " << (world_model->car_goal - carpos).Length() << endl;
 
     out << "car pos / heading / vel = " << "(" << carpos.x << ", " << carpos.y << ") / "
         << state.car.heading_dir << " / "
-        << state.car.vel << endl;
+        << state.car.vel
+        << " car dim "
+        << ModelParams::CAR_WIDTH
+        << " " << ModelParams::CAR_FRONT * 2
+        << endl;
     out << state.num << " pedestrians " << endl;
+    
+    double min_dist = -1;
     int mindist_id = 0;
-    double min_dist = std::numeric_limits<int>::max();
-
+    
     for (int i = 0; i < state.num; i ++)
     {
         if (COORD::EuclideanDistance(state.agents[i].pos, carpos) < min_dist)
@@ -911,12 +950,17 @@ void PedPomdp::PrintWorldState(const PomdpStateWorld &state, ostream &out) const
             << " (mode) " << state.agents[i].mode
             << " (type) " << state.agents[i].type
             << " (bb) " << state.agents[i].bb_extent_x << " "
-            << state.agents[i].bb_extent_y << endl;
+            << state.agents[i].bb_extent_y
+            << " (cross) " << state.agents[i].cross_dir
+            << " (heading) " << state.agents[i].heading_dir << endl;
     }
+
     if (state.num > 0)
-        min_dist = COORD::EuclideanDistance(carpos, state.agents[/*0*/mindist_id].pos);
+        min_dist = COORD::EuclideanDistance(carpos, state.agents[mindist_id].pos);
+
     out << "MinDist: " << min_dist << endl;
 }
+
 void PedPomdp::PrintObs(const State &state, uint64_t obs, ostream &out) const
 {
     out << obs << endl;
@@ -1458,4 +1502,26 @@ int PedPomdp::GetSteerIDfromSteering(float steering)
 {
     return ClosestInt((steering / ModelParams::MaxSteerAngle + 1) * (ModelParams::NumSteerAngle));
 }
+
+void PedPomdp::CheckPreCollision(const State* s){
+    const PomdpState* curr_state = static_cast<const PomdpState*> (s);
+
+    int collision_peds_id;
+
+    if( curr_state->car.vel > 0.001 && world_model->inCollision(*curr_state, collision_peds_id) ) {
+        cout << "--------------------------- pre-collision ----------------------------" << endl;
+        cout << "pre-col ped: " << collision_peds_id<<endl;
+    }
+}
+
+void PedPomdp::PrintStateIDs(const State& s){
+    const PomdpState& curr_state = static_cast<const PomdpState&> (s);
+
+    cout << "Sampled peds: ";
+
+    for (int i =0; i< curr_state.num; i++)
+        cout << curr_state.agents[i].id << " ";
+    cout << endl;
+}
+
 

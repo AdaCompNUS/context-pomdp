@@ -349,6 +349,10 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
+	if (p.getlength() < 15.0){
+		ERR("Path length shorter than 15 meters.");
+	}
+
 	// cout << "Path start " << p[0] << " end " << p.back() << endl;
 
 	COORD path_end_from_goal = p.back() - COORD(goalx_, goaly_);
@@ -711,7 +715,9 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 		cout << "Car odom heading " << unity_driving_simulator_->odom_heading_ << endl;
 		cout << "Car base_link heading " << unity_driving_simulator_->baselink_heading_ << endl;
 		
-		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
+		// static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
+		static_cast<PedPomdp*>(ped_pomdp_model)->PrintStateIDs(sample);
+		static_cast<PedPomdp*>(ped_pomdp_model)->CheckPreCollision(&sample);
 
 		// static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(sample, 10);// 3 steps		
 

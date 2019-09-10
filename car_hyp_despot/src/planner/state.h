@@ -155,6 +155,7 @@ public:
 			agents[i].vel = src.agents[i].vel;
 			agents[i].bb_extent_x = src.agents[i].bb_extent_x;
 			agents[i].bb_extent_y = src.agents[i].bb_extent_y;
+			agents[i].heading_dir = src.agents[i].heading_dir;
 		}
 		time_stamp = src.time_stamp;
 	}

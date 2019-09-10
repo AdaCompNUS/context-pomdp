@@ -30,16 +30,19 @@ class EgoVehicle(Drunc):
         super(EgoVehicle, self).__init__()
 
         # time.sleep(2)
-
         # Create path.
         self.actor = None
         self.speed = 0.0
         while self.actor is None:
 
+            scale=1.0
+            shift_x= 0.0
+            shift_y= 0.0
+
             # the complex cross 
-            scale=0.01
-            shift_x=-0.145 #(-0.145), 
-            shift_y= -0.19
+            # scale=0.01
+            # shift_x=-0.145 #(-0.145), 
+            # shift_y= -0.19
 
             # y-shape
             # scale=0.01
@@ -47,8 +50,6 @@ class EgoVehicle(Drunc):
             # shift_y= -0.108
             
             spawn_min, spawn_max = self.get_shrinked_range(scale=scale, shift_x=shift_x, shift_y= shift_y, draw_range=False)
-
-
 
             # a narrow road for peds to cross
             # spawn_min = carla.Vector2D(903.4-20, 1531.7-20)

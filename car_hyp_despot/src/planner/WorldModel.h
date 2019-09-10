@@ -51,15 +51,15 @@ public:
 //    bool isLocalGoal(const PomdpStateWorld& state);
 
     bool isGlobalGoal(const CarStruct& car);
-	bool inFront(const COORD ped_pos, const CarStruct car) const;
+	bool inFront(const COORD ped_pos, const CarStruct car, double in_front_angle_deg = -1) const;
     
     bool inCollision(const PomdpState& state);
     bool inCollision(const PomdpStateWorld& state);
-    bool inRealCollision(const PomdpStateWorld& state);
+    bool inRealCollision(const PomdpStateWorld& state, double in_front_angle_deg = -1);
     
     bool inCollision(const PomdpState& state, int &id);
     bool inCollision(const PomdpStateWorld& state, int &id);
-    bool inRealCollision(const PomdpStateWorld& state, int &id);
+    bool inRealCollision(const PomdpStateWorld& state, int &id, double in_front_angle_deg = -1);
     
     int minStepToGoal(const PomdpState& state);
     int minStepToGoalWithSteer(const PomdpState& state);

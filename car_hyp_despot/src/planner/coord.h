@@ -55,6 +55,8 @@ struct COORD
   
   static double EuclideanDistance(COORD lhs, COORD rhs);
   static double ManhattanDistance(COORD lhs, COORD rhs);
+
+  static double DirectedDistance(COORD lhs, COORD rhs, double dir);
   
   static double SlopAngle(COORD start, COORD end);
 
@@ -111,6 +113,10 @@ inline double COORD::EuclideanDistance(COORD lhs, COORD rhs) {
 
 inline double COORD::ManhattanDistance(COORD lhs, COORD rhs) {
   return fabs(lhs.x - rhs.x) + fabs(lhs.y - rhs.y);
+}
+
+inline double COORD::DirectedDistance(COORD lhs, COORD rhs, double dir){
+  return fabs((lhs.x - rhs.x)*cos(dir) + (lhs.y - rhs.y)*sin(dir));
 }
 
 inline double COORD::SlopAngle(COORD start, COORD end){

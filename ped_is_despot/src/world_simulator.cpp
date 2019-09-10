@@ -233,7 +233,7 @@ double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action){
 
 	PedPomdp* pedpomdp_model = static_cast<PedPomdp*>(model_);
 
-	if(state.car.vel > 0.001 && worldModel.inRealCollision(state) ) { /// collision occurs only when car is moving
+	if(state.car.vel > 0.001 && worldModel.inRealCollision(state, 120.0) ) { /// collision occurs only when car is moving
 		reward = pedpomdp_model->CrashPenalty(state);
 		return reward;
 	}
@@ -267,6 +267,11 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 	/* Update state */
 	PomdpStateWorld* curr_state = static_cast<PomdpStateWorld*>(GetCurrentState());
+
+
+	if (logging::level()>=3)
+		static_cast<PedPomdp*>(model_)->PrintWorldState(*curr_state);
+
 	double acc;
 	double steer;
 
@@ -284,7 +289,13 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 	/* Collision: slow down the car */
 	int collision_peds_id;
-	if( curr_state->car.vel > 0.001 * time_scale_ && worldModel.inRealCollision(*curr_state,collision_peds_id) ) {
+
+	// if( curr_state->car.vel > 0.001 * time_scale_ && worldModel.inCollision(*curr_state,collision_peds_id) ) {
+	// 	cout << "--------------------------- pre-collision ----------------------------" << endl;
+	// 	cout << "pre-col ped: " << collision_peds_id<<endl;
+	// }
+	
+	if( curr_state->car.vel > 0.5 * time_scale_ && worldModel.inRealCollision(*curr_state,collision_peds_id, 120.0) ) {
 		cout << "--------------------------- collision = 1 ----------------------------" << endl;
 		cout << "collision ped: " << collision_peds_id<<endl;
 		
@@ -295,10 +306,6 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 
 	/* Publish action and step reward */
-	double step_reward=StepReward(*curr_state,action);
-	cout<<"action **= "<<action<<endl;
-	cout<<"reward **= "<<step_reward<<endl;
-	safeAction=action;
 
 //	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Publish action (for data collection)"<<endl;
 //	publishAction(action, step_reward);
@@ -349,7 +356,13 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 	publishCmdAction(buffered_action_);
 
-	publishImitationData(*curr_state, action, step_reward, target_speed_);
+	double step_reward=StepReward(*curr_state,buffered_action_);
+	cout<<"action **= "<<buffered_action_<<endl;
+	cout<<"reward **= "<<step_reward<<endl;
+	safeAction=action;
+
+
+	publishImitationData(*curr_state, buffered_action_, step_reward, target_speed_);
 
 	/* Receive observation.
 	 * Caution: obs info is not up-to-date here. Don't use it
@@ -975,7 +988,6 @@ bool car_data_ready = false;
 
 void WorldSimulator::update_il_car(const ped_is_despot::car_info::ConstPtr car) {
     if (b_update_il == true){
-    	p_IL_data.past_car = p_IL_data.cur_car;
     	p_IL_data.cur_car = *car;
     }
 
@@ -1008,8 +1020,8 @@ void WorldSimulator::update_il_car(const ped_is_despot::car_info::ConstPtr car) 
 	    ModelParams::CAR_WIDTH = ModelParams::CAR_WIDTH * 2;
 	    ModelParams::CAR_LENGTH = ModelParams::CAR_LENGTH * 2;
 		ModelParams::CAR_FRONT = ModelParams::CAR_LENGTH / 2.0;
-	    DEBUG(string_sprintf("car dimension: font = %f , rear = %f, width = %f\n", 
-	    	ModelParams::CAR_FRONT, ModelParams::CAR_REAR, ModelParams::CAR_WIDTH));
+	    // DEBUG(string_sprintf("car dimension: font = %f , rear = %f, width = %f\n", 
+	    	// ModelParams::CAR_FRONT, ModelParams::CAR_REAR, ModelParams::CAR_WIDTH));
 
 	    static_cast<const PedPomdp*>(model_)->InitGPUCarParams();
 
@@ -1027,7 +1039,6 @@ void WorldSimulator::update_il_car(const ped_is_despot::car_info::ConstPtr car) 
 
 void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float cmd_vel)
 {
-
 	// peds for publish
 	ped_is_despot::peds_info p_ped;
 	// only publish information for N_PED_IN peds for imitation learning
@@ -1035,36 +1046,38 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_T
 		ped_is_despot::ped_info ped;
         ped.ped_id = planning_state.agents[i].id;
         ped.ped_goal_id = planning_state.agents[i].intention;
-        ped.ped_speed = 1.2;
+        ped.ped_speed = planning_state.agents[i].vel.Length();
         ped.ped_pos.x = planning_state.agents[i].pos.x;
         ped.ped_pos.y = planning_state.agents[i].pos.y;
+        ped.heading = planning_state.agents[i].heading_dir;
+        ped.bb_x = planning_state.agents[i].bb_extent_x;
+        ped.bb_y = planning_state.agents[i].bb_extent_y;
         ped.ped_pos.z = 0;
         p_ped.peds.push_back(ped);
     }
 
-    p_IL_data.past_peds = p_IL_data.cur_peds;
     p_IL_data.cur_peds = p_ped;
 
 	// ped belief for pushlish
-	int i=0;
-	ped_is_despot::peds_believes pbs;	
-	for(auto & kv: beliefTracker->agent_beliefs)
-	{
-		ped_is_despot::ped_belief pb;
-		AgentBelief belief = kv.second;
-		pb.ped_x=belief.pos.x;
-		pb.ped_y=belief.pos.y;
-		pb.ped_id=belief.id;
-		for(auto & goal_probs : belief.prob_modes_goals)
-			for (auto v: goal_probs)
-				pb.belief_value.push_back(v);
-		pbs.believes.push_back(pb);
-	}
-	pbs.cmd_vel=stateTracker->carvel;
-	pbs.robotx=stateTracker->carpos.x;
-	pbs.roboty=stateTracker->carpos.y;
+	// int i=0;
+	// ped_is_despot::peds_believes pbs;	
+	// for(auto & kv: beliefTracker->agent_beliefs)
+	// {
+	// 	ped_is_despot::ped_belief pb;
+	// 	AgentBelief belief = kv.second;
+	// 	pb.ped_x=belief.pos.x;
+	// 	pb.ped_y=belief.pos.y;
+	// 	pb.ped_id=belief.id;
+	// 	for(auto & goal_probs : belief.prob_modes_goals)
+	// 		for (auto v: goal_probs)
+	// 			pb.belief_value.push_back(v);
+	// 	pbs.believes.push_back(pb);
+	// }
+	// pbs.cmd_vel=stateTracker->carvel;
+	// pbs.robotx=stateTracker->carpos.x;
+	// pbs.roboty=stateTracker->carpos.y;
 
-	p_IL_data.believes = pbs.believes;
+	// p_IL_data.believes = pbs.believes;
 
 
 	// action for publish

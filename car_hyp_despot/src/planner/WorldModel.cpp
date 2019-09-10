@@ -214,8 +214,10 @@ double CalculateGoalDir(const CarStruct& car, const COORD& goal){
 ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
 	logd << __FUNCTION__ << "] Get state info"<< endl;
 	const PomdpState *state=static_cast<const PomdpState*>(_state);
-	double mindist = numeric_limits<double>::infinity();
-	const COORD& carpos = state->car.pos;
+	double mindist_along = numeric_limits<double>::infinity();
+	double mindist_tang = numeric_limits<double>::infinity();
+    const COORD& carpos = state->car.pos;
+    double carheading = state->car.heading_dir;
 	double carvel = state->car.vel;
 
 	logd << __FUNCTION__ <<"] Calculate steering"<< endl;
@@ -228,34 +230,40 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
 	// Closest pedestrian in front
 	for (int i=0; i<state->num; i++) {
 		const AgentStruct & p = state->agents[i];
+
+        // if(::inRealCollision(p.pos.x, p.pos.y, state->car.pos.x, state->car.pos.y, state->car.heading_dir)){
+        //     mindist_along = 0;
+        //     break;
+        // }
+
 		if(!inFront(p.pos, state->car)) continue;
 
-		double d = Globals::POS_INFTY;
+        double d_along = COORD::DirectedDistance(carpos, p.pos, carheading);
+        double d_tang = COORD::DirectedDistance(carpos, p.pos, carheading + M_PI / 2.0);
 
-        if (p.type == AgentType::ped)
-            d = COORD::EuclideanDistance(carpos, p.pos);
-        else if (p.type == AgentType::car){
-            d = COORD::EuclideanDistance(carpos, p.pos) - 2.0; 
+        if (p.type == AgentType::car){
+            d_along = d_along - 2.0; 
+            d_tang = d_tang - 1.0;
         }
         
-		if (d >= 0 && d < mindist)
-			mindist = d;
+		mindist_along = min(mindist_along, d_along);
+        mindist_tang = min(mindist_tang, d_tang);
 	}
 
 	// TODO set as a param
 	logd << __FUNCTION__ <<"] Calculate min dist"<< endl;
-	if (mindist < 2/*3.5*/) {
+	if (mindist_along < 2/*3.5*/ || mindist_tang < 1.0) {
 		acceleration= (carvel <= 0.01) ? 0 : -ModelParams::AccSpeed;
 	}
-	else if (mindist < 4/*5*/) {
-		if (carvel > 1.0+1e-4) acceleration= -ModelParams::AccSpeed;
-		else if (carvel < 0.5-1e-4) acceleration= ModelParams::AccSpeed;
+	else if (mindist_along < 4/*5*/ && mindist_tang < 2.0) {
+		if (carvel > ModelParams::VEL_MAX/1.5 +1e-4) acceleration= -ModelParams::AccSpeed;
+		else if (carvel < ModelParams::VEL_MAX/2.0 -1e-4) acceleration= ModelParams::AccSpeed;
 		else acceleration= 0.0;
 	}
 	else
 		acceleration= carvel >= ModelParams::VEL_MAX-1e-4 ? 0 : ModelParams::AccSpeed;
 
-    acceleration = ModelParams::AccSpeed; // debugging
+    // acceleration = ModelParams::AccSpeed; // debugging
 
 	logd << __FUNCTION__ <<"] Calculate action ID"<< endl;
 	return PedPomdp::GetActionID(steering, acceleration);
@@ -272,13 +280,15 @@ enum {
 };
 
 
-bool WorldModel::inFront(const COORD ped_pos, const CarStruct car) const {
-    if(ModelParams::IN_FRONT_ANGLE_DEG >= 180.0) {
+bool WorldModel::inFront(const COORD ped_pos, const CarStruct car, double infront_angle_deg) const {
+    if (infront_angle_deg == -1)
+        infront_angle_deg = ModelParams::IN_FRONT_ANGLE_DEG;
+    if(infront_angle_deg >= 180.0) {
         // inFront check is disabled
         return true;
     }
+
 	double d0 = COORD::EuclideanDistance(car.pos, ped_pos);
-	//if(d0<=0) return true;
 	// if(d0 <= 0.7/*3.5*/) return true;
 	double dot = DotProduct(cos(car.heading_dir), sin(car.heading_dir),
 			ped_pos.x - car.pos.x, ped_pos.y - car.pos.y);
@@ -296,6 +306,8 @@ bool WorldModel::inFront(const COORD ped_pos, const CarStruct car) const {
  * Check whether M is in the safety zone
  */
 bool inCollision(double Px, double Py, double Cx, double Cy, double Ctheta, bool expand=true);
+bool inCarlaCollision(double ped_x, double ped_y, double car_x, double car_y, double Ctheta, double car_extent_x, double car_extent_y, bool flag=0);
+
 bool inRealCollision(double Px, double Py, double Cx, double Cy, double Ctheta, bool expand=true);
 std::vector<COORD> ComputeRect(COORD pos, double heading, double ref_to_front_side, double ref_to_back_side, double ref_front_side_angle, double ref_back_side_angle);
 bool InCollision(std::vector<COORD> rect_1, std::vector<COORD> rect_2);
@@ -308,7 +320,10 @@ bool WorldModel::inCollision(const PomdpState& state) {
         if (i >= state.num) 
             break;
         i++;
-        
+
+        if (!inFront(agent.pos, state.car))
+            continue;
+            
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
             if(::inCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y, state.car.heading_dir)) {
@@ -330,8 +345,12 @@ bool WorldModel::inCollision(const PomdpState& state) {
     return false;
 }
 
-bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id) {
+bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id, double infront_angle) {
     id=-1;
+    if (infront_angle == -1){
+        infront_angle = ModelParams::IN_FRONT_ANGLE_DEG;
+    }
+
     const COORD& car_pos = state.car.pos;
 
     int i = 0;
@@ -340,12 +359,14 @@ bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id) {
             break;
         i++;
 
+        if (!inFront(agent.pos, state.car, infront_angle))
+            continue;
+            
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
             if(::inRealCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y, state.car.heading_dir)) {
                 id=agent.id;
             }
-
         }
         else if (agent.type == AgentType::car){
             if (CheckCarWithVehicle(state.car, agent, 1)){
@@ -370,15 +391,21 @@ bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id) {
     return false;
 }
 
-bool WorldModel::inRealCollision(const PomdpStateWorld& state) {
+bool WorldModel::inRealCollision(const PomdpStateWorld& state, double infront_angle_deg) {
     const COORD& car_pos = state.car.pos;
-
     int id = -1;
+    if (infront_angle_deg == -1){
+        infront_angle_deg = ModelParams::IN_FRONT_ANGLE_DEG;
+    }
+
     int i = 0;
     for(auto& agent: state.agents) {
         if (i >= state.num) 
             break;
         i++;
+
+        if (!inFront(agent.pos, state.car, infront_angle_deg))
+            continue;
         
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
@@ -417,6 +444,9 @@ bool WorldModel::inCollision(const PomdpStateWorld& state) {
         if (i >= state.num) 
             break;
         i++;
+
+        if (!inFront(agent.pos, state.car))
+            continue;
         
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
@@ -449,16 +479,21 @@ bool WorldModel::inCollision(const PomdpState& state, int &id) {
             break;
         i++;
 
+        if (!inFront(agent.pos, state.car))
+            continue;
+
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
-            if(::inRealCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y, state.car.heading_dir)) {
+            if(::inCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y, state.car.heading_dir)) {
                 id=agent.id;
+                return true;
             }
 
         }
         else if (agent.type == AgentType::car){
-            if (CheckCarWithVehicle(state.car, agent, 1)){
+            if (CheckCarWithVehicle(state.car, agent, 0)){
                 id = agent.id;
+                return true;
             }
         }
         else{
@@ -466,8 +501,10 @@ bool WorldModel::inCollision(const PomdpState& state, int &id) {
         }
     }
 
-    if(CheckCarWithObstacles(state.car,0))
+    if(CheckCarWithObstacles(state.car,0)){
     	id = -2;  // with obstacles
+        return true;
+    }
 
     if (id != -1){
         return true;
@@ -486,15 +523,18 @@ bool WorldModel::inCollision(const PomdpStateWorld& state, int &id) {
             break;
         i++;
 
+        if (!inFront(agent.pos, state.car))
+            continue;
+
         if (agent.type == AgentType::ped){
             const COORD& pedpos = agent.pos;
-            if(::inRealCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y, state.car.heading_dir)) {
+            if(::inCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y, state.car.heading_dir)) {
                 id=agent.id;
             }
 
         }
         else if (agent.type == AgentType::car){
-            if (CheckCarWithVehicle(state.car, agent, 1)){
+            if (CheckCarWithVehicle(state.car, agent, 0)){
                 id = agent.id;
             }
         }
@@ -1906,6 +1946,7 @@ void WorldStateTracker::setPomdpPed(AgentStruct& agent, const Agent& src){
     agent.cross_dir = fetch_cross_dir(src);; // which path to take
     auto bb = fetch_bounding_box(src);
     agent.heading_dir = fetch_heading_dir(src);
+    // cout << __FUNCTION__ << ": type " << agent.type << ", heading "<< agent.heading_dir << endl;
 
     model.cal_bb_extents(agent, bb, agent.heading_dir);
 }
@@ -1930,6 +1971,8 @@ PomdpState WorldStateTracker::getPomdpState() {
 }
 
 PomdpStateWorld WorldStateTracker::getPomdpWorldState() {
+    // cout << __FUNCTION__  << endl;
+
 
     auto sorted_agents = getSortedAgents();
 
@@ -1955,6 +1998,7 @@ void AgentBelief::reset_belief(int new_size){
 
     if (new_size != prob_modes_goals[0].size()){
         for (auto& prob_goals: prob_modes_goals){ 
+            cout << "Resizing prob_goals to " << new_size << endl;
             prob_goals.resize(new_size);
         }
     }
@@ -2184,7 +2228,7 @@ void WorldBeliefTracker::printBelief() const {
 }
 
 PomdpState WorldBeliefTracker::text() const{
-	if (logging::level()>=3){
+	if (logging::level()>=4){
 		for(int i=0; i < sorted_beliefs.size() && i < min(20,ModelParams::N_PED_IN); i++) {
 			auto& p = *sorted_beliefs[i];
 			cout << "[WorldBeliefTracker::text] " << this << "->p:" << &p << endl;
@@ -2858,50 +2902,126 @@ bool WorldModel::CheckCarWithObstacles(const CarStruct& car, int flag){
 
 
 bool WorldModel::CheckCarWithVehicle(const CarStruct& car, const AgentStruct& veh, int flag) {
-    if (!inFront(veh.pos, car))
-        return false;
+    // if (!inFront(veh.pos, car, infront_angle_deg))
+    //     return false;
 
-    double side_margin, front_margin, back_margin;
+    // double side_margin, front_margin, back_margin;
 
-    // flag = 1; // debugging
-    if(flag == 1){ // real collision
-        side_margin = ModelParams::CAR_WIDTH / 2.0;
-        front_margin = ModelParams::CAR_FRONT;
-        back_margin = ModelParams::CAR_FRONT;   
-    }
-    else if (flag == 0) { // in search 
-        side_margin = ModelParams::CAR_WIDTH / 2.0 + CAR_SIDE_MARGIN;
-        front_margin = ModelParams::CAR_FRONT + CAR_FRONT_MARGIN;
-        back_margin = ModelParams::CAR_FRONT + CAR_SIDE_MARGIN;
-    }
+    // // flag = 1; // debugging
+    // if(flag == 1){ // real collision
+    //     side_margin = ModelParams::CAR_WIDTH / 2.0;
+    //     front_margin = ModelParams::CAR_FRONT;
+    //     back_margin = ModelParams::CAR_FRONT;   
+    // }
+    // else if (flag == 0) { // in search 
+    //     side_margin = ModelParams::CAR_WIDTH / 2.0 + CAR_SIDE_MARGIN;
+    //     front_margin = ModelParams::CAR_FRONT + CAR_FRONT_MARGIN;
+    //     back_margin = ModelParams::CAR_FRONT + CAR_SIDE_MARGIN;
+    // }
 
-    double ref_to_front_side = sqrt(front_margin*front_margin + side_margin*side_margin);
-    double ref_to_back_side = sqrt(back_margin*back_margin + side_margin*side_margin);
-    double ref_front_side_angle = atan(side_margin/front_margin);      
-    double ref_back_side_angle = atan(side_margin/back_margin);
+    // double ref_to_front_side = sqrt(front_margin*front_margin + side_margin*side_margin);
+    // double ref_to_back_side = sqrt(back_margin*back_margin + side_margin*side_margin);
+    // double ref_front_side_angle = atan(side_margin/front_margin);      
+    // double ref_back_side_angle = atan(side_margin/back_margin);
  
-    std::vector<COORD> car_rect = ::ComputeRect(car.pos, car.heading_dir, ref_to_front_side, ref_to_back_side,
-        ref_front_side_angle, ref_back_side_angle);
+    // std::vector<COORD> car_rect = ::ComputeRect(car.pos, car.heading_dir, ref_to_front_side, ref_to_back_side,
+    //     ref_front_side_angle, ref_back_side_angle);
 
-    side_margin = veh.bb_extent_x;
-    front_margin = veh.bb_extent_y;
-    back_margin = veh.bb_extent_y;
+    // side_margin = veh.bb_extent_x;
+    // front_margin = veh.bb_extent_y;
+    // back_margin = veh.bb_extent_y;
 
-    ref_to_front_side = sqrt(front_margin*front_margin + side_margin*side_margin);
-    ref_to_back_side = sqrt(back_margin*back_margin + side_margin*side_margin);
-    ref_front_side_angle = atan(side_margin/front_margin);      
-    ref_back_side_angle = atan(side_margin/back_margin);
+    // ref_to_front_side = sqrt(front_margin*front_margin + side_margin*side_margin);
+    // ref_to_back_side = sqrt(back_margin*back_margin + side_margin*side_margin);
+    // ref_front_side_angle = atan(side_margin/front_margin);      
+    // ref_back_side_angle = atan(side_margin/back_margin);
  
-    std::vector<COORD> veh_rect = ::ComputeRect(veh.pos, veh.heading_dir, ref_to_front_side, ref_to_back_side,
-        ref_front_side_angle, ref_back_side_angle);
+    // std::vector<COORD> veh_rect = ::ComputeRect(veh.pos, veh.heading_dir, ref_to_front_side, ref_to_back_side,
+    //     ref_front_side_angle, ref_back_side_angle);
 
-    return ::InCollision(car_rect, veh_rect);
+    // return ::InCollision(car_rect, veh_rect);
     
     // bool result = false;
     
-    // COORD tan_dir(-sin(veh.heading_dir), cos(veh.heading_dir));
-    // COORD along_dir(cos(veh.heading_dir), sin(veh.heading_dir));
-    
+    COORD tan_dir(-sin(veh.heading_dir), cos(veh.heading_dir));
+    COORD along_dir(cos(veh.heading_dir), sin(veh.heading_dir));
+
+    COORD test;
+
+    bool result = false;
+    test = veh.pos + tan_dir * veh.bb_extent_x + along_dir * veh.bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, ModelParams::CAR_WIDTH/2.0, ModelParams::CAR_FRONT, flag)){
+        // return true;
+        result = true;
+    }
+    test = veh.pos - tan_dir * veh.bb_extent_x + along_dir * veh.bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, ModelParams::CAR_WIDTH/2.0, ModelParams::CAR_FRONT, flag)){
+        // return true;
+        result = true;
+    }
+    test = veh.pos + tan_dir * veh.bb_extent_x - along_dir * veh.bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, ModelParams::CAR_WIDTH/2.0, ModelParams::CAR_FRONT, flag)){
+        // return true;
+        result = true;
+    }
+    test = veh.pos - tan_dir * veh.bb_extent_x - along_dir * veh.bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, ModelParams::CAR_WIDTH/2.0, ModelParams::CAR_FRONT, flag)){
+        // return true;
+        result = true;
+    }
+
+    tan_dir = COORD(-sin(car.heading_dir), cos(car.heading_dir));
+    along_dir = COORD(cos(car.heading_dir), sin(car.heading_dir));
+
+    test = car.pos + tan_dir * (ModelParams::CAR_WIDTH/2.0) + along_dir * ModelParams::CAR_FRONT;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh.bb_extent_x, veh.bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+    test = car.pos - tan_dir * (ModelParams::CAR_WIDTH/2.0) + along_dir * ModelParams::CAR_FRONT;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh.bb_extent_x, veh.bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+    test = car.pos + tan_dir * (ModelParams::CAR_WIDTH/2.0) - along_dir * ModelParams::CAR_FRONT;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh.bb_extent_x, veh.bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+    test = car.pos - tan_dir * (ModelParams::CAR_WIDTH/2.0) - along_dir * ModelParams::CAR_FRONT;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh.bb_extent_x, veh.bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+
+    // return false;
+
+    if (flag == 1 && result){
+        cout << "collision point";
+        cout << " "<< veh.pos.x << " " << veh.pos.y;
+        test = veh.pos + tan_dir * veh.bb_extent_x + along_dir * veh.bb_extent_y;
+        cout << " "<< test.x << " " << test.y;
+        test = veh.pos - tan_dir * veh.bb_extent_x + along_dir * veh.bb_extent_y;
+        cout << " "<< test.x << " " << test.y;
+        test = veh.pos + tan_dir * veh.bb_extent_x - along_dir * veh.bb_extent_y;
+        cout << " "<< test.x << " " << test.y;
+        test = veh.pos - tan_dir * veh.bb_extent_x - along_dir * veh.bb_extent_y;
+        cout << " "<< test.x << " " << test.y;
+
+        cout << " "<< car.pos.x << " " << car.pos.y;
+        test = car.pos + tan_dir * (ModelParams::CAR_WIDTH/2.0) + along_dir * ModelParams::CAR_FRONT;
+        cout << " "<< test.x << " " << test.y;
+        test = car.pos - tan_dir * (ModelParams::CAR_WIDTH/2.0) + along_dir * ModelParams::CAR_FRONT;
+        cout << " "<< test.x << " " << test.y;
+        test = car.pos + tan_dir * (ModelParams::CAR_WIDTH/2.0) - along_dir * ModelParams::CAR_FRONT;
+        cout << " "<< test.x << " " << test.y;
+        test = car.pos - tan_dir * (ModelParams::CAR_WIDTH/2.0) - along_dir * ModelParams::CAR_FRONT;
+        cout << " "<< test.x << " " << test.y << endl;
+    }
+
+    return result;
+
+
     // result = result || CheckCarWithObsLine(car, 
     //     veh.pos + tan_dir * veh.bb_extent_x, veh.pos + along_dir * veh.bb_extent_y, flag);
     // result = result || CheckCarWithObsLine(car, 
@@ -2930,11 +3050,11 @@ bool WorldModel::CheckCarWithObsLine(const CarStruct& car, COORD start_point, CO
 		double nx = sx + dx*u;
 		double ny = sy + dy*u;
 
-		if (flag ==0){
+		if (flag == 0){
 			if(::inCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir, false))
 				return true;
 		}
-		else{
+		else if (flag == 1){
 			if(::inRealCollision(nx, ny, car.pos.x, car.pos.y, car.heading_dir, false))
 				return true;
 		}

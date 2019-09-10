@@ -14,7 +14,7 @@ except IndexError:
 import carla
 import random
 
-#map_location = "map" # NUS 
+# map_location = "map" # NUS 
 map_location = "meskel_square"
 
 class Drunc(object):
