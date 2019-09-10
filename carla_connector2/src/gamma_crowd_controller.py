@@ -577,7 +577,11 @@ class GammaCrowdController(Drunc):
         
         next_agents = []
         for (i, crowd_agent) in enumerate(self.network_car_agents + self.network_bike_agents + self.sidewalk_agents):
-            if not self.in_ego_bounds(crowd_agent.get_position()) or crowd_agent.get_position3D().z < -10:
+            delete = not self.in_ego_bounds(crowd_agent.get_position()) or \
+                crowd_agent.get_position3D().z < -10 or \
+                (type(crowd_agent) is not CrowdSidewalkAgent and \
+                    not self.network_occupancy_map.contains(crowd_agent.get_position()))
+            if delete:
                 next_agents.append(None)
                 self.gamma.set_agent_position(i, default_agent_pos)
                 self.gamma.set_agent_pref_velocity(i, carla.Vector2D(0, 0))
