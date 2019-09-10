@@ -349,6 +349,10 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
+	if (p.getlength() < 15.0){
+		ERR("Path length shorter than 15 meters.");
+	}
+
 	// cout << "Path start " << p[0] << " end " << p.back() << endl;
 
 	COORD path_end_from_goal = p.back() - COORD(goalx_, goaly_);
