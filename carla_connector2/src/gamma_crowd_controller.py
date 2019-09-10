@@ -460,197 +460,21 @@ class GammaCrowdController(Drunc):
         else:
             return None
 
-    def compute_intersection_of_two_lines(self, ps, pe, qs, qe):
-        ## implement based on http://www.cs.swan.ac.uk/~cssimon/line_intersection.html
-        denominator = (qe.x - qs.x) * (ps.y - pe.y) - (ps.x - pe.x) * (qe.y - qs.y)
-        if denominator == 0:
-            return None
-
-        tp = ((qs.y - qe.y) * (ps.x - qs.x) + (qe.x - qs.x) * (ps.y - qs.y)) / denominator
-        tq = ((ps.y - pe.y) * (ps.x - qs.x) + (pe.x - ps.x) * (ps.y - qs.y) ) / denominator
-        if tp >= 0 and tp <= 1 and tq >= 0 and tq <= 1:
-            return ps + tp * (pe - ps)
-
-        return None
-
-    def compute_intersections(self, rect, lane):
-        points_in_rect = [] 
-        intersections = []
-
-        for i in range(len(rect)-1):
-            start = rect[i]
-            end = rect[i+1]
-            intersect = self.compute_intersection_of_two_lines(start, end, lane[0], lane[1])
-            if intersect is not None:
-                if intersect not in intersections:
-                    intersections.append(intersect)
-
-        start = rect[len(rect)-1]
-        end = rect[0]
-        intersect = self.compute_intersection_of_two_lines(start, end, lane[0], lane[1])
-        if intersect is not None:
-            if intersect not in intersections:
-                intersections.append(intersect)
-
-        if self.in_polygon(lane[0], rect):
-            points_in_rect.append(lane[0])
-
-        if self.in_polygon(lane[1], rect):
-            points_in_rect.append(lane[1])
-
-        return points_in_rect, intersections
-
-    # def compute_intersections(self, rect, lane):
-    #     points_in_rect = [] 
-    #     intersections = []
-
-    #     for i in range(len(rect)-1):
-    #         start = rect[i]
-    #         end = rect[i+1]
-    #         intersect = self.compute_intersection_of_two_lines(start, end, lane[0], lane[1])
-    #         if intersect is not None:
-    #             if lane[0] not in points_in_rect:
-    #                 if self.left_of(start, end, lane[0]):
-    #                     points_in_rect.append(lane[0])
-    #             if lane[1] not in points_in_rect:
-    #                 if self.left_of(start, end, lane[1]):
-    #                     points_in_rect.append(lane[1])
-    #             if intersect not in intersections:
-    #                 intersections.append(intersect)
-
-    #     start = rect[len(rect)-1]
-    #     end = rect[0]
-    #     intersect = self.compute_intersection_of_two_lines(start, end, lane[0], lane[1])
-    #     if intersect is not None:
-    #         if lane[0] not in points_in_rect:
-    #             if self.left_of(start, end, lane[0]):
-    #                 points_in_rect.append(lane[0])
-    #         if lane[1] not in points_in_rect:
-    #             if self.left_of(start, end, lane[1]):
-    #                 points_in_rect.append(lane[1])
-    #         if intersect not in intersections:
-    #             intersections.append(intersect)
-
-
-    #     return points_in_rect, intersections
-
-
-    def get_feasible_lanes(self, intersecting_lanes, center_pos = None, spawn_size_min = 100, spawn_size_max = 150):
-
-        if intersecting_lanes == []:
-            return []
-
-        if center_pos is None:
-            center_pos = self.get_ego_pos()
-            if center_pos is None:
-                return []
-
-        rect_list = []
-        corners = []
-        corners.append(carla.Vector2D(center_pos.x-spawn_size_min, center_pos.y-spawn_size_max))
-        corners.append(carla.Vector2D(center_pos.x-spawn_size_min, center_pos.y-spawn_size_min))
-        corners.append(carla.Vector2D(center_pos.x+spawn_size_max, center_pos.y-spawn_size_min))
-        corners.append(carla.Vector2D(center_pos.x+spawn_size_max, center_pos.y-spawn_size_max))
-        rect_list.append(corners)
-
-        corners = []
-        corners.append(carla.Vector2D(center_pos.x-spawn_size_min, center_pos.y-spawn_size_max))
-        corners.append(carla.Vector2D(center_pos.x-spawn_size_max, center_pos.y-spawn_size_max))
-        corners.append(carla.Vector2D(center_pos.x-spawn_size_max, center_pos.y+spawn_size_min))
-        corners.append(carla.Vector2D(center_pos.x-spawn_size_min, center_pos.y+spawn_size_min))
-        rect_list.append(corners)
-
-
-        corners = []
-        corners.append(carla.Vector2D(center_pos.x-spawn_size_max, center_pos.y+spawn_size_min))
-        corners.append(carla.Vector2D(center_pos.x-spawn_size_max, center_pos.y+spawn_size_max))
-        corners.append(carla.Vector2D(center_pos.x+spawn_size_min, center_pos.y+spawn_size_max))
-        corners.append(carla.Vector2D(center_pos.x+spawn_size_min, center_pos.y+spawn_size_min))
-        rect_list.append(corners)
-
-
-        corners = []
-        corners.append(carla.Vector2D(center_pos.x+spawn_size_min, center_pos.y+spawn_size_max))
-        corners.append(carla.Vector2D(center_pos.x+spawn_size_max, center_pos.y+spawn_size_max))
-        corners.append(carla.Vector2D(center_pos.x+spawn_size_max, center_pos.y-spawn_size_min))
-        corners.append(carla.Vector2D(center_pos.x+spawn_size_min, center_pos.y-spawn_size_min))
-        rect_list.append(corners)
-
-
-        feasible_lane_list = []
-        for lane in intersecting_lanes:
-            for rect in rect_list:
-                points_in_rect, intersections = self.compute_intersections(rect, lane)
-
-                num_intersections = len(intersections)
-                if num_intersections == 2:
-                    feasible_lane_list.append([intersections[0], intersections[1]])
-                elif num_intersections == 1:
-                    if len(points_in_rect) == 1: # len(points_in_rect) could be zero if the point is the vertice of rect
-                        feasible_lane_list.append([points_in_rect[0], intersections[0]])
-                elif num_intersections == 0:
-                    if len(points_in_rect) == 2: # len(points_in_rect) could be zero if the lane is outside rect
-                        feasible_lane_list.append([points_in_rect[0], points_in_rect[1]])
-                # if num_intersections > 2: #lane is overlapping with one edge of rect
-                #     continue
-               
-        return feasible_lane_list
-
-    def get_bounds(self, center_pos = None, spawn_size = 150):
-
-        if center_pos is None:
-            center_pos = self.get_ego_pos()
-            if center_pos is None:
-                return None
-        bounds_min = carla.Vector2D(center_pos.x - spawn_size, center_pos.y - spawn_size)
-        bounds_max = carla.Vector2D(center_pos.x + spawn_size, center_pos.y + spawn_size)
-
-        return (bounds_min, bounds_max)
-
-    def get_intersecting_lanes(self, center_pos = None, spawn_size = 150):
-        bounds = self.get_bounds(center_pos, spawn_size)
-        if bounds is None:
-            return []
-        intersecting_lanes = self.network.query_intersect(*bounds)
-        intersecting_lanes = [
-                (
-                    self.network.edges[rp.edge].lanes[rp.lane].shape[rp.segment],
-                    self.network.edges[rp.edge].lanes[rp.lane].shape[rp.segment + 1]
-                ) for rp in intersecting_lanes]
-        return intersecting_lanes
-
-    def get_lane_prob_list(self, feasible_lane_list):
-        dist_total = 0.0
-        prob_list = []
-        for lane in feasible_lane_list:
-            dist = (lane[0]-lane[1]).length()
-            prob_list.append(dist)
-            dist_total += dist
-
-        for i in range(len(prob_list)):
-            prob_list[i] /= dist_total
-
-        return prob_list
-
     def in_ego_bounds(self, point):
         bounds_min, bounds_max = self.get_spawn_range()
 
         return bounds_min.x <= point.x <= bounds_max.x and \
                bounds_min.y <= point.y <= bounds_max.y
 
+    def get_spawn_occupancy_map(self, center_pos, spawn_size_min, spawn_size_max):
+        return carla.OccupancyMap(
+                carla.Vector2D(center_pos.x - spawn_size_max, center_pos.y - spawn_size_max),
+                carla.Vector2D(center_pos.x + spawn_size_max, center_pos.y + spawn_size_max)) \
+            .difference(carla.OccupancyMap(
+                carla.Vector2D(center_pos.x - spawn_size_min, center_pos.y - spawn_size_min),
+                carla.Vector2D(center_pos.x + spawn_size_min, center_pos.y + spawn_size_min)))
 
     def update(self):
-        # self.center_pos = carla.Vector2D(450, 400)
-        # spawn_size_min = 10
-        # spawn_size_max = 200
-        # self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max)
-        # self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, center_pos = self.center_pos, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
-
-        # for lane in self.feasible_lane_list:
-        #     self.draw_line(lane[0], lane[1] - lane[0], carla.Color (255,0,0))
-
-        # self.lane_prob_list = self.get_lane_prob_list(self.feasible_lane_list)
-        # self.initialized = True
         if not self.initialized: ## the first time
             if self.ego_actor is None:
                 self.center_pos = carla.Vector2D(450, 400)
@@ -659,9 +483,6 @@ class GammaCrowdController(Drunc):
             spawn_size_min = 0
             spawn_size_max = 150 #100
 
-            self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max)
-            self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, center_pos = self.center_pos, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
-            self.lane_prob_list = self.get_lane_prob_list(self.feasible_lane_list)
             self.initialized = True
         else:
             if self.ego_actor is None:
@@ -670,18 +491,11 @@ class GammaCrowdController(Drunc):
                 self.center_pos = self.get_ego_pos()
             spawn_size_min = 100#10 #150
             spawn_size_max = 150#50 #200
-            spawn_min, spawn_max = self.get_spawn_range()
-            self.intersecting_lanes = self.get_intersecting_lanes(center_pos = self.center_pos, spawn_size = spawn_size_max )
-            self.feasible_lane_list = self.get_feasible_lanes(self.intersecting_lanes, center_pos = self.center_pos, spawn_size_min = spawn_size_min, spawn_size_max = spawn_size_max)
-            self.lane_prob_list = self.get_lane_prob_list(self.feasible_lane_list)
+
+        spawn_segment_map = self.network_segment_map.intersection(self.get_spawn_occupancy_map(self.center_pos, spawn_size_min, spawn_size_max))
 
         while len(self.network_car_agents) < self.num_network_car_agents:
-            path = None
-            if len(self.feasible_lane_list) == 0:
-                spawn_min, spawn_max = self.get_spawn_range() 
-                path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
-            else:
-                path = NetworkAgentPath.rand_path_fron_feasible_lanes(self, self.path_min_points, self.path_interval, self.feasible_lane_list, prob_list = self.lane_prob_list)
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
@@ -698,12 +512,7 @@ class GammaCrowdController(Drunc):
                     5.0 + random.uniform(0.0, 0.5)))
         
         while len(self.network_bike_agents) < self.num_network_bike_agents:
-            path = None
-            if len(self.feasible_lane_list) == 0:
-                spawn_min, spawn_max = self.get_spawn_range() 
-                path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
-            else:
-                path = NetworkAgentPath.rand_path_fron_feasible_lanes(self, self.path_min_points, self.path_interval, self.feasible_lane_list, prob_list = self.lane_prob_list)
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
