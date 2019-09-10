@@ -473,6 +473,13 @@ class GammaCrowdController(Drunc):
         else:
             return self.map_bounds_min, self.map_bounds_max 
 
+    def find_ego_actor(self):
+        if self.ego_actor is None:
+            for actor in self.world.get_actors():
+                if actor.attributes.get('role_name') == 'ego_vehicle':
+                    self.ego_actor = actor
+                    break
+
     def get_ego_pos(self):
         self.find_ego_actor()
         if self.ego_actor is not None:
