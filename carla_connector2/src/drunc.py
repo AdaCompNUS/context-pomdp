@@ -35,6 +35,7 @@ class Drunc(object):
         # Create network related objects.
         self.network = carla.SumoNetwork.load(carla_root + 'Data/' + map_location + '.net.xml')
         self.network_occupancy_map = carla.OccupancyMap.load(carla_root + 'Data/' + map_location + '.wkt')
+        self.network_segment_map = self.network.create_segment_map()
 
         with open(carla_root + 'Data/' + map_location + '.mesh', 'r') as file:
             network_mesh_data = file.read()
@@ -79,12 +80,6 @@ class Drunc(object):
         return carla.Vector2D(
                 random.uniform(bounds_min.x, bounds_max.x),
                 random.uniform(bounds_min.y, bounds_max.y))
-
-    def rand_network_route_point(self, bounds_min=None, bounds_max=None):
-        point = self.network.get_nearest_route_point(self.rand_bounds_point(bounds_min, bounds_max))
-        while not self.in_bounds(self.network.get_route_point_position(point)):
-            point = self.network.get_nearest_route_point(self.rand_bounds_point())
-        return point
 
     def rand_sidewalk_route_point(self, bounds_min=None, bounds_max=None):
         point = self.sidewalk.get_nearest_route_point(self.rand_bounds_point(bounds_min, bounds_max))

@@ -10,46 +10,20 @@ class NetworkAgentPath:
         self.route_points = []
 
     @staticmethod
-    def rand_path(drunc, min_points, interval, bounds_min=None, bounds_max=None):
+    def rand_path(drunc, min_points, interval, segment_map=None):
+        if segment_map is None:
+            segment_map = drunc.network_segment_map
+
         spawn_point = None
         route_paths = None
         while not spawn_point or len(route_paths) < 1:
-            spawn_point = drunc.rand_network_route_point(bounds_min, bounds_max)
+            spawn_point = segment_map.rand_point()
+            spawn_point = drunc.network.get_nearest_route_point(spawn_point)
             route_paths = drunc.network.get_next_route_paths(spawn_point, min_points - 1, interval)
 
         path = NetworkAgentPath(drunc, min_points, interval)
         path.route_points = random.choice(route_paths)
         return path
-
-    @staticmethod
-    def rand_from_prob(prob_list):
-        r = random.uniform(0.0, 1.0);
-        i = 0
-        r -= prob_list[i]
-        while r>0:
-            i += 1
-            r -= prob_list[i]
-        return i
-
-    @staticmethod
-    def rand_path_fron_feasible_lanes(drunc, min_points, interval, feasible_lane_list, prob_list = None):
-        spawn_point = None
-        route_paths = None
-        lane = None
-        while not spawn_point or len(route_paths) < 1:
-            if prob_list is None:
-                lane = random.choice(feasible_lane_list)
-            else:
-                lane = feasible_lane_list[NetworkAgentPath.rand_from_prob(prob_list)]
-            spawn_point = lane[0] + random.uniform(0.0, 1.0) * (lane[1] - lane[0]) ## Vector2D
-            spawn_point = drunc.network.get_nearest_route_point(spawn_point) ## change to route point
-            route_paths = drunc.network.get_next_route_paths(spawn_point, min_points - 1, interval)
-
-        path = NetworkAgentPath(drunc, min_points, interval)
-        path.route_points = random.choice(route_paths)
-        return path
-
-
 
     def resize(self):
         while len(self.route_points) < self.min_points:
