@@ -39,7 +39,7 @@ class CrowdAgent(object):
     def __init__(self, actor, preferred_speed):
         self.actor = actor
         self.preferred_speed = preferred_speed
-        self.actor.set_collision_enabled(False) ## to check. Disable collision will generate vehicles that are overlapping
+        self.actor.set_collision_enabled(True) ## to check. Disable collision will generate vehicles that are overlapping
     
     def get_id(self):
         return self.actor.id
@@ -64,6 +64,9 @@ class CrowdAgent(object):
     
     def get_position3D(self):
         return self.actor.get_location()
+
+    def disable_collision(self):
+        self.actor.set_collision_enabled(False)
 
 
 class CrowdNetworkAgent(CrowdAgent):
@@ -456,6 +459,10 @@ class GammaCrowdController(Drunc):
         return bounds_min.x <= point.x <= bounds_max.x and \
                bounds_min.y <= point.y <= bounds_max.y
 
+    def no_collision(self):
+        for (i, crowd_agent) in enumerate(self.network_car_agents + self.network_bike_agents + self.sidewalk_agents):
+            crowd_agent.disable_collision()
+         
     def get_spawn_occupancy_map(self, center_pos, spawn_size_min, spawn_size_max):
         return carla.OccupancyMap(
                 carla.Vector2D(center_pos.x - spawn_size_max, center_pos.y - spawn_size_max),
@@ -586,7 +593,11 @@ class GammaCrowdController(Drunc):
                 commands.append(carla.command.DestroyActor(crowd_agent.actor.id))
 
         # start = timeit.default_timer()
-        self.gamma.do_step()
+        try:
+            self.gamma.do_step()
+        except Exception as e:
+            print(e)
+
         # run_time = timeit.default_timer() - start
         # print("dostep ======================")
         # print(run_time)
@@ -639,6 +650,7 @@ class GammaCrowdController(Drunc):
         self.sidewalk_agents = [a for a in next_agents if a and type(a) is CrowdSidewalkAgent]
         
         self.client.apply_batch(commands)
+
         self.world.wait_for_tick(5.0)
 
         network_agents_msg = carla_connector2.msg.CrowdNetworkAgentArray()
@@ -671,6 +683,7 @@ class GammaCrowdController(Drunc):
 if __name__ == '__main__':
     rospy.init_node('gamma_crowd_controller')
     rospy.wait_for_message("/meshes_spawned", Bool)
+    rospy.wait_for_message("/IL_car_info", CarInfo)
 
     gamma_crowd_controller = GammaCrowdController()
 
@@ -678,6 +691,7 @@ if __name__ == '__main__':
     #rate = rospy.Rate(5)
     while not rospy.is_shutdown():
         gamma_crowd_controller.update()
+        gamma_crowd_controller.no_collision()
         rate.sleep()
 
     gamma_crowd_controller.dispose()
