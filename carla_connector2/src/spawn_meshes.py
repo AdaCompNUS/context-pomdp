@@ -15,15 +15,31 @@ class SpawnMeshes(Drunc):
 
 
         print('Spawning meshes...')
+
         commands = [];
+        
+        # Ground plane.
+        if self.network is not None:
+            commands.append(carla.command.SpawnDynamicMesh(
+                carla.OccupancyMap(self.network.bounds_min, self.network.bounds_max) \
+                    .difference(self.network_occupancy_map) \
+                    .difference(self.sidewalk_occupancy_map) \
+                    .get_mesh_triangles(),
+                '/Game/Carla/Static/Road/RoadsMichiganLeft/Assets_Materials_Grass1.Assets_Materials_Grass1'))
+
+        # Network occupancy map.
         if self.network_occupancy_map_mesh_triangles is not None:
             commands.append(carla.command.SpawnDynamicMesh(
                 self.network_occupancy_map_mesh_triangles,
                 '/Game/Carla/Static/GenericMaterials/Masters/LowComplexity/M_Road1'))
+
+        # Sidewalk occupancy.
         if self.sidewalk_occupancy_map_mesh_triangles is not None:
             commands.append(carla.command.SpawnDynamicMesh(
                 self.sidewalk.create_occupancy_map(3.0).get_mesh_triangles(),
                 '/Game/Carla/Static/GenericMaterials/Ground/GroundWheatField_Mat'))
+
+        # Landmarks.
         if self.landmarks is not None:
             for l in self.landmarks:
                 commands.append(carla.command.SpawnDynamicMesh(

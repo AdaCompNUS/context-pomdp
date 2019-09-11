@@ -233,11 +233,7 @@ class GammaCrowdController(Drunc):
         self.sidewalk_agents = []
         self.gamma = carla.RVOSimulator()
         self.ego_actor = None
-
-        while self.ego_actor is None:
-            for actor in self.world.get_actors():
-                if actor.attributes.get('role_name') == 'ego_vehicle':
-                    self.ego_actor = actor
+        self.initialized = False
 
         self.walker_blueprints = self.world.get_blueprint_library().filter("walker.pedestrian.*")
         self.vehicles_blueprints = self.world.get_blueprint_library().filter('vehicle.*')
@@ -262,7 +258,6 @@ class GammaCrowdController(Drunc):
                 CarInfo,
                 self.il_car_info_callback,
                 queue_size=1)
-        self.initialized = False
 
         for i in range(self.num_network_car_agents):
             self.gamma.add_agent(carla.AgentParams.get_default('Car'), i)
@@ -276,16 +271,8 @@ class GammaCrowdController(Drunc):
         # For ego vehicle.
         self.gamma.add_agent(carla.AgentParams.get_default('Car'), self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents)
 
-        adding_obstacle = True
-        if(adding_obstacle):
-            self.add_obstacles()
-
-    def add_obstacles(self):
-        polygon_map = carla.OccupancyMap(self.map_bounds_min, self.map_bounds_max)
-        polygon_map = polygon_map.difference(self.network_occupancy_map)
-        for triangle in polygon_map.get_triangles():
+        for triangle in carla.OccupancyMap(self.scenario_min, self.scenario_max).difference(self.network_occupancy_map).get_triangles():
             self.gamma.add_obstacle([triangle.v2, triangle.v1, triangle.v1])
-        
         self.gamma.process_obstacles()
 
     def get_bounding_box_corners(self, actor, expand = 0.0):
@@ -327,8 +314,6 @@ class GammaCrowdController(Drunc):
             self.gamma.set_agent_heading(i, carla.Vector2D(
                 math.cos(self.ego_car_info.car_yaw),
                 math.sin(self.ego_car_info.car_yaw)))
-            # self.gamma.set_agent_bounding_box_corners(i, 
-                    # [carla.Vector2D(v.x, v.y) for v in self.ego_car_info.car_bbox.points])
             self.find_ego_actor()
             self.gamma.set_agent_bounding_box_corners(i, self.get_bounding_box_corners(self.ego_actor, 0.5))
             self.gamma.set_agent_pref_velocity(i, carla.Vector2D(
@@ -341,7 +326,6 @@ class GammaCrowdController(Drunc):
             self.gamma.set_agent_bounding_box_corners(i, default_agent_bbox)
     
     def det(self, vector1, vector2):
-        #return vector1.x * vector2.y - vector1.y * vector2.x;
         return vector1.y * vector2.x - vector1.x * vector2.y
 
     def left_of(self, a, b, c): ## if c is at the left side of vector ab, then return Ture, False otherwise
@@ -382,7 +366,6 @@ class GammaCrowdController(Drunc):
 
     def get_lane_constraints_by_vehicle(self, position, forward_vec):
         sidewalk_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction. (rotating clockwise by 90 deg)
-
         
         lookahead_x = 20
         lookahead_y = 6
@@ -395,7 +378,6 @@ class GammaCrowdController(Drunc):
 
         #self.draw_box(right_region_corners)
 
-
         left_region_corners = []
         left_region_corners.append(position)
         left_region_corners.append(position + lookahead_x*forward_vec)
@@ -406,8 +388,6 @@ class GammaCrowdController(Drunc):
 
         left_lane_constrained_by_vehicle = False
         right_lane_constrained_by_vehicle = False
-
-
 
         for crowd_agent in self.network_bike_agents: # + self.sidewalk_agents:
             pos_agt = crowd_agent.get_position()
@@ -456,22 +436,14 @@ class GammaCrowdController(Drunc):
         #return left_lane_constrained_by_sidewalk or left_lane_constrained_by_vehicle, right_lane_constrained_by_sidewalk or right_lane_constrained_by_vehicle
         return left_lane_constrained_by_sidewalk, right_lane_constrained_by_sidewalk
 
-    def get_spawn_range(self, spawn_size = 150, center_pos = None):
-        # if it has specified the center position for spawnning the agents
-
-        if center_pos is None:
-            center_pos = self.get_ego_pos()
-
-        if center_pos is not None:
-            spawn_min = carla.Vector2D(
-                max(self.map_bounds_min.x, center_pos.x - spawn_size), 
-                max(self.map_bounds_min.y, center_pos.y - spawn_size))
-            spawn_max = carla.Vector2D(
-                min(self.map_bounds_max.x, center_pos.x + spawn_size),
-                min(self.map_bounds_max.y, center_pos.y + spawn_size))
-            return spawn_min, spawn_max
-        else:
-            return self.map_bounds_min, self.map_bounds_max 
+    def get_spawn_range(self, center, size):
+        spawn_min = carla.Vector2D(
+            center.x - size, 
+            center.y - size)
+        spawn_max = carla.Vector2D(
+            center.x + size,
+            center.y + size)
+        return (spawn_min, spawn_max)
 
     def find_ego_actor(self):
         if self.ego_actor is None:
@@ -480,17 +452,7 @@ class GammaCrowdController(Drunc):
                     self.ego_actor = actor
                     break
 
-    def get_ego_pos(self):
-        self.find_ego_actor()
-        if self.ego_actor is not None:
-            ego_position = self.ego_actor.get_location()
-            return carla.Vector2D(ego_position.x, ego_position.y)
-        else:
-            return None
-
-    def in_ego_bounds(self, point):
-        bounds_min, bounds_max = self.get_spawn_range()
-
+    def check_bounds(self, point, bounds_min, bounds_max):
         return bounds_min.x <= point.x <= bounds_max.x and \
                bounds_min.y <= point.y <= bounds_max.y
 
@@ -503,24 +465,28 @@ class GammaCrowdController(Drunc):
                 carla.Vector2D(center_pos.x + spawn_size_min, center_pos.y + spawn_size_min)))
 
     def update(self):
-        if not self.initialized: ## the first time
-            if self.ego_actor is None:
-                self.center_pos = carla.Vector2D(450, 400)
-            else:
-                self.center_pos = self.get_ego_pos()
-            spawn_size_min = 0
-            spawn_size_max = 150 #100
+        # Check for ego actor.
+        self.find_ego_actor() 
 
+        # Determine bounds variables.
+        if self.ego_actor is None:
+            bounds_center = self.scenario_center
+            bounds_min = self.scenario_min
+            bounds_max = self.scenario_max
+        else:
+            bounds_center = carla.Vector2D(self.ego_actor.get_location().x, self.ego_actor.get_location().y)
+            bounds_min = bounds_center + carla.Vector2D(-150, -150)
+            bounds_max = bounds_center + carla.Vector2D(150, 150)
+        
+        # Determine spawning variables.
+        if not self.initialized:
+            spawn_size_min = 0
+            spawn_size_max = 150
             self.initialized = True
         else:
-            if self.ego_actor is None:
-                self.center_pos = carla.Vector2D(450, 400)
-            else:
-                self.center_pos = self.get_ego_pos()
-            spawn_size_min = 100#10 #150
-            spawn_size_max = 150#50 #200
-
-        spawn_segment_map = self.network_segment_map.intersection(self.get_spawn_occupancy_map(self.center_pos, spawn_size_min, spawn_size_max))
+            spawn_size_min = 100
+            spawn_size_max = 150
+        spawn_segment_map = self.network_segment_map.intersection(self.get_spawn_occupancy_map(bounds_center, spawn_size_min, spawn_size_max))
 
         while len(self.network_car_agents) < self.num_network_car_agents:
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map)
@@ -557,7 +523,7 @@ class GammaCrowdController(Drunc):
                     3.0 + random.uniform(0.0, 0.5)))
       
         while len(self.sidewalk_agents) < self.num_sidewalk_agents:
-            spawn_min, spawn_max = self.get_spawn_range()
+            spawn_min, spawn_max = self.get_spawn_range(bounds_center, 150)
             path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
@@ -577,7 +543,7 @@ class GammaCrowdController(Drunc):
         
         next_agents = []
         for (i, crowd_agent) in enumerate(self.network_car_agents + self.network_bike_agents + self.sidewalk_agents):
-            delete = not self.in_ego_bounds(crowd_agent.get_position()) or \
+            delete = not self.check_bounds(crowd_agent.get_position(), bounds_min, bounds_max) or \
                 crowd_agent.get_position3D().z < -10 or \
                 (type(crowd_agent) is not CrowdSidewalkAgent and \
                     not self.network_occupancy_map.contains(crowd_agent.get_position()))

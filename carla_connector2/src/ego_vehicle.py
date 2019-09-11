@@ -49,7 +49,7 @@ class EgoVehicle(Drunc):
             # shift_x=0.030
             # shift_y= -0.108
             
-            spawn_min, spawn_max = self.get_shrinked_range(scale=scale, shift_x=shift_x, shift_y= shift_y, draw_range=False)
+            #spawn_min, spawn_max = self.get_shrinked_range(scale=scale, shift_x=shift_x, shift_y= shift_y, draw_range=False)
 
             # a narrow road for peds to cross
             # spawn_min = carla.Vector2D(903.4-20, 1531.7-20)
