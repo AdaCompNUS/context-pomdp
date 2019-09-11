@@ -1,10 +1,13 @@
 <launch>
-  <param name="address" type="string" value="127.0.0.1" />
-  <param name="port" type="int" value="2000" />
+  <arg name="address" default="127.0.0.1" />
+  <arg name="port" default="2000" />
+
+  <param name="address" type="string" value="$(arg address)" />
+  <param name="port" type="int" value="$(arg port)" />
 
   <node name="spawn_meshes" pkg="carla_connector2" type="spawn_meshes.py" output="screen"/>
  
-  <!--<node name="ego_vehicle" pkg="carla_connector2" type="ego_vehicle.py" output="screen"/>-->
+  <node name="ego_vehicle" pkg="carla_connector2" type="ego_vehicle.py" output="screen"/>
   
   <!--node name="speed_controller" pkg="carla_connector2" type="speed_controller.py" output="screen"/-->
   
@@ -18,6 +21,6 @@
     <param name="path_interval" value="1.0"/>
   </node>
   
-  <!--<node name="crowd_processor" pkg="carla_connector2" type="crowd_processor.py" output="screen"/>-->
+  <node name="crowd_processor" pkg="carla_connector2" type="crowd_processor.py" output="screen"/>
   <!--<node name="spectator" pkg="carla_connector2" type="spectator.py" output="screen"/>-->
 </launch>
