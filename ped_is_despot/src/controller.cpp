@@ -853,13 +853,14 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* log
 		pre_step_count = 0;
     while(path_from_topic.size()==0){
     	cout << "Waiting for path" << endl;
+      ros::spinOnce();
     	Globals::sleep_ms(1000.0/control_freq/time_scale_);
     }
 
     while(SolverPrior::nn_priors[0]->Size(true) < pre_step_count){
     	logi << "Executing pre-step" << endl;
     	RunPreStep(solver, world, logger);
-		ros::spinOnce();
+      ros::spinOnce();
 
 		logi << "sleeping for "<< 1.0/control_freq/time_scale_ << "s"<< endl;
     	Globals::sleep_ms(1000.0/control_freq/time_scale_);
