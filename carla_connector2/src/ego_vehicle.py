@@ -75,6 +75,8 @@ class EgoVehicle(Drunc):
             spawn_trans.location.z = 0.5
             spawn_trans.rotation.yaw = self.path.get_yaw()
 
+            print("Ego-vehicle at {} {}".format(spawn_position.x, spawn_position.y))
+
             self.actor = self.world.try_spawn_actor(vehicle_bp, spawn_trans)
 
             if self.actor:
