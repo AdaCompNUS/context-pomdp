@@ -294,7 +294,7 @@ class GammaCrowdController(Drunc):
         corners.append(loc - half_x_len*forward_vec - half_y_len*sideward_vec)
         
         return corners
-   
+
     def dispose(self):
         commands = []
         commands.extend(carla.command.DestroyActor(a.actor.id) for a in self.network_car_agents)

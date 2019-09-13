@@ -29,6 +29,7 @@ class EgoVehicle(Drunc):
     def __init__(self):
         super(EgoVehicle, self).__init__()
 
+        self.clearscene()
         # time.sleep(2)
         # Create path.
         self.actor = None
@@ -76,7 +77,8 @@ class EgoVehicle(Drunc):
 
             self.actor = self.world.try_spawn_actor(vehicle_bp, spawn_trans)
 
-            self.actor.set_collision_enabled(False)
+            if self.actor:
+                self.actor.set_collision_enabled(False)
 
         time.sleep(1) # wait for the vehicle to drop
 
@@ -97,6 +99,14 @@ class EgoVehicle(Drunc):
         self.publish_odom_transform()
         self.transformer = TransformListener()
 
+    def clearscene(self):
+        actors_list = self.world.get_actors()
+        num_old_agents = len(actors_list)
+        commands = []
+        commands.extend(carla.command.DestroyActor(a.actor.id) for a in actors_list)
+        self.client.apply_batch(commands)
+        print('cleared {} crowd actors.'.format(num_old_agents))
+        
     def get_shrinked_range(self, scale = 1.0, shift_x = 0.0, shift_y = 0.0, draw_range = False):
         if scale == 1.0:
             return self.map_bounds_min, self.map_bounds_max # TODO: I want to get the actual map range here
