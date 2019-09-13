@@ -16,8 +16,8 @@ import random
 import rospy
 
 # map_location = 'map'
-map_location = 'meskel_square'
-# map_location = 'magic'
+# map_location = 'meskel_square'
+map_location = 'magic'
 # map_location = 'highway'
 
 class Drunc(object):
