@@ -15,7 +15,7 @@ from util import *
 import carla_connector2.msg
 from peds_unity_system.msg import car_info as CarInfo
 import timeit
-
+import time
 
 first_time = True
 prev_time = timeit.default_timer()
