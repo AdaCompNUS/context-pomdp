@@ -68,18 +68,27 @@ class Drunc(object):
             self.scenario_min = carla.Vector2D(450, 1100)
             self.scenario_max = carla.Vector2D(1200, 1900)
         elif map_location == "meskel_square":
-            self.scenario_center = carla.Vector2D(450, 400)
-            self.scenario_min = carla.Vector2D(300, 250)
-            self.scenario_max = carla.Vector2D(600, 650)
+            self.scenario_min = carla.Vector2D(380, 341)
+            self.scenario_max = carla.Vector2D(499, 456)
+            self.scenario_center = (self.scenario_min + self.scenario_max) * 0.5
+            # self.scenario_center = carla.Vector2D(450, 400)
+            # self.scenario_min = carla.Vector2D(300, 250)
+            # self.scenario_max = carla.Vector2D(600, 650)
         elif map_location == "magic":
-            self.scenario_center = carla.Vector2D(180, 220)
-            self.scenario_min = carla.Vector2D(60, 100)
-            self.scenario_max = carla.Vector2D(300, 340)
+            self.scenario_min = carla.Vector2D(126, 152)
+            self.scenario_max = carla.Vector2D(225, 288)
+            self.scenario_center = (self.scenario_min + self.scenario_max) * 0.5
+            # self.scenario_center = carla.Vector2D(180, 220)
+            # self.scenario_min = carla.Vector2D(60, 100)
+            # self.scenario_max = carla.Vector2D(300, 340)
         elif map_location == "highway":
-            self.scenario_center = carla.Vector2D(180, 300)
-            self.scenario_min = carla.Vector2D(30, 150)
-            self.scenario_max = carla.Vector2D(330, 450)
-    
+            self.scenario_min = carla.Vector2D(168, 185)
+            self.scenario_max = carla.Vector2D(246, 325)
+            self.scenario_center = (self.scenario_min + self.scenario_max) * 0.5
+            # self.scenario_center = carla.Vector2D(180, 300)
+            # self.scenario_min = carla.Vector2D(30, 150)
+            # self.scenario_max = carla.Vector2D(330, 450)
+
     def in_scenario_bounds(self, point):
         return self.scenario_min.x <= point.x <= self.scenario_max.x and \
                self.scenario_min.y <= point.y <= self.scenario_max.y
