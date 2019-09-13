@@ -349,8 +349,8 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
-	if (p.getlength() < 19.5){
-		ERR("Path length shorter than 19.5 meters.");
+	if (p.getlength() < 18){
+		ERR("Path length shorter than 18 meters.");
 	}
 
 	// cout << "Path start " << p[0] << " end " << p.back() << endl;
