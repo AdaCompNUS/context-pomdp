@@ -75,8 +75,8 @@ class Drunc(object):
             # self.scenario_min = carla.Vector2D(300, 250)
             # self.scenario_max = carla.Vector2D(600, 650)
         elif map_location == "magic":
-            self.scenario_min = carla.Vector2D(126, 152)
-            self.scenario_max = carla.Vector2D(225, 288)
+            self.scenario_min = carla.Vector2D(150, 170) #126, 152
+            self.scenario_max = carla.Vector2D(200, 250) #225, 288
             self.scenario_center = (self.scenario_min + self.scenario_max) * 0.5
             # self.scenario_center = carla.Vector2D(180, 220)
             # self.scenario_min = carla.Vector2D(60, 100)
