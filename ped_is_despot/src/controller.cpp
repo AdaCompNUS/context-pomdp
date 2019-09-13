@@ -843,6 +843,8 @@ void Controller::TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len){
 	}
 }
 
+static int wait_count = 0;
+
 void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* logger) {
 
 //	sleep(2);
@@ -853,8 +855,12 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* log
 		pre_step_count = 0;
     while(path_from_topic.size()==0){
     	cout << "Waiting for path" << endl;
-      ros::spinOnce();
+        ros::spinOnce();
     	Globals::sleep_ms(1000.0/control_freq/time_scale_);
+    	wait_count++;
+    	if (wait_count == 5){
+    		ros::shutdown();
+    	}
     }
 
     while(SolverPrior::nn_priors[0]->Size(true) < pre_step_count){
