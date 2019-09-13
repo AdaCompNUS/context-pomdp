@@ -496,7 +496,7 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 
 	if(simulation_mode_ == UNITY){
 		unity_driving_simulator_->publishROSState();
-		ped_belief_->publishAgentsPrediciton();
+		// ped_belief_->publishAgentsPrediciton();
 	}
 
 	unity_driving_simulator_->beliefTracker->text();
@@ -683,7 +683,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 
 	if(simulation_mode_ == UNITY){
 		unity_driving_simulator_->publishROSState();
-		ped_belief_->publishAgentsPrediciton();
+		// ped_belief_->publishAgentsPrediciton();
 	}
 
 	unity_driving_simulator_->beliefTracker->text();

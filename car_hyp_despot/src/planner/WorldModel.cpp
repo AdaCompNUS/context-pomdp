@@ -1715,7 +1715,7 @@ void WorldStateTracker::tracIntention(Agent& des, const Agent& src, bool doPrint
 void WorldStateTracker::trackVel(Agent& des, const Agent& src, bool& no_move, bool doPrint){
     double duration =  src.time_stamp - des.time_stamp;
 
-    if (duration < 0.1 / Globals::config.time_scale){
+    if (duration < 0.001 / Globals::config.time_scale){
         no_move = false;
 
         DEBUG(string_sprintf("Update duration too short for agent %d: %f, (%f-%f)", 
