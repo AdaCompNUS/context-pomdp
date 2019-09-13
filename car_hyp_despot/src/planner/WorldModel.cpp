@@ -1615,12 +1615,15 @@ AgentBelief WorldModel::initPedBelief(const Agent& agent) {
     
     int num_types = NUM_AGENT_TYPES;
     for(int i =0 ; i < num_types; i++){
-        vector<double> temp_probs;
-        temp_probs.reserve(20);
-        // vector<double>(GetNumIntentions(agent), 1.0/GetNumIntentions(agent)/num_types)
+        // vector<double> temp_probs;
+        // temp_probs.reserve(20);
+        // for (int i =0; i<GetNumIntentions(agent); i++)
+        //     temp_probs.push_back(1.0/GetNumIntentions(agent)/num_types);
+        // b.prob_modes_goals.push_back(temp_probs);
+        b.prob_modes_goals.push_back(vector<double>());
+        b.prob_modes_goals.back().reserve(20);
         for (int i =0; i<GetNumIntentions(agent); i++)
-            temp_probs.push_back(1.0/GetNumIntentions(agent)/num_types);
-    	b.prob_modes_goals.push_back(temp_probs);
+            b.prob_modes_goals.back().push_back(1.0/GetNumIntentions(agent)/num_types);
     }
 
     return b;
@@ -2004,10 +2007,12 @@ void AgentBelief::reset_belief(int new_size){
     if (new_size != prob_modes_goals[0].size()){
         for (auto& prob_goals: prob_modes_goals){ 
             cout << "Resizing prob_goals from "<< prob_goals.size() << " to " << new_size << endl;
-            // prob_goals.resize(new_size);
-            prob_goals.clear();
-            for (int i=0;i<new_size;i++)
-                prob_goals.push_back(0.0);
+            prob_goals.resize(new_size);
+            // prob_goals.clear();
+            // cout << "Clear complete" << endl;
+
+            // for (int i=0;i<new_size;i++)
+                // prob_goals.push_back(0.0);
             cout << "Resize complete" << endl;
         }
     }

@@ -204,7 +204,7 @@ State* WorldSimulator::GetCurrentState(){
 
 	// DEBUG("update");
 	stateTracker->updateCar(updated_car);
-	stateTracker->cleanAgents();
+	// stateTracker->cleanAgents();
 
 	// DEBUG("state");
 	PomdpStateWorld state = stateTracker->getPomdpWorldState();
@@ -890,6 +890,8 @@ void agentArrayCallback(carla_connector::agent_array data){
 	{
 		WorldSimulator::stateTracker->updateVeh(veh);
 	}
+
+	WorldSimulator::stateTracker->cleanAgents();
 
 	DEBUG("Finish agent update");
 
