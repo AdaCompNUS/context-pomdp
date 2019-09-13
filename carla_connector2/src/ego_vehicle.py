@@ -407,11 +407,13 @@ class EgoVehicle(Drunc):
         # Publish info.
         if not self.path.resize():
             print('Warning : path too short.')
-            return
-        self.path.cut(self.get_position())
-        if not self.path.resize():
-            print('Warning : path too short.')
-            return
+            # return
+        else:
+            self.path.cut(self.get_position())
+            if not self.path.resize():
+                print('Warning : path too short.')
+                
+            # return
         self.draw_path(self.path)
         self.publish_odom()
         self.publish_il_car_info()
