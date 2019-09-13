@@ -500,7 +500,7 @@ class GammaCrowdController(Drunc):
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
-            trans.location.z = 1.0
+            trans.location.z = 0.5
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
                     random.choice(self.cars_blueprints),
@@ -517,7 +517,7 @@ class GammaCrowdController(Drunc):
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
-            trans.location.z = 1.0
+            trans.location.z = 0.5
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
                     random.choice(self.bikes_blueprints),
