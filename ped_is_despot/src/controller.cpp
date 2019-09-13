@@ -349,8 +349,8 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
-	if (p.getlength() < 15.0){
-		ERR("Path length shorter than 15 meters.");
+	if (p.getlength() < 19.5){
+		ERR("Path length shorter than 19.5 meters.");
 	}
 
 	// cout << "Path start " << p[0] << " end " << p.back() << endl;
@@ -851,7 +851,12 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* log
 		pre_step_count = 4;
 	else
 		pre_step_count = 0;
-    while(path_from_topic.size()==0 || SolverPrior::nn_priors[0]->Size(true) < pre_step_count){
+    while(path_from_topic.size()==0){
+    	cout << "Waiting for path" << endl;
+    	Globals::sleep_ms(1000.0/control_freq/time_scale_);
+    }
+
+    while(SolverPrior::nn_priors[0]->Size(true) < pre_step_count){
     	logi << "Executing pre-step" << endl;
     	RunPreStep(solver, world, logger);
 		ros::spinOnce();
@@ -860,7 +865,6 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* log
     	Globals::sleep_ms(1000.0/control_freq/time_scale_);
 
     	logi << "Pre-step sleep end" << endl;
-
     }
 
 	logi << "Executing first step" << endl;
