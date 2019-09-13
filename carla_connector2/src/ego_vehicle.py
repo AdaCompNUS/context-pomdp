@@ -103,7 +103,8 @@ class EgoVehicle(Drunc):
         actors_list = self.world.get_actors()
         num_old_agents = len(actors_list)
         commands = []
-        commands.extend(carla.command.DestroyActor(a.id) for a in actors_list)
+        commands.extend(carla.command.DestroyActor(a.id) for a in actors_list if a is carla.Vehicle)
+        commands.extend(carla.command.DestroyActor(a.id) for a in actors_list if a is carla.Walker)
         self.client.apply_batch(commands)
         print('cleared {} crowd actors.'.format(num_old_agents))
         
