@@ -236,7 +236,7 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
         //     break;
         // }
 
-		if(!inFront(p.pos, state->car)) continue;
+		if(!inFront(p.pos, state->car, 60)) continue;
 
         double d_along = COORD::DirectedDistance(carpos, p.pos, carheading);
         double d_tang = COORD::DirectedDistance(carpos, p.pos, carheading + M_PI / 2.0);
