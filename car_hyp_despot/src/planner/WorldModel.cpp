@@ -236,7 +236,10 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
         //     break;
         // }
 
-		if(!inFront(p.pos, state->car, 60)) continue;
+        float infront_angle = ModelParams::IN_FRONT_ANGLE_DEG;
+        if (Globals::config.pruning_constant > 100.0)
+            infront_angle = 60.0;
+		if(!inFront(p.pos, state->car, infront_angle)) continue;
 
         double d_along = COORD::DirectedDistance(carpos, p.pos, carheading);
         double d_tang = COORD::DirectedDistance(carpos, p.pos, carheading + M_PI / 2.0);
