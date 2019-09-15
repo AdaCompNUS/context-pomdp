@@ -40,6 +40,7 @@ class CrowdAgent(object):
         self.actor = actor
         self.preferred_speed = preferred_speed
         self.actor.set_collision_enabled(True) ## to check. Disable collision will generate vehicles that are overlapping
+        self.stuck_time = None
     
     def get_id(self):
         return self.actor.id
@@ -67,6 +68,10 @@ class CrowdAgent(object):
 
     def disable_collision(self):
         self.actor.set_collision_enabled(False)
+    
+    def get_path_occupancy(self):
+        p = [self.get_position()] + [self.path.get_position(i) for i in range(self.path.min_points)]
+        return carla.OccupancyMap(p, self.actor.bounding_box.extent.y * 2 + 1.0)
 
 
 class CrowdNetworkAgent(CrowdAgent):
@@ -277,6 +282,15 @@ class GammaCrowdController(Drunc):
         for triangle in carla.OccupancyMap(self.scenario_min, self.scenario_max).difference(self.network_occupancy_map).get_triangles():
             self.gamma.add_obstacle([triangle.v2, triangle.v1, triangle.v1])
         self.gamma.process_obstacles()
+        
+        self.start_time = None
+        self.stats_total_num_car = 0
+        self.stats_total_num_bike = 0
+        self.stats_total_num_ped = 0
+        self.stats_total_num_stuck_car = 0
+        self.stats_total_num_stuck_bike = 0
+        self.stats_total_num_stuck_ped = 0
+        self.log_file = open('/home/leeyiyuan/gamma_data.txt', 'w', buffering=0)
 
     def get_bounding_box_corners(self, actor, expand = 0.0):
         bbox = actor.bounding_box
@@ -472,6 +486,8 @@ class GammaCrowdController(Drunc):
                 carla.Vector2D(center_pos.x + spawn_size_min, center_pos.y + spawn_size_min)))
 
     def update(self):
+        update_time = rospy.Time.now()
+
         # Check for ego actor.
         self.find_ego_actor() 
 
@@ -488,11 +504,10 @@ class GammaCrowdController(Drunc):
         # Determine spawning variables.
         if not self.initialized:
             spawn_size_min = 0
-            spawn_size_max = 150
-            self.initialized = True
+            spawn_size_max = 100
         else:
-            spawn_size_min = 100
-            spawn_size_max = 150
+            spawn_size_min = 50
+            spawn_size_max = 100
         spawn_segment_map = self.network_segment_map.intersection(self.get_spawn_occupancy_map(bounds_center, spawn_size_min, spawn_size_max))
 
         while len(self.network_car_agents) < self.num_network_car_agents:
@@ -500,7 +515,7 @@ class GammaCrowdController(Drunc):
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
-            trans.location.z = 1.0
+            trans.location.z = 0.5
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
                     random.choice(self.cars_blueprints),
@@ -509,15 +524,15 @@ class GammaCrowdController(Drunc):
             if actor:
                 self.network_car_agents.append(CrowdNetworkCarAgent(
                     actor, path, 
-                    #5.0 + random.uniform(0.0, 1.5)))
                     5.0 + random.uniform(0.0, 0.5)))
+                self.stats_total_num_car += 1
         
         while len(self.network_bike_agents) < self.num_network_bike_agents:
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
-            trans.location.z = 1.0
+            trans.location.z = 0.5
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
                     random.choice(self.bikes_blueprints),
@@ -526,11 +541,11 @@ class GammaCrowdController(Drunc):
             if actor:
                 self.network_bike_agents.append(CrowdNetworkBikeAgent(
                     actor, path, 
-                    #5.0 + random.uniform(0.0, 1.5)))
-                    3.0 + random.uniform(0.0, 0.5)))
+                    3.0 + random.uniform(0, 0.5)))
+                self.stats_total_num_bike += 1
       
         while len(self.sidewalk_agents) < self.num_sidewalk_agents:
-            spawn_min, spawn_max = self.get_spawn_range(bounds_center, 150)
+            spawn_min, spawn_max = self.get_spawn_range(bounds_center, 100)
             path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
@@ -545,15 +560,37 @@ class GammaCrowdController(Drunc):
                 self.sidewalk_agents.append(CrowdSidewalkAgent(
                     actor, path, 
                     0.5 + random.uniform(0.0, 1.0)))
+                self.stats_total_num_ped += 1
         
         commands = []
         
         next_agents = []
         for (i, crowd_agent) in enumerate(self.network_car_agents + self.network_bike_agents + self.sidewalk_agents):
-            delete = not self.check_bounds(crowd_agent.get_position(), bounds_min, bounds_max) or \
-                crowd_agent.get_position3D().z < -10 or \
-                (type(crowd_agent) is not CrowdSidewalkAgent and \
-                    not self.network_occupancy_map.contains(crowd_agent.get_position()))
+            delete = False
+            if not delete and not self.check_bounds(crowd_agent.get_position(), bounds_min, bounds_max):
+                delete = True
+            if not delete and crowd_agent.get_position3D().z < -10:
+                delete = True
+            if not delete and (type(crowd_agent) is not CrowdSidewalkAgent and \
+                    not self.network_occupancy_map.contains(crowd_agent.get_position())):
+                delete = True
+
+            if self.initialized:
+                if crowd_agent.get_velocity().length() < 0.2:
+                    if crowd_agent.stuck_time is not None:
+                        if (update_time - crowd_agent.stuck_time).to_sec() >= 5.0:
+                            delete = True
+                            if type(crowd_agent) is CrowdNetworkCarAgent:
+                                self.stats_total_num_stuck_car += 1
+                            elif type(crowd_agent) is CrowdNetworkBikeAgent:
+                                self.stats_total_num_stuck_bike += 1
+                            elif type(crowd_agent) is CrowdSidewalkAgent:
+                                self.stats_total_num_stuck_ped += 1
+                    else :
+                        crowd_agent.stuck_time = update_time
+                else:
+                    crowd_agent.stuck_time = None
+
             if delete:
                 next_agents.append(None)
                 self.gamma.set_agent_position(i, default_agent_pos)
@@ -610,6 +647,10 @@ class GammaCrowdController(Drunc):
         simu_time = cur_time - prev_time
         prev_time = cur_time
 
+        if not self.initialized:
+            self.start_time = rospy.Time.now()
+            self.initialized = True
+
         #simu_time = 0.05 #self.world.wait_for_tick(5.0).timestamp.delta_seconds
         for (i, crowd_agent) in enumerate(next_agents):
             if crowd_agent:
@@ -650,9 +691,54 @@ class GammaCrowdController(Drunc):
         self.sidewalk_agents = [a for a in next_agents if a and type(a) is CrowdSidewalkAgent]
         
         self.client.apply_batch(commands)
-
         self.world.wait_for_tick(5.0)
 
+        stats_num_car = 0
+        stats_num_bike = 0
+        stats_num_ped = 0
+        stats_sum_speed_car = 0.0
+        stats_sum_speed_bike = 0.0
+        stats_sum_speed_ped = 0.0
+
+        for agent in self.network_car_agents:
+            stats_num_car += 1
+            stats_sum_speed_car += agent.get_velocity().length()
+        for agent in self.network_bike_agents:
+            stats_num_bike += 1
+            stats_sum_speed_bike += agent.get_velocity().length()
+        for agent in self.sidewalk_agents:
+            stats_num_ped += 1
+            stats_sum_speed_ped += agent.get_velocity().length()
+
+        self.log_file.write('{} {} {} {} {} {} {} {} {} {} {} {} {}\n'.format(
+            (update_time - self.start_time).to_sec(),
+            self.stats_total_num_car, 
+            self.stats_total_num_bike, 
+            self.stats_total_num_ped,
+            self.stats_total_num_stuck_car, 
+            self.stats_total_num_stuck_bike, 
+            self.stats_total_num_stuck_ped,
+            stats_num_car,
+            stats_num_bike,
+            stats_num_ped,
+            stats_sum_speed_car,
+            stats_sum_speed_bike,
+            stats_sum_speed_ped))
+
+        '''
+        print('Time = {}'.format((update_time - self.start_time).to_sec()))
+        print('Total spawned = {}, {}, {}'.format(
+            self.stats_total_num_car, 
+            self.stats_total_num_bike, 
+            self.stats_total_num_ped))
+        print('Stuck deleted = {}, {}, {}'.format(
+            self.stats_total_num_stuck_car, 
+            self.stats_total_num_stuck_bike, 
+            self.stats_total_num_stuck_ped))
+        print('Avg. Instantaneous Speed = {}, {}, {}'.format(stats_avg_speed_car, stats_avg_speed_bike, stats_avg_speed_ped))
+        '''
+
+        ''' Temporarily disabled for experiments.
         network_agents_msg = carla_connector2.msg.CrowdNetworkAgentArray()
         network_agents_msg.header.stamp = rospy.Time.now()
         for a in self.network_car_agents + self.network_bike_agents:
@@ -678,20 +764,24 @@ class GammaCrowdController(Drunc):
             sidewalk_agent_msg.route_orientation = a.path.route_orientations[0]
             sidewalk_agents_msg.agents.append(sidewalk_agent_msg)
         self.sidewalk_agents_pub.publish(sidewalk_agents_msg)
-        
+        '''
             
 if __name__ == '__main__':
     rospy.init_node('gamma_crowd_controller')
     rospy.wait_for_message("/meshes_spawned", Bool)
-    rospy.wait_for_message("/IL_car_info", CarInfo)
+    #rospy.wait_for_message("/IL_car_info", CarInfo)
 
     gamma_crowd_controller = GammaCrowdController()
 
     rate = rospy.Rate(100) ## to check
     #rate = rospy.Rate(5)
     while not rospy.is_shutdown():
+        start_time = rospy.Time.now()
         gamma_crowd_controller.update()
-        gamma_crowd_controller.no_collision()
+        #gamma_crowd_controller.no_collision()
+        end_time = rospy.Time.now()
+        duration = (end_time - start_time).to_sec()
+        print('Update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
         rate.sleep()
 
     gamma_crowd_controller.dispose()
