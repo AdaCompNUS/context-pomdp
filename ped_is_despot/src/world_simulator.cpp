@@ -126,10 +126,13 @@ bool WorldSimulator::Connect(){
     auto odom_data = ros::topic::waitForMessage<nav_msgs::Odometry>("odom");
     auto car_data = ros::topic::waitForMessage<ped_is_despot::car_info>("IL_car_info");
 #ifdef CONNECTOR2
-	auto agent_data = ros::topic::waitForMessage<carla_connector2::TrafficAgentArray>("agent_array");
+	auto agent_data = ros::topic::waitForMessage<carla_connector2::TrafficAgentArray>("agent_array",ros::Duration(30));
 #else
-	auto agent_data = ros::topic::waitForMessage<carla_connector::agent_array>("agent_array");
+	auto agent_data = ros::topic::waitForMessage<carla_connector::agent_array>("agent_array",ros::Duration(30));
 #endif   
+
+    if (agent_data == NULL)
+        ERR("No agent array messages received after 30 seconds.");
 
 	clock_t end = clock();
 	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
@@ -204,7 +207,7 @@ State* WorldSimulator::GetCurrentState(){
 
 	// DEBUG("update");
 	stateTracker->updateCar(updated_car);
-	stateTracker->cleanAgents();
+	// stateTracker->cleanAgents();
 
 	// DEBUG("state");
 	PomdpStateWorld state = stateTracker->getPomdpWorldState();
@@ -890,6 +893,8 @@ void agentArrayCallback(carla_connector::agent_array data){
 	{
 		WorldSimulator::stateTracker->updateVeh(veh);
 	}
+
+	WorldSimulator::stateTracker->cleanAgents();
 
 	DEBUG("Finish agent update");
 

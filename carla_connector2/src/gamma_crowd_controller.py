@@ -15,7 +15,7 @@ from util import *
 import carla_connector2.msg
 from peds_unity_system.msg import car_info as CarInfo
 import timeit
-
+import time
 
 first_time = True
 prev_time = timeit.default_timer()
@@ -308,7 +308,7 @@ class GammaCrowdController(Drunc):
         corners.append(loc - half_x_len*forward_vec - half_y_len*sideward_vec)
         
         return corners
-   
+
     def dispose(self):
         commands = []
         commands.extend(carla.command.DestroyActor(a.actor.id) for a in self.network_car_agents)
@@ -510,6 +510,7 @@ class GammaCrowdController(Drunc):
             spawn_size_max = 100
         spawn_segment_map = self.network_segment_map.intersection(self.get_spawn_occupancy_map(bounds_center, spawn_size_min, spawn_size_max))
 
+        start_t = time.time()
         while len(self.network_car_agents) < self.num_network_car_agents:
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map)
             trans = carla.Transform()
@@ -526,7 +527,11 @@ class GammaCrowdController(Drunc):
                     actor, path, 
                     5.0 + random.uniform(0.0, 0.5)))
                 self.stats_total_num_car += 1
+            elapsed_time = time.time() - start_t
+            if elapsed_time > 3:
+                break
         
+        start_t = time.time()
         while len(self.network_bike_agents) < self.num_network_bike_agents:
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map)
             trans = carla.Transform()
@@ -543,7 +548,11 @@ class GammaCrowdController(Drunc):
                     actor, path, 
                     3.0 + random.uniform(0, 0.5)))
                 self.stats_total_num_bike += 1
-      
+            elapsed_time = time.time() - start_t
+            if elapsed_time > 3:
+                break
+
+        start_t = time.time()
         while len(self.sidewalk_agents) < self.num_sidewalk_agents:
             spawn_min, spawn_max = self.get_spawn_range(bounds_center, 100)
             path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
@@ -561,6 +570,9 @@ class GammaCrowdController(Drunc):
                     actor, path, 
                     0.5 + random.uniform(0.0, 1.0)))
                 self.stats_total_num_ped += 1
+            elapsed_time = time.time() - start_t
+            if elapsed_time > 3:
+                break
         
         commands = []
         

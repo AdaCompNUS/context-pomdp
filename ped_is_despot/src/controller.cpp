@@ -267,7 +267,7 @@ void Controller::InitializeDefaultParameters() {
 		Globals::config.discount=0.95;
 		Globals::config.search_depth=20;
 		Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/20;
-		Globals::config.pruning_constant=0.001;
+		Globals::config.pruning_constant=100000000.0;
 		Globals::config.exploration_constant = 0.1;
 		Globals::config.silence = true;
   }
@@ -349,8 +349,8 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
-	if (p.getlength() < 15.0){
-		ERR("Path length shorter than 15 meters.");
+	if (p.getlength() < 18){
+		ERR("Path length shorter than 18 meters.");
 	}
 
 	// cout << "Path start " << p[0] << " end " << p.back() << endl;
@@ -496,7 +496,7 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 
 	if(simulation_mode_ == UNITY){
 		unity_driving_simulator_->publishROSState();
-		ped_belief_->publishAgentsPrediciton();
+		// ped_belief_->publishAgentsPrediciton();
 	}
 
 	unity_driving_simulator_->beliefTracker->text();
@@ -683,7 +683,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 
 	if(simulation_mode_ == UNITY){
 		unity_driving_simulator_->publishROSState();
-		ped_belief_->publishAgentsPrediciton();
+		// ped_belief_->publishAgentsPrediciton();
 	}
 
 	unity_driving_simulator_->beliefTracker->text();
@@ -843,6 +843,8 @@ void Controller::TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len){
 	}
 }
 
+static int wait_count = 0;
+
 void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* logger) {
 
 //	sleep(2);
@@ -851,16 +853,25 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* log
 		pre_step_count = 4;
 	else
 		pre_step_count = 0;
-    while(path_from_topic.size()==0 || SolverPrior::nn_priors[0]->Size(true) < pre_step_count){
+    while(path_from_topic.size()==0){
+    	cout << "Waiting for path" << endl;
+        ros::spinOnce();
+    	Globals::sleep_ms(1000.0/control_freq/time_scale_);
+    	wait_count++;
+    	if (wait_count == 5){
+    		ros::shutdown();
+    	}
+    }
+
+    while(SolverPrior::nn_priors[0]->Size(true) < pre_step_count){
     	logi << "Executing pre-step" << endl;
     	RunPreStep(solver, world, logger);
-		ros::spinOnce();
+      ros::spinOnce();
 
 		logi << "sleeping for "<< 1.0/control_freq/time_scale_ << "s"<< endl;
     	Globals::sleep_ms(1000.0/control_freq/time_scale_);
 
     	logi << "Pre-step sleep end" << endl;
-
     }
 
 	logi << "Executing first step" << endl;

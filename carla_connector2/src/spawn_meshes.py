@@ -69,6 +69,7 @@ WALL_MAT = [
 class SpawnMeshes(Drunc):
     def __init__(self):
         super(SpawnMeshes, self).__init__()
+        self.client.reload_world()
 
         self.meshes_spawned_pub = rospy.Publisher('/meshes_spawned', Bool, queue_size=1, latch=True) 
 

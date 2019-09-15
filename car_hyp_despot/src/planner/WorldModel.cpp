@@ -236,7 +236,10 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
         //     break;
         // }
 
-		if(!inFront(p.pos, state->car)) continue;
+        float infront_angle = ModelParams::IN_FRONT_ANGLE_DEG;
+        if (Globals::config.pruning_constant > 100.0)
+            infront_angle = 60.0;
+		if(!inFront(p.pos, state->car, infront_angle)) continue;
 
         double d_along = COORD::DirectedDistance(carpos, p.pos, carheading);
         double d_tang = COORD::DirectedDistance(carpos, p.pos, carheading + M_PI / 2.0);
@@ -1615,7 +1618,15 @@ AgentBelief WorldModel::initPedBelief(const Agent& agent) {
     
     int num_types = NUM_AGENT_TYPES;
     for(int i =0 ; i < num_types; i++){
-    	b.prob_modes_goals.push_back(vector<double>(GetNumIntentions(agent), 1.0/GetNumIntentions(agent)/num_types));
+        // vector<double> temp_probs;
+        // temp_probs.reserve(20);
+        // for (int i =0; i<GetNumIntentions(agent); i++)
+        //     temp_probs.push_back(1.0/GetNumIntentions(agent)/num_types);
+        // b.prob_modes_goals.push_back(temp_probs);
+        b.prob_modes_goals.push_back(vector<double>());
+        b.prob_modes_goals.back().reserve(20);
+        for (int i =0; i<GetNumIntentions(agent); i++)
+            b.prob_modes_goals.back().push_back(1.0/GetNumIntentions(agent)/num_types);
     }
 
     return b;
@@ -1715,7 +1726,7 @@ void WorldStateTracker::tracIntention(Agent& des, const Agent& src, bool doPrint
 void WorldStateTracker::trackVel(Agent& des, const Agent& src, bool& no_move, bool doPrint){
     double duration =  src.time_stamp - des.time_stamp;
 
-    if (duration < 0.1 / Globals::config.time_scale){
+    if (duration < 0.001 / Globals::config.time_scale){
         no_move = false;
 
         DEBUG(string_sprintf("Update duration too short for agent %d: %f, (%f-%f)", 
@@ -1998,8 +2009,14 @@ void AgentBelief::reset_belief(int new_size){
 
     if (new_size != prob_modes_goals[0].size()){
         for (auto& prob_goals: prob_modes_goals){ 
-            cout << "Resizing prob_goals to " << new_size << endl;
+            cout << "Resizing prob_goals from "<< prob_goals.size() << " to " << new_size << endl;
             prob_goals.resize(new_size);
+            // prob_goals.clear();
+            // cout << "Clear complete" << endl;
+
+            // for (int i=0;i<new_size;i++)
+                // prob_goals.push_back(0.0);
+            cout << "Resize complete" << endl;
         }
     }
 
@@ -2038,9 +2055,14 @@ void WorldBeliefTracker::update() {
 
     for(const auto& p: agent_beliefs) {
         if (newagents.find(p.first) == newagents.end()) {
-            agents_to_remove.push_back(p.first);
             logi << "["<<__FUNCTION__<< "]" << " removing agent "<< p.first << endl;
+            agents_to_remove.push_back(p.first);
+            // agent_beliefs.erase(p.first);
         }
+    }
+
+    for(const auto& i: agents_to_remove) {
+        agent_beliefs.erase(i);
     }
 
     // DEBUG("reset agent belief if paths are updated");
@@ -2058,9 +2080,6 @@ void WorldBeliefTracker::update() {
         }
     }    
 
-    for(const auto& i: agents_to_remove) {
-        agent_beliefs.erase(i);
-    }
 
     // text(agent_beliefs);
 

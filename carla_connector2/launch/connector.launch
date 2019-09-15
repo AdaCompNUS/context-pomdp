@@ -4,6 +4,13 @@
 
   <param name="address" type="string" value="$(arg address)" />
   <param name="port" type="int" value="$(arg port)" />
+  
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find carla_connector2)/launch/map.yaml" />
+
+  <node pkg="tf" 
+        type="static_transform_publisher" 
+        name="static_transform_publisher" 
+        args="0.0 0.0 0.0 0.0 0.0 0.0 /base_link /laser_frame 10" />
 
   <node name="spawn_meshes" pkg="carla_connector2" type="spawn_meshes.py" output="screen"/>
  
