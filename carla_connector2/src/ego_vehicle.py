@@ -59,13 +59,16 @@ class EgoVehicle(Drunc):
             # y-shaped region, msekel, for cars
             # spawn_min = carla.Vector2D(900.4, 350.33) 
             # spawn_max = carla.Vector2D(1000.4, 450.33)
+            # self.scenario_min = carla.Vector2D(350, 300)
+            # self.scenario_max = carla.Vector2D(550, 500)
 
             # single road without building, msekel
             # spawn_min = carla.Vector2D(1036.5-20, 507.21-20)
             # spawn_max = carla.Vector2D(1036.5+20, 507.21+20)
             
-            self.path = NetworkAgentPath.rand_path(self, 20, 1.0, self.network_segment_map.insersection, 
-                carla.OccupancyMap(carla.Vector2D(0,0), carla.Vector2D(1,1)))
+            self.path = NetworkAgentPath.rand_path(self, 20, 1.0)
+            # self.path = NetworkAgentPath.rand_path(self, 20, 1.0, self.network_segment_map.intersection( 
+                # carla.OccupancyMap(carla.Vector2D(450,400), carla.Vector2D(500,450))))
                 
             vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.audi.etron'))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')
