@@ -267,7 +267,7 @@ void Controller::InitializeDefaultParameters() {
 		Globals::config.discount=0.95;
 		Globals::config.search_depth=20;
 		Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/20;
-		Globals::config.pruning_constant=100000000.0;
+		Globals::config.pruning_constant=0.001; // 100000000.0;
 		Globals::config.exploration_constant = 0.1;
 		Globals::config.silence = true;
   }

@@ -20,7 +20,7 @@ class SidewalkAgentPath:
 
     def resize(self):
         while len(self.route_points) < self.min_points:
-            if random.random() <= 0.5: #0.01
+            if random.random() <= 0.05: #0.01
                 adjacent_route_points = self.drunc.sidewalk.get_adjacent_route_points(self.route_points[-1], 20.0)
                 if adjacent_route_points:
                     self.route_points.append(adjacent_route_points[0])

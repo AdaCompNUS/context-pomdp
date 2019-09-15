@@ -488,11 +488,11 @@ class GammaCrowdController(Drunc):
         # Determine spawning variables.
         if not self.initialized:
             spawn_size_min = 0
-            spawn_size_max = 150
+            spawn_size_max = 250
             self.initialized = True
         else:
             spawn_size_min = 100
-            spawn_size_max = 150
+            spawn_size_max = 250
         spawn_segment_map = self.network_segment_map.intersection(self.get_spawn_occupancy_map(bounds_center, spawn_size_min, spawn_size_max))
 
         start_t = time.time()
@@ -513,8 +513,8 @@ class GammaCrowdController(Drunc):
                     #5.0 + random.uniform(0.0, 1.5)))
                     5.0 + random.uniform(0.0, 0.5)))
             elapsed_time = time.time() - start_t
-            if elapsed_time > 3:
-                break
+            # if elapsed_time > 3:
+                # break
         
         start_t = time.time()
         while len(self.network_bike_agents) < self.num_network_bike_agents:
@@ -534,8 +534,8 @@ class GammaCrowdController(Drunc):
                     #5.0 + random.uniform(0.0, 1.5)))
                     3.0 + random.uniform(0.0, 0.5)))
             elapsed_time = time.time() - start_t
-            if elapsed_time > 3:
-                break
+            # if elapsed_time > 3:
+                # break
 
         start_t = time.time()
         while len(self.sidewalk_agents) < self.num_sidewalk_agents:
@@ -555,8 +555,8 @@ class GammaCrowdController(Drunc):
                     actor, path, 
                     0.5 + random.uniform(0.0, 1.0)))
             elapsed_time = time.time() - start_t
-            if elapsed_time > 3:
-                break
+            # if elapsed_time > 3:
+                # break
         
         commands = []
         

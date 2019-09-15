@@ -64,7 +64,8 @@ class EgoVehicle(Drunc):
             # spawn_min = carla.Vector2D(1036.5-20, 507.21-20)
             # spawn_max = carla.Vector2D(1036.5+20, 507.21+20)
             
-            self.path = NetworkAgentPath.rand_path(self, 20, 1.0)
+            self.path = NetworkAgentPath.rand_path(self, 20, 1.0, self.network_segment_map.insersection, 
+                carla.OccupancyMap(carla.Vector2D(0,0), carla.Vector2D(1,1)))
                 
             vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.audi.etron'))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')
