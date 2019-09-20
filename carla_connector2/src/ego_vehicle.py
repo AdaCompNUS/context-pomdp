@@ -29,7 +29,7 @@ class EgoVehicle(Drunc):
     def __init__(self):
         super(EgoVehicle, self).__init__()
 
-        self.clearscene()
+        # self.clearscene()
         # time.sleep(2)
         # Create path.
         self.actor = None
@@ -66,9 +66,9 @@ class EgoVehicle(Drunc):
             # spawn_min = carla.Vector2D(1036.5-20, 507.21-20)
             # spawn_max = carla.Vector2D(1036.5+20, 507.21+20)
             
-            self.path = NetworkAgentPath.rand_path(self, 20, 1.0)
-            # self.path = NetworkAgentPath.rand_path(self, 20, 1.0, self.network_segment_map.intersection( 
-                # carla.OccupancyMap(carla.Vector2D(450,400), carla.Vector2D(500,450))))
+            # self.path = NetworkAgentPath.rand_path(self, 20, 1.0)
+            self.path = NetworkAgentPath.rand_path(self, 20, 1.0, self.network_segment_map.intersection( 
+                carla.OccupancyMap(carla.Vector2D(431,359), carla.Vector2D(433,361))))
                 
             vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.audi.etron'))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')
@@ -418,7 +418,7 @@ class EgoVehicle(Drunc):
                 print('Warning : path too short.')
                 
             # return
-        self.draw_path(self.path)
+        # self.draw_path(self.path)
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()

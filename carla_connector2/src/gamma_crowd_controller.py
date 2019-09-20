@@ -705,7 +705,7 @@ class GammaCrowdController(Drunc):
         
         self.client.apply_batch(commands)
         self.world.wait_for_tick(5.0)
-
+        '''
         stats_num_car = 0
         stats_num_bike = 0
         stats_num_ped = 0
@@ -738,7 +738,7 @@ class GammaCrowdController(Drunc):
             stats_sum_speed_bike,
             stats_sum_speed_ped))
 
-        '''
+        
         print('Time = {}'.format((update_time - self.start_time).to_sec()))
         print('Total spawned = {}, {}, {}'.format(
             self.stats_total_num_car, 
@@ -752,6 +752,7 @@ class GammaCrowdController(Drunc):
         '''
 
         ''' Temporarily disabled for experiments.
+        '''
         network_agents_msg = carla_connector2.msg.CrowdNetworkAgentArray()
         network_agents_msg.header.stamp = rospy.Time.now()
         for a in self.network_car_agents + self.network_bike_agents:
@@ -777,12 +778,12 @@ class GammaCrowdController(Drunc):
             sidewalk_agent_msg.route_orientation = a.path.route_orientations[0]
             sidewalk_agents_msg.agents.append(sidewalk_agent_msg)
         self.sidewalk_agents_pub.publish(sidewalk_agents_msg)
-        '''
+        
             
 if __name__ == '__main__':
     rospy.init_node('gamma_crowd_controller')
     rospy.wait_for_message("/meshes_spawned", Bool)
-    #rospy.wait_for_message("/IL_car_info", CarInfo)
+    rospy.wait_for_message("/IL_car_info", CarInfo)
 
     gamma_crowd_controller = GammaCrowdController()
 
@@ -794,7 +795,7 @@ if __name__ == '__main__':
         #gamma_crowd_controller.no_collision()
         end_time = rospy.Time.now()
         duration = (end_time - start_time).to_sec()
-        print('Update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
+        # print('Update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
         rate.sleep()
 
     gamma_crowd_controller.dispose()

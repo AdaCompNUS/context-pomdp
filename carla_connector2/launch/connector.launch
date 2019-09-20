@@ -18,7 +18,7 @@
   
   <!--node name="speed_controller" pkg="carla_connector2" type="speed_controller.py" output="screen"/-->
   
-  <!--<node name="purepursuit_controller" pkg="carla_connector2" type="purepursuit_controller.py" output="screen"/>-->
+  <node name="purepursuit_controller" pkg="carla_connector2" type="purepursuit_controller.py" output="screen"/>
 
   <node name="gamma_crowd_controller" pkg="carla_connector2" type="gamma_crowd_controller.py" output="screen">
     <param name="num_network_car_agents" value="75"/>

@@ -200,9 +200,9 @@ class CrowdProcessor(Drunc):
     
 if __name__ == '__main__':
     rospy.init_node('crowd_processor')
-    crowd_processor = CrowdProcessor()
     rospy.wait_for_message("/meshes_spawned", Bool)
-    
+    crowd_processor = CrowdProcessor()
+
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         crowd_processor.update()
