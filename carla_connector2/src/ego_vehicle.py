@@ -6,6 +6,7 @@ import carla
 import random
 import math
 import numpy as np
+import sys
 
 import rospy
 import tf
@@ -67,9 +68,10 @@ class EgoVehicle(Drunc):
             # spawn_max = carla.Vector2D(1036.5+20, 507.21+20)
             
             # self.path = NetworkAgentPath.rand_path(self, 20, 1.0)
+            # self.path = NetworkAgentPath.rand_path(self, 20, 1.0, self.network_segment_map.intersection( 
+                # carla.OccupancyMap(carla.Vector2D(435,340), carla.Vector2D(439,342))))  # 431,359: 433,361
             self.path = NetworkAgentPath.rand_path(self, 20, 1.0, self.network_segment_map.intersection( 
-                carla.OccupancyMap(carla.Vector2D(431,359), carla.Vector2D(433,361))))
-                
+                carla.OccupancyMap(carla.Vector2D(400,454), carla.Vector2D(402,456))))  # 431,359: 433,361    
             vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.audi.etron'))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')
             spawn_position = self.path.get_position()
@@ -362,6 +364,11 @@ class EgoVehicle(Drunc):
 
     def cmd_accel_callback(self, accel):
         self.cmd_accel = accel.data
+        end_time = rospy.Time.now()
+        elapsed = (end_time - init_time).to_sec()
+        # print('agent_array update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
+        # print('cmd_acc received at {}'.format(elapsed))
+        # sys.stdout.flush()
 
     def cmd_steer_callback(self, steer):
         self.cmd_steer = steer.data
@@ -425,6 +432,8 @@ class EgoVehicle(Drunc):
 
 if __name__ == '__main__':
     rospy.init_node('ego_vehicle')
+    init_time = rospy.Time.now()
+
     rospy.wait_for_message("/meshes_spawned", Bool)
     ego_vehicle = EgoVehicle()
 

@@ -2,6 +2,7 @@
 
 from drunc import Drunc
 import carla
+import sys
 
 import numpy as np
 from collections import defaultdict
@@ -74,10 +75,16 @@ class CrowdProcessor(Drunc):
             last_loc = carla.Location(pos.x, pos.y, 0.1)
 
     def update(self):
+        end_time = rospy.Time.now()
+        elapsed = (end_time - init_time).to_sec()
         if not self.do_update:
+            # print('do_update disabled at {}'.format(elapsed))
+            # sys.stdout.flush()
             return
 
         if not self.ego_car_info:
+            print('ego_car not exist yet at {}'.format(elapsed))
+            sys.stdout.flush()
             return
 
         current_time = rospy.Time.now()
@@ -197,9 +204,16 @@ class CrowdProcessor(Drunc):
         self.agents_pub.publish(agents_msg)
 
         self.do_update = False
+        end_time = rospy.Time.now()
+        elapsed = (end_time - init_time).to_sec()
+        # print('agent_array update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
+        # print('agent_array update at {}'.format(elapsed))
+        # sys.stdout.flush()
+
     
 if __name__ == '__main__':
     rospy.init_node('crowd_processor')
+    init_time = rospy.Time.now()
     rospy.wait_for_message("/meshes_spawned", Bool)
     crowd_processor = CrowdProcessor()
 
@@ -207,3 +221,5 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         crowd_processor.update()
         rate.sleep()
+
+

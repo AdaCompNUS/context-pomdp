@@ -23,7 +23,7 @@ bool b_load_goal=true; // !!!set to false only for data collection purpose!!!
 
 PedPomdpNode::PedPomdpNode(int argc, char** argv)
 {
-	ROS_INFO("Starting Pedestrian Avoidance ... ");
+    ROS_INFO("Starting Pedestrian Avoidance ... ");
 
 	cerr << "DEBUG: Setting up subscription..." << endl;
     ros::NodeHandle nh;
@@ -103,6 +103,8 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 		cout << "car goal: " << controller->goalx_ << " " << controller->goaly_ << endl;
 	}
 
+    logi << " PedPomdpNode constructed at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
     controller->RunPlanning(argc, argv);
 
     //ros::spin();
@@ -116,16 +118,18 @@ PedPomdpNode::~PedPomdpNode()
 
 int main(int argc, char** argv)
 {
-    cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
+    SolverPrior::record_init_time();
+
+    // cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
 
     ros::init(argc, argv, "mdp");
-    cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
+    // cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
 
     // raise error for floating point exceptions rather than silently return nan
 //    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 //    feenableexcept(FE_DIVBYZERO | FE_OVERFLOW);
 
-    cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
+    // cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
 
     srand(unsigned(time(0)));
         cout<< __FUNCTION__ <<"@" << __LINE__<< endl;

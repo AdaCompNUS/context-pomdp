@@ -103,10 +103,10 @@ public:
         if (emergency_break)
             return -1;
 
-        double throttle = (target_vel - real_vel + 0.00) * 1.0;
+        double throttle = (target_vel - real_vel + 0.05) * 1.0;
 
         throttle = min(0.5, throttle);
-        throttle = max(-0.5, throttle);
+        throttle = max(-0.01, throttle);
 
         if (real_vel<=0.05 && throttle < 0)
             throttle = 0.0;

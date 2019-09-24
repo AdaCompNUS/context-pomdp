@@ -2,6 +2,7 @@
 
 import math
 import os
+import sys
 import random
 import time
 
@@ -69,7 +70,7 @@ WALL_MAT = [
 class SpawnMeshes(Drunc):
     def __init__(self):
         super(SpawnMeshes, self).__init__()
-        self.client.reload_world()
+        # self.client.reload_world()
 
         self.meshes_spawned_pub = rospy.Publisher('/meshes_spawned', Bool, queue_size=1, latch=True) 
 
@@ -95,7 +96,10 @@ class SpawnMeshes(Drunc):
 
             for row in range(top_left_id[1], bottom_right_id[1] + 1):
                 for column in range(top_left_id[2], bottom_right_id[2] + 1):
-                    path = "/home/leeyiyuan/carla/Data/imagery/{}/{}_{}.jpeg".format(zoom, row, column)
+                    path = os.path.join(os.path.expanduser('~/carla/Data/imagery'), 
+                        "{}/{}_{}.jpeg".format(zoom, row, column))
+                    print(path)
+                    sys.stdout.flush()
                     if not os.path.exists(path):
                         continue
 
@@ -116,10 +120,10 @@ class SpawnMeshes(Drunc):
         #(BOUNDS_MIN, BOUNDS_MAX) = ((1.2894000, 103.7669000), (1.3088000, 103.7853000))
 
         #map_location = 'meskel_square'
-        #(BOUNDS_MIN, BOUNDS_MAX) = ((9.00802, 38.76009), (9.01391, 38.76603))
+        (BOUNDS_MIN, BOUNDS_MAX) = ((9.00802, 38.76009), (9.01391, 38.76603))
 
         #map_location = 'magic'
-        (BOUNDS_MIN, BOUNDS_MAX) = ((51.5621800, -1.7729100), (51.5633900, -1.7697300))
+        # (BOUNDS_MIN, BOUNDS_MAX) = ((51.5621800, -1.7729100), (51.5633900, -1.7697300))
 
         #map_location = 'highway'
         #(BOUNDS_MIN, BOUNDS_MAX) = ((1.2983800, 103.7777000), (1.3003700, 103.7814900))
@@ -133,19 +137,19 @@ class SpawnMeshes(Drunc):
         # Roadmark occupancy map.
         if self.roadmark_occupancy_map is not None:
             commands.append(carla.command.SpawnDynamicMesh(
-                self.roadmark_occupancy_map.get_mesh_triangles(),
+                self.roadmark_occupancy_map.get_mesh_triangles(-0.0),
                 '/Game/Carla/Static/GenericMaterials/LaneMarking/M_MarkingLane_W'))
 
         # Network occupancy map.
         if self.network_occupancy_map is not None:
             commands.append(carla.command.SpawnDynamicMesh(
-                self.network_occupancy_map.difference(self.roadmark_occupancy_map).get_mesh_triangles(),
+                self.network_occupancy_map.difference(self.roadmark_occupancy_map).get_mesh_triangles(-0.0),
                 '/Game/Carla/Static/GenericMaterials/Masters/LowComplexity/M_Road1'))
 
         # Sidewalk occupancy.
         if self.sidewalk_occupancy_map is not None:
             commands.append(carla.command.SpawnDynamicMesh(
-                self.sidewalk.create_occupancy_map(3.0).get_mesh_triangles(-0.2),
+                self.sidewalk.create_occupancy_map(3.0).get_mesh_triangles(-0.0),
                 '/Game/Carla/Static/GenericMaterials/Ground/GroundWheatField_Mat'))
         
         results = self.client.apply_batch_sync(commands)

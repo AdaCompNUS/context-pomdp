@@ -121,24 +121,23 @@ bool WorldSimulator::Connect(){
 
     agentSub_ = nh.subscribe("agent_array", 1, agentArrayCallback); 
 
-	clock_t begin = clock();
+	logi << "Subscribers and Publishers created at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
     auto odom_data = ros::topic::waitForMessage<nav_msgs::Odometry>("odom");
+	logi << "odom get at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
     auto car_data = ros::topic::waitForMessage<ped_is_despot::car_info>("IL_car_info");
+	logi << "IL_car_info get at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
 #ifdef CONNECTOR2
 	auto agent_data = ros::topic::waitForMessage<carla_connector2::TrafficAgentArray>("agent_array",ros::Duration(30));
 #else
 	auto agent_data = ros::topic::waitForMessage<carla_connector::agent_array>("agent_array",ros::Duration(30));
 #endif   
+	logi << "agent_array get at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
     if (agent_data == NULL)
         ERR("No agent array messages received after 30 seconds.");
-
-	clock_t end = clock();
-	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-
-	logi << "[WorldSimulator] Simulator connected after waiting for " 
-		<< elapsed_secs << " s" << endl;
 
     return true;
 }
@@ -261,6 +260,7 @@ double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action){
 bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 
 	if(action ==-1) return false;
+	logi << "ExecuteAction at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
 	cout << "[ExecuteAction]" << endl;
 

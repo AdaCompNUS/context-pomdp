@@ -42,7 +42,7 @@ class Spectator(Drunc):
                 camera_blueprint,
                 # carla.Transform(carla.Location(x=-32.0, z=24.0), carla.Rotation(pitch=-30.0)),
                 # carla.Transform(carla.Location(x=-16.0, z=12.0), carla.Rotation(pitch=-30.0)),
-                carla.Transform(carla.Location(x=0.6, z=1.3), carla.Rotation(pitch=0.0)),
+                carla.Transform(carla.Location(x=0.6,z=1.4), carla.Rotation(pitch=0.0)),
 
                 # carla.Transform(carla.Location(x=-320.0, z=480.0), carla.Rotation(pitch=-60.0)),
                 attach_to=self.actor)

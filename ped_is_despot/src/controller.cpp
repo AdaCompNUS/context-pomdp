@@ -90,6 +90,7 @@ void handle_div_0(int sig, siginfo_t* info, void*)
 Controller::Controller(ros::NodeHandle& _nh, bool fixed_path, double pruning_constant, double pathplan_ahead, string obstacle_file_name):  
 nh(_nh), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file_name_(obstacle_file_name)
 {
+
 	my_sig_action sa(handle_div_0);
     if (0 != sigaction(SIGFPE, sa, NULL)) {
         std::cerr << "!!!!!!!! fail to setup segfault handler !!!!!!!!" << std::endl;
@@ -126,6 +127,7 @@ nh(_nh), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file
 	unity_driving_simulator_ = NULL;
 	pomdp_driving_simulator_ = NULL;
 
+	logi << " Controller constructed at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 }
 
 
@@ -144,8 +146,6 @@ DSPOMDP* Controller::InitializeModel(option::Option* options) {
 
 void Controller::CreateNNPriors(DSPOMDP* model) {
 	cerr << "DEBUG: Creating solver prior " << endl;
-
-	SolverPrior::record_init_time();
 
 	if (Globals::config.use_multi_thread_) {
 		SolverPrior::nn_priors.resize(Globals::config.NUM_THREADS);
@@ -171,6 +171,7 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 
 	prior_ = SolverPrior::nn_priors[0];
 	cerr << "DEBUG: Created solver prior " << typeid(*prior_).name() << endl;
+
 //	logi << "Created solver prior " << typeid(*prior_).name() << endl;
 
 }
@@ -192,14 +193,22 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model, opti
 				pathplan_ahead_, obstacle_file_name_, COORD(goalx_, goaly_));
 			break;
 	}
+	logi << "WorldSimulator constructed at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
 
 	if (Globals::config.useGPU)
 		model->InitGPUModel();
 
+	logi << "InitGPUModel finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
 	//Establish connection with external system
 	world->Connect();
+	logi << "Connect finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
    //Initialize the state of the external system
 	world->Initialize();
+	logi << "Initialize finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
 
 	switch(simulation_mode_){
 	case POMDP:
@@ -214,6 +223,8 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model, opti
 	}
 
    CreateNNPriors(model);
+	logi << "CreateNNPriors finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
 
    return world;
 }
@@ -847,7 +858,6 @@ static int wait_count = 0;
 
 void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* logger) {
 
-//	sleep(2);
 	int pre_step_count = 0;
 	if (Globals::config.use_prior)
 		pre_step_count = 4;
@@ -863,6 +873,9 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* log
     	}
     }
 
+	logi << "path_from_topic received at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+
     while(SolverPrior::nn_priors[0]->Size(true) < pre_step_count){
     	logi << "Executing pre-step" << endl;
     	RunPreStep(solver, world, logger);
@@ -874,9 +887,12 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* log
     	logi << "Pre-step sleep end" << endl;
     }
 
+	logi << "Pre-steps end at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
 	logi << "Executing first step" << endl;
 
 	RunStep(solver, world, logger);
+	logi << "First step end at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
     cerr <<"DEBUG: before entering controlloop"<<endl;
     timer_ = nh.createTimer(ros::Duration(1.0/control_freq/time_scale_),
@@ -885,7 +901,7 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* log
 }
 
 int Controller::RunPlanning(int argc, char *argv[]) {
-	cerr << "DEBUG: Starting planning" << endl;
+	cerr << "DEBUG: Starting planning" << endl; 
 
 	/* =========================
 	 * initialize parameters
@@ -901,6 +917,8 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 			search_solver, num_runs, world_type, belief_type, time_limit);
 	if(options==NULL)
 		return 0;
+	logi << "InitializeParamers finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
 
 	if(Globals::config.useGPU)
 		PrepareGPU();
@@ -912,6 +930,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	 * =========================*/
 	DSPOMDP *model = InitializeModel(options);
 	assert(model != NULL);
+	logi << "InitializeModel finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
 	/* =========================
 	 * initialize world
@@ -920,6 +939,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 
 	cerr << "DEBUG: End initializing world" << endl;
 	assert(world != NULL);
+	logi << "InitializeWorld finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
 	/* =========================
 	 * initialize belief
@@ -938,6 +958,8 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 		break;
 	}
 
+	logi << "InitialBelief finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
 	/* =========================
 	 * initialize solver
 	 * =========================*/
@@ -945,6 +967,8 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 
 	solver_type = ChooseSolver();
 	Solver *solver = InitializeSolver(model, belief, solver_type, options);
+
+	logi << "InitializeSolver finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
 	/* =========================
 	 * initialize logger
@@ -966,6 +990,8 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	logger->InitRound(world->GetCurrentState());
 	round_=0; step_=0;
 	unity_driving_simulator_->beliefTracker->text();
+	logi << "InitRound finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
 	PlanningLoop(solver, world, logger);
 	ros::spin();
 
