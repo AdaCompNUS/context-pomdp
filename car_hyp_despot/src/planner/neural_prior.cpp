@@ -242,7 +242,7 @@ at::Tensor gm_pdf(at::Tensor &pi, at::Tensor &sigma,
 }
 
 void Show_params(std::shared_ptr<torch::jit::script::Module> drive_net){
-	auto& model_params = drive_net->get_modules();
+	const auto& model_params = drive_net->get_modules();
 
 	int iter = 0;
 
@@ -252,26 +252,25 @@ void Show_params(std::shared_ptr<torch::jit::script::Module> drive_net){
 	assert(fout.is_open());
 
 	for(const auto& module: model_params) {
-		std::string module_name = module.key.c_str();
-		fout << module.key.c_str() << ": " << std::endl;
+		// fout << module.name() << ": " << std::endl;
 
-		auto& module_params = module.value.module->get_parameters();
+		const auto& module_params = module.get_parameters();
 		fout << module_params.size() << " params found:" << std::endl;
 		for (const auto& param: module_params){
-			fout<< *param.value.slot() <<std::endl;
+			fout<< param.value() <<std::endl;
 		}
 
 //		if (module_name == "ang_head" ){
 		fout << "module_name sub_modules: " << std::endl;
 
-		auto& sub_modules = module.value.module->get_modules();
+		const auto& sub_modules = module.get_modules();
 		for(const auto& sub_module: sub_modules) {
-			fout << "sub-module found " << sub_module.key.c_str() << ": " << std::endl;
+			// fout << "sub-module found " << sub_module.name() << ": " << std::endl;
 
-			auto& sub_module_params = sub_module.value.module->get_parameters();
+			const auto& sub_module_params = sub_module.get_parameters();
 			fout << sub_module_params.size() << " params found:" << std::endl;
 			for (const auto& param: sub_module_params){
-				fout<< *param.value.slot() <<std::endl;
+				fout<< param.value() <<std::endl;
 			}
 		}
 //		}
@@ -431,7 +430,7 @@ void PedNeuralSolverPrior::Load_model(std::string path){
 	cerr << "DEBUG: Loading model "<< model_file << endl;
 
 	// DONE: Pass the model name through ROS params
-	drive_net = torch::jit::load(model_file);
+	drive_net = std::make_shared<torch::jit::script::Module>(torch::jit::load(model_file));
 
 	if(drive_net == NULL)
 		raise(SIGABRT);
@@ -463,7 +462,7 @@ void PedNeuralSolverPrior::Load_value_model(std::string path){
 	cerr << "DEBUG: Loading model "<< value_model_file << endl;
 
 	// DONE: Pass the model name through ROS params
-	drive_net_value = torch::jit::load(value_model_file);
+	drive_net_value = std::make_shared<torch::jit::script::Module>(torch::jit::load(value_model_file));
 
 	if(drive_net_value == NULL)
 		raise(SIGABRT);
@@ -2292,7 +2291,7 @@ void PedNeuralSolverPrior::Test_all_libtorch(int batchsize, int num_guassian_mod
 	std::shared_ptr<torch::jit::script::Module> net;
 
 	logd << "[Test_model] Testing model "<< path << endl;
-	net = torch::jit::load(path);
+	net = std::make_shared<torch::jit::script::Module>(torch::jit::load(path));
 	net->to(at::kCUDA);
 	assert(net);
 
@@ -2379,7 +2378,7 @@ void PedNeuralSolverPrior::Test_val_libtorch(int batchsize, int num_guassian_mod
 	}
 
 	logd << "[Test_model] Loading value model "<< path << endl;
-	auto val_net = torch::jit::load(path);
+	auto val_net = std::make_shared<torch::jit::script::Module>(torch::jit::load(path));
 	val_net->to(at::kCUDA);
 	assert(val_net);
 
