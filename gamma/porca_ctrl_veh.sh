@@ -90,13 +90,13 @@ do
 	sleep 1
 	cd ~/Unity/DESPOT-Unity/Assets/Sensors/Scripts/ROS/  
 	python OdometryROS.py &> $root_path/result/$subfolder'_debug'/odom_log_single'_'$i'_'$j.txt & export Odom_ID=$! 
-	cd ~/workspace/catkin_ws/src/peds_unity_system/src
+	cd ~/workspace/catkin_ws/src/ped_is_despot/src
 	python unity_connector.py &> $root_path/result/$subfolder'_debug'/connector_log_single'_'$i'_'$j.txt & export Connector_ID=$!
 	cd ~/workspace/catkin_ws/src/purepursuit_combined/
 	python purepursuit_NavPath_unity.py &> $root_path/result/$subfolder'_debug'/pursuit_log_single'_'$i'_'$j.txt & export Pursuit_ID=$!
 	echo "Python scripts setup"
 	sleep 1
-	roslaunch peds_unity_system ped_sim.launch obstacle_file_name:=$obstacle_file goal_file_name:=$goal_file &> $root_path/result/$subfolder'_debug'/ped_sim_log_single'_'$i'_'$j &
+	roslaunch ped_is_despot ped_sim.launch obstacle_file_name:=$obstacle_file goal_file_name:=$goal_file &> $root_path/result/$subfolder'_debug'/ped_sim_log_single'_'$i'_'$j &
 	roslaunch porca_planner ped_sim.launch obstacle_file_name:=$obstacle_file goal_file_name:=$goal_file &> $root_path/result/$subfolder'_debug'/ped_sim_log_single'_'$i'_'$j &
 	rosrun ped_is_despot vel_publisher &
 

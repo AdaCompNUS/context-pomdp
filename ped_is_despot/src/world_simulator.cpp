@@ -3,7 +3,7 @@
 #include "WorldModel.h"
 #include "ped_pomdp.h"
 
-#include <ped_pathplan/StartGoal.h>
+#include <ped_is_despot/StartGoal.h>
 #include <ped_is_despot/car_info.h>
 #include <ped_is_despot/peds_info.h>
 #include <ped_is_despot/ped_info.h>
@@ -188,7 +188,7 @@ State* WorldSimulator::GetCurrentState(){
 
 	CarStruct updated_car;
 	COORD coord;
-	//ped_pathplan::StartGoal startGoal;
+	//ped_is_despot::StartGoal startGoal;
 
 	/*if(pathplan_ahead_ > 0 && worldModel.path.size()>0) {
 		startGoal.start = getPoseAhead(out_pose);

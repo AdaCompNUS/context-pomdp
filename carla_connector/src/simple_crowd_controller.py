@@ -13,7 +13,7 @@ from network_agent_path import NetworkAgentPath
 from sidewalk_agent_path import SidewalkAgentPath
 from util import *
 import carla_connector.msg
-from peds_unity_system.msg import car_info as CarInfo
+from ped_is_despot.msg import car_info as CarInfo
 import timeit
 
 

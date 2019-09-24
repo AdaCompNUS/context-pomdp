@@ -26,7 +26,7 @@
 #include <ped_is_despot/ped_local_frame_vector.h>
 #include <ped_is_despot/imitation_data.h>
 #include <std_msgs/Float32.h>
-#include <pnc_msgs/speed_contribute.h>
+// #include <pnc_msgs/speed_contribute.h>
 //#include "executer.h"
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
@@ -47,7 +47,7 @@
 #include "ped_pomdp.h"
 #include "core/particle_belief.h"
 #include "solver/despot.h"
-#include <ped_pathplan/StartGoal.h>
+#include <ped_is_despot/StartGoal.h>
 #include "planner.h"
 
 class WorldSimulator;

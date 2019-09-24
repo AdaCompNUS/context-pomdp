@@ -8,10 +8,10 @@ from path_smoothing import distance
 
 import rospy
 from std_msgs.msg import Float32
-from peds_unity_system.msg import peds_car_info as PedsCarInfo
-from peds_unity_system.msg import car_info as CarInfo # panpan
-from peds_unity_system.msg import peds_info as PedsInfo
-from peds_unity_system.msg import ped_info as PedInfo
+from ped_is_despot.msg import peds_car_info as PedsCarInfo
+from ped_is_despot.msg import car_info as CarInfo # panpan
+from ped_is_despot.msg import peds_info as PedsInfo
+from ped_is_despot.msg import ped_info as PedInfo
 from carla_connector.msg import TrafficAgentArray
 from carla_connector.msg import TrafficAgent
 from geometry_msgs.msg import Twist

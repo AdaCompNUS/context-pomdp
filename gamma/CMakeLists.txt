@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   message_generation
-  peds_unity_system
+  ped_is_despot 
 )
 
 
@@ -122,7 +122,7 @@ add_library(porca
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(gamma src/peds_simulator_no_car.cpp src/coord.cpp src/collision.cpp)
 
-add_dependencies(gamma peds_unity_system_generate_messages_cpp)
+add_dependencies(gamma ped_is_despot_generate_messages_cpp)
 
 
 target_link_libraries(gamma

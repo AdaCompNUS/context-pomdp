@@ -17,7 +17,7 @@ from std_msgs.msg import Float32
 from nav_msgs.msg import Path as NavPath
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
-from peds_unity_system.msg import car_info as CarInfo # panpan
+from ped_is_despot.msg import car_info as CarInfo # panpan
 
 PURSUIT_DIST = 5.0 ##1.5 for golfcart
 RATIO_ANGULAR = 0.3

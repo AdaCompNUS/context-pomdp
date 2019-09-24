@@ -5,9 +5,8 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   geometry_msgs
+  ped_is_despot
   nav_msgs
-  peds_unity_system
-  cluster_assoc
 )
 
 add_message_files(
@@ -20,7 +19,10 @@ add_message_files(
   CrowdSidewalkAgent.msg
   CrowdSidewalkAgentArray.msg
   TrafficAgent.msg
-  TrafficAgentArray.msg)
+  TrafficAgentArray.msg
+  agent_array.msg
+  traffic_agent.msg
+ )
 
  generate_messages(
    DEPENDENCIES
@@ -32,9 +34,8 @@ catkin_package(
   rospy 
   std_msgs 
   geometry_msgs
-  nav_msgs 
-  peds_unity_system 
-  cluster_assoc
+  nav_msgs
+  ped_is_despot 
 )
 
 include_directories(

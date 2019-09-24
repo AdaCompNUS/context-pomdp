@@ -51,11 +51,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   sensor_msgs
+  nav_msgs
   message_generation
-  cluster_assoc
-  pnc_msgs
   car_hyp_despot
-  peds_unity_system
 )
 
 # set(CMAKE_PREFIX_PATH_BAK  "${CMAKE_PREFIX_PATH}")
@@ -115,6 +113,12 @@ add_message_files(
     car_info.msg
     ped_info.msg
     peds_info.msg
+    peds_car_info.msg
+    StartGoal.msg
+    pedestrian_array.msg
+    pedestrian.msg
+    cluster.msg
+    clusters.msg
 )
 
 generate_messages(
@@ -122,11 +126,7 @@ generate_messages(
         std_msgs
         geometry_msgs
         nav_msgs
-        pnc_msgs
-        peds_unity_system
-        ped_pathplan
         ped_is_despot
-        cluster_assoc
 )
 
 ## Generate messages in the 'msg' folder
@@ -231,12 +231,12 @@ include_directories(
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(ped_pomdp src/PedPomdpNode.cpp src/controller.cpp src/world_simulator.cpp src/pomdp_simulator.cpp)
 
+add_dependencies(ped_pomdp carla_connector_generate_messages_cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -309,26 +309,6 @@ target_link_libraries(vel_publisher
    car_hyp_despot
 )
 
-
-
-# add_dependencies(ped_pomdp caffe2)
-# add_dependencies(ped_pomdp caffe2_gpu_library)
-# add_dependencies(local_frame caffe2_library)
-# add_dependencies(local_frame caffe2_gpu_library)
-
-# add_dependencies(ped_pomdp car_hyp_despot)
-# add_dependencies(local_frame car_hyp_despot)
-# add_dependencies(vel_publisher car_hyp_despot)
-
-
-# add_dependencies(ped_pomdp ped_pathplan_generate_messages_cpp)
-
-# add_dependencies(ped_pomdp ped_is_despot_generate_messages_cpp)
-# add_dependencies(ped_pomdp cluster_assoc_generate_messages_cpp)
-
-# add_dependencies(local_frame ped_is_despot_generate_messages_cpp)
-# add_dependencies(local_frame pnc_msgs_generate_messages_cpp)
-# add_dependencies(vel_publisher ped_is_despot_generate_messages_cpp)
 
 message("@@@@@@@@@@@@@@ ped_is_despot end @@@@@@@@@@@@@@")
 

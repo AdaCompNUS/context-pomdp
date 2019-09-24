@@ -14,7 +14,7 @@ from nav_msgs.msg import Path
 from std_msgs.msg import Bool
 
 import carla_connector.msg
-from peds_unity_system.msg import car_info as CarInfo # panpan
+from ped_is_despot.msg import car_info as CarInfo # panpan
 from util import *
 
 '''    
