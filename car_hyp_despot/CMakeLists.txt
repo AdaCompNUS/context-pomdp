@@ -84,7 +84,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
-set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch")
+# set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch")
 # set(CUDA_HOST_COMPILER "/usr/bin/gcc-5")
 # set(CUDAHOSTCXX "g++-5")
 # set(CMAKE_C_COMPILER "/usr/bin/gcc-5")
@@ -94,7 +94,7 @@ set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch")
 # set(CMAKE_C_COMPILER_VERSION 5.5)
 
 
-find_package(Torch REQUIRED)
+# find_package(Torch REQUIRED)
 
 find_package(OpenCV 4.0.0 REQUIRED)
 

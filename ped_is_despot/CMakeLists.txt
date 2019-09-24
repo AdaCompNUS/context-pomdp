@@ -58,13 +58,13 @@ find_package(catkin REQUIRED COMPONENTS
   peds_unity_system
 )
 
-set(CMAKE_PREFIX_PATH_BAK  "${CMAKE_PREFIX_PATH}")
+# set(CMAKE_PREFIX_PATH_BAK  "${CMAKE_PREFIX_PATH}")
 
-set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch")
+# set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch")
 # set(CUDA_HOST_COMPILER "/usr/bin/gcc-5")
 
-find_package(Torch REQUIRED)
-set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH_BAK}")
+# find_package(Torch REQUIRED)
+# set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH_BAK}")
 
 message("==============================CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}" )
 
