@@ -1,21 +1,25 @@
-goalx: -170.5
-goaly: -146.68
+### for scooter
+# goalx: -175.5
+# goaly: -146.68
+
+# goalx: 18.0
+# goaly: 0.0
 
 fixed_path: false
-pruning_constant: 0 #1000000
+pruning_constant: 0 #100000000
 #pruning_constant: 1000000000
 #pathplan_ahead: 3.0
 pathplan_ahead: 1.5
 
 
-crash_penalty: -300.0
+crash_penalty: -3000.0
 #reward_factor_vel: 0.5
 reward_factor_vel: 4
 reward_base_crash_vel: 0.5
 belief_smoothing: 0.05
 noise_robvel: 0.05
-noise_goal_angle_deg: 45
-max_vel: 1.5
+noise_goal_angle_deg: 5 
+max_vel: 8.0 
 #collision_distance: 1.5
 collision_distance: 0.5
 infront_angle_deg: 70

@@ -1,0 +1,9 @@
+int32 batchsize
+float32[] tensor
+string mode
+---
+float32[] value
+float32[] acc_pi
+float32[] acc_mu
+float32[] acc_sigma
+float32[] ang

@@ -3,18 +3,37 @@
 #include "core/solver.h"
 #include "core/globals.h"
 #include <csignal>
-using namespace std;
-double marker_colors[20][3] = {
-    	{0.0,1.0,0.0},  //green
-		{1.0,0.0,0.0},  //red
-		{0.0,0.0,1.0},  //blue
-		{1.0,1.0,0.0},  //sky blue
-		{0.0,1.0,1.0},  //yellow
-		{0.5,0.25,0.0}, //brown
-		{1.0,0.0,1.0}   //pink
-};
+#include <time.h>
+#include "boost/bind.hpp"
+#include "world_simulator.h"
+#include "pomdp_simulator.h"
 
-int action_map[3]={2,0,1};
+#include "custom_particle_belief.h"
+#include "neural_prior.h"
+
+#undef LOG
+#define LOG(lv) \
+if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
+else despot::logging::stream(lv)
+#include <despot/util/logging.h>
+
+using namespace std;
+using namespace despot;
+
+int Controller::b_use_drive_net_=0;
+int Controller::gpu_id_=0;
+float Controller::time_scale_ = 1.0;
+std::string Controller::model_file_ = "";
+std::string Controller::value_model_file_ = "";
+
+bool path_missing = false;
+
+static DSPOMDP* ped_pomdp_model;
+static ACT_TYPE action = (ACT_TYPE)(-1);
+static OBS_TYPE obs =(OBS_TYPE)(-1);
+
+bool predict_peds = true;
+
 
 struct my_sig_action {
     typedef void (* handler_type)(int, siginfo_t*, void*);
@@ -68,431 +87,245 @@ void handle_div_0(int sig, siginfo_t* info, void*)
 	exit(-1);
 }
 
-Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead)
+Controller::Controller(ros::NodeHandle& _nh, bool fixed_path, double pruning_constant, double pathplan_ahead, string obstacle_file_name):  
+nh(_nh), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file_name_(obstacle_file_name)
 {
 
 	my_sig_action sa(handle_div_0);
     if (0 != sigaction(SIGFPE, sa, NULL)) {
-        std::cerr << "!!!!!!!! fail to setup handler !!!!!!!!" << std::endl;
+        std::cerr << "!!!!!!!! fail to setup segfault handler !!!!!!!!" << std::endl;
         //return 1;
     }
 
-    Path p;
-    COORD start = COORD(-205, -142.5);
-    COORD goal = COORD(-189, -142.5);
-    p.push_back(start);
-    p.push_back(goal);
-    worldModel.setPath(p.interpolate());
-    fixed_path_ = true;
-
-	cout << "fixed_path = " << fixed_path_ << endl;
-	cout << "pathplan_ahead = " << pathplan_ahead_ << endl;
-	Globals::config.pruning_constant = pruning_constant;
-
-	global_frame_id = ModelParams::rosns + "/map";
 	cerr <<"DEBUG: Entering Controller()"<<endl;
+
+    simulation_mode_ = UNITY;
+    fixed_path_=false;
+	Globals::config.pruning_constant = pruning_constant;
+	global_frame_id = ModelParams::rosns + "/map";
 	control_freq=ModelParams::control_freq;
 
+	cout << "=> fixed_path = " << fixed_path_ << endl;
+	cout << "=> pathplan_ahead (will be reset to 0 for lets-drive mode)= " << pathplan_ahead_ << endl;
+	cout << "=> pruning_constant = (will be rewritten by planner::initdefaultparams)" << pruning_constant << endl;
+
 	cerr << "DEBUG: Initializing publishers..." << endl;
-    believesPub_ = nh.advertise<ped_is_despot::peds_believes>("peds_believes",1);
-    cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1);
-	plannerPedsPub_=nh.advertise<sensor_msgs::PointCloud>("planner_peds",1);
-    actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
-    actionPubPlot_= nh.advertise<geometry_msgs::Twist>("pomdp_action_plot",1);
-	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1, true);
-	pathSub_= nh.subscribe("plan", 1, &Controller::RetrievePathCallBack, this);
-    navGoalSub_ = nh.subscribe("navgoal", 1, &Controller::setGoal, this);
-	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
-	start_goal_pub=nh.advertise<ped_pathplan::StartGoal> ("ped_path_planner/planner/start_goal", 1);
 
-	markers_pub=nh.advertise<visualization_msgs::MarkerArray>("pomdp_belief",1);
-    pedStatePub_=nh.advertise<sensor_msgs::PointCloud>("ped_state", 1);
-    pedPredictionPub_ = nh.advertise<sensor_msgs::PointCloud>("ped_prediction", 1);
-	safeAction=2;
-	target_speed_=0.0;
-	goal_reached=false;
-	cerr << "DEBUG: Init simulator" << endl;
-	initSimulator();
-    //RetrievePaths();
+	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1, true); // for visualization
 
-    addObstacle();
+	pathSub_= nh.subscribe("plan", 1, &Controller::RetrievePathCallBack, this); // receive path from path planner
 
-	cerr <<"DEBUG: before entering controlloop"<<endl;
-    timer_ = nh.createTimer(ros::Duration(1.0/control_freq), &Controller::controlLoop, this);
-    //timer_ = nh.createTimer(ros::Duration(1.0), &Controller::controlLoop, this);
-	timer_speed=nh.createTimer(ros::Duration(0.05), &Controller::publishSpeed, this);
+    navGoalSub_ = nh.subscribe("navgoal", 1, &Controller::setGoal, this); //receive user input of goal	
+	
+	start_goal_pub=nh.advertise<ped_pathplan::StartGoal> ("ped_path_planner/planner/start_goal", 1);//send goal to path planner
+    
+    //imitation learning
 
+	last_action=-1;
+	last_obs=-1;
+
+	unity_driving_simulator_ = NULL;
+	pomdp_driving_simulator_ = NULL;
+
+	logi << " Controller constructed at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 }
 
 
+DSPOMDP* Controller::InitializeModel(option::Option* options) {
+	cerr << "DEBUG: Initializing model" << endl;
 
-bool Controller::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const
-{
-    out_pose.setIdentity();
+	DSPOMDP* model = new PedPomdp();
+	static_cast<PedPomdp*>(model)->world_model=&SimulatorBase::worldModel;
 
-    try {
-        tf_.transformPose(target_frame, in_pose, out_pose);
-    }
-    catch(tf::LookupException& ex) {
-        ROS_ERROR("No Transform available Error: %s\n", ex.what());
-        return false;
-    }
-    catch(tf::ConnectivityException& ex) {
-        ROS_ERROR("Connectivity Error: %s\n", ex.what());
-        return false;
-    }
-    catch(tf::ExtrapolationException& ex) {
-        ROS_ERROR("Extrapolation Error: %s\n", ex.what());
-        return false;
-    }
-    return true;
+	model_ = model;
+	ped_pomdp_model= model;
+
+	return model;
 }
 
-void Controller::addObstacle(){
-    std::vector<RVO::Vector2> obstacle[12];
 
-    obstacle[0].push_back(RVO::Vector2(-222.55,-137.84));
-    obstacle[0].push_back(RVO::Vector2(-203.23,-138.35));
-    obstacle[0].push_back(RVO::Vector2(-202.49,-127));
-    obstacle[0].push_back(RVO::Vector2(-222.33,-127));
+void Controller::CreateNNPriors(DSPOMDP* model) {
+	cerr << "DEBUG: Creating solver prior " << endl;
 
-    obstacle[1].push_back(RVO::Vector2(-194.3,-137.87));
-    obstacle[1].push_back(RVO::Vector2(-181.8,-138));
-    obstacle[1].push_back(RVO::Vector2(-181.5,-127));
-    obstacle[1].push_back(RVO::Vector2(-194.3,-127));
+	if (Globals::config.use_multi_thread_) {
+		SolverPrior::nn_priors.resize(Globals::config.NUM_THREADS);
+	} else
+		SolverPrior::nn_priors.resize(1);
 
-    obstacle[2].push_back(RVO::Vector2(-178.5,-137.66));
-    obstacle[2].push_back(RVO::Vector2(-164.95,-137.66));
-    obstacle[2].push_back(RVO::Vector2(-164.95,-127));
-    obstacle[2].push_back(RVO::Vector2(-178.5,-127));
+	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+		cerr << "DEBUG: Creating prior "<< i << endl;
 
-    obstacle[3].push_back(RVO::Vector2(-166.65,-148.05));
-    obstacle[3].push_back(RVO::Vector2(-164,-148.05));
-    obstacle[3].push_back(RVO::Vector2(-164,-138));
-    obstacle[3].push_back(RVO::Vector2(-166.65,-138));
+		SolverPrior::nn_priors[i] =
+				static_cast<PedPomdp*>(model)->CreateSolverPrior(
+						unity_driving_simulator_, "NEURAL", false);
 
-    obstacle[4].push_back(RVO::Vector2(-172.06,-156));
-    obstacle[4].push_back(RVO::Vector2(-166,-156));
-    obstacle[4].push_back(RVO::Vector2(-166,-148.25));
-    obstacle[4].push_back(RVO::Vector2(-172.06,-148.25));
+		SolverPrior::nn_priors[i]->prior_id(i);
 
-    obstacle[5].push_back(RVO::Vector2(-197.13,-156));
-    obstacle[5].push_back(RVO::Vector2(-181.14,-156));
-    obstacle[5].push_back(RVO::Vector2(-181.14,-148.65));
-    obstacle[5].push_back(RVO::Vector2(-197.13,-148.65));
-
-    obstacle[6].push_back(RVO::Vector2(-222.33,-156));
-    obstacle[6].push_back(RVO::Vector2(-204.66,-156));
-    obstacle[6].push_back(RVO::Vector2(-204.66,-148.28));
-    obstacle[6].push_back(RVO::Vector2(-222.33,-148.28));
-
-    obstacle[7].push_back(RVO::Vector2(-214.4,-143.25));
-    obstacle[7].push_back(RVO::Vector2(-213.5,-143.25));
-    obstacle[7].push_back(RVO::Vector2(-213.5,-142.4));
-    obstacle[7].push_back(RVO::Vector2(-214.4,-142.4));
-
-    obstacle[8].push_back(RVO::Vector2(-209.66,-144.35));
-    obstacle[8].push_back(RVO::Vector2(-208.11,-144.35));
-    obstacle[8].push_back(RVO::Vector2(-208.11,-142.8));
-    obstacle[8].push_back(RVO::Vector2(-209.66,-142.8));
-
-    obstacle[9].push_back(RVO::Vector2(-198.58,-144.2));
-    obstacle[9].push_back(RVO::Vector2(-197.2,-144.2));
-    obstacle[9].push_back(RVO::Vector2(-197.2,-142.92));
-    obstacle[9].push_back(RVO::Vector2(-198.58,-142.92));
-
-    obstacle[10].push_back(RVO::Vector2(-184.19,-143.88));
-    obstacle[10].push_back(RVO::Vector2(-183.01,-143.87));
-    obstacle[10].push_back(RVO::Vector2(-181.5,-141.9));
-    obstacle[10].push_back(RVO::Vector2(-184.19,-142.53));
-
-    obstacle[11].push_back(RVO::Vector2(-176,-143.69));
-    obstacle[11].push_back(RVO::Vector2(-174.43,-143.69));
-    obstacle[11].push_back(RVO::Vector2(-174.43,-142));
-    obstacle[11].push_back(RVO::Vector2(-176,-142));
-
-    // obstacle[0].push_back(RVO::Vector2(,));
-    // obstacle[0].push_back(RVO::Vector2(,));
-    // obstacle[0].push_back(RVO::Vector2(,));
-    // obstacle[0].push_back(RVO::Vector2(,));
-
-
-    for (int i=0; i<12; i++){
- 	   worldModel.ped_sim_->addObstacle(obstacle[i]);
+		if (Globals::config.use_prior){
+//			assert(model_file_ != "");
+//			static_cast<PedNeuralSolverPrior*>(SolverPrior::nn_priors[i])->Load_model(model_file_);
+			assert(value_model_file_ != "");
+			static_cast<PedNeuralSolverPrior*>(SolverPrior::nn_priors[i])->Load_value_model(value_model_file_);
+		}
 	}
 
-    /* Process the obstacles so that they are accounted for in the simulation. */
-    worldModel.ped_sim_->processObstacles();
+	prior_ = SolverPrior::nn_priors[0];
+	cerr << "DEBUG: Created solver prior " << typeid(*prior_).name() << endl;
+
+//	logi << "Created solver prior " << typeid(*prior_).name() << endl;
+
 }
 
-/*for despot*/
-void Controller::initSimulator()
-{
-  Globals::config.root_seed=1024;
-  //Globals::config.n_belief_particles=2000;
-  Globals::config.num_scenarios=50;
-  Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
-  Globals::config.max_policy_sim_len=25;
-  Seeds::root_seed(Globals::config.root_seed);
-  cerr << "Random root seed set to " << Globals::config.root_seed << endl;
+World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options){
 
-  // Global random generator
-  double seed = Seeds::Next();
-  Random::RANDOM = Random(seed);
-  cerr << "Initialized global random generator with seed " << seed << endl;
+	cerr << "DEBUG: Initializing world" << endl;
 
-  despot=new PedPomdp(worldModel); 
-  //despot->num_active_particles = 0;
+   //Create a custom world as defined and implemented by the user
+	World* world;
+	switch(simulation_mode_){
+		case POMDP:
+			world=new POMDPSimulator(nh, static_cast<DSPOMDP*>(model),
+			Globals::config.root_seed/*random seed*/, obstacle_file_name_);
+   			break;
+		case UNITY:
+			world=new WorldSimulator(nh, static_cast<DSPOMDP*>(model),
+				Globals::config.root_seed/*random seed*/, 
+				pathplan_ahead_, obstacle_file_name_, COORD(goalx_, goaly_));
+			break;
+	}
+	logi << "WorldSimulator constructed at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
-/*  RandomStreams* streams = NULL;
-  streams = new RandomStreams(Seeds::Next(Globals::config.num_scenarios), Globals::config.search_depth);
-  despot->InitializeParticleLowerBound("smart");
-  despot->InitializeScenarioLowerBound("smart", *streams);
-  despot->InitializeParticleUpperBound("smart", *streams);
-  despot->InitializeScenarioUpperBound("smart", *streams);*/
 
-  ScenarioLowerBound *lower_bound = despot->CreateScenarioLowerBound("SMART");
-  ScenarioUpperBound *upper_bound = despot->CreateScenarioUpperBound("SMART", "SMART");
+	if (Globals::config.useGPU)
+		model->InitGPUModel();
 
-  //solver = new DESPOT(despot, NULL, *streams);
-  solver = new DESPOT(despot, lower_bound, upper_bound);
+	logi << "InitGPUModel finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+	//Establish connection with external system
+	world->Connect();
+	logi << "Connect finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+   //Initialize the state of the external system
+	world->Initialize();
+	logi << "Initialize finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+
+	switch(simulation_mode_){
+	case POMDP:
+		static_cast<PedPomdp*>(model)->world_model=&(POMDPSimulator::worldModel);
+		pomdp_driving_simulator_ = static_cast<POMDPSimulator*>(world);
+		break;
+	case UNITY:
+		static_cast<PedPomdp*>(model)->world_model=&(WorldSimulator::worldModel);
+		unity_driving_simulator_ = static_cast<WorldSimulator*>(world);
+		unity_driving_simulator_->time_scale_ = time_scale_;
+		break;
+	}
+
+   CreateNNPriors(model);
+	logi << "CreateNNPriors finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+
+   return world;
 }
 
+void Controller::InitializeDefaultParameters() {
+	cerr << "DEBUG: Initializing parameters" << endl;
+
+	Globals::config.root_seed=time(NULL);
+
+	Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9 / time_scale_;
+	Globals::config.time_scale = time_scale_;
+	Globals::config.num_scenarios=5;
+	Globals::config.discount=1.0; //0.95;
+	Globals::config.sim_len=300/*180*//*10*/; // this is not used
+  
+    Globals::config.xi = 0.97;
+	//Globals::config.pruning_constant= 0.001; // passed as a ROS node param
+
+	Globals::config.useGPU=true;
+
+	if (b_use_drive_net_ == LETS_DRIVE)
+		Globals::config.useGPU=false;
+
+	Globals::config.GPUid=1;//default GPU
+	Globals::config.use_multi_thread_=true;
+	Globals::config.NUM_THREADS=10;
+
+	Globals::config.exploration_mode=UCT;
+	Globals::config.exploration_constant = 2.0;
+//	Globals::config.exploration_constant=0.0;
+	Globals::config.exploration_constant_o = 1.0;
+
+	Globals::config.search_depth=9;
+	Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/5;
+
+	Globals::config.experiment_mode = true;
+
+	Globals::config.silence=false;
+	Obs_type=OBS_INT_ARRAY;
+	DESPOT::num_Obs_element_in_GPU=1+ModelParams::N_PED_IN*2+3;
+
+	if (b_use_drive_net_ == LETS_DRIVE)
+		Globals::config.use_prior = true;
+	else
+		Globals::config.use_prior = false;
+
+	if (b_use_drive_net_ == JOINT_POMDP) {
+		Globals::config.useGPU=false;
+    	Globals::config.num_scenarios=5;
+		Globals::config.NUM_THREADS=10;
+		Globals::config.discount=0.95;
+		Globals::config.search_depth=20;
+		Globals::config.max_policy_sim_len=/*Globals::config.sim_len+30*/20;
+		Globals::config.pruning_constant=0.001; // 100000000.0;
+		Globals::config.exploration_constant = 0.1;
+		Globals::config.silence = true;
+  }
+
+//	Globals::config.root_seed=1024;
+
+	logging::level(3);
+
+	logi << "Planner default parameters:" << endl;
+	Globals::config.text();
+
+}
+
+
+std::string Controller::ChooseSolver(){
+	return "DESPOT";
+}
 
 
 Controller::~Controller()
 {
-    geometry_msgs::Twist cmd;
-    cmd.angular.z = 0;
-    cmd.linear.x = 0;
-    cmdPub_.publish(cmd);
+
 }
 
-
-
-void Controller::updateSteerAnglePublishSpeed(geometry_msgs::Twist speed)
-{
-    //cmdPub_.publish(speed);
-}
-
-void Controller::publishSpeed(const ros::TimerEvent &e)
-{
-	geometry_msgs::Twist cmd;
-	cmd.angular.z = 0;
-	cmd.linear.x = target_speed_;
-	//cout<<"publishing cmd speed "<<target_speed_<<endl;
-	cmdPub_.publish(cmd);
-}
-
-
-
-void Controller::publishROSState()
-{
-	geometry_msgs::Point32 pnt;
-	
-	geometry_msgs::Pose pose;
-	
-	geometry_msgs::PoseStamped pose_stamped;
-	pose_stamped.header.stamp=ros::Time::now();
-
-	pose_stamped.header.frame_id=global_frame_id;
-
-	pose_stamped.pose.position.x=(worldStateTracker.carpos.x+0.0);
-	pose_stamped.pose.position.y=(worldStateTracker.carpos.y+0.0);
-	pose_stamped.pose.orientation.w=1.0;
-	car_pub.publish(pose_stamped);
-	
-	geometry_msgs::PoseArray pA;
-	pA.header.stamp=ros::Time::now();
-
-	pA.header.frame_id=global_frame_id;
-	for(int i=0;i<worldStateTracker.ped_list.size();i++)
-	{
-		//GetCurrentState(ped_list[i]);
-		pose.position.x=(worldStateTracker.ped_list[i].w+0.0);
-		pose.position.y=(worldStateTracker.ped_list[i].h+0.0);
-		pose.orientation.w=1.0;
-		pA.poses.push_back(pose);
-		//ped_pubs[i].publish(pose);
-	}
-
-	pa_pub.publish(pA);
-
-
-	uint32_t shape = visualization_msgs::Marker::CYLINDER;
-
-	for(int i=0;i<worldModel.goals.size();i++)
-	{
-		visualization_msgs::Marker marker;
-
-		marker.header.frame_id=ModelParams::rosns+"/map";
-		marker.header.stamp=ros::Time::now();
-		marker.ns="basic_shapes";
-		marker.id=i;
-		marker.type=shape;
-		marker.action = visualization_msgs::Marker::ADD;
-
-		marker.pose.position.x = worldModel.goals[i].x;
-		marker.pose.position.y = worldModel.goals[i].y;
-		marker.pose.position.z = 0;
-		marker.pose.orientation.x = 0.0;
-		marker.pose.orientation.y = 0.0;
-		marker.pose.orientation.z = 0.0;
-		marker.pose.orientation.w = 1.0;
-
-		marker.scale.x = 1;
-		marker.scale.y = 1;
-		marker.scale.z = 1;
-		marker.color.r = marker_colors[i][0];
-		marker.color.g = marker_colors[i][1];
-		marker.color.b = marker_colors[i][2];
-		marker.color.a = 1.0;
-		
-		markers.markers.push_back(marker);
-	}
-	goal_pub.publish(markers);
-	markers.markers.clear();
-}
-
-
-
-void Controller::publishPlannerPeds(const State &s)
-{
-	const PomdpState & state=static_cast<const PomdpState&> (s);
-	sensor_msgs::PointCloud pc;
-	pc.header.frame_id=ModelParams::rosns+"/map";
-	pc.header.stamp=ros::Time::now();
-	for(int i=0;i<state.num;i++) {
-		geometry_msgs::Point32 p;
-		p.x=state.peds[i].pos.x;
-		p.y=state.peds[i].pos.y;
-		p.z=1.5;
-		pc.points.push_back(p);
-	}
-	plannerPedsPub_.publish(pc);	
-}
-void Controller::publishAction(int action)
-{
-		uint32_t shape = visualization_msgs::Marker::CUBE;
-		visualization_msgs::Marker marker;
-        
-		
-		marker.header.frame_id=global_frame_id;
-		marker.header.stamp=ros::Time::now();
-		marker.ns="basic_shapes";
-		marker.id=0;
-		marker.type=shape;
-		marker.action = visualization_msgs::Marker::ADD;
-
-		double px,py;
-		px=worldStateTracker.carpos.x;
-		py=worldStateTracker.carpos.y;
-		marker.pose.position.x = px+1;
-		marker.pose.position.y = py+1;
-		marker.pose.position.z = 0;
-		marker.pose.orientation.x = 0.0;
-		marker.pose.orientation.y = 0.0;
-		marker.pose.orientation.z = 0.0;
-		marker.pose.orientation.w = 1.0;
-
-		// Set the scale of the marker in meters
-		marker.scale.x = 0.6;
-		marker.scale.y = 3;
-		marker.scale.z = 0.6;
-
-		marker.color.r = marker_colors[action_map[action]][0];
-        marker.color.g = marker_colors[action_map[action]][1];
-		marker.color.b = marker_colors[action_map[action]][2];
-		marker.color.a = 1.0;
-
-		ros::Duration d(1/control_freq);
-		marker.lifetime=d;
-		actionPub_.publish(marker);
-        geometry_msgs::Twist action_cmd;
-        action_cmd.linear.x=safeAction;
-        actionPubPlot_.publish(action_cmd);
-}
-
-COORD poseToCoord(const tf::Stamped<tf::Pose>& pose) {
-	COORD coord;
-	coord.x=pose.getOrigin().getX();
-	coord.y=pose.getOrigin().getY();
-	return coord;
-}
-
-
-geometry_msgs::PoseStamped Controller::getPoseAhead(const tf::Stamped<tf::Pose>& carpose) {
-    static int last_i = -1;
-    static double last_yaw = 0;
-    static COORD last_ahead;
-	auto& path = worldModel.path;
-	COORD coord = poseToCoord(carpose);
-
-	int i = path.nearest(coord);
-    COORD ahead;
-    double yaw;
-
-    if (i == last_i) {
-        yaw = last_yaw;
-        ahead = last_ahead;
-    } else {
-        int j = path.forward(i, pathplan_ahead_);
-        //yaw = (path.getYaw(j) + path.getYaw(j-1)+ path.getYaw(j-2)) / 3;
-        yaw = path.getYaw(j);
-        ahead = path[j];
-        last_yaw = yaw;
-		last_ahead = ahead;
-        last_i = i;
-    }
-
-	auto q = tf::createQuaternionFromYaw(yaw);
-	tf::Pose p(q, tf::Vector3(ahead.x, ahead.y, 0));
-	tf::Stamped<tf::Pose> pose_ahead(p, carpose.stamp_, carpose.frame_id_);
-	geometry_msgs::PoseStamped posemsg;
-	tf::poseStampedTFToMsg(pose_ahead, posemsg);
-	return posemsg;
-}
 
 void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
-	if(fixed_path_ && worldModel.path.size()>0)  return;
+	if(fixed_path_ && WorldSimulator::worldModel.path.size()>0)  return;
+
 
 	ped_pathplan::StartGoal startGoal;
 	geometry_msgs::PoseStamped pose;
 	tf::poseStampedTFToMsg(carpose, pose);
 
 	// set start
-	if(pathplan_ahead_ > 0 && worldModel.path.size()>0) {
-		startGoal.start = getPoseAhead(carpose);
-	} else {
-		startGoal.start=pose;
-	}
+
+	startGoal.start=pose;
 
 	pose.pose.position.x=goalx_;
 	pose.pose.position.y=goaly_;
-
-	// set goal
-	// create door
-	//pose.pose.position.x=17;
-	//pose.pose.position.y=52;
-
-	// after CREATE door
-	//pose.pose.position.x=19.5;
-	//pose.pose.position.y=55.5;
-	
-	// before create door
-	//pose.pose.position.x=18.8;
-	//pose.pose.position.y=44.5;
-	//
-	// cheers
-	//pose.pose.position.x=4.0;
-	//pose.pose.position.y=9.0;
-	
-	
-	// large map goal
-	//pose.pose.position.x=108;
-	//pose.pose.position.y=143;
 	
 	startGoal.goal=pose;
+
+	logi << "Sending goal to path planner " << endl;
+
+	logi << "start: " << startGoal.start.pose.position.x << startGoal.start.pose.position.y << endl;
+	logi << "goal: " << startGoal.goal.pose.position.x << startGoal.goal.pose.position.y << endl;
+
 	start_goal_pub.publish(startGoal);	
 }
 
@@ -502,10 +335,23 @@ void Controller::setGoal(const geometry_msgs::PoseStamped::ConstPtr goal) {
 }
 
 void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
-//	cout<<"receive path from navfn "<<path->poses.size()<<endl;
-	if(fixed_path_ && worldModel.path.size()>0) return;
 
-	if(path->poses.size()==0) return;
+	logi<<"receive path from navfn "<<path->poses.size()<<endl;
+
+	if(fixed_path_ && path_from_topic.size()>0) return;
+
+	if(path->poses.size()==0) {
+		path_missing = true;
+
+		DEBUG("Path missing from topic");
+		return;
+	}else{
+		path_missing = false;
+	}
+
+	if (simulation_mode_ == UNITY && unity_driving_simulator_->b_update_il == true)
+		unity_driving_simulator_->p_IL_data.plan = *path; // record to be further published for imitation learning
+
 	Path p;
 	for(int i=0;i<path->poses.size();i++) {
         COORD coord;
@@ -514,22 +360,41 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
-	if(pathplan_ahead_>0 && worldModel.path.size()>0) {
-      /*  double pd = worldModel.path.mindist(p[0]);
-        if(pd < 2 * ModelParams::PATH_STEP) {
-            // only accept new path if the starting point is close to current path
-            worldModel.path.cutjoin(p);
-            auto pi = worldModel.path.interpolate();
-            worldModel.setPath(pi);
-        }*/
-        worldModel.path.cutjoin(p);
-        auto pi = worldModel.path.interpolate();
-        worldModel.setPath(pi);
-	} else {
-		worldModel.setPath(p.interpolate());
+	if (p.getlength() < 18){
+		ERR("Path length shorter than 18 meters.");
 	}
 
-	publishPath(path->header.frame_id, worldModel.path);
+	// cout << "Path start " << p[0] << " end " << p.back() << endl;
+
+	COORD path_end_from_goal = p.back() - COORD(goalx_, goaly_);
+
+	if (path_end_from_goal.Length() > 2.0f + 1e-3){
+		cerr << "Path end mismatch with car goal: path end = " <<
+				"(" << p.back().x << "," << p.back().y << ")" <<
+				", car goal=(" << goalx_ << "," << goaly_ << ")" << endl;
+		// raise(SIGABRT);
+		cerr << "reset car goal to path end" << endl;
+
+		setCarGoal(p.back());
+	}
+
+	if (b_use_drive_net_ == LETS_DRIVE || b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == IMITATION){
+		pathplan_ahead_ = 0;
+	}
+
+	if(pathplan_ahead_>0 && path_from_topic.size()>0) {
+		path_from_topic.cutjoin(p);
+		path_from_topic = path_from_topic.interpolate();
+        WorldSimulator::worldModel.setPath(path_from_topic);
+	} else {
+		path_from_topic = p.interpolate();
+		WorldSimulator::worldModel.setPath(path_from_topic);
+	}
+
+  // if(Globals::config.useGPU)
+    // static_cast<PedPomdp*>(ped_pomdp_model)->UpdateGPUPath();
+
+	publishPath(path->header.frame_id, path_from_topic);
 }
 
 void Controller::publishPath(const string& frame_id, const Path& path) {
@@ -556,359 +421,583 @@ void Controller::publishPath(const string& frame_id, const Path& path) {
 	pathPub_.publish(navpath);
 }
 
-void Controller::controlLoop(const ros::TimerEvent &e)
-{
-        /*static */double starttime=get_time_second();
-        cout<<"*********************"<<endl;
-	    //cout<<"entering control loop"<<endl;
-        //cout<<"current time "<<get_time_second()-starttime<<endl;
-        tf::Stamped<tf::Pose> in_pose, out_pose;
+bool Controller::getUnityPos(){
+	logi << "[getUnityPos] Getting car pos from unity..." << endl;
 
-  
-        /****** update world state ******/
-        ros::Rate err_retry_rate(10);
-
-        pathplan_ahead_ = target_speed_ / ModelParams::control_freq;
-      //  cout<<"*** path ahead: "<<pathplan_ahead_<<endl;
-
-		// transpose to base link for path planing
-		in_pose.setIdentity();
-		in_pose.frame_id_ = ModelParams::rosns + "/base_link";
-		if(!getObjectPose(global_frame_id, in_pose, out_pose)) {
-			cerr<<"transform error within control loop"<<endl;
-			cout<<"laser frame "<<in_pose.frame_id_<<endl;
-            err_retry_rate.sleep();
-            return;
-		}
-
+    tf::Stamped<tf::Pose> in_pose, out_pose;
+	in_pose.setIdentity();
+	in_pose.frame_id_ = ModelParams::rosns + "/base_link";
+	assert(unity_driving_simulator_);
+	cout<<"global_frame_id: "<<global_frame_id<<" "<<endl;
+	if(!unity_driving_simulator_->getObjectPose(global_frame_id, in_pose, out_pose)) {
+		cerr<<"transform error within Controller::RunStep"<<endl;
+		cout<<"laser frame "<<in_pose.frame_id_<<endl;
+		ros::Rate err_retry_rate(10);
+        err_retry_rate.sleep();
+        return false; // skip the current step
+	}
+	else
 		sendPathPlanStart(out_pose);
-		if(worldModel.path.size()==0) return;
+
+	return true && SimulatorBase::agents_data_ready;
+}
+
+bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
+
+	cerr << "DEBUG: Running pre step" << endl;
+
+	logger->CheckTargetTime();
+
+	double step_start_t = get_time_second();
+
+	if(simulation_mode_ == UNITY){
+		bool unity_ready = getUnityPos();
+
+		if (!unity_ready)
+			return false;
+	}
+
+	cerr << "DEBUG: Pre-updating belief" << endl;
+
+	double start_t = get_time_second();
+//	solver->BeliefUpdate(last_action, last_obs);
+
+	State* cur_state = world->GetCurrentState();
 
 
+	// DEBUG("current state get");
 
-		// transpose to laser frame for ped avoidance
-		in_pose.setIdentity();
-		in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
-		if(!getObjectPose(global_frame_id, in_pose, out_pose)) {
-			cerr<<"transform error within control loop"<<endl;
-			cout<<"laser frame "<<in_pose.frame_id_<<endl;
-            err_retry_rate.sleep();
-            return;
+	if(!cur_state)
+		ERR(string_sprintf("cur state NULL"));
+
+	// DEBUG("copy for search");
+	State* search_state =static_cast<const PedPomdp*>(ped_pomdp_model)->CopyForSearch(cur_state);//create a new state for search
+
+	// DEBUG("DeepUpdate");
+	static_cast<PedPomdpBelief*>(solver->belief())->DeepUpdate(
+			SolverPrior::nn_priors[0]->history_states(),
+			SolverPrior::nn_priors[0]->history_states_for_search(),
+			cur_state,
+			search_state, last_action);
+
+	// DEBUG("Track");
+  	if (Globals::config.use_prior && SolverPrior::history_mode == "track"){
+		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
+		for(int i=0; i<SolverPrior::nn_priors.size();i++){
+			if (i > 0){
+				SolverPrior::nn_priors[i]->add_car_tensor(SolverPrior::nn_priors[0]->last_car_tensor());
+				SolverPrior::nn_priors[i]->add_map_tensor(SolverPrior::nn_priors[0]->last_map_tensor());
+			}
 		}
+	}
 
-		COORD coord;
+	for(int i=0; i<SolverPrior::nn_priors.size();i++){
+		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
+		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
 
-		ped_pathplan::StartGoal startGoal;
-		if(pathplan_ahead_ > 0 && worldModel.path.size()>0) {
-			startGoal.start = getPoseAhead(out_pose);
-			coord.x = startGoal.start.pose.position.x;
-			coord.y = startGoal.start.pose.position.y;
-		}else{
-			coord = poseToCoord(out_pose);
+		logd << __FUNCTION__ << " add history search state of ts " <<
+				static_cast<PomdpState*>(search_state)->time_stamp << endl;
+
+		SolverPrior::nn_priors[i]->record_cur_history();
+	}
+
+	double end_t = get_time_second();
+	double update_time = (end_t - start_t);
+	logi << "[RunStep] Time spent in Update(): " << update_time << endl;
+
+	if(simulation_mode_ == UNITY){
+		unity_driving_simulator_->publishROSState();
+		// ped_belief_->publishAgentsPrediciton();
+	}
+
+	unity_driving_simulator_->beliefTracker->text();
+
+	if(simulation_mode_ == UNITY){
+		if (path_from_topic.size()==0){
+			logi << "[RunStep] path topic not ready yet..." << endl;
+			return false;
 		}
+		else{
+			WorldSimulator::worldModel.path = path_from_topic;
+		}
+	}
 
+	return true;
+}
+
+void Controller::PredictPedsForSearch(State* search_state) {
+	if (predict_peds) {
+		// predict state using last action
+		if (last_action < 0 || last_action > model_->NumActions()) {
+			cerr << "ERROR: wrong last action for prediction " << last_action
+					<< endl;
+		} else {
+
+			unity_driving_simulator_->beliefTracker->cur_acc =
+					static_cast<const PedPomdp*>(ped_pomdp_model)->GetAcceleration(
+							last_action);
+			unity_driving_simulator_->beliefTracker->cur_steering =
+					static_cast<const PedPomdp*>(ped_pomdp_model)->GetSteering(
+							last_action);
+
+			cerr << "DEBUG: Prediction with last action:" << last_action
+					<< " steer/acc = "
+					<< unity_driving_simulator_->beliefTracker->cur_steering
+					<< "/" << unity_driving_simulator_->beliefTracker->cur_acc
+					<< endl;
+
+			auto predicted =
+					unity_driving_simulator_->beliefTracker->predictPedsCurVel(
+							static_cast<PomdpState*>(search_state),
+							unity_driving_simulator_->beliefTracker->cur_acc,
+							unity_driving_simulator_->beliefTracker->cur_steering);
+
+			PomdpState* predicted_state =
+					static_cast<PomdpState*>(static_cast<const PedPomdp*>(ped_pomdp_model)->Copy(
+							&predicted));
+
+			static_cast<const PedPomdp*>(ped_pomdp_model)->PrintStateAgents(*predicted_state, string("predicted_agents"));
+
+      if (Globals::config.use_prior && SolverPrior::history_mode == "track"){
+				SolverPrior::nn_priors[0]->Add_tensor_hist(predicted_state);
+
+				for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+					if (i > 0) {
+						SolverPrior::nn_priors[i]->add_car_tensor(
+								SolverPrior::nn_priors[0]->last_car_tensor());
+						SolverPrior::nn_priors[i]->add_map_tensor(
+								SolverPrior::nn_priors[0]->last_map_tensor());
+					}
+				}
+			}
+
+			for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+				SolverPrior::nn_priors[i]->Add_in_search(-1, predicted_state);
+
+				logd << __FUNCTION__ << " add predicted search state of ts "
+						<< predicted_state->time_stamp
+						<< " predicted from search state of ts "
+						<< static_cast<PomdpState*>(search_state)->time_stamp
+						<< " hist len " << SolverPrior::nn_priors[i]->Size(true)
+						<< endl;
+
+				//		SolverPrior::nn_priors[i]->DebugHistory("Add prediction " +
+				//			std::to_string(SolverPrior::nn_priors[i]->Size(true)-1));
+			}
+		}
+	}
+}
+
+void Controller::UpdatePriors(const State* cur_state, State* search_state) {
+	//	SolverPrior::nn_priors[0]->DebugHistory("After Deep update");
+  if (Globals::config.use_prior && SolverPrior::history_mode == "track"){
+		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
+		for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+			if (i > 0) {
+				SolverPrior::nn_priors[i]->add_car_tensor(
+						SolverPrior::nn_priors[0]->last_car_tensor());
+				SolverPrior::nn_priors[i]->add_map_tensor(
+						SolverPrior::nn_priors[0]->last_map_tensor());
+			}
+		}
+	}
+	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+		// make sure the history has not corrupted
+		SolverPrior::nn_priors[i]->compare_history_with_recorded();
+
+		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
+		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
+
+		logd << __FUNCTION__ << " add history search state of ts "
+				<< static_cast<PomdpState*>(search_state)->time_stamp
+				<< " hist len " << SolverPrior::nn_priors[i]->Size(true)
+				<< endl;
+
+		if (SolverPrior::nn_priors[i]->Size(true) == 10)
+			Record_debug_state(search_state);
+
+		SolverPrior::nn_priors[i]->record_cur_history();
+	}
+	logi << "history len = " << SolverPrior::nn_priors[0]->Size(false) << endl;
+	logi << "history_in_search len = " << SolverPrior::nn_priors[0]->Size(true)
+			<< endl;
+}
+
+bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
+
+	cerr << "DEBUG: Running step" << endl;
+
+//	SolverPrior::nn_priors[0]->DebugHistory("Start step");
+
+	logger->CheckTargetTime();
+
+	double step_start_t = get_time_second();
+
+	if(simulation_mode_ == UNITY){
+		bool unity_ready = getUnityPos();
+
+		if (!unity_ready)
+			return false;
+
+		if (path_from_topic.size()==0){
+			logi << "[RunStep] path topic not ready yet..." << endl;
+			return false;
+		}
+		else{
+			CheckCurPath();
+		}
+	}
+
+	// imitation learning: pause update of car info and path info for imitation data
+	switch(simulation_mode_){
+	case UNITY:
+		unity_driving_simulator_->b_update_il = false ;
+
+		break;
+	case POMDP:
+		pomdp_driving_simulator_->b_update_il = false ;
+
+		break;
+	}
+
+	cerr << "DEBUG: Updating belief" << endl;
+
+	double start_t = get_time_second();
+//	solver->BeliefUpdate(last_action, last_obs);
+
+	const State* cur_state=world->GetCurrentState();
+	unity_driving_simulator_->speed_in_search_state_ = unity_driving_simulator_->real_speed_;
+
+	assert(cur_state);
+
+//	SolverPrior::nn_priors[0]->DebugHistory("After get current step");
+
+	cout << "current state address" << cur_state << endl;
+
+	State* search_state =static_cast<const PedPomdp*>(ped_pomdp_model)->CopyForSearch(cur_state);//create a new state for search
+
+//	SolverPrior::nn_priors[0]->DebugHistory("After copy for search");
+
+	static_cast<PedPomdpBelief*>(solver->belief())->DeepUpdate(
+			SolverPrior::nn_priors[0]->history_states(),
+			SolverPrior::nn_priors[0]->history_states_for_search(),
+			cur_state,
+			search_state, last_action);
+
+//	SolverPrior::nn_priors[0]->DebugHistory("After Deep update");
+
+	UpdatePriors(cur_state, search_state);
+
+	double end_t = get_time_second();
+	double update_time = (end_t - start_t);
+	logi << "[RunStep] Time spent in Update(): " << update_time << endl;
+
+	if(simulation_mode_ == UNITY){
+		unity_driving_simulator_->publishROSState();
+		// ped_belief_->publishAgentsPrediciton();
+	}
+
+	unity_driving_simulator_->beliefTracker->text();
+
+	int cur_search_hist_len = 0, cur_tensor_hist_len = 0;
+	cur_search_hist_len = SolverPrior::nn_priors[0]->Size(true);
+	cur_tensor_hist_len = SolverPrior::nn_priors[0]->Tensor_hist_size();
+
+  if(Globals::config.use_prior && SolverPrior::history_mode=="track" && cur_search_hist_len != cur_tensor_hist_len){
+		cerr << "State hist length "<< cur_search_hist_len <<
+				" mismatch with tensor hist length " << cur_tensor_hist_len << endl;
+		raise(SIGABRT);
+	}
+
+	PredictPedsForSearch(search_state);
+
+	start_t = get_time_second();
+  ACT_TYPE action = static_cast<const PedPomdp*>(ped_pomdp_model)->GetActionID(0.0, 0.0);
+	double step_reward;
+  if (b_use_drive_net_ == NO || b_use_drive_net_ == JOINT_POMDP){
+		cerr << "DEBUG: Search for action using " <<typeid(*solver).name()<< endl;
+		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(
+			static_cast<const PedPomdp*>(ped_pomdp_model), predict_peds);
 		
-
-		//cout << "after get topics / update world state:" << endl;
-        //cout<<"current time "<<get_time_second()-starttime<<endl;
-        worldStateTracker.updateVel(real_speed_);
-        cout<< "real speed: "<<real_speed_<<endl;
-
-		//////////COORD coord = poseToCoord(out_pose);
-
-
-
-
-		cout << "======transformed pose = " << coord.x << " " << coord.y << endl;
-
-		worldStateTracker.updateCar(coord);
-
-        worldStateTracker.cleanPed();
-
-		PomdpState curr_state = worldStateTracker.getPomdpState();
+		const State& sample = *static_cast<PedPomdpBelief*>(solver->belief())->GetParticle(0);
 		
-		if(real_speed_ >= 0.05 && worldModel.inRealCollision(curr_state)){
-			cout << "INININ in collision"<<endl;
+		cout << "Car odom velocity " << unity_driving_simulator_->odom_vel_.x << " "
+			<< unity_driving_simulator_->odom_vel_.y << endl;
+		cout << "Car odom heading " << unity_driving_simulator_->odom_heading_ << endl;
+		cout << "Car base_link heading " << unity_driving_simulator_->baselink_heading_ << endl;
+		
+		// static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
+		static_cast<PedPomdp*>(ped_pomdp_model)->PrintStateIDs(sample);
+		static_cast<PedPomdp*>(ped_pomdp_model)->CheckPreCollision(&sample);
+
+		// static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(sample, 10);// 3 steps		
+
+		action = solver->Search().action;
+	}
+	else if (b_use_drive_net_ == LETS_DRIVE){
+//	 	int state_code = unity_driving_simulator_->worldModel.hasMinSteerPath(cur_state);
+		cerr << "DEBUG: Search for action using " <<typeid(*solver).name()<< " with NN prior." << endl;
+		assert(solver->belief());
+		cerr << "DEBUG: Sampling particles" << endl;
+		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(
+			static_cast<const PedPomdp*>(ped_pomdp_model), predict_peds);
+		cerr << "DEBUG: Launch search with NN prior" << endl;
+		action = solver->Search().action;
+
+		cout << "recording SolverPrior::nn_priors[0]->searched_action" << endl;
+		SolverPrior::nn_priors[0]->searched_action = action;
+	}
+	else if (b_use_drive_net_ == IMITATION){
+		// Query the drive_net for actions, do nothing here
+	}
+	else
+		throw("drive net usage mode not supported!");
+
+	end_t = get_time_second();
+	double search_time = (end_t - start_t);
+	logi << "[RunStep] Time spent in " << typeid(*solver).name()
+			<< "::Search(): " << search_time << endl;
+
+	TruncPriors(cur_search_hist_len, cur_tensor_hist_len);
+
+	// imitation learning: renable data update for imitation data
+	switch(simulation_mode_){
+	case UNITY:
+		unity_driving_simulator_->b_update_il = true ;
+
+		break;
+	case POMDP:
+		pomdp_driving_simulator_->b_update_il = true ;
+
+		break;
+	}
+
+	OBS_TYPE obs;
+	start_t = get_time_second();
+	bool terminal = world->ExecuteAction(action, obs);
+	end_t = get_time_second();
+	double execute_time = (end_t - start_t);
+	logi << "[RunStep] Time spent in ExecuteAction(): " << execute_time << endl;
+
+	last_action=action;
+	last_obs=obs;
+
+//	SolverPrior::nn_priors[0]->DebugHistory("After execute action");
+
+	cerr << "DEBUG: Ending step" << endl;
+
+	return logger->SummarizeStep(step_++, round_, terminal, action, obs,
+			step_start_t);
+}
+
+
+void Controller::setCarGoal(COORD car_goal){
+	goalx_ = car_goal.x;
+	goaly_ = car_goal.y;
+
+	unity_driving_simulator_->setCarGoal(car_goal);
+}
+
+void Controller::CheckCurPath(){
+	if (path_missing){
+		cerr << "Path missing, fixing steering" << endl;
+		// use default move
+		SolverPrior::prior_force_steer = true;
+		if (unity_driving_simulator_->stateTracker->carvel>0.01){
+			cerr << "Path missing, fixing acc" << endl;
+			SolverPrior::prior_force_acc = true;
 		}
-		publishROSState();
+		else
+			SolverPrior::prior_force_acc = false;
+	}
+	else{
+		WorldSimulator::worldModel.path = path_from_topic;
 
-        //cout << "root state:" << endl;
-        //cout<<"current time "<<get_time_second()-starttime<<endl;
-		//despot->PrintState(curr_state, cout);
+		COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos - COORD(goalx_, goaly_);
 
-        /****** check world state *****/
-
-		if(worldModel.isGlobalGoal(curr_state.car)) {
-			goal_reached=true;
-		}
-		if(goal_reached==true) {
-			safeAction=2;
-
-			cout<<"goal reached"<<endl;
-
-			target_speed_=real_speed_;
-		    target_speed_ -= 0.5;
-			if(target_speed_<=0.0) target_speed_ = 0.0;
-
-            // shutdown the node after reaching goal
-            // TODO consider do this in simulaiton only for safety
-            if(real_speed_ <= 0.01) {
-            	cout<<"real_spead rrrr"<<endl;
-                ros::shutdown();
-            }
-			return;
-		}
-
-		if(worldStateTracker.emergency())
+	//	if (car_pos_from_goal.Length() < 5.0)
+	//	{
+	//		SolverPrior::prior_force_steer = true;
+	////		SolverPrior::prior_force_acc = true;
+	//	}
+		if (car_pos_from_goal.Length() < 10.0)
 		{
-			target_speed_=-1;
-			cout<<"emergency eeee"<<endl;
-			return;
+			SolverPrior::prior_force_steer = true;
+
+			if (unity_driving_simulator_->stateTracker->carvel>0.01)
+				SolverPrior::prior_force_acc = true;
+			else
+				SolverPrior::prior_force_acc = false;
 		}
+		else if (car_pos_from_goal.Length() < 8.0 && unity_driving_simulator_->stateTracker->carvel
+				>= ModelParams::AccSpeed/ModelParams::control_freq)
+		{
+			SolverPrior::prior_discount_optact = 10.0;
+		}
+	}
 
-
-        /****** update belief ******/
-
-		//cout<<"before belief update"<<endl;
-		worldBeliefTracker.update();
-		//cout<<"after belief tracker update"<<endl;
-		//cout<<"current time "<<get_time_second()-starttime<<endl;
-        publishPedsPrediciton();
-
-        //cout<<"1"<<endl;
-
-        vector<PomdpState> samples = worldBeliefTracker.sample(2000);
-        //cout<<"2"<<endl;
-		vector<State*> particles = despot->ConstructParticles(samples);
-		//cout<<"3"<<endl;
-
-        /*
-		double sum=0;
-		for(int i=0; i<particles.size(); i++)
-			sum+=particles[i]->weight;
-		cout<<"particle weight sum "<<sum<<endl;
-        */
-        //cout<< "particle 0: car pos= "<<samples[0].car.pos<<", coord= "<< worldModel.path[samples[0].car.pos].x<<" "<<worldModel.path[samples[0].car.pos].y<<endl;
-
-		static int run_step = 0;
-		cout<<"run_step: "<<run_step<<endl;
-		run_step ++;
-		ParticleBelief *pb=new ParticleBelief(particles, despot);
-		//cout<<"4"<<endl;
-     //   despot->PrintState(*(pb->particles()[0]));
-		publishPlannerPeds(*(pb->particles()[0]));
-		//cout<<"5"<<endl;
-		
-		solver->belief(pb);
-		//cout<<"before search"<<endl;
-		//cout<<"current time "<<get_time_second()-starttime<<endl;
-
-        /****** random simulation for verification purpose ******/
-        /*
-        Random rand((unsigned)1012312);
-        cout << "Starting simulation" << endl;
-        for (int i = 0; i < 100; i ++) {
-            uint64_t obs;
-            double reward;
-
-            PomdpState state = worldBeliefTracker.sample();
-            if (state.num <= 1)
-                continue;
-
-            cout << "Initial state: " << endl;
-            despot->PrintState(state);
-
-	        sensor_msgs::PointCloud pc;
-        	pc.header.frame_id="/map";
-            pc.header.stamp=ros::Time::now();
-            ros::Rate loop_rate(ModelParams::control_freq);
-            for (int j = 0; j < 20; j ++) {
-
-                cout << "Step " << j << endl;
-                int action = rand.NextInt(despot->NumActions());
-                double r = rand.NextDouble();
-                despot->Step(state, r, action, reward, obs);
-                cout << "Action = " << action << endl;
-                despot->PrintState(state);
-                cout << "Reward = " << reward << endl;
-                cout << "Obs = " << obs << endl;
-                worldBeliefTracker.printBelief();
-                for(int k=0;k<state.num;k++) {
-       		        geometry_msgs::Point32 p;
-                    p.x=state.peds[k].pos.x;
-                    p.y=state.peds[k].pos.y;
-                    p.z=1.0;
-                    pc.points.push_back(p);
-                }
-
-                pedStatePub_.publish(pc); 
-  //              publishBelief();
-                loop_rate.sleep();
-            }
-
-        }
-        cout << "End of simulation" << endl;
-        */
-
-
-        /****** solve for safe action ******/
-
-		safeAction=solver->Search().action;
-		//cout<<"after search"<<endl;
-		//cout<<"search time "<<get_time_second()-starttime<<endl;
-		//safeAction = 1;
-
-		//actionPub_.publish(action);
-		publishAction(safeAction);
-		//cout<<"8"<<endl;
-
-		cout<<"action **= "<<safeAction<<endl;
-
-
-		publishBelief();
-		//cout<<"9"<<endl;
-
-
-        /****** update target speed ******/
-
-		target_speed_=real_speed_;
-		cout<<"real speed: "<<real_speed_<<endl;
-        if(safeAction==0) {}
-		else if(safeAction==1) target_speed_ += ModelParams::AccSpeed / ModelParams::control_freq; //0.2*2;
-		else if(safeAction==2) target_speed_ -= ModelParams::AccSpeed / ModelParams::control_freq;//0.25*2;
-		if(target_speed_<=0.0) target_speed_ = 0.0;
-		if(target_speed_>=ModelParams::VEL_MAX) target_speed_ = ModelParams::VEL_MAX;
-
-		cout<<"target_speed = "<<target_speed_<<endl;
-		delete pb;
 }
 
-void Controller::publishPedsPrediciton() {
-    vector<PedStruct> peds = worldBeliefTracker.predictPeds();
-    sensor_msgs::PointCloud pc;
-    pc.header.frame_id=global_frame_id;
-    pc.header.stamp=ros::Time::now();
-    for(const auto& ped: peds) {
-        geometry_msgs::Point32 p;
-        p.x = ped.pos.x;
-        p.y = ped.pos.y;
-        p.z = 1.0;
-        pc.points.push_back(p);
+void Controller::TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len){
+	for(int i=0; i<SolverPrior::nn_priors.size();i++){
+		SolverPrior::nn_priors[i]->Truncate(cur_search_hist_len, true);
+		logd << __FUNCTION__ << " truncating search history length to " <<
+				cur_search_hist_len << endl;
+		SolverPrior::nn_priors[i]->compare_history_with_recorded();
+//		SolverPrior::nn_priors[i]->DebugHistory("Trunc history");
+	}
+
+	if (SolverPrior::history_mode == "track"){
+		for(int i=0; i<SolverPrior::nn_priors.size();i++){
+			SolverPrior::nn_priors[i]->Trunc_tensor_hist(cur_tensor_hist_len);
+		}
+	}
+}
+
+static int wait_count = 0;
+
+void Controller::PlanningLoop(despot::Solver*& solver, World* world, Logger* logger) {
+
+	int pre_step_count = 0;
+	if (Globals::config.use_prior)
+		pre_step_count = 4;
+	else
+		pre_step_count = 0;
+    while(path_from_topic.size()==0){
+    	cout << "Waiting for path" << endl;
+        ros::spinOnce();
+    	Globals::sleep_ms(1000.0/control_freq/time_scale_);
+    	wait_count++;
+    	if (wait_count == 5){
+    		ros::shutdown();
+    	}
     }
-    pedPredictionPub_.publish(pc);
+
+	logi << "path_from_topic received at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+
+    while(SolverPrior::nn_priors[0]->Size(true) < pre_step_count){
+    	logi << "Executing pre-step" << endl;
+    	RunPreStep(solver, world, logger);
+      ros::spinOnce();
+
+		logi << "sleeping for "<< 1.0/control_freq/time_scale_ << "s"<< endl;
+    	Globals::sleep_ms(1000.0/control_freq/time_scale_);
+
+    	logi << "Pre-step sleep end" << endl;
+    }
+
+	logi << "Pre-steps end at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+	logi << "Executing first step" << endl;
+
+	RunStep(solver, world, logger);
+	logi << "First step end at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+    cerr <<"DEBUG: before entering controlloop"<<endl;
+    timer_ = nh.createTimer(ros::Duration(1.0/control_freq/time_scale_),
+			(boost::bind(&Controller::RunStep, this, solver, world, logger)));
+
 }
 
+int Controller::RunPlanning(int argc, char *argv[]) {
+	cerr << "DEBUG: Starting planning" << endl; 
 
-void Controller::publishMarker(int id,PedBelief & ped)
-{
-	//cout<<"belief vector size "<<belief.size()<<endl;
-	std::vector<double> belief = ped.prob_goals;
-	uint32_t shape = visualization_msgs::Marker::CUBE;
-    uint32_t shape_text=visualization_msgs::Marker::TEXT_VIEW_FACING;
-	for(int i=0;i<belief.size();i++)
-	{
-		visualization_msgs::Marker marker;
-		visualization_msgs::Marker marker_text;
+	/* =========================
+	 * initialize parameters
+	 * =========================*/
+	string solver_type = "DESPOT";
+	bool search_solver;
+	int num_runs = 1;
+	string world_type = "pomdp";
+	string belief_type = "DEFAULT";
+	int time_limit = -1;
 
-		marker.header.frame_id=global_frame_id;
-		marker.header.stamp=ros::Time::now();
-		marker.ns="basic_shapes";
-		marker.id=id*ped.prob_goals.size()+i;
-		marker.type=shape;
-		marker.action = visualization_msgs::Marker::ADD;
-
-		marker_text.header.frame_id=global_frame_id;
-		marker_text.header.stamp=ros::Time::now();
-		marker_text.ns="basic_shapes";
-		marker_text.id=id*ped.prob_goals.size()+i+1000;
-		marker_text.type=shape_text;
-		marker_text.action = visualization_msgs::Marker::ADD;
+	option::Option *options = InitializeParamers(argc, argv, solver_type,
+			search_solver, num_runs, world_type, belief_type, time_limit);
+	if(options==NULL)
+		return 0;
+	logi << "InitializeParamers finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
 
-		double px=0,py=0;
-		px=ped.pos.x;
-		py=ped.pos.y;
-		marker_text.pose.position.x = px;
-		marker_text.pose.position.y = py;
-		marker_text.pose.position.z = 0.5;
-		marker_text.pose.orientation.x = 0.0;
-		marker_text.pose.orientation.y = 0.0;
-		marker_text.pose.orientation.z = 0.0;
-		marker_text.pose.orientation.w = 1.0;
-	//	cout<<"belief entries "<<px<<" "<<py<<endl;
-		// Set the scale of the marker -- 1x1x1 here means 1m on a side
-		//if(marker.scale.y<0.2) marker.scale.y=0.2;
-		marker_text.scale.z = 1.0;
-		//
-		// Set the color -- be sure to set alpha to something non-zero!
-		//marker.color.r = 0.0f;
-		//marker.color.g = 1.0f;
-		//marker.color.b = 0.0f;
-		//marker.color.a = 1.0;
-		marker_text.color.r = 0.0;
-        marker_text.color.g = 0.0;
-		marker_text.color.b = 0.0;//marker.lifetime = ros::Duration();
-		marker_text.color.a = 1.0;
-        marker_text.text = to_string(ped.id); 
+	if(Globals::config.useGPU)
+		PrepareGPU();
 
-		ros::Duration d1(1/control_freq);
-		marker_text.lifetime=d1;
+	clock_t main_clock_start = clock();
 
+	/* =========================
+	 * initialize model
+	 * =========================*/
+	DSPOMDP *model = InitializeModel(options);
+	assert(model != NULL);
+	logi << "InitializeModel finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
-		px=0,py=0;
-		px=ped.pos.x;
-		py=ped.pos.y;
-		marker.pose.position.x = px+i*0.7;
-		marker.pose.position.y = py+belief[i]*2;
-		marker.pose.position.z = 0;
-		marker.pose.orientation.x = 0.0;
-		marker.pose.orientation.y = 0.0;
-		marker.pose.orientation.z = 0.0;
-		marker.pose.orientation.w = 1.0;
-	//	cout<<"belief entries "<<px<<" "<<py<<endl;
-		// Set the scale of the marker -- 1x1x1 here means 1m on a side
-		marker.scale.x = 0.5;
-		marker.scale.y = belief[i]*4;
-		//if(marker.scale.y<0.2) marker.scale.y=0.2;
-		marker.scale.z = 0.2;
-		//
-		// Set the color -- be sure to set alpha to something non-zero!
-		//marker.color.r = 0.0f;
-		//marker.color.g = 1.0f;
-		//marker.color.b = 0.0f;
-		//marker.color.a = 1.0;
-		marker.color.r = marker_colors[i][0];
-        marker.color.g = marker_colors[i][1];
-		marker.color.b = marker_colors[i][2];//marker.lifetime = ros::Duration();
-		marker.color.a = 1.0;
+	/* =========================
+	 * initialize world
+	 * =========================*/
+	World *world = InitializeWorld(world_type, model, options);
 
-		ros::Duration d2(1/control_freq);
-		marker.lifetime=d2;
-		markers.markers.push_back(marker);
-        //markers.markers.push_back(marker_text);
+	cerr << "DEBUG: End initializing world" << endl;
+	assert(world != NULL);
+	logi << "InitializeWorld finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+	/* =========================
+	 * initialize belief
+	 * =========================*/
+
+	cerr << "DEBUG: Initializing belief" << endl;
+	Belief* belief = model->InitialBelief(world->GetCurrentState(), belief_type);
+	assert(belief != NULL);
+	ped_belief_=static_cast<PedPomdpBelief*>(belief);
+	switch(simulation_mode_){
+	case UNITY:
+		unity_driving_simulator_->beliefTracker = ped_belief_->beliefTracker;
+		break;
+	case POMDP:
+		pomdp_driving_simulator_->beliefTracker = ped_belief_->beliefTracker;
+		break;
 	}
-}
-void Controller::publishBelief()
-{
-	//vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->root_->particles());	
-	//cout<<"belief vector size "<<ped_beliefs.size()<<endl;
-	int i=0;
-	ped_is_despot::peds_believes pbs;	
-	for(auto & kv: worldBeliefTracker.peds)
-	{
-		publishMarker(i++,kv.second);
-		ped_is_despot::ped_belief pb;
-		PedBelief belief = kv.second;
-		pb.ped_x=belief.pos.x;
-		pb.ped_y=belief.pos.y;
-		for(auto & v : belief.prob_goals)
-			pb.belief_value.push_back(v);
-		pbs.believes.push_back(pb);
-	}
-	pbs.cmd_vel=worldStateTracker.carvel;
-	pbs.robotx=worldStateTracker.carpos.x;
-	pbs.roboty=worldStateTracker.carpos.y;
-	believesPub_.publish(pbs);
-	markers_pub.publish(markers);
-	markers.markers.clear();
+
+	logi << "InitialBelief finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+	/* =========================
+	 * initialize solver
+	 * =========================*/
+	cerr << "DEBUG: Initializing solver" << endl;
+
+	solver_type = ChooseSolver();
+	Solver *solver = InitializeSolver(model, belief, solver_type, options);
+
+	logi << "InitializeSolver finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+	/* =========================
+	 * initialize logger
+	 * =========================*/
+	Logger *logger = NULL;
+	InitializeLogger(logger, options, model, belief, solver, num_runs,
+			main_clock_start, world, world_type, time_limit, solver_type);
+	//world->world_seed(world_seed);
+
+	/* =========================
+	 * Display parameters
+	 * =========================*/
+	DisplayParameters(options, model);
+
+	/* =========================
+	 * run planning
+	 * =========================*/
+	cerr << "DEBUG: Starting rounds" << endl;
+	logger->InitRound(world->GetCurrentState());
+	round_=0; step_=0;
+	unity_driving_simulator_->beliefTracker->text();
+	logi << "InitRound finished at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+	PlanningLoop(solver, world, logger);
+	ros::spin();
+
+	logger->EndRound();
+
+	PrintResult(1, logger, main_clock_start);
+
+	return 0;
 }

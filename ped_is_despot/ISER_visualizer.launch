@@ -1,5 +1,0 @@
-<launch>
-	<param name="use_sim_time" value="true"/>
-	<include file="$(find dataAssoc_experimental)/dataAssoc_visualizer.launch"/>
-	<node pkg="rviz" type="rviz" name="rviz" args="-d $(find ped_is_despot)/ISER-Visualization.vcg"/>
-</launch>

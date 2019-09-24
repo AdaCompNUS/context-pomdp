@@ -30,39 +30,4 @@ infront_angle_deg: 70
 #places the car drives at (used for selecting goals of peds). 0: utown_small_fill. 1: inside smart office (my_create)
 driving_place: 0
 
-ped_costmap:
-    map_type: costmap
-    global_frame: /map
-    robot_base_frame: /base_link
-    #map_topic: map_cost
-    map_topic: /map
-    static_map: true
-    publish_frequency: 5
-    #robot_radius: 1.2
-    robot_radius: 0.7
-    #inflation_radius: 7.0
-    inflation_radius: 4.0
-    #cost_scaling_factor: 4.0
-    cost_scaling_factor: 4.0
-    update_frequency: 2
-    observation_sources: peds
-    peds:
-        #topic: confident_objects_momdp
-        topic: ped_prediction
-        clearing: true
-        obstacle_range: 5000
-        raytrace_range: 5000
-    ped_cost_ratio: 0.9
-
-planner:
-    # steering_limit_deg: 18
-    # yaw_res_deg: 1.0
-    steering_limit_deg: 48
-    yaw_res_deg: 2.0
-    #cost_steering_deg: 30
-    cost_steering_deg: 8
-    steplen: 6
-    num_search: 800000
-    discretize_ratio: 0.3
-    discount: 0.98
 

@@ -1,11 +1,28 @@
 <launch>
-	   <!-- <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp"  launch-prefix="gdb -ex run args" respawn="false" output="screen" required="true">  -->
-	 <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp"  respawn="false" output="screen" required="true">
+<!--
+	 <node name="ped_momdp" pkg="ped_is_despot" type="ped-momdp-sarsop" respawn="false" output="screen" ns="/scooter">
+
+	 -->
+	<!-- <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp"  launch-prefix="gdb -ex run - -args" respawn="false" output="screen" required="true">  -->
+	 <!-- <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp"  launch-prefix="cuda-gdb args" respawn="false" output="screen" required="true"> -->
+	<node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp" respawn="false" output="screen" required="true">
+
+	<!--  <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp" launch-prefix="valgrind - -tool=callgrind" respawn="false" output="screen" required="true"> -->
 	    <rosparam file="$(find ped_is_despot)/is_despot_param.yaml" command="load" />
+	    <param name = "goalx" value="$(arg goal_x)" />
+	    <param name = "goaly" value="$(arg goal_y)" />
+        <param name = "gpu_id" value="$(arg gpu_id)" />
+	    <param name = "obstacle_file_name" value="$(arg obstacle_file_name)" />
+	    <param name = "goal_file_name" value="$(arg goal_file_name)" />
 		<remap from="pomdp_path_repub" to="new_global_plan"/>
 		<remap from="navgoal" to="/move_base_simple/goal"/>
         <!-- <remap from="odom" to="odom"/> -->
         <param name="simulation" value="false"/>
+        <param name = "use_drivenet" value="$(arg net)" />
+        <param name = "time_scale" value="$(arg time_scale)" />
+        <param name = "model" value="$(arg model_file_name)" />
+        <param name = "val_model" value="$(arg val_model_name)" />
+        
 	 </node>
 
 	 <node name="ped_momdp_local_transform" pkg="ped_is_despot" type="local_frame"  >
@@ -15,6 +32,9 @@
 
 	 <node name="vel_publisher" pkg="ped_is_despot" type="vel_publisher" output="screen" >
 	    <!--<remap from="cmd_vel" to="cmd_vel"/>-->
+	    <param name = "use_drivenet" value="$(arg net)" />
+   	    <param name = "drivenet_mode" value="action" />
+   	    <param name = "time_scale" value="$(arg time_scale)" />
 	 </node>
          
         <!-- <node name="record" pkg="rosbag" type="record" args="-a"/> -->

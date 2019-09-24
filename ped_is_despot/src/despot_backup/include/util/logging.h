@@ -6,6 +6,7 @@
 #include <vector>
 
 using namespace std;
+namespace despot {
 
 class log_ostream: public std::ostream {
 private:
@@ -48,6 +49,7 @@ public:
 	static void stream(int level, ostream& out);
 };
 
+
 #define LOG(lv) \
 if (logging::level() < logging::ERROR || logging::level() < lv) ; \
 else logging::stream(lv)
@@ -61,5 +63,7 @@ else logging::stream(lv)
 #define default_out \
 if (Globals::config.silence) ; \
 else cout
+
+}
 
 #endif

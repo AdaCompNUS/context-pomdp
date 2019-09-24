@@ -1,8 +1,0 @@
-src/ped_is_despot
-src/problem-solver/libappl.a
-src/problem-solver/polgraph
-src/problem-solver/pomdpconvert
-src/problem-solver/pomdpeval
-src/problem-solver/pomdpsim
-src/problem-solver/pomdpsim-rss
-src/problem-solver/pomdpsol

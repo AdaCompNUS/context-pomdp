@@ -1,6 +1,0 @@
-<launch>
-    <node pkg="virtual_bumper" type="virtual_bumper.py" name="" args="1 0.4 45 0.1">
-			 <remap from='/laser_scan' to='/scan'/>
-	</node>
-</launch>
-

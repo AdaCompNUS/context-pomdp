@@ -20,7 +20,7 @@ const int n_peds = 6; // should be smaller than ModelParams::N_PED_IN
 
 class Simulator {
 public:
-    typedef pair<float, Pedestrian> PedDistPair;
+    typedef WorldStateTracker::AgentDistPair AgentDistPair;
 
     Simulator(): start(40, 40), goal(40, 52.5) /// set the path to be a straight line
     {

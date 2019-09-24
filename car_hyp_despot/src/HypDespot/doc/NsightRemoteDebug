@@ -1,0 +1,11 @@
+Follow section 3.7 Debugging Remote CUDA Applications of this guide:
+
+http://docs.nvidia.com/cuda/nsight-eclipse-edition-getting-started-guide/#remote-debugging
+
+Notes:
+
+Host name: peacock@d1.comp.nus.edu.sg
+Username:panpan
+
+Toolkit path: /usr/local/cuda/bin/
+Lib path:/usr/local/cuda-8.0/lib64

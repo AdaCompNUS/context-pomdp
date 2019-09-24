@@ -13,24 +13,22 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Path.h>
+
+#include "neural_prior.h"
+
 //#include <pomdp_path_planner/GetPomdpPath.h>
 //#include <pomdp_path_planner/PomdpPath.h>
 //#include <ped_navfn/MakeNavPlan.h>
+bool b_load_goal=true; // !!!set to false only for data collection purpose!!! 
 
-PedPomdpNode::PedPomdpNode()
+PedPomdpNode::PedPomdpNode(int argc, char** argv)
 {
     ROS_INFO("Starting Pedestrian Avoidance ... ");
-
-    
 
 	cerr << "DEBUG: Setting up subscription..." << endl;
     ros::NodeHandle nh;
     /// Setting up subsciption
-    speedSub_ = nh.subscribe("odom", 1, &PedPomdpNode::speedCallback, this);
-    pedSub_ = nh.subscribe("ped_local_frame_vector", 1, &PedPomdpNode::pedPoseCallback, this); 
-	//pathSub_=nh.subscribe("global_plan", 1, &PedPomdpNode::pathCallback,this);
-	pc_pub=nh.advertise<sensor_msgs::PointCloud>("confident_objects_momdp",1);
-	path_pub=nh.advertise<nav_msgs::Path>("momdp_path",10);
+    
     ros::NodeHandle n("~");
 
 	pathPublished=false;
@@ -42,7 +40,7 @@ PedPomdpNode::PedPomdpNode()
 
 	bool fixed_path;
 	double pruning_constant, pathplan_ahead;
-    n.param("pruning_constant", pruning_constant, 0.0);
+    n.param("pruning_constant", pruning_constant, 0.001);
 	n.param("fixed_path", fixed_path, false);
 	n.param("pathplan_ahead", pathplan_ahead, 4.0);
 
@@ -56,122 +54,85 @@ PedPomdpNode::PedPomdpNode()
     n.param("driving_place", ModelParams::DRIVING_PLACE, 0);
 
 
+    string obstacle_file_name;
+    std::cout<<"before obstacle"<<std::endl;
+    n.param<std::string>("obstacle_file_name", obstacle_file_name, "null");
+    std::cout<<"before obstacle"<<std::endl;
+    std::cout<<obstacle_file_name<<std::endl;
+
     double noise_goal_angle_deg;
     n.param("noise_goal_angle_deg", noise_goal_angle_deg, 45.0);
     ModelParams::NOISE_GOAL_ANGLE = noise_goal_angle_deg / 180.0 * M_PI;
 
     n.param("max_vel", ModelParams::VEL_MAX, 2.0);
 
-    move_base_speed_=nh.subscribe("momdp_speed_dummy",1, &PedPomdpNode::moveSpeedCallback, this);
-    //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
+    n.param("use_drivenet", Controller::b_use_drive_net_, 0);
+    n.param("gpu_id", Controller::gpu_id_, 0);
+    n.param<std::string>("model", Controller::model_file_, "");
+    n.param<std::string>("val_model", Controller::value_model_file_, "");
+
+    n.param<float>("time_scale", Controller::time_scale_, 1.0);
+
+    cerr << "DEBUG: Params list: " << endl;
+    cerr << "-use_drivenet " << Controller::b_use_drive_net_ << endl;
+    cerr << "-model " << Controller::model_file_ << endl;
+    cerr << "-time_scale " << Controller::time_scale_ << endl;
 
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
-	controller = new Controller(nh, fixed_path, pruning_constant, pathplan_ahead);
+	controller = new Controller(nh, fixed_path, pruning_constant, pathplan_ahead, obstacle_file_name);
+
+	ModelParams::print_params();
 
     // default goal: after create door
-    n.param("goalx", controller->goalx_, 19.5);
-    n.param("goaly", controller->goaly_, 55.5);
+    if(b_load_goal){// load goal from ped_is_despot.yaml file
+	    n.param("goalx", controller->goalx_, 19.5);
+	    n.param("goaly", controller->goaly_, 55.5);
 
-	controller->window_pub=nh.advertise<geometry_msgs::PolygonStamped>("/my_window",1000);
-	controller->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);
-	controller->car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
-
-	//controller->path_client=nh.serviceClient<pomdp_path_planner::GetPomdpPath>("get_pomdp_paths");
-	controller->path_client=nh.serviceClient<nav_msgs::GetPlan>(ModelParams::rosns + "/ped_path_planner/planner/make_plan");
-
-
-
-    ros::spin();
-}
-extern double marker_colors[20][3];
-void PedPomdpNode::publishPath()
-{
-	cerr << "DEBUG: Call publishPath() " << endl;
-	nav_msgs::Path msg;
-
-	msg.header.frame_id=ModelParams::rosns+"/map";
-	msg.header.stamp=ros::Time::now();
-	vector<COORD> path=controller->worldModel.path;
-	msg.poses.resize(path.size());
-	for(int i=0;i<path.size();i++)
-	{
-		msg.poses[i].pose.position.x=controller->worldModel.path[i].x;
-		msg.poses[i].pose.position.y=controller->worldModel.path[i].y;
-		msg.poses[i].pose.position.z=0;
-		msg.poses[i].header.frame_id=msg.header.frame_id;
-		msg.poses[i].header.stamp=ros::Time::now();
+        cout << "car goal: " << controller->goalx_ << " " << controller->goaly_ << endl;
 	}
-	path_pub.publish(msg);
-//	cout<<"path with length "<<length<<" published"<<endl;
+	else{// to use a list of possible goals
+		srand (time(NULL));
+		int which_goal =rand() % 3;
+		switch(which_goal){
+			case 0: controller->goalx_=0.0; controller->goaly_=18.0; break;
+			case 1: controller->goalx_=18.0; controller->goaly_=0.0; break;
+			case 2: controller->goalx_=0.0; controller->goaly_=-18.0; break;
+		}
 
-	cerr << "DEBUG: Done publishPath() " << endl;
+		cout << "No goal availabel from ros params. Using default goals\n";
+		cout << "car goal: " << controller->goalx_ << " " << controller->goaly_ << endl;
+	}
+
+    logi << " PedPomdpNode constructed at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+
+    controller->RunPlanning(argc, argv);
+
+    //ros::spin();
 }
+
+
 PedPomdpNode::~PedPomdpNode()
 {
     //controller->~ped_momdp();
 }
 
-void PedPomdpNode::speedCallback(nav_msgs::Odometry odo)
-{
-	//cout<<"update real speed "<<odo.twist.twist.linear.x<<endl;
-	controller->real_speed_=odo.twist.twist.linear.x;
-}
-
-void PedPomdpNode::moveSpeedCallback(geometry_msgs::Twist speed)
-{
-    controller->updateSteerAnglePublishSpeed(speed);
-}
-
-bool sortFn(Pedestrian p1,Pedestrian p2)
-{
-	return p1.id<p2.id;
-}
-
-void PedPomdpNode::pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
-{
-   // cout<<"pedestrians received size = "<<lPedLocal.ped_local.size()<<endl;
-	if(lPedLocal.ped_local.size()==0) return;
-
-	sensor_msgs::PointCloud pc;
-
-	pc.header.frame_id=ModelParams::rosns+"/map";
-	pc.header.stamp=lPedLocal.ped_local[0].header.stamp;
-	//RealWorld.ped_list.clear();
-	vector<Pedestrian> ped_list;
-    for(int ii=0; ii< lPedLocal.ped_local.size(); ii++)
-    {
-		geometry_msgs::Point32 p;
-		Pedestrian world_ped;
-		ped_is_despot::ped_local_frame ped=lPedLocal.ped_local[ii];
-		world_ped.id=ped.ped_id;
-		world_ped.w = ped.ped_pose.x;
-		world_ped.h = ped.ped_pose.y;
-		p.x=ped.ped_pose.x;
-		p.y=ped.ped_pose.y;
-		p.z=1.0;
-		pc.points.push_back(p);
-
-		//cout<<"ped pose "<<ped.ped_pose.x<<" "<<ped.ped_pose.y<<" "<<world_ped.id<<endl;
-		ped_list.push_back(world_ped);
-    }
-	//std::sort(ped_list.begin(),ped_list.end(),sortFn);
-	for(int i=0;i<ped_list.size();i++)
-	{
-		controller->worldStateTracker.updatePed(ped_list[i]);
-		//cout<<ped_list[i].id<<" ";
-	}
-	//cout<<endl;
-	pc_pub.publish(pc);
-}
-
-
 int main(int argc, char** argv)
 {
+    SolverPrior::record_init_time();
+
+    // cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
+
     ros::init(argc, argv, "mdp");
+    // cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
 
     // raise error for floating point exceptions rather than silently return nan
-    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+//    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+//    feenableexcept(FE_DIVBYZERO | FE_OVERFLOW);
+
+    // cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
 
     srand(unsigned(time(0)));
-    PedPomdpNode mdp_node;
+        cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
+
+	PedPomdpNode mdp_node(argc, argv);
 }

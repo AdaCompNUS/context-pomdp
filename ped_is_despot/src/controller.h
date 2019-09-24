@@ -8,7 +8,7 @@
 #ifndef MOMDP_H_
 #define MOMDP_H_
 
-
+#include <RVO.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/LaserScan.h>
@@ -24,6 +24,8 @@
 #include <ped_is_despot/peds_believes.h>
 #include <ped_is_despot/ped_local_frame.h>
 #include <ped_is_despot/ped_local_frame_vector.h>
+#include <ped_is_despot/imitation_data.h>
+#include <std_msgs/Float32.h>
 #include <pnc_msgs/speed_contribute.h>
 //#include "executer.h"
 #include <geometry_msgs/PoseStamped.h>
@@ -43,32 +45,34 @@
 #include <nav_msgs/GetPlan.h>
 #include "WorldModel.h"
 #include "ped_pomdp.h"
-#include "core/belief.h"
+#include "core/particle_belief.h"
 #include "solver/despot.h"
 #include <ped_pathplan/StartGoal.h>
+#include "planner.h"
+
+class WorldSimulator;
+class POMDPSimulator;
+
+class PedPomdpBelief;
 
 using namespace std;
 
-class Controller
+class Controller: public Planner
 {
+	enum SIM_MODE{
+		POMDP,
+		UNITY,
+	};
 public:
 
-	void addObstacle();
 	PomdpStateWorld world_state;
 
-    Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead);
+    Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead, string obstacle_file_name);
 
     ~Controller();
 
-    void updateSteerAnglePublishSpeed(geometry_msgs::Twist speed);
-	void publishSpeed(const ros::TimerEvent &e);
-	//void simLoop();
-	void publishROSState();
-	void publishAction(int);
 	void publishBelief();
-	void publishMarker(int , PedBelief & ped);
 	void publishPath(const string& frame_id, const Path& path);
-    void publishPedsPrediciton();
 	bool getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
 
 	//for despot
@@ -79,49 +83,91 @@ public:
     void setGoal(const geometry_msgs::PoseStamped::ConstPtr goal);
 	geometry_msgs::PoseStamped getPoseAhead(const tf::Stamped<tf::Pose>& carpose);
 
-	ros::Publisher window_pub, goal_pub;
-	ros::Publisher car_pub;
-	ros::Publisher pa_pub;
 	ros::Publisher pathPub_;
 	ros::Subscriber pathSub_;
     ros::Subscriber navGoalSub_;
 	ros::Publisher start_goal_pub;
-	//ros::Publisher markers_pubs[ModelParams::N_PED_IN];
-	ros::Publisher markers_pub;
-	ros::ServiceClient path_client;
 
-    tf::TransformListener tf_;
-    WorldStateTracker worldStateTracker;
-    WorldModel worldModel;
-	WorldBeliefTracker worldBeliefTracker;
-	PedPomdp * despot;
-	DESPOT* solver;
-	double target_speed_, real_speed_;
+	ros::NodeHandle& nh;
+	//ros::Publisher markers_pubs[ModelParams::N_PED_IN];
+
+    
+	//PedPomdp * despot;
+	//DESPOT* solver;
+	//Simulator* gpu_handler;
+	
 	string global_frame_id;
-	visualization_msgs::MarkerArray markers;
+	
 
     double goalx_, goaly_;
+    std::string obstacle_file_name_;
+
+    ACT_TYPE last_action;
+    OBS_TYPE last_obs;
 
 private:
     bool fixed_path_;
 	double pathplan_ahead_;
 	double control_freq;
-	bool goal_reached;
-	int safeAction;
     int X_SIZE, Y_SIZE;
     double dX, dY;
     double momdp_problem_timeout;
     bool robot_pose_available;
     double robotx_, roboty_, robotspeedx_;
-    ros::Timer timer_,timer_speed;
-    ros::Publisher believesPub_, cmdPub_,actionPub_, actionPubPlot_, plannerPedsPub_;
+    ros::Timer timer_;
+    ros::Publisher plannerPedsPub_;
     ros::Publisher pedStatePub_;
-    ros::Publisher pedPredictionPub_ ;
 
     void controlLoop(const ros::TimerEvent &e);
+    double StepReward(PomdpStateWorld& state, int action);
 
 	void publishPlannerPeds(const State &);
+	bool getUnityPos();
+public:
+	DSPOMDP* InitializeModel(option::Option* options);
 
+	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options);
 
+	void InitializeDefaultParameters();
+
+	std::string ChooseSolver();
+
+public:
+	bool RunStep(despot::Solver* solver, World* world, Logger* logger);
+	int RunPlanning(int argc, char* argv[]);
+	void PlanningLoop(despot::Solver*& solver, World* world, Logger* logger);
+
+public:
+	WorldSimulator* unity_driving_simulator_;
+	POMDPSimulator* pomdp_driving_simulator_;
+	PedPomdpBelief* ped_belief_;
+	//World* world_;
+	Logger *logger_;
+	DSPOMDP* model_;
+	despot::Solver* solver_;
+
+	SIM_MODE simulation_mode_;
+	
+public: // lets_drive
+	static int b_use_drive_net_;
+	static int gpu_id_;
+    static float time_scale_; // scale down the speed of time, value < 1.0
+    static std::string model_file_;
+    static std::string value_model_file_;
+private:
+
+	SolverPrior* prior_;
+
+	void CreateNNPriors(DSPOMDP* model);
+	bool RunPreStep(despot::Solver* solver, World* world, Logger* logger);
+	void PredictPedsForSearch(State* search_state);
+	void UpdatePriors(const State* cur_state, State* search_state);
+
+	void TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len);
+	void CheckCurPath();
+
+	void setCarGoal(COORD car_goal);
+private:
+	Path path_from_topic;
 };
 #endif /* MOMDP_H_ */

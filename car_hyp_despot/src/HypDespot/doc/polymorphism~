@@ -1,0 +1,28 @@
+Implementing polymophisim for GPU despot:
+
+Objective: Let the GPUDESPOT.cu able to use the __device__ step function (and others) defined in a specific model (like Tiger) without having knowledge about the real model. 
+
+Prerequisites:
+1. Project's nvcc compilation mode is set as separate compilation (--relocatable-device-code=true)
+
+Procedure:
+1. Declare the function as an extern __device__ function pointer in GPUDESPOT.h:
+		something like: extern __device__ void(*step_)(double&);
+2. Define the function in main.cu on the model side (in the file scope):
+		__device__ void(*step_)(double&);
+3. Write a kernel to pass the address of the real step function from the concrete model to the global function pointer func_:
+		__global__ void PassStepFunc(DvcModel* dvc)
+		{
+			step_=&(dvc->step);
+		}
+4. Run the PassStepFunc kernel with only one thread. Pass the allocated device model to it as a parameter.
+		DvcModel* Dvc;
+		cudaMalloc((void**)&Dvc, sizeof(DvcModel));
+		Initkernel<<<1,1,1>>>(Dvc);
+5. Now you should be able to use the global function pointer in GPUDESPOT.cu:
+		__global__ void stepkernel(double* tmp)
+		{
+			int i=threadIdx.x;tmp[i]=i;
+			(*step_)(tmp[i]);
+		}
+
