@@ -17,7 +17,7 @@
 #include <carla_connector/agent_array.h>
 
 #ifdef CONNECTOR2
-#include <carla_connector2/TrafficAgentArray.h>
+#include <carla_connector/TrafficAgentArray.h>
 #endif
 
 #include "neural_prior.h"
@@ -36,7 +36,7 @@ double pub_frequency = 9.0;
 
 void pedPoseCallback(ped_is_despot::ped_local_frame_vector);
 #ifdef CONNECTOR2
-	void agentArrayCallback(carla_connector2::TrafficAgentArray);
+	void agentArrayCallback(carla_connector::TrafficAgentArray);
 #else
 	void agentArrayCallback(carla_connector::agent_array);
 #endif
@@ -130,7 +130,7 @@ bool WorldSimulator::Connect(){
 	logi << "IL_car_info get at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
 #ifdef CONNECTOR2
-	auto agent_data = ros::topic::waitForMessage<carla_connector2::TrafficAgentArray>("agent_array",ros::Duration(30));
+	auto agent_data = ros::topic::waitForMessage<carla_connector::TrafficAgentArray>("agent_array",ros::Duration(30));
 #else
 	auto agent_data = ros::topic::waitForMessage<carla_connector::agent_array>("agent_array",ros::Duration(30));
 #endif   
@@ -795,7 +795,7 @@ bool sortFn(Pedestrian p1,Pedestrian p2)
 }
 
 #ifdef CONNECTOR2
-void agentArrayCallback(carla_connector2::TrafficAgentArray data){
+void agentArrayCallback(carla_connector::TrafficAgentArray data){
 #else 
 void agentArrayCallback(carla_connector::agent_array data){
 #endif
@@ -814,7 +814,7 @@ void agentArrayCallback(carla_connector::agent_array data){
 	vector<Vehicle> veh_list;
 	
 	#ifdef CONNECTOR2
-	for (carla_connector2::TrafficAgent& agent : data.agents){
+	for (carla_connector::TrafficAgent& agent : data.agents){
 	#else
 	for (carla_connector::traffic_agent& agent : data.agents){
 	#endif

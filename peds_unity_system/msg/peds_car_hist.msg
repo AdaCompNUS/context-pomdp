@@ -1,2 +1,0 @@
-peds_unity_system/peds_car_info cur
-peds_unity_system/peds_car_info past

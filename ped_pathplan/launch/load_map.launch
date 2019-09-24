@@ -1,6 +1,0 @@
-<launch>
-<node name="map_server_costmap" pkg="map_server" type="map_server"  args="$(find ped_pathplan)/launch/office_map3.yaml">
-		<!-- <remap from="map" to="map_cost"/> -->
-		<param name="frame_id" value="/map"/>
-	</node>
-</launch>

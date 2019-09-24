@@ -1,5 +1,0 @@
-<launch>
-    <node pkg="movel_nav" type="teleop_twist_keyboard.py" name="teleop" output="screen">
-    </node>
-</launch>
-
