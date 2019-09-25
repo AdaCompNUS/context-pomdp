@@ -1,0 +1,14 @@
+geometry_msgs/Point32[] points
+geometry_msgs/Point32 centroid
+float64 width
+float64 height
+float64 depth
+geometry_msgs/Point32[] projected_points
+float64 eigen1
+float64 eigen2
+float64 eigen3
+float64 projected_l1
+float64 projected_l2
+float64 projected_l3
+int64 id
+time last_update

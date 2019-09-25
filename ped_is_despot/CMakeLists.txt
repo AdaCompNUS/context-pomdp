@@ -54,6 +54,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   message_generation
   car_hyp_despot
+  tf
 )
 
 # set(CMAKE_PREFIX_PATH_BAK  "${CMAKE_PREFIX_PATH}")
