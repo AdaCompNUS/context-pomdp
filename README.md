@@ -1,6 +1,6 @@
 #
-# BTS_RL_NN: Integrating Belief Tree Search with Neural Networks
-## Instructions 
+# LeTS-Drive with SUMMIT simulator integration
+## Data Processing
 Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
@@ -32,6 +32,7 @@ or
 find ./jun9/ -type f -name '*.h5' -exec mv -i {} ./h5/  \;
 python Data_processing/combine.py
 ```
+## IL Training
 Start training and open tensorboard port
 ```
 python train.py --batch_size 512 --lr 0.01 --train train.h5 --val val.h5
@@ -43,7 +44,7 @@ ssh -4 -N -f -L localhost:6001:localhost:6001 panpan@unicorn4.d2.comp.nus.edu.sg
 ```
 On your browser, visit http://localhost:6010/
 
-**Arguments**:
+**Main Arguments**:
 - `train`: The path to the train dataset
 - `test`: The path to the test dataset
 - `bagspath`: Path to bag files
