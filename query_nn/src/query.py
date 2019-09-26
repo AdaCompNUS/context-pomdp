@@ -24,14 +24,14 @@ from collections import OrderedDict
 home = os.path.expanduser('~')
 
 
-nn_folder = os.path.join(home, "workspace/catkin_ws/src/drive_net_controller/src/BTS_RL_NN/")
+nn_folder = os.path.join(home, "workspace/catkin_ws/src/IL_controller/src/BTS_RL_NN/")
 if not os.path.isdir(nn_folder):
-    nn_folder = os.path.join(home, "catkin_ws/src/drive_net_controller/src/BTS_RL_NN/")
+    nn_folder = os.path.join(home, "catkin_ws/src/IL_controller/src/BTS_RL_NN/")
 
 
-test_model_name = os.path.join(home, "workspace/catkin_ws/src/drive_net_controller/src/BTS_RL_NN/trained_models/hybrid_unicorn.pth")
+test_model_name = os.path.join(home, "workspace/catkin_ws/src/IL_controller/src/BTS_RL_NN/trained_models/hybrid_unicorn.pth")
 if not os.path.isfile(test_model_name):
-    test_model_name = os.path.join(home, "catkin_ws/src/drive_net_controller/src/BTS_RL_NN/trained_models/hybrid_unicorn.pth")
+    test_model_name = os.path.join(home, "catkin_ws/src/IL_controller/src/BTS_RL_NN/trained_models/hybrid_unicorn.pth")
 
 sys.path.append(os.path.join(nn_folder, 'Data_processing'))
 sys.path.append(nn_folder)

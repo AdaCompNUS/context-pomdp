@@ -1,0 +1,7 @@
+image: indian_cross_13_14_13.png
+resolution: 0.0390625
+origin: [-20.0, -20.0, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
+
