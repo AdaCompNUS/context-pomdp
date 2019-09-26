@@ -1,6 +1,6 @@
 #
 # LeTS-Drive with SUMMIT simulator integration
-## Data Processing
+## Environment Setup
 Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
@@ -15,6 +15,7 @@ Use `pip` to install the necessary dependencies:
 ```
 pip install -r requirements.txt
 ```
+## Data Processing
 Convert bags into h5 files:
 ```
 python Data_processing/bag_to_hdf5.py --bagspath jun9/ --peds_goal_path Maps/
