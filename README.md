@@ -1,6 +1,9 @@
 #
 # LeTS-Drive with SUMMIT simulator integration
-## Environment Setup
+## Pre-requisites
+*[CUDA 10.0]: https://developer.nvidia.com/cuda-10.0-download-archive (Note: you need to follow the [official guide]:https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html for a successful installation.)
+*[CUDNN 7]: https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html
+## Python Environment Setup
 Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
@@ -11,10 +14,17 @@ Optionally, append the source ~/py_bts_rl... line to ~/.bashrc. Also, to deactiv
 ```
 deactivate
 ```
-Use `pip` to install the necessary dependencies:
+## Setup Dependencies
+Download all bash scripts in the setup folder, then run
 ```
-pip install -r requirements.txt
+bash setup.sh
 ```
+This setup script will:
+*install ros-melodic
+*build and install the lastest libtorch (the CPP frontend of Pytorch)
+*build and install OpenCV 4.1.0
+*install dependent python packages
+The script will prompt for sudo privilege.
 ## Data Processing
 Convert bags into h5 files:
 ```
