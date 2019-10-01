@@ -1,9 +1,10 @@
 #
 # LeTS-Drive with SUMMIT simulator integration
-## Pre-requisites
+## Setup
+### Pre-requisites
 1. Install [CUDA 10.0](https://developer.nvidia.com/cuda-10.0-download-archive) (Note: you need to follow the [official guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) for a successful installation.)
 2. Install [CUDNN 7](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html)
-## Python Environment Setup
+### Python Environment Setup
 Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
@@ -14,7 +15,7 @@ Optionally, append the source ~/lets_drive... line to ~/.bashrc. Also, to deacti
 ```
 deactivate
 ```
-## Setup Dependencies
+### Setup Dependencies
 Download all bash scripts in the setup folder, then run
 ```
 bash setup.sh
@@ -25,23 +26,25 @@ This setup script will:
 * build and install OpenCV 4.1.0
 * install dependent python packages
 The script will prompt for sudo privilege.
+
+### Setup the SUMMIT simulator
+Download the [SUMMIT simultator](), and unzip it to, for example ~/summit
+
+## Run the System
+### Launch the Simulator
+
 ## Data Processing
-Convert bags into h5 files:
+Convert bags into h5 files using multiple threads:
 ```
-python Data_processing/bag_to_hdf5.py --bagspath jun9/ --peds_goal_path Maps/
+python Data_processing/parallel_parse.py --bagspath [rosbag/path/] --peds_goal_path Maps/
 ```
-or use multiple threads:
+or using a single thread:
 ```
-python Data_processing/parallel_parse.py
+python Data_processing/bag_to_hdf5.py --bagspath [rosbag/path/] --peds_goal_path Maps/
 ```
 combine bag_h5 files into training, validation, and test sets:
 ```
-python Data_processing/combine.py --bagspath jun9/
-```
-or
-```
-find ./jun9/ -type f -name '*.h5' -exec mv -i {} ./h5/  \;
-python Data_processing/combine.py
+python Data_processing/combine.py --bagspath [rosbag/path/]
 ```
 ## IL Training
 Start training and open tensorboard port
