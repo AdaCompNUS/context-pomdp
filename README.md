@@ -1,8 +1,8 @@
 #
 # LeTS-Drive with SUMMIT simulator integration
 ## Pre-requisites
-* [CUDA 10.0]: https://developer.nvidia.com/cuda-10.0-download-archive (Note: you need to follow the [official guide]:https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html for a successful installation.)
-* [CUDNN 7]: https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html
+1. Install [CUDA 10.0](https://developer.nvidia.com/cuda-10.0-download-archive) (Note: you need to follow the [official guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) for a successful installation.)
+2. Install [CUDNN 7](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html)
 ## Python Environment Setup
 Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
