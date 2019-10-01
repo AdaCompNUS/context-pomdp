@@ -1,16 +1,16 @@
 #
 # LeTS-Drive with SUMMIT simulator integration
 ## Pre-requisites
-*[CUDA 10.0]: https://developer.nvidia.com/cuda-10.0-download-archive (Note: you need to follow the [official guide]:https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html for a successful installation.)
-*[CUDNN 7]: https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html
+* [CUDA 10.0]: https://developer.nvidia.com/cuda-10.0-download-archive (Note: you need to follow the [official guide]:https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html for a successful installation.)
+* [CUDNN 7]: https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html
 ## Python Environment Setup
 Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
-virtualenv --system-site-packes py_bts_rl 
-source ~/py_bts_rl/bin/activate
+virtualenv --system-site-packes lets_drive 
+source ~/lets_drive/bin/activate
 ```
-Optionally, append the source ~/py_bts_rl... line to ~/.bashrc. Also, to deactivate the current virtual environment, just type 
+Optionally, append the source ~/lets_drive... line to ~/.bashrc. Also, to deactivate the current virtual environment, just type 
 ```
 deactivate
 ```
@@ -20,10 +20,10 @@ Download all bash scripts in the setup folder, then run
 bash setup.sh
 ```
 This setup script will:
-*install ros-melodic
-*build and install the lastest libtorch (the CPP frontend of Pytorch)
-*build and install OpenCV 4.1.0
-*install dependent python packages
+* install ros-melodic
+* build and install the lastest libtorch (the CPP frontend of Pytorch)
+* build and install OpenCV 4.1.0
+* install dependent python packages
 The script will prompt for sudo privilege.
 ## Data Processing
 Convert bags into h5 files:
