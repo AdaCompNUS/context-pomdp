@@ -28,11 +28,23 @@ This setup script will:
 The script will prompt for sudo privilege.
 
 ### Setup the SUMMIT simulator
-Download the [SUMMIT simultator](), and unzip it to, for example ~/summit
+Download the [SUMMIT simultator](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to, for example ~/summit
 
 ## Run the System
 ### Launch the Simulator
-
+```
+export SDL_VIDEODRIVER=offscreen
+LinuxNoEditor/CarlaUE4.sh -carla-rpc-port=2000 -carla-streaming-port=2000
+```
+### Launch the Planner
+```
+cd ~/catkin_ws/src/scripts
+./experiment_summmit.sh [gpu_id] [start_round] [end_round(inclusive)] [carla_portal, e.g. 2000]
+```
+experiment_summmit.sh does not record bags by default. To enable rosbag recording, change the following variable to 1 in the script:
+```
+record_bags=0
+```
 ## Data Processing
 Convert bags into h5 files using multiple threads:
 ```
