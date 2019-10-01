@@ -18,7 +18,7 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/Twist.h>
 #include <rosgraph_msgs/Clock.h>
-#include <ped_is_despot/imitation_data.h>
+#include <msg_builder/imitation_data.h>
 
 #include "simulator_base.h"
 
@@ -90,7 +90,7 @@ public:
 
     //ros::Publisher IL_pub; 
     //bool b_update_il;
-    //ped_is_despot::imitation_data p_IL_data;
+    //msg_builder::imitation_data p_IL_data;
 
 
     void publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float vel);

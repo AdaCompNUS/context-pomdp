@@ -6,7 +6,7 @@ using namespace despot;
 class SolverPrior;
 class DrivingController: public Planner {
 public:
-	DrivingController(){;}
+	DrivingController(ros::NodeHandle& _nh): nh(_nh) {;}
 
 	DSPOMDP* InitializeModel(option::Option* options) ;
 	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options);
@@ -21,7 +21,8 @@ public:
 	Simulator* driving_simulator_;
 
 	SolverPrior* prior_;
-
+  
+  ros::NodeHandle& nh;
 private:
 	void CreateNNPriors(DSPOMDP* model);
 };

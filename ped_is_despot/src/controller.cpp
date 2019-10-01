@@ -117,7 +117,7 @@ nh(_nh), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead), obstacle_file
 
     navGoalSub_ = nh.subscribe("navgoal", 1, &Controller::setGoal, this); //receive user input of goal	
 	
-	start_goal_pub=nh.advertise<ped_is_despot::StartGoal> ("ped_path_planner/planner/start_goal", 1);//send goal to path planner
+	start_goal_pub=nh.advertise<msg_builder::StartGoal> ("ped_path_planner/planner/start_goal", 1);//send goal to path planner
     
     //imitation learning
 
@@ -308,7 +308,7 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 	if(fixed_path_ && WorldSimulator::worldModel.path.size()>0)  return;
 
 
-	ped_is_despot::StartGoal startGoal;
+	msg_builder::StartGoal startGoal;
 	geometry_msgs::PoseStamped pose;
 	tf::poseStampedTFToMsg(carpose, pose);
 

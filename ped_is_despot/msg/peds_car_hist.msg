@@ -1,2 +1,0 @@
-ped_is_despot/peds_car_info cur
-ped_is_despot/peds_car_info past

@@ -1,4 +1,4 @@
-from Data_processing import global_params
+# from Data_processing import global_params
 from global_params import config
 
 if config.pycharm_mode:

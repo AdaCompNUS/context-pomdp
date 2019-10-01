@@ -3,13 +3,13 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 ////#include <sensing_on_road/pedestrian_laser_batch.h>
-#include <ped_is_despot/ped_local_frame_vector.h>
+#include <msg_builder/ped_local_frame_vector.h>
 ////#include <sensing_on_road/pedestrian_vision_batch.h>
 #include <fstream>
 #include "param.h"
 
-#include <ped_is_despot/pedestrian_array.h>
-#include <ped_is_despot/clusters.h>
+#include <msg_builder/pedestrian_array.h>
+#include <msg_builder/clusters.h>
 
 using namespace std;
 struct ped_transforms
@@ -28,7 +28,7 @@ public:
 private:
     void publishTransform(const ros::TimerEvent& event);
     //void pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr ped_batch);
-    void pedCallback(ped_is_despot::pedestrian_arrayConstPtr ped_array);
+    void pedCallback(msg_builder::pedestrian_arrayConstPtr ped_array);
     bool getObjectPose(const string& target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
 	void PublishLocalFrames();
 	void loadFilter();
@@ -49,7 +49,7 @@ local_frame::local_frame()
 {
     ros::NodeHandle nh;
     ped_sub_ = nh.subscribe("pedestrian_array", 1, &local_frame::pedCallback, this);
-    local_pub_ = nh.advertise<ped_is_despot::ped_local_frame_vector>("ped_local_frame_vector", 1);
+    local_pub_ = nh.advertise<msg_builder::ped_local_frame_vector>("ped_local_frame_vector", 1);
 
 	loadFilter();
     ros::NodeHandle n("~");
@@ -116,7 +116,7 @@ bool local_frame::filtered(double x,double y)
 
 /*void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr ped_batch)
 {
-    ped_is_despot::ped_local_frame_vector plf_vector;
+    msg_builder::ped_local_frame_vector plf_vector;
     for(size_t i=0;i<ped_batch->pd_vector.size();i++)
     {
         if(true)
@@ -125,7 +125,7 @@ bool local_frame::filtered(double x,double y)
             //if(ped_batch->pd_vector[i].confidence > 0.01)
             {
 				
-                ped_is_despot::ped_local_frame plf;
+                msg_builder::ped_local_frame plf;
                 plf.header.stamp = ped_batch->header.stamp;
 				
 				plf.header.frame_id = ModelParams::rosns + "/map";
@@ -161,9 +161,9 @@ bool local_frame::filtered(double x,double y)
     local_pub_.publish(plf_vector);
 }*/
 
-void local_frame::pedCallback(ped_is_despot::pedestrian_arrayConstPtr ped_array)
+void local_frame::pedCallback(msg_builder::pedestrian_arrayConstPtr ped_array)
 {
-    ped_is_despot::ped_local_frame_vector plf_vector;
+    msg_builder::ped_local_frame_vector plf_vector;
     for(size_t i=0;i<ped_array->pd_vector.size();i++)
     {
         if(true)
@@ -172,7 +172,7 @@ void local_frame::pedCallback(ped_is_despot::pedestrian_arrayConstPtr ped_array)
             //if(ped_batch->pd_vector[i].confidence > 0.01)
             {
 				
-                ped_is_despot::ped_local_frame plf;
+                msg_builder::ped_local_frame plf;
                 plf.header.stamp = ped_array->header.stamp;
 				
 				plf.header.frame_id = ModelParams::rosns + "/map";
@@ -279,12 +279,12 @@ void local_frame::publishTransform(const ros::TimerEvent& event)
 /*
 void local_frame::PublishLocalFrames()
 {
-	ped_is_despot::ped_local_frame_vector plf_vector;
+	msg_builder::ped_local_frame_vector plf_vector;
 	Car car=world.GetCarPose();
 	for(int i=0;i<world.NumPedInView();i++)
 	{
 		Pedestrian ped=world.GetPedPose(i);	
-		ped_is_despot::ped_local_frame plf;
+		msg_builder::ped_local_frame plf;
 		plf.ped_id=ped.id;
 		plf.ped_pose.x=ped.w;
 		plf.ped_pose.y=ped.h;

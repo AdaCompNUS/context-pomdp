@@ -3,21 +3,21 @@
 #include "WorldModel.h"
 #include "ped_pomdp.h"
 
-#include <ped_is_despot/StartGoal.h>
-#include <ped_is_despot/car_info.h>
-#include <ped_is_despot/peds_info.h>
-#include <ped_is_despot/ped_info.h>
-#include <ped_is_despot/peds_believes.h>
+#include <msg_builder/StartGoal.h>
+#include <msg_builder/car_info.h>
+#include <msg_builder/peds_info.h>
+#include <msg_builder/ped_info.h>
+#include <msg_builder/peds_believes.h>
 #include "ros/ros.h"
 
 #include <nav_msgs/OccupancyGrid.h>
 
 #define CONNECTOR2
 
-#include <carla_connector/agent_array.h>
+#include <msg_builder/agent_array.h>
 
 #ifdef CONNECTOR2
-#include <carla_connector/TrafficAgentArray.h>
+#include <msg_builder/TrafficAgentArray.h>
 #endif
 
 #include "neural_prior.h"
@@ -34,11 +34,11 @@ WorldModel SimulatorBase::worldModel;
 bool SimulatorBase::agents_data_ready = false;
 double pub_frequency = 9.0;
 
-void pedPoseCallback(ped_is_despot::ped_local_frame_vector);
+void pedPoseCallback(msg_builder::ped_local_frame_vector);
 #ifdef CONNECTOR2
-	void agentArrayCallback(carla_connector::TrafficAgentArray);
+	void agentArrayCallback(msg_builder::TrafficAgentArray);
 #else
-	void agentArrayCallback(carla_connector::agent_array);
+	void agentArrayCallback(msg_builder::agent_array);
 #endif
 void receive_map_callback(nav_msgs::OccupancyGrid map);
 
@@ -111,7 +111,7 @@ bool WorldSimulator::Connect(){
     pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);
 	car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
 	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
-    IL_pub = nh.advertise<ped_is_despot::imitation_data>("il_data", 1);
+    IL_pub = nh.advertise<msg_builder::imitation_data>("il_data", 1);
 
 	speedSub_ = nh.subscribe("odom", 1, &WorldSimulator::speedCallback, this);
     // pedSub_ = nh.subscribe("ped_local_frame_vector", 1, pedPoseCallback); 
@@ -126,13 +126,13 @@ bool WorldSimulator::Connect(){
     auto odom_data = ros::topic::waitForMessage<nav_msgs::Odometry>("odom");
 	logi << "odom get at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
-    auto car_data = ros::topic::waitForMessage<ped_is_despot::car_info>("IL_car_info");
+    auto car_data = ros::topic::waitForMessage<msg_builder::car_info>("IL_car_info");
 	logi << "IL_car_info get at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
 #ifdef CONNECTOR2
-	auto agent_data = ros::topic::waitForMessage<carla_connector::TrafficAgentArray>("agent_array",ros::Duration(30));
+	auto agent_data = ros::topic::waitForMessage<msg_builder::TrafficAgentArray>("agent_array",ros::Duration(30));
 #else
-	auto agent_data = ros::topic::waitForMessage<carla_connector::agent_array>("agent_array",ros::Duration(30));
+	auto agent_data = ros::topic::waitForMessage<msg_builder::agent_array>("agent_array",ros::Duration(30));
 #endif   
 	logi << "agent_array get at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
@@ -188,7 +188,7 @@ State* WorldSimulator::GetCurrentState(){
 
 	CarStruct updated_car;
 	COORD coord;
-	//ped_is_despot::StartGoal startGoal;
+	//msg_builder::StartGoal startGoal;
 
 	/*if(pathplan_ahead_ > 0 && worldModel.path.size()>0) {
 		startGoal.start = getPoseAhead(out_pose);
@@ -795,9 +795,9 @@ bool sortFn(Pedestrian p1,Pedestrian p2)
 }
 
 #ifdef CONNECTOR2
-void agentArrayCallback(carla_connector::TrafficAgentArray data){
+void agentArrayCallback(msg_builder::TrafficAgentArray data){
 #else 
-void agentArrayCallback(carla_connector::agent_array data){
+void agentArrayCallback(msg_builder::agent_array data){
 #endif
 
 	double data_sec = data.header.stamp.sec;  // std_msgs::time
@@ -814,9 +814,9 @@ void agentArrayCallback(carla_connector::agent_array data){
 	vector<Vehicle> veh_list;
 	
 	#ifdef CONNECTOR2
-	for (carla_connector::TrafficAgent& agent : data.agents){
+	for (msg_builder::TrafficAgent& agent : data.agents){
 	#else
-	for (carla_connector::traffic_agent& agent : data.agents){
+	for (msg_builder::traffic_agent& agent : data.agents){
 	#endif
 
 		#ifdef CONNECTOR2
@@ -910,7 +910,7 @@ void agentArrayCallback(carla_connector::agent_array data){
 	SimulatorBase::agents_data_ready = true;
 }
 
-void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
+void pedPoseCallback(msg_builder::ped_local_frame_vector lPedLocal)
 {
     logd << "======================[ pedPoseCallback ]= ts "<<
     		Globals::ElapsedTime()<< " ==================" << endl;
@@ -924,7 +924,7 @@ void pedPoseCallback(ped_is_despot::ped_local_frame_vector lPedLocal)
     for(int ii=0; ii< lPedLocal.ped_local.size(); ii++)
     {
 		Pedestrian world_ped;
-		ped_is_despot::ped_local_frame ped=lPedLocal.ped_local[ii];
+		msg_builder::ped_local_frame ped=lPedLocal.ped_local[ii];
 		world_ped.id=ped.ped_id;
 		world_ped.w = ped.ped_pose.x;
 		world_ped.h = ped.ped_pose.y;
@@ -991,13 +991,13 @@ double xylength(geometry_msgs::Point32 p){
 }
 bool car_data_ready = false;
 
-void WorldSimulator::update_il_car(const ped_is_despot::car_info::ConstPtr car) {
+void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
     if (b_update_il == true){
     	p_IL_data.cur_car = *car;
     }
 
     if (/*!car_data_ready*/true){
-	    const ped_is_despot::car_info& ego_car= *car;
+	    const msg_builder::car_info& ego_car= *car;
 	    ModelParams::CAR_FRONT = COORD(ego_car.front_axle_center.x - ego_car.car_pos.x, ego_car.front_axle_center.y - ego_car.car_pos.y).Length();
 	    ModelParams::CAR_REAR = COORD(ego_car.rear_axle_center.y - ego_car.car_pos.y, ego_car.rear_axle_center.y - ego_car.car_pos.y).Length();
 	    ModelParams::CAR_WHEEL_DIST = ModelParams::CAR_FRONT + ModelParams::CAR_REAR;
@@ -1045,10 +1045,10 @@ void WorldSimulator::update_il_car(const ped_is_despot::car_info::ConstPtr car) 
 void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float cmd_vel)
 {
 	// peds for publish
-	ped_is_despot::peds_info p_ped;
+	msg_builder::peds_info p_ped;
 	// only publish information for N_PED_IN peds for imitation learning
 	for (int i = 0; i < ModelParams::N_PED_IN; i++){
-		ped_is_despot::ped_info ped;
+		msg_builder::ped_info ped;
         ped.ped_id = planning_state.agents[i].id;
         ped.ped_goal_id = planning_state.agents[i].intention;
         ped.ped_speed = planning_state.agents[i].vel.Length();
@@ -1065,10 +1065,10 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_T
 
 	// ped belief for pushlish
 	// int i=0;
-	// ped_is_despot::peds_believes pbs;	
+	// msg_builder::peds_believes pbs;	
 	// for(auto & kv: beliefTracker->agent_beliefs)
 	// {
-	// 	ped_is_despot::ped_belief pb;
+	// 	msg_builder::ped_belief pb;
 	// 	AgentBelief belief = kv.second;
 	// 	pb.ped_x=belief.pos.x;
 	// 	pb.ped_y=belief.pos.y;

@@ -4,6 +4,7 @@
 #include "ped_pomdp.h"
 #include <iostream>
 #include "world_simulator.h"
+#include "simulator_base.h"
 
 #undef LOG
 #define LOG(lv) \
@@ -87,7 +88,7 @@ PedPomdpBelief::PedPomdpBelief(vector<State*> particles, const DSPOMDP* model):
 
 	agentPredictionPub_ = nh.advertise<sensor_msgs::PointCloud>("ped_prediction", 1);
 	markers_pub = nh.advertise<visualization_msgs::MarkerArray>("pomdp_belief",1);
-	believesPub_ = nh.advertise<car_hyp_despot::peds_believes>("peds_believes",1);
+	believesPub_ = nh.advertise<msg_builder::peds_believes>("peds_believes",1);
 	plannerAgentsPub_=nh.advertise<sensor_msgs::PointCloud>("planner_peds",1); // for visualization
 }
 
@@ -331,11 +332,11 @@ void PedPomdpBelief::publishBelief()
 	//vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->root_->particles());	
 	//cout<<"belief vector size "<<ped_beliefs.size()<<endl;
 	int i=0;
-	car_hyp_despot::peds_believes pbs;	
+	msg_builder::peds_believes pbs;	
 	for(auto & kv: beliefTracker->agent_beliefs)
 	{
 		publishMarker(i++,kv.second);
-		car_hyp_despot::ped_belief pb;
+		msg_builder::ped_belief pb;
 		AgentBelief belief = kv.second;
 		pb.ped_x=belief.pos.x;
 		pb.ped_y=belief.pos.y;

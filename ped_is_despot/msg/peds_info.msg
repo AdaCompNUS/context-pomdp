@@ -1,1 +1,0 @@
-ped_is_despot/ped_info[] peds

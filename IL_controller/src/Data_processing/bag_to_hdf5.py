@@ -33,7 +33,7 @@ import fnmatch
 import argparse
 import deepdish as dd
 import numpy as np
-import random
+import codecs
 import pdb
 import math
 import glob
@@ -994,27 +994,8 @@ def construct_car_data(origin, resolution, dim, downsample_ratio, hist_cars, pat
         # 'goal' contains the rescaled path in pixel points
         car_output_dict['goal'] = path_data['path']
 
-        # print('--------------------------------------')
-        # print("==> path data with {} points".format(len(path_data['path'])))
-        # print('--------------------------------------')
-
-        print("construct_car_data: num hist cars {}".format(len(hist_cars)))
-
         for i in range(len(hist_cars)):
-
-            # print('--------------------------------------')
-            # print("===> construct_car_data hist {} car {}".format(i, hist_cars[i]))
-            # print('--------------------------------------')
-
             car_points = get_car_points(hist_cars[i], origin, dim, downsample_ratio, resolution)
-
-            # if car_points is not None:
-            #     print("==> car data with {} points".format(len(car_points)))
-
-            # if hist_cars[i]:
-            #     # if len(car_points) == 0:
-            #     print("===> construct_car_data hist {} car points {}".format(i, car_points))
-
             car_output_dict['hist'].append(car_points)
 
     except Exception as e:
@@ -1375,24 +1356,30 @@ def filter_txt_files(bagspath, txt_files):
 def is_valid_file(txtfile):
     reach_goal_flag = False
     collision_flag = False
-    with open(txtfile, 'r') as f:
-        for line in f:
 
-            # if config.fit_val:
-            #     reach_goal_flag = True  # doesn't matter if the car reaches the goal for value fitting
-            # else: #  if fitting action
-            if 'goal reached' in line:
-                reach_goal_flag = True
-                break
+    try:
+        with codecs.open(txtfile, 'r', encoding='utf-8',
+                         errors='ignore') as f:
+            # with open(txtfile, 'r') as f:
+            for line in f:
 
-            if (('INININ' in line) or ("collision = 1" in line)) and reach_goal_flag == False:
-                collision_flag = True
-                print("colliison in " + txtfile)
-                break
+                # if config.fit_val:
+                #     reach_goal_flag = True  # doesn't matter if the car reaches the goal for value fitting
+                # else: #  if fitting action
+                if 'goal reached' in line:
+                    reach_goal_flag = True
+                    break
 
-    if reach_goal_flag == True and collision_flag == False:
+                if (('INININ' in line) or ("collision = 1" in line)) and reach_goal_flag == False:
+                    collision_flag = True
+                    print("colliison in " + txtfile)
+                    break
+    except Exception as e:
+        print("Get error [{}] when opening txt file {}".format(e, txtfile))
+
+    if reach_goal_flag is True and collision_flag is False:
         return True
-    elif reach_goal_flag == False:
+    elif reach_goal_flag is False:
         print("goal not reached in " + txtfile)
         return False
     else:

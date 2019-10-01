@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   message_generation
-  ped_is_despot 
+  msg_builder
 )
 
 
@@ -84,7 +84,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ped_path_predictor
-  CATKIN_DEPENDS geometry_msgs roscpp std_msgs
+  CATKIN_DEPENDS geometry_msgs roscpp msg_builder std_msgs
 #  DEPENDS system_lib
 )
 
@@ -100,8 +100,6 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   src/RVO2/src
 )
-
-message("****************"${catkin_INCLUDE_DIRS})
 
 ## Declare a C++ library
 
@@ -121,9 +119,6 @@ add_library(porca
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(gamma src/peds_simulator_no_car.cpp src/coord.cpp src/collision.cpp)
-
-add_dependencies(gamma ped_is_despot_generate_messages_cpp)
-
 
 target_link_libraries(gamma
    ${catkin_LIBRARIES}

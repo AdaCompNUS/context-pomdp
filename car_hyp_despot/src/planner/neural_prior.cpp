@@ -2053,7 +2053,7 @@ bool PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 	t_acc_sigma=torch::zeros({batchsize, num_guassian_modes, 1});
 	t_ang=torch::zeros({batchsize, num_steer_bins});
 
-	query_nn::TensorData message;
+	msg_builder::TensorData message;
 
 	message.request.tensor = std::vector<float>(images.data<float>(), images.data<float>() + images.numel());
 
@@ -2149,7 +2149,7 @@ void PedNeuralSolverPrior::Test_all_srv(int batchsize, int num_guassian_modes, i
 
 	ros::NodeHandle n("~");
 
-	nn_client_ = n.serviceClient<query_nn::TensorData>("/query");
+	nn_client_ = n.serviceClient<msg_builder::TensorData>("/query");
 
 	logd << "waiting for /query service to be ready" << endl;
 
@@ -2163,7 +2163,7 @@ void PedNeuralSolverPrior::Test_all_srv(int batchsize, int num_guassian_modes, i
 
 		auto start1 = Time::now();
 
-		query_nn::TensorData message;
+		msg_builder::TensorData message;
 
 		message.request.tensor = std::vector<float>(images.data<float>(), images.data<float>() + images.numel());
 
@@ -2239,7 +2239,7 @@ void PedNeuralSolverPrior::Test_val_srv(int batchsize, int num_guassian_modes, i
 
 	ros::NodeHandle n("~");
 
-	nn_client_val_ = n.serviceClient<query_nn::TensorData>("/query_val");
+	nn_client_val_ = n.serviceClient<msg_builder::TensorData>("/query_val");
 
 	logd << "waiting for /query_val service to be ready" << endl;
 
@@ -2253,7 +2253,7 @@ void PedNeuralSolverPrior::Test_val_srv(int batchsize, int num_guassian_modes, i
 
 		auto start1 = Time::now();
 
-		query_nn::TensorData message;
+		msg_builder::TensorData message;
 
 		message.request.tensor = std::vector<float>(images.data<float>(), images.data<float>() + images.numel());
 

@@ -37,7 +37,7 @@
 #include "despot/core/node.h"
 
 #include <ros/ros.h>
-#include <query_nn/TensorData.h>
+#include <msg_builder/TensorData.h>
 
 using namespace cv;
 

@@ -1,9 +1,9 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
-#include <ped_is_despot/car_info.h>
-#include <ped_is_despot/ped_info.h>
-#include <ped_is_despot/peds_info.h>
-#include <ped_is_despot/peds_car_info.h>
+#include <msg_builder/car_info.h>
+#include <msg_builder/ped_info.h>
+#include <msg_builder/peds_info.h>
+#include <msg_builder/peds_car_info.h>
 #include <iostream>
 #include <vector>
 #include <RVO.h>
@@ -171,7 +171,7 @@ public:
         peds_car_info_sub = nh.subscribe("peds_car_info", 1, &PedsSystem::pedsCarCallBack, this);
         ros::Timer timer = nh.createTimer(ros::Duration(1 / freq), &PedsSystem::actionCallBack, this);
         vel_sub = nh.subscribe("cmd_vel_pomdp", 1, &PedsSystem::velCallBack, this);
-        peds_info_pub = nh.advertise<ped_is_despot::peds_info>("peds_info",1);
+        peds_info_pub = nh.advertise<msg_builder::peds_info>("peds_info",1);
         path_pub = nh.advertise<nav_msgs::Path>("plan",1, true);
         //speed_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel",1, true); // directly send cmd vel to unity
         speed_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1, true); // send cmd vel to pure pursuit controller
@@ -187,7 +187,7 @@ public:
         return i;
     }
 
-    void pedsCarCallBack(ped_is_despot::peds_car_infoConstPtr peds_car_ptr) {
+    void pedsCarCallBack(msg_builder::peds_car_infoConstPtr peds_car_ptr) {
 
         car.pos.x = peds_car_ptr->car.car_pos.x;
         car.pos.y = peds_car_ptr->car.car_pos.y;
@@ -219,7 +219,7 @@ public:
         
         RVO2PedStep();
 
-        ped_is_despot::peds_info peds_info_msg;
+        msg_builder::peds_info peds_info_msg;
         getPedsInfoMsg(peds_info_msg);
         //peds_info_pub.publish(peds_info_msg);
         peds.clear();
@@ -234,9 +234,9 @@ public:
         //car.vel = 1.5;*/
     }
 
-    void getPedsInfoMsg(ped_is_despot::peds_info & peds_info_msg){
+    void getPedsInfoMsg(msg_builder::peds_info & peds_info_msg){
 
-        ped_is_despot::ped_info tmp_single_ped;
+        msg_builder::ped_info tmp_single_ped;
 
         for(int i=0; i< peds.size(); i++){
             tmp_single_ped.ped_pos.x = peds[i].pos.x;
@@ -608,7 +608,7 @@ public:
 
 int main(int argc,char**argv)
 {
-	ros::init(argc,argv,"ped_is_despot");
+	  ros::init(argc,argv,"peds_simulator_no_car");
     std::srand(std::time(0));
     PedsSystem peds_system;
     peds_system.spin();

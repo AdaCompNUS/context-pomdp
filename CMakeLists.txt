@@ -62,7 +62,7 @@ else()
   if(NOT catkin_FOUND)
     message(FATAL_ERROR "find_package(catkin) failed. catkin was neither found in the workspace nor in the CMAKE_PREFIX_PATH. One reason may be that no ROS setup.sh was sourced before.")
   endif()
-  set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};/opt/libtorch_docker;/root/libtorch")
+  set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};~/libtorch")
   find_package(Torch REQUIRED)
 endif()
 

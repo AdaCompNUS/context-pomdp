@@ -6,6 +6,7 @@
 #include "controller.h"
 #include "ped_pomdp.h"
 #include "custom_particle_belief.h"
+#include <ros/ros.h>
 
 using namespace despot;
 static DSPOMDP* ped_pomdp_model;
@@ -42,7 +43,7 @@ void DrivingController::CreateNNPriors(DSPOMDP* model) {
 
 World* DrivingController::InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options){
 	//Create a custom world as defined and implemented by the user
-	driving_simulator_=new Simulator(static_cast<DSPOMDP*>(model),
+	driving_simulator_=new Simulator(nh, static_cast<DSPOMDP*>(model),
 			Globals::config.root_seed/*random seed*/);
 
 	if (Globals::config.useGPU)
@@ -183,8 +184,9 @@ int main(int argc, char* argv[]) {
   //bool result = DrivingController().RunPlanning(argc, argv);
 
 	//debugging
-
-  bool result = DrivingController().RunEvaluation(argc, argv);
+  ros::NodeHandle nh; 
+  /// Setting up subsciption     
+  bool result = DrivingController(nh).RunEvaluation(argc, argv);
 
   exit(result);
 }

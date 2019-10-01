@@ -41,12 +41,10 @@
   <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roscpp</build_depend>
-  <build_depend>query_nn</build_depend>
+  <build_depend>msg_builder</build_depend>
 
   <run_depend>roscpp</run_depend>
-  <run_depend>query_nn</run_depend>
-  
-
+  <run_depend>msg_builder</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

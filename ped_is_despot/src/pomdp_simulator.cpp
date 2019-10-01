@@ -6,10 +6,10 @@
 #include "pomdp_simulator.h"
 
 #include "ped_pomdp.h"
-#include <ped_is_despot/car_info.h>
-#include <ped_is_despot/peds_info.h>
-#include <ped_is_despot/ped_info.h>
-#include <ped_is_despot/peds_believes.h>
+#include <msg_builder/car_info.h>
+#include <msg_builder/peds_info.h>
+#include <msg_builder/ped_info.h>
+#include <msg_builder/peds_believes.h>
 
 #include <iostream>
 #include <fstream>
@@ -219,7 +219,7 @@ State* POMDPSimulator::Initialize(){
 bool POMDPSimulator::Connect(){
 	cerr << "DEBUG: Connecting POMDPSimulator" << endl;
 
-	IL_pub = nh.advertise<ped_is_despot::imitation_data>("il_data", 1);
+	IL_pub = nh.advertise<msg_builder::imitation_data>("il_data", 1);
 
 	return true;
 }
@@ -639,7 +639,7 @@ void POMDPSimulator::PrintWorldState(PomdpStateWorld state, ostream& out) {
 void POMDPSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float cmd_vel)
 {
 	// car for publish
-	ped_is_despot::car_info p_car;
+	msg_builder::car_info p_car;
 	p_car.car_pos.x = planning_state.car.pos.x;
 	p_car.car_pos.y = planning_state.car.pos.y;
 	p_car.car_pos.z = 0;
@@ -671,10 +671,10 @@ void POMDPSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_T
 	p_IL_data.plan = navpath; 
 
 	// agents for publish
-	ped_is_despot::peds_info p_ped;
+	msg_builder::peds_info p_ped;
 	// only publish information for N_PED_IN agents for imitation learning
 	for (int i = 0; i < ModelParams::N_PED_IN; i++){
-		ped_is_despot::ped_info ped;
+		msg_builder::ped_info ped;
         ped.ped_id = planning_state.agents[i].id;
         ped.ped_goal_id = planning_state.agents[i].intention;
         ped.ped_speed = 1.2;
@@ -689,10 +689,10 @@ void POMDPSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_T
 
 	// ped belief for pushlish
 	int i=0;
-	ped_is_despot::peds_believes pbs;	
+	msg_builder::peds_believes pbs;	
 	for(auto & kv: beliefTracker->agent_beliefs)
 	{
-		ped_is_despot::ped_belief pb;
+		msg_builder::ped_belief pb;
 		AgentBelief belief = kv.second;
 		pb.ped_x=belief.pos.x;
 		pb.ped_y=belief.pos.y;

@@ -17,28 +17,29 @@ using namespace despot;
 //#define LINE_CASE
 #define CROSS_CASE
 
-WorldModel Simulator::worldModel;
-
+WorldStateTracker* SimulatorBase::stateTracker;
+WorldModel SimulatorBase::worldModel;     
+bool SimulatorBase::agents_data_ready = false;
 
 int n_sim = 1;
 
 #ifdef LINE_CASE
-	const double PED_X0 = 35;/// used to generate peds' locations, where x is in (PED_X0, PED_X1), and y is in (PED_Y0, PED_Y1)
-	const double PED_Y0 = 35;
-	const double PED_X1 = 42;
-	const double PED_Y1 = 52;
-	const int n_peds = 6; // should be smaller than ModelParams::N_PED_IN
+	const double AGENT_X0 = 35;/// used to generate peds' locations, where x is in (AGENT_X0, AGENT_X1), and y is in (AGENT_Y0, AGENT_Y1)
+	const double AGENT_Y0 = 35;
+	const double AGENT_X1 = 42;
+	const double AGENT_Y1 = 52;
+	const int n_peds = 6; // should be smaller than ModelParams::N_AGENT_IN
 #elif defined(CROSS_CASE)
-	const double PED_X0 = 0;/// used to generate peds' locations, where x is in (PED_X0, PED_X1), and y is in (PED_Y0, PED_Y1)
-	const double PED_Y0 = 0;
-	const double PED_X1 = 20;
-	const double PED_Y1 = 15;
-	const int n_peds = 20;//6; // should be smaller than ModelParams::N_PED_IN
+	const double AGENT_X0 = 0;/// used to generate peds' locations, where x is in (AGENT_X0, AGENT_X1), and y is in (AGENT_Y0, AGENT_Y1)
+	const double AGENT_Y0 = 0;
+	const double AGENT_X1 = 20;
+	const double AGENT_Y1 = 15;
+	const int n_peds = 20;//6; // should be smaller than ModelParams::N_AGENT_IN
 #endif
 
 
-Simulator::Simulator(DSPOMDP* model, unsigned seed)/// set the path to be a straight line
-: POMDPWorld(model, seed)
+Simulator::Simulator(ros::NodeHandle& _nh, DSPOMDP* model, unsigned seed)/// set the path to be a straight line
+: SimulatorBase(_nh, ""), POMDPWorld(model, seed)
 {
 #ifdef LINE_CASE
 	start.x=40;start.y=40;
@@ -87,34 +88,34 @@ State* Simulator::Initialize(){
 	{
 		if(DESPOT::Debug_mode || Globals::config.experiment_mode)
 		{
-			ImportPeds("Peds.txt", world_state);
-			cout << "[FIX_SCENARIO] load peds from "<< "Peds.txt" << endl;
+			//ImportPeds("Peds.txt", world_state);
+			//cout << "[FIX_SCENARIO] load peds from "<< "Peds.txt" << endl;
 		}
 		else
 		{
 			for(int i=0; i<n_peds; i++) {
-				world_state.peds[i] = randomPed();
-				world_state.peds[i].id = i;
-				world_state.peds[i].mode = random_ped_mode(world_state.peds[i]);
+				world_state.agents[i] = randomPed();
+				world_state.agents[i].id = i;
+				world_state.agents[i].mode = random_ped_mode(world_state.agents[i]);
 			}
-			if (!Globals::config.experiment_mode)
-				ExportPeds("Peds.txt",world_state);
+			//if (!Globals::config.experiment_mode)
+				//ExportPeds("Peds.txt",world_state);
 		}
 	}
 	else if(FIX_SCENARIO==1)
 	{
-		ImportPeds("Peds.txt", world_state);
-		cout << "[FIX_SCENARIO] load peds from "<< "Peds.txt" << endl;
+		//ImportPeds("Peds.txt", world_state);
+		//cout << "[FIX_SCENARIO] load peds from "<< "Peds.txt" << endl;
 	}
 	else if(FIX_SCENARIO==2)
 	{
 		//generate initial n_peds peds
 		for(int i=0; i<n_peds; i++) {
-			world_state.peds[i] = randomPed();
-			world_state.peds[i].id = i;
-			world_state.peds[i].mode = random_ped_mode(world_state.peds[i]);
+			world_state.agents[i] = randomPed();
+			world_state.agents[i].id = i;
+			world_state.agents[i].mode = random_ped_mode(world_state.agents[i]);
 		}
-		ExportPeds("Peds.txt",world_state);
+		//ExportPeds("Peds.txt",world_state);
 	}
 
 	num_of_peds_world = n_peds;
@@ -131,7 +132,7 @@ State* Simulator::GetCurrentState(){
 
 	//cout << "[GetCurrentState] current num peds in simulator: " << num_of_peds_world << endl;
 
-	std::vector<PedDistPair> sorted_peds = stateTracker->getSortedPeds();
+	auto sorted_peds = stateTracker->getSortedAgents();
 
 
 	current_state.car.pos = world_state.car.pos;
@@ -143,16 +144,16 @@ State* Simulator::GetCurrentState(){
 		current_state.num = world_state.num;
 
 		for(int i=0; i<current_state.num; i++) {
-			current_state.peds[i] = world_state.peds[i];
-			current_state.peds[i].mode = world_state.peds[i].mode;
+			current_state.agents[i] = world_state.agents[i];
+			current_state.agents[i].mode = world_state.agents[i].mode;
 		}
 	}
 	else{
-		//update s.peds to the nearest n_peds peds
+		//update s.agents to the nearest n_peds peds
 		for(int i=0; i<current_state.num; i++) {
 			if(i<sorted_peds.size()){
-				current_state.peds[i] = world_state.peds[sorted_peds[i].second.id];
-				current_state.peds[i].mode = world_state.peds[sorted_peds[i].second.id].mode;
+				current_state.agents[i] = world_state.agents[sorted_peds[i].second->id];
+				current_state.agents[i].mode = world_state.agents[sorted_peds[i].second->id].mode;
 			}
 		}
 	}
@@ -167,20 +168,20 @@ void Simulator::UpdateWorld(){
 
 	//update the peds in stateTracker
 	for(int i=0; i<num_of_peds_world; i++) {
-		Pedestrian p(world_state.peds[i].pos.x, world_state.peds[i].pos.y, world_state.peds[i].id);
+		Pedestrian p(world_state.agents[i].pos.x, world_state.agents[i].pos.y, world_state.agents[i].id);
 		stateTracker->updatePed(p);
 	}
 
 #ifdef CROSS_CASE
 	if(FIX_SCENARIO==0){
 		int new_ped_count=0;
-		while(new_ped_count<1 && numPedInCircle(world_state.peds, num_of_peds_world,world_state.car.pos.x, world_state.car.pos.y)<n_peds
+		while(new_ped_count<1 && numPedInCircle(world_state.agents, num_of_peds_world,world_state.car.pos.x, world_state.car.pos.y)<n_peds
 			&& num_of_peds_world < ModelParams::N_PED_WORLD)
 		{
-			PedStruct new_ped= randomFarPed(world_state.car.pos.x, world_state.car.pos.y);
+			AgentStruct new_ped= randomFarPed(world_state.car.pos.x, world_state.car.pos.y);
 			new_ped.id = num_of_peds_world;
-			world_state.peds[num_of_peds_world]=new_ped;
-			world_state.peds[num_of_peds_world].mode = random_ped_mode(new_ped);
+			world_state.agents[num_of_peds_world]=new_ped;
+			world_state.agents[num_of_peds_world].mode = random_ped_mode(new_ped);
 
 			num_of_peds_world++;
 			world_state.num++;
@@ -192,7 +193,7 @@ void Simulator::UpdateWorld(){
 
 		}
 
-		cout << "[Simulator] Number of peds in laser range: "<< numPedInCircle(world_state.peds, num_of_peds_world,world_state.car.pos.x, world_state.car.pos.y)
+		cout << "[Simulator] Number of peds in laser range: "<< numPedInCircle(world_state.agents, num_of_peds_world,world_state.car.pos.x, world_state.car.pos.y)
 				<< endl;
 	}
 #endif
@@ -254,7 +255,7 @@ bool Simulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	return false;
 }
 
-int Simulator::numPedInCircle(PedStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world, double car_x, double car_y)
+int Simulator::numPedInCircle(AgentStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world, double car_x, double car_y)
 {
 	int num_inside = 0;
 
@@ -265,7 +266,7 @@ int Simulator::numPedInCircle(PedStruct peds[ModelParams::N_PED_WORLD], int num_
 
 	return num_inside;
 }
-
+/*
 void Simulator::ImportPeds(std::string filename, PomdpStateWorld& world_state){
 	ifstream fin;fin.open(filename, ios::in);
 
@@ -295,18 +296,18 @@ void Simulator::ImportPeds(std::string filename, PomdpStateWorld& world_state){
 			if(!str.empty() && i<n_peds)
 			{
 				istringstream ss(str);
-				ss>> world_state.peds[i].id
-				>> world_state.peds[i].goal
-				>> world_state.peds[i].pos.x
-				>> world_state.peds[i].pos.y
-				>> world_state.peds[i].vel;
+				ss>> world_state.agents[i].id
+				>> world_state.agents[i].intention
+				>> world_state.agents[i].pos.x
+				>> world_state.agents[i].pos.y
+				>> world_state.agents[i].vel;
 				i++;
 			}
 		}
 		cout<<"peds imported"<<endl;
 
 		for(int i=0; i< n_peds; i++)
-			world_state.peds[i].mode = random_ped_mode(world_state.peds[i]);
+			world_state.agents[i].mode = random_ped_mode(world_state.agents[i]);
 	}
 	else
 	{
@@ -321,36 +322,36 @@ void Simulator::ExportPeds(std::string filename, PomdpStateWorld& world_state){
 	fout<<n_peds<<endl;
 	for(int i=0; i<n_peds; i++)
 	{
-		fout<<world_state.peds[i].id<<" "
-				<<world_state.peds[i].goal<<" "
-				<<world_state.peds[i].pos.x<<" "
-				<<world_state.peds[i].pos.y<<" "
-				<<world_state.peds[i].vel<<endl;
+		fout<<world_state.agents[i].id<<" "
+				<<world_state.agents[i].intention<<" "
+				<<world_state.agents[i].pos.x<<" "
+				<<world_state.agents[i].pos.y<<" "
+				<<world_state.agents[i].vel<<endl;
 	}
 	fout<<endl;
 }
-
+*/
 
 #ifdef LINE_CASE
-PedStruct Simulator::randomPed() {
+AgentStruct Simulator::randomPed() {
 	int n_goals = worldModel.goals.size();
 	int goal = rand_->NextInt(n_goals);
-	double x = rand_->NextDouble(PED_X0, PED_X1);
-	double y = rand_->NextDouble(PED_Y0, PED_Y1);
+	double x = rand_->NextDouble(AGENT_X0, AGENT_X1);
+	double y = rand_->NextDouble(AGENT_Y0, AGENT_Y1);
 	if(goal == n_goals-1) {
 		// stop intention
 		while(path.mindist(COORD(x, y)) < 1.0) {
 			// dont spawn on the path
-			x = rand_->NextDouble(PED_X0, PED_X1);
-			y = rand_->NextDouble(PED_Y0, PED_Y1);
+			x = rand_->NextDouble(AGENT_X0, AGENT_X1);
+			y = rand_->NextDouble(AGENT_Y0, AGENT_Y1);
 		}
 	}
 	int id = 0;
-	return PedStruct(COORD(x, y), goal, id);
+	return AgentStruct(COORD(x, y), goal, id);
 }
 #elif defined(CROSS_CASE)
 
-PedStruct Simulator::randomPed() {
+AgentStruct Simulator::randomPed() {
    int goal;
 
    // goal 0: left
@@ -399,10 +400,10 @@ PedStruct Simulator::randomPed() {
 	   }
    }
    int id = 0;
-   return PedStruct(COORD(x, y), goal, id, speed);
+   return AgentStruct(COORD(x, y), goal, id, speed);
 }
 
-PedStruct Simulator::randomFarPed(double car_x, double car_y) { //generate pedestrians that are not close to the car
+AgentStruct Simulator::randomFarPed(double car_x, double car_y) { //generate pedestrians that are not close to the car
     int goal;
     // goal 0: left
     double goal0_x_min = /*14*/28/*30*/, goal0_x_max = /*21*/31/*33*/;
@@ -442,20 +443,20 @@ PedStruct Simulator::randomFarPed(double car_x, double car_y) { //generate pedes
     }
 
     int id = 0;
-    return PedStruct(COORD(x, y), goal, id);
+    return AgentStruct(COORD(x, y), goal, id);
 }
 
-int Simulator::random_ped_mode(PedStruct& ped) {
-	if (ped.goal == worldModel.goals.size()-1)
-		return PED_ATT;
+int Simulator::random_ped_mode(AgentStruct& ped) {
+	if (ped.intention == worldModel.goals.size()-1)
+		return AGENT_ATT;
 
 	double prob = Random::RANDOM.NextDouble();
 
 	if (prob < /*0.9*/ 0.3){
-		return PED_ATT;
+		return AGENT_ATT;
 	}
 	else
-		return PED_DIS;
+		return AGENT_DIS;
 }
 #endif
 

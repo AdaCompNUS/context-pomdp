@@ -8,13 +8,15 @@
 #include "WorldModel.h"
 #include <despot/interface/pomdp.h>
 #include <despot/core/pomdp_world.h>
+#include "simulator_base.h"
+
 using namespace despot;
 
-class Simulator:public POMDPWorld {
+class Simulator: public SimulatorBase, public POMDPWorld {
 public:
     typedef pair<float, Pedestrian> PedDistPair;
 
-    Simulator(DSPOMDP* model, unsigned seed=0);
+    Simulator(ros::NodeHandle& _nh, DSPOMDP* model, unsigned seed=0);
     ~Simulator();
 
     int numPedInArea(AgentStruct peds[ModelParams::N_PED_WORLD], int num_of_peds_world);
@@ -35,15 +37,14 @@ public:
 	void ExportPeds(std::string filename, PomdpStateWorld& world_state);
 
 	void PrintWorldState(PomdpStateWorld state, ostream& out = cout);
-
-	void UpdateWorld();
+  
+  void publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float vel){}
+  void UpdateWorld();
 
     COORD start, goal;
 
     Path path;
-    static WorldModel worldModel;
 
-    WorldStateTracker* stateTracker;
 	PomdpStateWorld world_state;
 	int num_of_peds_world;
 

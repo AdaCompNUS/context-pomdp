@@ -21,10 +21,10 @@
 #include <rosgraph_msgs/Clock.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <ped_is_despot/peds_believes.h>
-#include <ped_is_despot/ped_local_frame.h>
-#include <ped_is_despot/ped_local_frame_vector.h>
-#include <ped_is_despot/imitation_data.h>
+#include <msg_builder/peds_believes.h>
+#include <msg_builder/ped_local_frame.h>
+#include <msg_builder/ped_local_frame_vector.h>
+#include <msg_builder/imitation_data.h>
 #include <std_msgs/Float32.h>
 // #include <pnc_msgs/speed_contribute.h>
 //#include "executer.h"
@@ -47,7 +47,7 @@
 #include "ped_pomdp.h"
 #include "core/particle_belief.h"
 #include "solver/despot.h"
-#include <ped_is_despot/StartGoal.h>
+#include <msg_builder/StartGoal.h>
 #include "planner.h"
 
 class WorldSimulator;
