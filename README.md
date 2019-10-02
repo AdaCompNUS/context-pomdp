@@ -2,7 +2,7 @@
 # LeTS-Drive with SUMMIT simulator integration
 
 <!-- <p align="center"> </p> -->
--> [![Watch the driving video](https://img.youtube.com/vi/bQjcd-NBdIg/0.jpg)](https://www.youtube.com/watch?v=bQjcd-NBdIg) <- 
+-----------------------------------------> [![Watch the driving video](https://img.youtube.com/vi/bQjcd-NBdIg/0.jpg)](https://www.youtube.com/watch?v=bQjcd-NBdIg) <-----------------------------------------
 
 ## Overview
 This repository contains all algorithmic elements for reproducing LeTS-Drive [paper](https://arxiv.org/abs/1905.12197) in heterogenous traffic simulated by the SUMMIT simulator [paper](https://www.dropbox.com/s/fs0e9j4o0r80e82/SUMMIT.pdf?dl=0).
