@@ -3,7 +3,7 @@
 ## Overview
 This repository contains all algorithmic elements for reproducing LeTS-Drive [paper](https://arxiv.org/abs/1905.12197) in heterogenous traffic simulated by the SUMMIT simulator [paper](https://www.dropbox.com/s/fs0e9j4o0r80e82/SUMMIT.pdf?dl=0).
 * Even though this repository implements the full LeTS-Drive pipeline, you can easily down-grade it to perform stand-alone imitation learning or POMDP planning.
-* The current repository is in progress of migrating from the Unity pedestrian simulator to SUMMIT. Some modules like the neural networks learner package is still for the old Unity simulator.
+* The current repository is in progress of migrating from the Unity pedestrian simulator to SUMMIT. Some modules like the neural networks learner package is still for the old Unity simulator. For now, one can use the existing pedestrain datasets to test the imitation learning.
 
 Here is the list of ROS packages marked with the simulator they support:
 * (SUMMIT) __summit_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. summit_connector publishes the following ROS topic to external driving algorithms: 
