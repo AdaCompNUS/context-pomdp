@@ -13,10 +13,10 @@ from clear_process import clear_process, clear_nodes
 sim_mode = "carla"  # "unity"
 
 home = expanduser("~")
-nn_folder = 'catkin_ws/src/IL_controller/src/'
+nn_folder = 'catkin_ws/src/il_controller/src/'
 
 if not os.path.isdir(os.path.join(home, nn_folder)):
-    nn_folder = 'catkin_ws/src/IL_controller/src/'
+    nn_folder = 'catkin_ws/src/il_controller/src/'
 
 root_path = os.path.join(home, 'driving_data')
 if not os.path.isdir(root_path):
