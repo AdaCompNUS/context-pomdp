@@ -7,7 +7,7 @@ Note:
 * Even though this repository implements the full LeTS-Drive pipeline, you can easily down-grade it to perform stand-alone imitation learning or POMDP planning.
 * The current repository is in progress of migrating from the Unity simulator from pedestrains to SUMMIT. Some ros packages are still for the Unity simulator.
 
-List of packages marked with which simulator they support:
+List of ROS packages marked with which simulator they support:
 * (SUMMIT) __carla_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. carla_connector publishes the following ROS topic to external algorithms: 
     * /odom: Odometry of the exo-vehicle;
     * /ego_state: State of the exo_vehicle;
@@ -29,7 +29,15 @@ List of packages marked with which simulator they support:
     * policy_value_network.py: The neural network architectures for the policy and the value network.
     * train.py: Script for training the neural networks using the processed dataset in hdf5 (.h5) format;
     * test.py: Script for using the learned neural network to directly drive a car in the simulator.
-
+The repository also contains two utility folders:
+* __setup__: Bash scripts for setting up the environment.
+* __scripts__: Scripts for performing driving in simulators. Main files include:
+   * run_data_collection.py: launch the simulator and driving algorithms for data collection or evaluation purposes. One can use the following modes to be set via the `--basedline` argument:
+      * imitation: drive a car directly using a trained policy network.
+      * pomdp: drive a car using Decoupled-Action POMDP and Hybrid A*.
+      * joint_pomdp: drive a car using Joint-Action POMDP.
+      * lets-drive: drive a car using guided belief tree search.
+      Here only joint_pomdp has been fully migrated to SUMMIT.
 ## 1. Setup
 ### 1.1 Pre-requisites
 1. Install [CUDA 10.0](https://developer.nvidia.com/cuda-10.0-download-archive) (Note: you need to follow the [official guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) for a successful installation.)
@@ -88,9 +96,9 @@ catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
 cd catkin_ws/src/IL_contoller && pip install -r requirements.txt
 ```
 ### 1.4 Setup the SUMMIT simulator
-Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to ~/summit. 
+Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to `~/summit`. 
 Or you can download the [source code](https://github.com/AdaCompNUS/carla.git) from github and compile from source.
-For now the code explicitly uses this "~/summit" to find the simulator. So stick to the path for SUMMIT installation.
+For now the code explicitly uses this `~/summit` to find the simulator. So stick to the path for SUMMIT installation.
 
 ## 2. Run the System
 ### 2.1 Launch the SUMMIT Simulator
