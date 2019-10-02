@@ -119,7 +119,7 @@ record_bags=0
 Convert bags into h5 files using multiple threads:
 ```
 roscd il_controller && cd src
-python3 Data_processing/parallel_parse.py --bagspath [rosbag/path/] --peds_goal_path Maps/
+python3 Data_processing/parallel_parse_pool.py --bagspath [rosbag/path/] --peds_goal_path Maps/
 ```
 or using a single thread:
 ```
