@@ -1,6 +1,6 @@
 #
 # LeTS-Drive with SUMMIT simulator integration
-## 0. Overview
+## Overview
 This repository contains all algorithmic elements for reproducing LeTS-Drive [paper](https://arxiv.org/abs/1905.12197) in heterogenous traffic simulated by the SUMMIT simulator [paper](https://www.dropbox.com/s/fs0e9j4o0r80e82/SUMMIT.pdf?dl=0).
 
 Note:
@@ -42,7 +42,7 @@ The repository also contains two utility folders:
 ### 1.1 Pre-requisites
 1. Install [CUDA 10.0](https://developer.nvidia.com/cuda-10.0-download-archive) (Note: you need to follow the [official guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) for a successful installation.)
 2. Install [CUDNN 7](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html)
-### 1.2 (Optional) Python Environment Setup
+### 1.2 (Optional) Python Virtual Environment
 Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
