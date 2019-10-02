@@ -9,25 +9,25 @@ This repository contains all algorithmic elements for reproducing LeTS-Drive [pa
 * The current repository is in progress of migrating from the Unity pedestrian simulator to SUMMIT. Some modules like the neural networks learner package is still for the old Unity simulator. For now, one can use the [existing pedestrain datasets](https://www.dropbox.com/s/bl093sneceu40fe/ped_datasets.zip?dl=0) to test imitation learning.
 
 Here is the list of ROS packages marked with the simulator they support:
-* (SUMMIT) __summit_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. summit_connector publishes the following ROS topic to external driving algorithms: 
+* (SUMMIT) __summit_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. summit_connector publishes the following ROS topics to driving algorithms: 
     * /odom: Odometry of the exo-vehicle;
     * /ego_state: State of the exo_vehicle;
     * /plan: Reference path of the ego-vehicle;
     * /agent_array: State and intended paths of exo-agents.
 * (SUMMIT) __car_hyp_despot__: The core POMDP planner performing guided tree search using HyP-DESPOT and policy/value networks. It contains the following source folders:
-    * HypDespot: the HyP-DESPOT POMDP solver.
-    * planner: the POMDP model for the driving problem.
-    * Porca: the PORCA motion model used to predict agent's motion.
+    * HypDespot: The HyP-DESPOT POMDP solver.
+    * planner: The POMDP model for the driving problem.
+    * Porca: The PORCA motion model for predicting agent's motion.
 * (SUMMIT) __crowd_pomdp_planner__: A wrapping over the POMDP planner. It receives information from the simulator and run belief tracking and POMDP planning. Key files in the package include:
-    * PedPomdpNode.cpp: A ROS node host that also receives ROS parameters.
-    * controller.cpp: A wrapper that launches the planning loop.
-    * world_simulator.cpp: A wrapper that maintains world state.
-    * VelPublisher.cpp: A velocity controller that converts accelaration output by POMDP planning to command velocities. It publishes the following ROS topic:
+    * PedPomdpNode.cpp: A ROS node host which also receives ROS parameters.
+    * controller.cpp: A class that launches the planning loop.
+    * world_simulator.cpp: A class that maintains world state.
+    * VelPublisher.cpp: A velocity controller that converts accelaration output by POMDP planning to command velocities. It publishes the following ROS topics:
         * \cmd_vel: command velocity for the ego-vehicle converted from accelaration and the current velocity.
         * \cmd_accel: command accelaration given by the POMDP planner if one wish to directly apply it.
-* (Unity) __il_controller__: The neural network learner. The key files include:
+* (Unity) __il_controller__: The neural network learner for imitation learning. The key files include:
     * data_processing.sh: Script for executing the data_processing pipeline given a folder path of recorded rosbags;
-    * policy_value_network.py: The neural network architectures for the policy and the value network.
+    * policy_value_network.py: The neural network architectures for the policy and the value networks.
     * train.py: Script for training the neural networks using the processed dataset in hdf5 (.h5) format;
     * test.py: Script for using the learned neural network to directly drive a car in the simulator.
 
