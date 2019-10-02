@@ -4,31 +4,31 @@
 This repository contains all algorithmic elements for reproducing LeTS-Drive [paper](https://arxiv.org/abs/1905.12197) in heterogenous traffic simulated by the SUMMIT simulator [paper](https://www.dropbox.com/s/fs0e9j4o0r80e82/SUMMIT.pdf?dl=0).
 
 Note:
-* Even though this repository contains the LeTS-Drive, you can easily down-grade it to perform stand-alone imitation learning or POMDP planning.
+* Even though this repository implements the full LeTS-Drive pipeline, you can easily down-grade it to perform stand-alone imitation learning or POMDP planning.
 * The current repository is in progress of migrating from the Unity simulator from pedestrains to SUMMIT. Some ros packages are still for the Unity simulator.
 
 List of packages marked with which simulator they support:
-* (SUMMIT) carla_connector: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. carla_connector publishes the following ROS topic to external algorithms: 
-** /odom: Odometry of the exo-vehicle;
-** /ego_state: State of the exo_vehicle;
-** /plan: Reference path of the ego-vehicle;
-** /agent_array: State and intended paths of exo-agents.
-* (SUMMIT) car_hyp_despot: The core POMDP planner performing guided tree search using HyP-DESPOT and policy/value networks. It contains the following source folders:
-** HypDespot: the HyP-DESPOT POMDP solver.
-** planner: the POMDP model for the driving problem.
-** Porca: the PORCA motion model used to predict agent's motion.
-* (SUMMIT) ped_is_despot: A wrapping over the POMDP planner. It receives information from the simulator and run belief tracking and POMDP planning. Key files in the package include:
-** PedPomdpNode.cpp: A ROS node host that also receives ROS parameters.
-** controller.cpp: A wrapper that launches the planning loop.
-** world_simulator.cpp: A wrapper that maintains world state.
-** VelPublisher.cpp: A velocity controller that converts accelaration output by POMDP planning to command velocities. It publishes the following ROS topic:
-*** \cmd_vel: command velocity for the ego-vehicle converted from accelaration and the current velocity.
-*** \cmd_accel: command accelaration given by the POMDP planner if one wish to directly apply it.
-* (Unity) il_controller: The neural network learner. The key files include:
-** data_processing.sh: Script for executing the data_processing pipeline given a folder path of recorded rosbags;
-** policy_value_network.py: The neural network architectures for the policy and the value network.
-** train.py: Script for training the neural networks using the processed dataset in hdf5 (.h5) format;
-** test.py: Script for using the learned neural network to directly drive a car in the simulator.
+* (SUMMIT) __carla_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. carla_connector publishes the following ROS topic to external algorithms: 
+    * /odom: Odometry of the exo-vehicle;
+    * /ego_state: State of the exo_vehicle;
+    * /plan: Reference path of the ego-vehicle;
+    * /agent_array: State and intended paths of exo-agents.
+* (SUMMIT) __car_hyp_despot__: The core POMDP planner performing guided tree search using HyP-DESPOT and policy/value networks. It contains the following source folders:
+    * HypDespot: the HyP-DESPOT POMDP solver.
+    * planner: the POMDP model for the driving problem.
+    * Porca: the PORCA motion model used to predict agent's motion.
+* (SUMMIT) __ped_is_despot__: A wrapping over the POMDP planner. It receives information from the simulator and run belief tracking and POMDP planning. Key files in the package include:
+    * PedPomdpNode.cpp: A ROS node host that also receives ROS parameters.
+    * controller.cpp: A wrapper that launches the planning loop.
+    * world_simulator.cpp: A wrapper that maintains world state.
+    * VelPublisher.cpp: A velocity controller that converts accelaration output by POMDP planning to command velocities. It publishes the following ROS topic:
+        * \cmd_vel: command velocity for the ego-vehicle converted from accelaration and the current velocity.
+        * \cmd_accel: command accelaration given by the POMDP planner if one wish to directly apply it.
+* (Unity) __il_controller__: The neural network learner. The key files include:
+    * data_processing.sh: Script for executing the data_processing pipeline given a folder path of recorded rosbags;
+    * policy_value_network.py: The neural network architectures for the policy and the value network.
+    * train.py: Script for training the neural networks using the processed dataset in hdf5 (.h5) format;
+    * test.py: Script for using the learned neural network to directly drive a car in the simulator.
 
 ## 1. Setup
 ### 1.1 Pre-requisites
