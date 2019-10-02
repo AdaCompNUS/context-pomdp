@@ -1,10 +1,10 @@
 #
 # LeTS-Drive with SUMMIT simulator integration
-## Setup
-### Pre-requisites
+## 1. Setup
+### 1.1 Pre-requisites
 1. Install [CUDA 10.0](https://developer.nvidia.com/cuda-10.0-download-archive) (Note: you need to follow the [official guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) for a successful installation.)
 2. Install [CUDNN 7](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html)
-### Python Environment Setup
+### 1.2 Python Environment Setup
 Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
@@ -15,7 +15,7 @@ Optionally, append the source ~/lets_drive... line to ~/.bashrc. Also, to deacti
 ```
 deactivate
 ```
-### Setup Dependencies
+### 1.3 Setup Dependencies
 Download all bash scripts in the setup folder, then run
 ```
 bash setup.sh
@@ -26,7 +26,7 @@ This setup script will:
 * build and install OpenCV 4.1.0
 * install dependent python packages
 The script will prompt for sudo privilege.
-If you want to install these dependencies seperately, open setup.sh:
+If you already have some dependencies installed, block the cooresponding line in setup.sh:
 ```
 # install dependencies
 bash install_ros_melodic.sh
@@ -58,17 +58,19 @@ catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
 cd catkin_ws/src/IL_contoller && pip install -r requirements.txt
 ```
 
-### Setup the SUMMIT simulator
-Download the [SUMMIT simultator](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to, for example ~/summit
+### 1.4 Setup the SUMMIT simulator
+Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to ~/summit. 
+Or you can download the [source code](https://github.com/AdaCompNUS/carla.git) from github and compile from source.
+For now the code explicitly uses this "~/summit" to find the simulator. So stick to the path for SUMMIT installation.
 
-## Run the System
-### Launch the Simulator
+## 2. Run the System
+### 2.1 Launch the SUMMIT Simulator
 ```
 export SDL_VIDEODRIVER=offscreen
 LinuxNoEditor/CarlaUE4.sh -carla-rpc-port=2000 -carla-streaming-port=2001
 ```
 You can change 2000 and 2001 to any unused port you like.
-### Launch the Planner
+### 2.2 Launch the Planner
 ```
 cd ~/catkin_ws/src/scripts
 ./experiment_summmit.sh [gpu_id] [start_round] [end_round(inclusive)] [carla_portal, e.g. 2000]
@@ -77,7 +79,7 @@ experiment_summmit.sh does not record bags by default. To enable rosbag recordin
 ```
 record_bags=0
 ```
-## Data Processing
+## 3. Process ROS Bags to HDF5 Datasets
 Convert bags into h5 files using multiple threads:
 ```
 python Data_processing/parallel_parse.py --bagspath [rosbag/path/] --peds_goal_path Maps/
@@ -90,7 +92,7 @@ combine bag_h5 files into training, validation, and test sets:
 ```
 python Data_processing/combine.py --bagspath [rosbag/path/]
 ```
-## IL Training
+## 4. IL Training
 Start training and open tensorboard port
 ```
 python train.py --batch_size 512 --lr 0.01 --train train.h5 --val val.h5
