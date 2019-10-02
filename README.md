@@ -36,7 +36,7 @@ The repository also contains two utility folders:
       * pomdp (SUMMIT): drive a car using Decoupled-Action POMDP and Hybrid A*.
       * joint_pomdp (SUMMIT): drive a car using Joint-Action POMDP.
       * lets-drive (?): drive a car using guided belief tree search.
-      Here only joint_pomdp has been fully migrated to SUMMIT.
+
 ## 1. Setup
 ### 1.1 Pre-requisites
 1. Install [CUDA 10.0](https://developer.nvidia.com/cuda-10.0-download-archive) (Note: you need to follow the [official guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) for a successful installation.)
