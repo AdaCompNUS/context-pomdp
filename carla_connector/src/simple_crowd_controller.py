@@ -12,8 +12,8 @@ from std_msgs.msg import Bool
 from network_agent_path import NetworkAgentPath
 from sidewalk_agent_path import SidewalkAgentPath
 from util import *
-import carla_connector.msg
-from ped_is_despot.msg import car_info as CarInfo
+import msg_builder.msg
+from msg_builder.msg import car_info as CarInfo
 import timeit
 
 

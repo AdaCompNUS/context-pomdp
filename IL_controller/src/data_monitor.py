@@ -53,7 +53,7 @@ import rospy
 
 from nav_msgs.msg import Path, Odometry
 from nav_msgs.msg import OccupancyGrid
-from IL_controller.msg import peds_believes, peds_car_info, imitation_data
+from il_controller.msg import peds_believes, peds_car_info, imitation_data
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32
 import copy

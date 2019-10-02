@@ -14,8 +14,8 @@ from std_msgs.msg import Bool
 from network_agent_path import NetworkAgentPath
 from sidewalk_agent_path import SidewalkAgentPath
 from util import *
-import carla_connector.msg
-from ped_is_despot.msg import car_info as CarInfo
+import msg_builder.msg
+from msg_builder.msg import car_info as CarInfo
 import timeit
 import time
 
@@ -257,11 +257,11 @@ class GammaCrowdController(Drunc):
         self.path_interval = rospy.get_param('~path_interval')
         self.network_agents_pub = rospy.Publisher(
                 '/crowd/network_agents', 
-                carla_connector.msg.CrowdNetworkAgentArray, 
+                msg_builder.msg.CrowdNetworkAgentArray, 
                 queue_size=1)
         self.sidewalk_agents_pub = rospy.Publisher(
                 '/crowd/sidewalk_agents', 
-                carla_connector.msg.CrowdSidewalkAgentArray, 
+                msg_builder.msg.CrowdSidewalkAgentArray, 
                 queue_size=1)
         self.il_car_info_sub = rospy.Subscriber(
                 '/IL_car_info',
@@ -770,10 +770,10 @@ class GammaCrowdController(Drunc):
         if self.do_publish is False:
             return
 
-        network_agents_msg = carla_connector.msg.CrowdNetworkAgentArray()
+        network_agents_msg = msg_builder.msg.CrowdNetworkAgentArray()
         network_agents_msg.header.stamp = rospy.Time.now()
         for a in self.network_car_agents + self.network_bike_agents:
-            network_agent_msg = carla_connector.msg.CrowdNetworkAgent()
+            network_agent_msg = msg_builder.msg.CrowdNetworkAgent()
             network_agent_msg.id = a.get_id()
             network_agent_msg.type = a.get_type()
             network_agent_msg.route_point.edge = a.path.route_points[0].edge
@@ -783,10 +783,10 @@ class GammaCrowdController(Drunc):
             network_agents_msg.agents.append(network_agent_msg)
         self.network_agents_pub.publish(network_agents_msg)
         
-        sidewalk_agents_msg = carla_connector.msg.CrowdSidewalkAgentArray()
+        sidewalk_agents_msg = msg_builder.msg.CrowdSidewalkAgentArray()
         sidewalk_agents_msg.header.stamp = rospy.Time.now()
         for a in self.sidewalk_agents:
-            sidewalk_agent_msg = carla_connector.msg.CrowdSidewalkAgent()
+            sidewalk_agent_msg = msg_builder.msg.CrowdSidewalkAgent()
             sidewalk_agent_msg.id = a.get_id()
             sidewalk_agent_msg.type = 'ped'
             sidewalk_agent_msg.route_point.polygon_id = a.path.route_points[0].polygon_id
@@ -814,7 +814,7 @@ if __name__ == '__main__':
         end_time = rospy.Time.now()
         duration = (end_time - start_time).to_sec()
         elapsed = (end_time - init_time).to_sec()
-        print('Update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
+        # print('Update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
         # print('Crowd update at {}'.format(elapsed))
         # sys.stdout.flush()
         rate.sleep()

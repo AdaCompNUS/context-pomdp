@@ -21,14 +21,14 @@ home = expanduser("~")
 # TODO: Change this to your project location
 # TODO: You need to link the external OpenAI project into the BTS_RL_NN project
 
-nn_folder = '/workspace/BTS_RL_NN/catkin_ws/src/IL_controller/src/BTS_RL_NN/'
+nn_folder = '/workspace/BTS_RL_NN/catkin_ws/src/il_controller/src/BTS_RL_NN/'
 
 # TODO: Change the home path to your own
 
 if not os.path.isdir(home):
     home = expanduser("/home/panpan")
 if not os.path.isdir(home + nn_folder):
-    nn_folder = '/workspace/catkin_ws/src/IL_controller/src/BTS_RL_NN/'
+    nn_folder = '/workspace/catkin_ws/src/il_controller/src/BTS_RL_NN/'
 
 print("working dir: ", home + nn_folder)
 
@@ -40,7 +40,7 @@ print("working dir: ", home + nn_folder)
 
 # TODO: Change the three paths to point to the location of your own dummy client.
 Client_address = ''
-Client_nn_workspace = '/home/panpan/workspace/catkin_ws/src/IL_controller/src/BTS_RL_NN/'
+Client_nn_workspace = '/home/panpan/workspace/catkin_ws/src/il_controller/src/BTS_RL_NN/'
 Client_dataset_path = "dataset/"
 
 Connection_count = 0

@@ -16,7 +16,7 @@ from nav_msgs.msg import Path as NavPath
 from std_msgs.msg import Float32, Bool
 
 from network_agent_path import NetworkAgentPath
-from ped_is_despot.msg import car_info as CarInfo # panpan
+from msg_builder.msg import car_info as CarInfo # panpan
 from util import *
 
 import tf2_geometry_msgs

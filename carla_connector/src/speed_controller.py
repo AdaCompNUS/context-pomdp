@@ -8,12 +8,12 @@ from path_smoothing import distance
 
 import rospy
 from std_msgs.msg import Float32
-from ped_is_despot.msg import peds_car_info as PedsCarInfo
-from ped_is_despot.msg import car_info as CarInfo # panpan
-from ped_is_despot.msg import peds_info as PedsInfo
-from ped_is_despot.msg import ped_info as PedInfo
-from carla_connector.msg import TrafficAgentArray
-from carla_connector.msg import TrafficAgent
+from msg_builder.msg import peds_car_info as PedsCarInfo
+from msg_builder.msg import car_info as CarInfo # panpan
+from msg_builder.msg import peds_info as PedsInfo
+from msg_builder.msg import ped_info as PedInfo
+from msg_builder.msg import TrafficAgentArray
+from msg_builder.msg import TrafficAgent
 from geometry_msgs.msg import Twist
 
 freq = 10.0

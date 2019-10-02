@@ -12,11 +12,11 @@ from clear_process import clear_process
 config = Namespace()
 
 home = expanduser("/home/yuanfu")
-nn_folder = '/workspace/BTS_RL_NN/catkin_ws/src/IL_controller/src/BTS_RL_NN/'
+nn_folder = '/workspace/BTS_RL_NN/catkin_ws/src/il_controller/src/BTS_RL_NN/'
 if not os.path.isdir(home):
     home = expanduser("/home/panpan")
 if not os.path.isdir(home + nn_folder):
-    nn_folder = '/workspace/catkin_ws/src/IL_controller/src/BTS_RL_NN/'
+    nn_folder = '/workspace/catkin_ws/src/il_controller/src/BTS_RL_NN/'
 print("nn working dir: ", home + nn_folder)
 
 root_path = home + '/Unity/DESPOT-Unity'

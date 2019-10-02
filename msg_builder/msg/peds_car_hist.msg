@@ -1,0 +1,2 @@
+peds_car_info cur
+peds_car_info past

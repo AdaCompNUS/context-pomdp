@@ -81,7 +81,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--peds_goal_path',
         type=str,
-        default='Maps',
+        default='../../Maps',
         help='Path to pedestrian goals')
 
     parser.add_argument(

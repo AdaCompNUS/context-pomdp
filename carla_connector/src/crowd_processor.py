@@ -13,8 +13,8 @@ from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped, Poi
 from nav_msgs.msg import Path
 from std_msgs.msg import Bool
 
-import carla_connector.msg
-from ped_is_despot.msg import car_info as CarInfo # panpan
+import msg_builder.msg
+from msg_builder.msg import car_info as CarInfo # panpan
 from util import *
 
 '''    
@@ -34,12 +34,12 @@ class CrowdProcessor(Drunc):
 
         self.network_agents_sub = rospy.Subscriber(
                 '/crowd/network_agents', 
-                carla_connector.msg.CrowdNetworkAgentArray,
+                msg_builder.msg.CrowdNetworkAgentArray,
                 self.network_agents_callback,
                 queue_size=1)
         self.sidewalk_agents_sub = rospy.Subscriber(
                 '/crowd/sidewalk_agents',
-                carla_connector.msg.CrowdSidewalkAgentArray,
+                msg_builder.msg.CrowdSidewalkAgentArray,
                 self.sidewalk_agents_callback,
                 queue_size=1)
         self.il_car_info_sub = rospy.Subscriber(
@@ -49,7 +49,7 @@ class CrowdProcessor(Drunc):
                 queue_size=1)
         self.agents_pub = rospy.Publisher(
                 '/agent_array',
-                carla_connector.msg.TrafficAgentArray,
+                msg_builder.msg.TrafficAgentArray,
                 queue_size=1)
 
     def network_agents_callback(self, agents):
@@ -94,7 +94,7 @@ class CrowdProcessor(Drunc):
                 ego_car_position.x,
                 ego_car_position.y)
 
-        agents_msg = carla_connector.msg.TrafficAgentArray()
+        agents_msg = msg_builder.msg.TrafficAgentArray()
 
         current_time = rospy.Time.now()
         agents = self.network_agents + self.sidewalk_agents
@@ -109,7 +109,7 @@ class CrowdProcessor(Drunc):
             if (actor_pos - ego_car_position).length() > 50: # TODO Add as ROS parameter.
                 continue
             
-            agent_tmp = carla_connector.msg.TrafficAgent()
+            agent_tmp = msg_builder.msg.TrafficAgent()
             agent_tmp.last_update = current_time
             agent_tmp.id = actor.id
             agent_tmp.type = agent.type
@@ -127,7 +127,7 @@ class CrowdProcessor(Drunc):
                 agent_tmp.bbox.points.append(Point32(
                     x=corner.x, y=corner.y, z=0.0))
 
-            if type(agent) is carla_connector.msg.CrowdNetworkAgent:
+            if type(agent) is msg_builder.msg.CrowdNetworkAgent:
                 initial_route_point = carla.SumoNetworkRoutePoint()
                 initial_route_point.edge = agent.route_point.edge
                 initial_route_point.lane = agent.route_point.lane
@@ -166,7 +166,7 @@ class CrowdProcessor(Drunc):
                 agent_tmp.cross_dirs = []
                 self.topological_hash_map[agent.id] = topological_hash
 
-            elif type(agent) is carla_connector.msg.CrowdSidewalkAgent:
+            elif type(agent) is msg_builder.msg.CrowdSidewalkAgent:
                 sidewalk_route_point = carla.SidewalkRoutePoint()
                 sidewalk_route_point.polygon_id = agent.route_point.polygon_id
                 sidewalk_route_point.segment_id = agent.route_point.segment_id

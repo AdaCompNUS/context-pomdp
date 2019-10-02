@@ -987,7 +987,7 @@ def parse_cmd_args():
                         help='Number of resnet layers')
     parser.add_argument('--goalfile',
                         type=str,
-                        default="./Maps/indian_cross_goals_15_10_15.txt",
+                        default="../../Maps/indian_cross_goals_15_10_15.txt",
                         help='Name of model file to be saved')
     parser.add_argument('--ssm',
                         type=float,

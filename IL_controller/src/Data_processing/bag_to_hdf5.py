@@ -1,4 +1,4 @@
-'''ORGANIZE THIS MESS! use ordered dict, hist2 from future'''
+    '''ORGANIZE THIS MESS! use ordered dict, hist2 from future'''
 '''rosbag to hdf5 file'''
 '''use simulated time stamp for data association'''
 
@@ -42,7 +42,7 @@ from skimage.draw import polygon, line
 from transforms import *
 
 from geometry_msgs.msg import Twist
-from IL_controller.msg import peds_believes, peds_car_info
+from il_controller.msg import peds_believes, peds_car_info
 
 import time
 import copy
@@ -1410,7 +1410,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--peds_goal_path',
         type=str,
-        default='BTSRL_driving_data/Maps',
+        default='../../Maps',
         help='Path to pedestrian goals')
 
     parser.add_argument(
