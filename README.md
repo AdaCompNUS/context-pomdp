@@ -34,8 +34,9 @@ Download the [SUMMIT simultator](https://www.dropbox.com/s/3cnjktij8vtfn56/summi
 ### Launch the Simulator
 ```
 export SDL_VIDEODRIVER=offscreen
-LinuxNoEditor/CarlaUE4.sh -carla-rpc-port=2000 -carla-streaming-port=2000
+LinuxNoEditor/CarlaUE4.sh -carla-rpc-port=2000 -carla-streaming-port=2001
 ```
+You can change 2000 and 2001 to any unused port you like.
 ### Launch the Planner
 ```
 cd ~/catkin_ws/src/scripts
