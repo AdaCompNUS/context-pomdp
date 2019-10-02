@@ -32,10 +32,10 @@ The repository also contains two utility folders:
 * __setup__: Bash scripts for setting up the environment.
 * __scripts__: Scripts for performing driving in simulators. Main files include:
    * run_data_collection.py: launch the simulator and driving algorithms for data collection or evaluation purposes. One can use the following modes to be set via the `--basedline` argument:
-      * imitation: drive a car directly using a trained policy network.
-      * pomdp: drive a car using Decoupled-Action POMDP and Hybrid A*.
-      * joint_pomdp: drive a car using Joint-Action POMDP.
-      * lets-drive: drive a car using guided belief tree search.
+      * imitation (Unity): drive a car directly using a trained policy network.
+      * pomdp (SUMMIT): drive a car using Decoupled-Action POMDP and Hybrid A*.
+      * joint_pomdp (SUMMIT): drive a car using Joint-Action POMDP.
+      * lets-drive (?): drive a car using guided belief tree search.
       Here only joint_pomdp has been fully migrated to SUMMIT.
 ## 1. Setup
 ### 1.1 Pre-requisites
