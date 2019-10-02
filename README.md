@@ -5,6 +5,8 @@ This repository contains all algorithmic elements for reproducing LeTS-Drive [pa
 * Even though this repository implements the full LeTS-Drive pipeline, you can easily down-grade it to perform stand-alone imitation learning or POMDP planning.
 * The current repository is in progress of migrating from the Unity pedestrian simulator to SUMMIT. Some modules like the neural networks learner package is still for the old Unity simulator. For now, one can use the existing pedestrain datasets to test the imitation learning.
 
+[![Watch the driving video](https://img.youtube.com/vi/bQjcd-NBdIg/0.jpg)](https://www.youtube.com/watch?v=bQjcd-NBdIg)
+
 Here is the list of ROS packages marked with the simulator they support:
 * (SUMMIT) __summit_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. summit_connector publishes the following ROS topic to external driving algorithms: 
     * /odom: Odometry of the exo-vehicle;
