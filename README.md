@@ -41,7 +41,7 @@ The repository also contains two utility folders:
       * lets-drive (?): drive a car using guided belief tree search.
       
       This script will automatically compile the entire project.
-   * experiment_summmit.s: Script for executing repetitive experiments by calling run_data_collection.py.
+   * experiment_summit.sh: Script for executing repetitive experiments by calling run_data_collection.py.
 
 ## 1. Setup
 ### 1.1 Pre-requisites
