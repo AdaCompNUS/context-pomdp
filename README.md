@@ -26,6 +26,37 @@ This setup script will:
 * build and install OpenCV 4.1.0
 * install dependent python packages
 The script will prompt for sudo privilege.
+If you want to install these dependencies seperately, open setup.sh:
+```
+# install dependencies
+bash install_ros_melodic.sh
+bash install_torch.sh
+bash install_opencv4.sh
+
+# prepare catkin workspace
+mkdir -p catkin_ws/src
+cd catkin_ws
+catkin config --merge-devel
+catkin build
+
+# fetch the github repository
+if [ -d "~/catkin_ws/src/car_hyp_despot" ] 
+then
+    echo "Directory car_hyp_despot exists, not cloning LeTS-Drive-SUMMIT repository." 
+else
+    cd src
+    git clone https://github.com/cindycia/LeTS-Drive-SUMMIT.git    
+    mv LeTS-Drive-SUMMIT/* .
+    mv LeTS-Drive-SUMMIT/.git .
+fi
+
+# compile the project
+cd catkin_ws
+catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+# install python dependencies for the neural network learner.
+cd catkin_ws/src/IL_contoller && pip install -r requirements.txt
+```
 
 ### Setup the SUMMIT simulator
 Download the [SUMMIT simultator](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to, for example ~/summit
