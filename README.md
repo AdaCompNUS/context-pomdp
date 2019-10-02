@@ -39,6 +39,9 @@ The repository also contains two utility folders:
       * pomdp (SUMMIT): drive a car using Decoupled-Action POMDP and Hybrid A*.
       * joint_pomdp (SUMMIT): drive a car using Joint-Action POMDP.
       * lets-drive (?): drive a car using guided belief tree search.
+      
+      This script will automatically compile the entire project.
+   * experiment_summmit.s: Script for executing repetitive experiments by calling run_data_collection.py.
 
 ## 1. Setup
 ### 1.1 Pre-requisites
