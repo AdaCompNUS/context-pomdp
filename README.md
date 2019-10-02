@@ -8,7 +8,7 @@ Note:
 * The current repository is in progress of migrating from the Unity simulator from pedestrains to SUMMIT. Some ros packages are still for the Unity simulator.
 
 List of ROS packages marked with which simulator they support:
-* (SUMMIT) __carla_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. carla_connector publishes the following ROS topic to external algorithms: 
+* (SUMMIT) __summit_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. summit_connector publishes the following ROS topic to external algorithms: 
     * /odom: Odometry of the exo-vehicle;
     * /ego_state: State of the exo_vehicle;
     * /plan: Reference path of the ego-vehicle;
@@ -17,7 +17,7 @@ List of ROS packages marked with which simulator they support:
     * HypDespot: the HyP-DESPOT POMDP solver.
     * planner: the POMDP model for the driving problem.
     * Porca: the PORCA motion model used to predict agent's motion.
-* (SUMMIT) __ped_is_despot__: A wrapping over the POMDP planner. It receives information from the simulator and run belief tracking and POMDP planning. Key files in the package include:
+* (SUMMIT) __crowd_pomdp_planner__: A wrapping over the POMDP planner. It receives information from the simulator and run belief tracking and POMDP planning. Key files in the package include:
     * PedPomdpNode.cpp: A ROS node host that also receives ROS parameters.
     * controller.cpp: A wrapper that launches the planning loop.
     * world_simulator.cpp: A wrapper that maintains world state.
