@@ -406,7 +406,7 @@ bool PedPomdp::Step(State &state_, double rNum, int action, double &reward, uint
     if(use_rvo_in_search)
     {
         // Attentive pedestrians
-        world_model->RVO2AgentStep(state.agents, rNum, state.num, state.car);
+        world_model->PorcaAgentStep(state.agents, rNum, state.num, state.car);
         for(int i = 0; i < state.num; i++)
         {
             //Distracted pedestrians
@@ -499,7 +499,7 @@ bool PedPomdp::Step(PomdpStateWorld &state, double rNum, int action, double &rew
     if(use_rvo_in_simulation)
     {
         // Attentive pedestrians
-        world_model->RVO2AgentStep(state, random);
+        world_model->PorcaAgentStep(state, random);
         // Distracted pedestrians
         for(int i = 0; i < state.num; i++)
         {

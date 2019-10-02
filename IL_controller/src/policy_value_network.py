@@ -115,10 +115,10 @@ class ValueHead(nn.Module):
         return out
 
 
-class DriveNetModiRes(nn.Module):
+class PolicyValueNet(nn.Module):
 
     def __init__(self, config):
-        super(DriveNetModiRes, self).__init__()
+        super(PolicyValueNet, self).__init__()
         self.fc_modules_size = 0
         self.num_steering_bins = global_config.num_steering_bins
         self.num_vel_bins = global_config.num_vel_bins
@@ -524,7 +524,7 @@ if __name__ == '__main__':
     global_config.num_peds_in_NN = config.no_ped
     global_config.vanilla_resnet = config.no_vin
 
-    debug_net = DriveNetModiRes(config)
+    debug_net = PolicyValueNet(config)
 
     print_model_size(debug_net)
 

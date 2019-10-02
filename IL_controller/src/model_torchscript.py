@@ -159,7 +159,7 @@ class ValueHead(torch.jit.ScriptModule):
         return out
 
 
-class DriveNetModiRes(torch.jit.ScriptModule):
+class PolicyValueNet(torch.jit.ScriptModule):
     __constants__ = ['fc_modules_size', 'num_steering_bins', 'num_vel_bins',
                      'num_acc_bins', 'output_channels_VIN', 'no_input_resnet',
                      'num_resnet_out_features', 'no_car', 'no_ped', 'imsize',
@@ -167,7 +167,7 @@ class DriveNetModiRes(torch.jit.ScriptModule):
                      'resblock_in_layers', 'batchsize']
 
     def __init__(self, batchsize):
-        super(DriveNetModiRes, self).__init__()
+        super(PolicyValueNet, self).__init__()
         self.fc_modules_size = 0
         self.num_steering_bins = num_steering_bins
         self.num_vel_bins = global_config.num_vel_bins
@@ -305,7 +305,7 @@ class DriveNetModiRes(torch.jit.ScriptModule):
         # return self.value_head(res_image)
 
 
-class DriveNetModiResMdn(torch.jit.ScriptModule):
+class PolicyValueNetMdn(torch.jit.ScriptModule):
     __constants__ = ['fc_modules_size', 'num_steering_bins', 'num_vel_bins',
                      'num_acc_bins', 'output_channels_VIN', 'no_input_resnet',
                      'num_resnet_out_features', 'no_car', 'no_ped', 'imsize',
@@ -313,7 +313,7 @@ class DriveNetModiResMdn(torch.jit.ScriptModule):
                      'resblock_in_layers', 'batchsize']
 
     def __init__(self, batchsize):
-        super(DriveNetModiResMdn, self).__init__()
+        super(PolicyValueNetMdn, self).__init__()
         self.fc_modules_size = 0
         self.num_steering_bins = num_steering_bins
         self.num_vel_bins = global_config.num_vel_bins

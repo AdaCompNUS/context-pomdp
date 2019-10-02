@@ -117,7 +117,7 @@ bool WorldSimulator::Connect(){
     // pedSub_ = nh.subscribe("ped_local_frame_vector", 1, pedPoseCallback); 
     mapSub_ = nh.subscribe("map", 1, receive_map_callback); // nav_msgs::OccupancyGrid
 
-  	carSub_ = nh.subscribe("IL_car_info", 1, &WorldSimulator::update_il_car, this);
+  	carSub_ = nh.subscribe("ego_state", 1, &WorldSimulator::update_il_car, this);
 
     agentSub_ = nh.subscribe("agent_array", 1, agentArrayCallback); 
 
@@ -126,8 +126,8 @@ bool WorldSimulator::Connect(){
     auto odom_data = ros::topic::waitForMessage<nav_msgs::Odometry>("odom");
 	logi << "odom get at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
-    auto car_data = ros::topic::waitForMessage<msg_builder::car_info>("IL_car_info");
-	logi << "IL_car_info get at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+    auto car_data = ros::topic::waitForMessage<msg_builder::car_info>("ego_state");
+	logi << "ego_state get at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
 
 #ifdef CONNECTOR2
 	auto agent_data = ros::topic::waitForMessage<msg_builder::TrafficAgentArray>("agent_array",ros::Duration(30));

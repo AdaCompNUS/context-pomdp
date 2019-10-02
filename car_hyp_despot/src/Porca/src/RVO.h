@@ -101,7 +101,7 @@
  each agent in each time step of the simulation. %RVO Library 1.x has a built-in
  roadmap infrastructure to guide agents around obstacles to fixed goals.
  However, besides roadmaps, other techniques for global planning, such as
- navigation fields, cell decompositions, etc. exist. Therefore, <b>RVO2
+ navigation fields, cell decompositions, etc. exist. Therefore, <b>Porca
  Library</b> does not provide global planning infrastructure anymore. Instead,
  it is the responsibility of the external application to set the preferred
  velocity of each agent ahead of each time step of the simulation. This makes the
@@ -116,7 +116,7 @@
  \section    structure   Structure of RVO2 Library
 
  The structure of <b>RVO2 Library</b> is similar to that of %RVO Library 1.x.
- Users familiar with %RVO Library 1.x should find little trouble in using <b>RVO2
+ Users familiar with %RVO Library 1.x should find little trouble in using <b>Porca
  Library</b>. However, <b>RVO2 Library</b> is not backwards compatible with %RVO
  Library 1.x. The main reason for this is that the ORCA technique requires
  different (and fewer) parameters to be set than %RVO. Also, the way obstacles
@@ -241,7 +241,7 @@
  RVO::RVOSimulator::processObstacles() need to be called in order for the
  obstacles to be accounted for in the simulation.
  The user may also want to define goal positions of the agents, or a
- roadmap to guide the agents around obstacles. This is not done in <b>RVO2
+ roadmap to guide the agents around obstacles. This is not done in <b>Porca
  Library</b>, but needs to be taken care of in the user's external application.
 
  The following example creates a scenario with four agents exchanging positions

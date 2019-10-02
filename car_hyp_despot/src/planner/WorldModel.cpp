@@ -2469,7 +2469,7 @@ void WorldModel::ValidateIntention(int agent_id, int intention_id, const char* m
 }
 
 
-void WorldModel::RVO2SimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car){
+void WorldModel::PorcaSimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car){
 
     // DEBUG("start_rvo_sim");
     int threadID=GetThreadID();
@@ -2520,7 +2520,7 @@ void WorldModel::RVO2SimulateAgents(AgentStruct agents[], int num_agents, CarStr
     // DEBUG("End rvo sim");
 }
 
-COORD WorldModel::GetRVO2Vel(AgentStruct& agent, int i){
+COORD WorldModel::GetPorcaVel(AgentStruct& agent, int i){
     // DEBUG("End rvo vel");
     int threadID=GetThreadID();
     assert(agent.mode==AGENT_ATT);
@@ -2533,7 +2533,7 @@ COORD WorldModel::GetRVO2Vel(AgentStruct& agent, int i){
     return (new_pos - agent.pos) * freq; 
 }
 
-void WorldModel::AgentApplyRVO2Vel(AgentStruct& agent, COORD& rvo_vel) {
+void WorldModel::AgentApplyPorcaVel(AgentStruct& agent, COORD& rvo_vel) {
     // DEBUG("Start rvo apply vel");
     COORD old_pos = agent.pos;
     double rvo_speed = rvo_vel.Length();
@@ -2557,18 +2557,18 @@ void WorldModel::AgentApplyRVO2Vel(AgentStruct& agent, COORD& rvo_vel) {
     // DEBUG("End rvo apply vel");
 }
 
-void WorldModel::RVO2AgentStep(PomdpStateWorld& state, Random& random){
-    RVO2AgentStep(state.agents, random, state.num, state.car);
+void WorldModel::PorcaAgentStep(PomdpStateWorld& state, Random& random){
+    PorcaAgentStep(state.agents, random, state.num, state.car);
 }
 
-void WorldModel::RVO2AgentStep(AgentStruct agents[], Random& random, int num_agents, CarStruct car){
-    RVO2SimulateAgents(agents, num_agents, car);
+void WorldModel::PorcaAgentStep(AgentStruct agents[], Random& random, int num_agents, CarStruct car){
+    PorcaSimulateAgents(agents, num_agents, car);
 
     for (int i = 0; i < num_agents; ++i){
         auto& agent = agents[i];
         if(agent.mode == AGENT_ATT){
-            COORD rvo_vel = GetRVO2Vel(agent, i);
-            AgentApplyRVO2Vel(agent,rvo_vel);
+            COORD rvo_vel = GetPorcaVel(agent, i);
+            AgentApplyPorcaVel(agent,rvo_vel);
             if(use_noise_in_rvo){
                 agent.pos.x+= random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
                 agent.pos.y+= random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
@@ -2577,14 +2577,14 @@ void WorldModel::RVO2AgentStep(AgentStruct agents[], Random& random, int num_age
     }
 }
 
-void WorldModel::RVO2AgentStep(AgentStruct agents[], double& random, int num_agents, CarStruct car){
-    RVO2SimulateAgents(agents, num_agents, car);
+void WorldModel::PorcaAgentStep(AgentStruct agents[], double& random, int num_agents, CarStruct car){
+    PorcaSimulateAgents(agents, num_agents, car);
 
     for (int i = 0; i < num_agents; ++i){
         auto& agent = agents[i];
         if(agent.mode == AGENT_ATT){
-            COORD rvo_vel = GetRVO2Vel(agent, i);
-            AgentApplyRVO2Vel(agent, rvo_vel);
+            COORD rvo_vel = GetPorcaVel(agent, i);
+            AgentApplyPorcaVel(agent, rvo_vel);
             if(use_noise_in_rvo){
                 double rNum=GenerateGaussian(random);
                 agent.pos.x+= rNum * ModelParams::NOISE_PED_POS / freq;

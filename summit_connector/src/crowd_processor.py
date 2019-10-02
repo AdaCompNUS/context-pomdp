@@ -43,7 +43,7 @@ class CrowdProcessor(Drunc):
                 self.sidewalk_agents_callback,
                 queue_size=1)
         self.il_car_info_sub = rospy.Subscriber(
-                '/IL_car_info',
+                '/ego_state',
                 CarInfo,
                 self.il_car_info_callback,
                 queue_size=1)

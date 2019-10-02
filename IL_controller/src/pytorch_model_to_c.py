@@ -117,10 +117,10 @@ class ValueHead(nn.Module):
         return out
 
 
-class DriveNetModiRes(nn.Module):
+class PolicyValueNet(nn.Module):
 
     def __init__(self, config):
-        super(DriveNetModiRes, self).__init__()
+        super(PolicyValueNet, self).__init__()
         self.fc_modules_size = 0
         self.num_steering_bins = global_config.num_steering_bins
         self.num_vel_bins = global_config.num_vel_bins
@@ -442,16 +442,16 @@ if __name__ == '__main__':
 
     debug_net = None
     if compare_with_normal_version:
-        debug_net = DriveNetModiRes(cmd_args)
+        debug_net = PolicyValueNet(cmd_args)
 
     # print_model_size(debug_net)
 
     TorchScript_Module = None
     if cmd_args.fit == 'all':
         if global_config.head_mode is "hybrid":
-            TorchScript_Module = model_torchscript.DriveNetModiRes(cmd_args.batch_size)
+            TorchScript_Module = model_torchscript.PolicyValueNet(cmd_args.batch_size)
         elif global_config.head_mode is "mdn":
-            TorchScript_Module = model_torchscript.DriveNetModiResMdn(cmd_args.batch_size)
+            TorchScript_Module = model_torchscript.PolicyValueNetMdn(cmd_args.batch_size)
 
     if cmd_args.fit == 'val':
         TorchScript_Module = model_torchscript.DriveNetVal(cmd_args.batch_size)

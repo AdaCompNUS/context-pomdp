@@ -26,7 +26,7 @@ from tf.transformations import euler_from_quaternion
 
 rospy.init_node('unity_connector')
 peds_car_info_pub = rospy.Publisher('peds_car_info', PedsCarInfo, queue_size=10)
-car_info_pub = rospy.Publisher('IL_car_info', CarInfo, queue_size=1) # panpan, for imitation learning data collection
+car_info_pub = rospy.Publisher('ego_state', CarInfo, queue_size=1) # panpan, for imitation learning data collection
 
 
 peds_info = PedsInfo()

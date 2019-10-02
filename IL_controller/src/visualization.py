@@ -531,7 +531,7 @@ if __name__ == '__main__':
     from train import parse_cmd_args, update_global_config
     from train import forward_pass, forward_pass_jit, load_settings_from_model, debug_data, visualize_hybrid_predictions
 
-    from model_drive_net_modi_res import DriveNetModiRes
+    from policy_value_network import PolicyValueNet
     import torch
     import torch.nn as nn
 
@@ -549,7 +549,7 @@ if __name__ == '__main__':
 
     # Instantiate a BTS-RL model
     if config.ped_mode == "new_res":
-        net = DriveNetModiRes(cmd_args)
+        net = PolicyValueNet(cmd_args)
 
     net = nn.DataParallel(net, device_ids=[0]).to(device)  # device_ids= config.GPU_devices
 

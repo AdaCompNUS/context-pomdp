@@ -100,7 +100,7 @@ class EgoVehicle(Drunc):
 
         self.odom_broadcaster = tf.TransformBroadcaster()
         self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=1)
-        self.car_info_pub = rospy.Publisher('/IL_car_info', CarInfo, queue_size=1)
+        self.car_info_pub = rospy.Publisher('/ego_state', CarInfo, queue_size=1)
         self.plan_pub = rospy.Publisher('/plan', NavPath, queue_size=1)
 
         self.broadcaster = None

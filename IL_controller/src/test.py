@@ -14,7 +14,7 @@ from data_monitor import *
 from train import forward_pass, forward_pass_jit, load_settings_from_model
 from dataset import set_encoders
 from Components.mdn import sample_mdn, sample_mdn_ml
-from model_drive_net_modi_res import DriveNetModiRes
+from policy_value_network import PolicyValueNet
 from model_drive_net_0_ped import DriveNetZeroPed
 
 
@@ -730,7 +730,7 @@ if __name__ == '__main__':
         elif config.ped_mode == "combined":
             net = DriveNetZeroPed(cmd_args)
         elif config.ped_mode == "new_res":
-            net = DriveNetModiRes(cmd_args)
+            net = PolicyValueNet(cmd_args)
 
         print_model_size(net)
         net = nn.DataParallel(net, device_ids=[0]).to(device)  # device_ids= config.GPU_devices

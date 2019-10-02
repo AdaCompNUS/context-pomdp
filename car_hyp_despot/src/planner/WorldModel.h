@@ -70,11 +70,11 @@ public:
 	void PedStep(AgentStruct &ped, double& random);
 
     double ISPedStep(CarStruct &car, AgentStruct &ped, Random& random);//importance sampling PedStep
-    void RVO2AgentStep(AgentStruct peds[], Random& random, int num_ped); //no interaction between car and pedestrian
-    void RVO2AgentStep(AgentStruct peds[], Random& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
-    void RVO2AgentStep(AgentStruct peds[], double& random, int num_ped); //no interaction between car and pedestrian
-    void RVO2AgentStep(AgentStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
-    void RVO2AgentStep(PomdpStateWorld& state, Random& random);
+    void PorcaAgentStep(AgentStruct peds[], Random& random, int num_ped); //no interaction between car and pedestrian
+    void PorcaAgentStep(AgentStruct peds[], Random& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
+    void PorcaAgentStep(AgentStruct peds[], double& random, int num_ped); //no interaction between car and pedestrian
+    void PorcaAgentStep(AgentStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
+    void PorcaAgentStep(PomdpStateWorld& state, Random& random);
     void PedStepGoal(AgentStruct& ped, int step=1, double noise=0.0);
     void PedStepCurVel(AgentStruct& ped, int step=1, double noise=0.0);
     void PedStepPath(AgentStruct& agent, int step=1, double noise=0.0, bool doPrint = false);
@@ -244,10 +244,10 @@ public:
 
 public:
 
-    void RVO2SimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car);
-    COORD GetRVO2Vel(AgentStruct& agent, int i);
+    void PorcaSimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car);
+    COORD GetPorcaVel(AgentStruct& agent, int i);
 
-    void AgentApplyRVO2Vel(AgentStruct& agent, COORD& rvo_vel);
+    void AgentApplyPorcaVel(AgentStruct& agent, COORD& rvo_vel);
 
 };
 

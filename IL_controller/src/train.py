@@ -2,9 +2,8 @@ import time
 import os
 import argparse
 from dataset import *
-from model_drive_net import *
-from model_drive_net_0_ped import *
-from model_drive_net_modi_res import *
+from policy_value_network import *
+import torch.optim as optim
 
 from tensorboardX import SummaryWriter
 from Data_processing import global_params
@@ -431,19 +430,22 @@ def visualize_hybrid_predictions(epoch, acc_labels, acc_mu, acc_pi, acc_sigma, a
             acc_pi = torch.zeros(1, global_config.num_guassians_in_heads)
             acc_mu = torch.zeros(1, global_config.num_guassians_in_heads, 1)
             acc_sigma = torch.zeros(1, global_config.num_guassians_in_heads, 1)
-        if value is None:
-            value = torch.zeros(1, 1)
         if ang is None:
             ang = torch.zeros(1, global_config.num_steering_bins)
 
         ang_probs = sm(ang)
 
         for i in range(0,10):
+            if value is None:
+                value_vis = None
+            else:
+                value_vis = value[i].detach()
+
             visualize_hybrid_output_with_labels(flag + str(epoch) + '_' + str(i),
                                             acc_mu[i].detach(), acc_pi[i].detach(), acc_sigma[i].detach(),
                                             ang_probs[i].detach(),
                                             None, None, None,
-                                            value[i].detach(),
+                                            value_vis, 
                                             acc_labels[i].detach(), ang_labels[i].detach(),vel_labels[i].detach(),
                                             v_labels[i])
 
@@ -896,7 +898,7 @@ def parse_cmd_args():
     parser.add_argument('--imsize',
                         type=int,
                         default=32,
-                        help='Size of image')
+                        help='Size of input image')
     parser.add_argument('--lr',
                         type=float,
                         default=0.0005,
@@ -1299,7 +1301,7 @@ if __name__ == '__main__':
     elif config.ped_mode == "combined":
         net = nn.DataParallel(DriveNetZeroPed(cmd_args), device_ids=config.GPU_devices).to(device)
     elif config.ped_mode == "new_res":
-        net = nn.DataParallel(DriveNetModiRes(cmd_args), device_ids=config.GPU_devices).to(device)
+        net = nn.DataParallel(PolicyValueNet(cmd_args), device_ids=config.GPU_devices).to(device)
     # Loss
     criterion = nn.MSELoss().to(device)
     # Cross Entropy Loss criterion

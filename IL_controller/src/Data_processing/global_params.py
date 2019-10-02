@@ -176,7 +176,7 @@ config.car_goal = [-1, -1]  # dummy goal
 
 ## replay buffer mode
 config.buffer_mode = 'full'  # full or replay
-config.sample_mode = 'hierarchical'  # hierarchical or random
+config.sample_mode = 'random'  # hierarchical or random
 
 config.train_set_path = ''
 

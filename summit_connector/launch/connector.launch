@@ -5,22 +5,22 @@
   <param name="address" type="string" value="$(arg address)" />
   <param name="port" type="int" value="$(arg port)" />
   
-  <node name="map_server" pkg="map_server" type="map_server" args="$(find carla_connector)/launch/map.yaml" />
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find summit_connector)/launch/map.yaml" />
 
   <node pkg="tf" 
         type="static_transform_publisher" 
         name="static_transform_publisher" 
         args="0.0 0.0 0.0 0.0 0.0 0.0 /base_link /laser_frame 10" />
 
-  <node name="spawn_meshes" pkg="carla_connector" type="spawn_meshes.py" output="screen"/>
+  <node name="spawn_meshes" pkg="summit_connector" type="spawn_meshes.py" output="screen"/>
  
-  <node name="ego_vehicle" pkg="carla_connector" type="ego_vehicle.py" output="screen"/>
+  <node name="ego_vehicle" pkg="summit_connector" type="ego_vehicle.py" output="screen"/>
   
-  <!--node name="speed_controller" pkg="carla_connector" type="speed_controller.py" output="screen"/-->
+  <!--node name="speed_controller" pkg="summit_connector" type="speed_controller.py" output="screen"/-->
   
-  <node name="purepursuit_controller" pkg="carla_connector" type="purepursuit_controller.py" output="screen"/>
+  <node name="purepursuit_controller" pkg="summit_connector" type="purepursuit_controller.py" output="screen"/>
 
-  <node name="gamma_crowd_controller" pkg="carla_connector" type="gamma_crowd_controller.py" output="screen">
+  <node name="gamma_crowd_controller" pkg="summit_connector" type="gamma_crowd_controller.py" output="screen">
     <param name="num_network_car_agents" value="70"/>
     <param name="num_network_bike_agents" value="25"/>
     <param name="num_sidewalk_agents" value="10"/>
@@ -29,7 +29,7 @@
   </node>
   
   <!--
-  <node name="simple_crowd_controller" pkg="carla_connector" type="simple_crowd_controller.py" output="screen">
+  <node name="simple_crowd_controller" pkg="summit_connector" type="simple_crowd_controller.py" output="screen">
     <param name="num_network_car_agents" value="75"/>
     <param name="num_network_bike_agents" value="35"/>
     <param name="num_sidewalk_agents" value="10"/>
@@ -38,6 +38,6 @@
   </node>
   -->
 
-  <node name="crowd_processor" pkg="carla_connector" type="crowd_processor.py" output="screen"/>
-  <node name="spectator" pkg="carla_connector" type="spectator.py" output="screen"/>
+  <node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen"/>
+  <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
 </launch>

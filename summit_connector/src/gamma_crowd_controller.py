@@ -264,7 +264,7 @@ class GammaCrowdController(Drunc):
                 msg_builder.msg.CrowdSidewalkAgentArray, 
                 queue_size=1)
         self.il_car_info_sub = rospy.Subscriber(
-                '/IL_car_info',
+                '/ego_state',
                 CarInfo,
                 self.il_car_info_callback,
                 queue_size=1)
@@ -801,7 +801,7 @@ if __name__ == '__main__':
     rospy.init_node('gamma_crowd_controller')
     init_time = rospy.Time.now()
     rospy.wait_for_message("/meshes_spawned", Bool)
-    rospy.wait_for_message("/IL_car_info", CarInfo)
+    rospy.wait_for_message("/ego_state", CarInfo)
 
     gamma_crowd_controller = GammaCrowdController()
 

@@ -1029,12 +1029,12 @@ def launch_carla_simulator(round, run, case):
     if config.verbosity > 0:
         print('')
         print(shell_cmd)
-    carla_connector_proc = subprocess.Popen(shell_cmd, shell=True, 
-        cwd=os.path.join(home, "catkin_ws/src/carla_connector/launch"))
-    wait_for(config.max_launch_wait, carla_connector_proc, '[launch] carla_connector')
+    summit_connector_proc = subprocess.Popen(shell_cmd, shell=True, 
+        cwd=os.path.join(home, "catkin_ws/src/summit_connector/launch"))
+    wait_for(config.max_launch_wait, summit_connector_proc, '[launch] summit_connector')
    
     crowd_out = open("Crowd_controller_log.txt", 'w')
-    global_proc_queue.append((carla_connector_proc, "carla_connector_proc", crowd_out))
+    global_proc_queue.append((summit_connector_proc, "summit_connector_proc", crowd_out))
 
     return
 

@@ -32,7 +32,7 @@ class SpeedController(object):
         self.cmd_speed_pub = rospy.Publisher("/cmd_speed", Float32, queue_size=1)
         self.cmd_accel_pub = rospy.Publisher("/cmd_accel", Float32, queue_size=1)
         rospy.Subscriber("/agent_array", TrafficAgentArray, self.cb_peds, queue_size=1)
-        rospy.Subscriber("/IL_car_info", CarInfo, self.cb_car, queue_size=1)
+        rospy.Subscriber("/ego_state", CarInfo, self.cb_car, queue_size=1)
 
         rospy.Timer(rospy.Duration(1.0 / freq), self.compute_speed_and_publish)
 
