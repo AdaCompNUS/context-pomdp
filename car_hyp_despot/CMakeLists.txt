@@ -49,7 +49,7 @@ include_directories(
    src/HypDespot/include/despot/
    src/planner/
    src/planner/GPU_Car_Drive/
-   ../ped_is_despot/src/
+   ../crowd_pomdp_planner/src/
 )
  
 FILE(GLOB LIBRVO_SRCS src/Porca/src/*.cpp)

@@ -1,14 +1,14 @@
 <launch>
 <!--
-	 <node name="ped_momdp" pkg="ped_is_despot" type="ped-momdp-sarsop" respawn="false" output="screen" ns="/scooter">
+	 <node name="ped_momdp" pkg="crowd_pomdp_planner" type="ped-momdp-sarsop" respawn="false" output="screen" ns="/scooter">
 
 	 -->
-	<!-- <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp"  launch-prefix="gdb -ex run - -args" respawn="false" output="screen" required="true">  -->
-	 <!-- <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp"  launch-prefix="cuda-gdb args" respawn="false" output="screen" required="true"> -->
-	<node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp" respawn="false" output="screen" required="true">
+	<!-- <node name="ped_pomdp" pkg="crowd_pomdp_planner" type="ped_pomdp"  launch-prefix="gdb -ex run - -args" respawn="false" output="screen" required="true">  -->
+	 <!-- <node name="ped_pomdp" pkg="crowd_pomdp_planner" type="ped_pomdp"  launch-prefix="cuda-gdb args" respawn="false" output="screen" required="true"> -->
+	<node name="ped_pomdp" pkg="crowd_pomdp_planner" type="ped_pomdp" respawn="false" output="screen" required="true">
 
-	<!--  <node name="ped_pomdp" pkg="ped_is_despot" type="ped_pomdp" launch-prefix="valgrind - -tool=callgrind" respawn="false" output="screen" required="true"> -->
-	    <rosparam file="$(find ped_is_despot)/is_despot_param.yaml" command="load" />
+	<!--  <node name="ped_pomdp" pkg="crowd_pomdp_planner" type="ped_pomdp" launch-prefix="valgrind - -tool=callgrind" respawn="false" output="screen" required="true"> -->
+	    <rosparam file="$(find crowd_pomdp_planner)/is_despot_param.yaml" command="load" />
 	    <param name = "goalx" value="$(arg goal_x)" />
 	    <param name = "goaly" value="$(arg goal_y)" />
         <param name = "gpu_id" value="$(arg gpu_id)" />
@@ -25,12 +25,12 @@
         
 	 </node>
 
-	 <node name="ped_momdp_local_transform" pkg="ped_is_despot" type="local_frame"  >
+	 <node name="ped_momdp_local_transform" pkg="crowd_pomdp_planner" type="local_frame"  >
 	    <param name="global_frame" value="/map"/>
         <param name="threshold" value="0.0"/>
 	</node>
 
-	 <node name="vel_publisher" pkg="ped_is_despot" type="vel_publisher" output="screen" >
+	 <node name="vel_publisher" pkg="crowd_pomdp_planner" type="vel_publisher" output="screen" >
 	    <!--<remap from="cmd_vel" to="cmd_vel"/>-->
 	    <param name = "use_drivenet" value="$(arg net)" />
    	    <param name = "drivenet_mode" value="action" />
@@ -39,6 +39,6 @@
          
         <!-- <node name="record" pkg="rosbag" type="record" args="-a"/> -->
 
-	<!-- <node pkg="ped_is_despot" type="record.sh" name="bag_recorder" cwd="node"/> -->
-	 <!--<node pkg="ped_is_despot" type="plot.sh" name="velplot" cwd="node"/>-->
+	<!-- <node pkg="crowd_pomdp_planner" type="record.sh" name="bag_recorder" cwd="node"/> -->
+	 <!--<node pkg="crowd_pomdp_planner" type="plot.sh" name="velplot" cwd="node"/>-->
 </launch>

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 
 set(CUDA_SDK_ROOT_DIR "/usr/local/cuda/samples")
 
-project(ped_is_despot CXX CUDA)
+project(crowd_pomdp_planner CXX CUDA)
 
 if(NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 11)

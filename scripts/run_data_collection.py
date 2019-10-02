@@ -1270,7 +1270,7 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
                                       stdout=query_val_out, stderr=query_val_out,
                                       cwd=catkin_ws_path + 'src/query_nn/src')
 
-    shell_cmd = config.ros_pref+'roslaunch --wait ped_is_despot is_despot.launch ' \
+    shell_cmd = config.ros_pref+'roslaunch --wait crowd_pomdp_planner is_despot.launch ' \
                 + 'goal_x:=' + str(goal_x) + ' goal_y:=' + str(goal_y) + \
                 ' obstacle_file_name:=' + obstacle_file + ' goal_file_name:=' + goal_file + \
                 ' gpu_id:=' + str(config.gpu_id) + \

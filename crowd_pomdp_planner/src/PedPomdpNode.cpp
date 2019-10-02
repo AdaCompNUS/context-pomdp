@@ -84,7 +84,7 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 	ModelParams::print_params();
 
     // default goal: after create door
-    if(b_load_goal){// load goal from ped_is_despot.yaml file
+    if(b_load_goal){// load goal from crowd_pomdp_planner.yaml file
 	    n.param("goalx", controller->goalx_, 19.5);
 	    n.param("goaly", controller->goaly_, 55.5);
 

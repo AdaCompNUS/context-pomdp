@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>ped_is_despot</name>
+  <name>crowd_pomdp_planner</name>
   <version>0.0.0</version>
-  <description>The ped_is_despot package</description>
+  <description>The crowd_pomdp_planner package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
