@@ -7,7 +7,7 @@ Note:
 * Even though this repository implements the full LeTS-Drive pipeline, you can easily down-grade it to perform stand-alone imitation learning or POMDP planning.
 * The current repository is in progress of migrating from the Unity simulator from pedestrains to SUMMIT. Some ros packages are still for the Unity simulator.
 
-List of ROS packages marked with which simulator they support:
+Here is the list of ROS packages marked with the simulator they support:
 * (SUMMIT) __summit_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. summit_connector publishes the following ROS topic to external algorithms: 
     * /odom: Odometry of the exo-vehicle;
     * /ego_state: State of the exo_vehicle;
@@ -29,6 +29,7 @@ List of ROS packages marked with which simulator they support:
     * policy_value_network.py: The neural network architectures for the policy and the value network.
     * train.py: Script for training the neural networks using the processed dataset in hdf5 (.h5) format;
     * test.py: Script for using the learned neural network to directly drive a car in the simulator.
+
 The repository also contains two utility folders:
 * __setup__: Bash scripts for setting up the environment.
 * __scripts__: Scripts for performing driving in simulators. Main files include:
