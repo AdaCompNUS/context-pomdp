@@ -87,14 +87,10 @@ cd catkin_ws
 catkin config --merge-devel
 catkin build
 ```
-Then, add the following line to the end of `~/.bashrc`:
-```
-source ~/catkin_ws/devel/setup.bash
-```
 #### 1.2.5 Fetch the full repository
 Run
 ```
-cd src
+cd ~/catkin_ws/src
 git clone https://github.com/cindycia/LeTS-Drive-SUMMIT.git    
 mv LeTS-Drive-SUMMIT/* .
 mv LeTS-Drive-SUMMIT/.git .
@@ -103,11 +99,14 @@ Now all ROS packages should be in `~/catkin_ws/src`.
 
 Compile packages in the workspace:
 ```
-cd catkin_ws
+cd ~/catkin_ws
 catkin config --merge-devel
 catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
-
+Then, add the following line to the end of `~/.bashrc`:
+```
+source ~/catkin_ws/devel/setup.bash
+```
 #### 1.2.6 Install dependent python packages
 (Optional) Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
@@ -121,7 +120,7 @@ deactivate
 ```
 (Compulsory) To install python dependencies,run
 ```
-cd catkin_ws/src/IL_contoller && pip install -r requirements.txt
+roscd il_contoller && pip install -r requirements.txt
 ```
 ### 1.3 Setup the SUMMIT simulator
 Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to `~/summit`. 
