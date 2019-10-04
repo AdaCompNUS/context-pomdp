@@ -9,7 +9,7 @@ CMAKE=cmake-3.14.1.tar.gz
 CMAKE_FOLDER=cmake-3.14.1
 cd && wget https://github.com/Kitware/CMake/releases/download/v3.14.1/${CMAKE}
 tar xvzf ${CMAKE} && rm ${CMAKE} && cd ${CMAKE_FOLDER} && ./bootstrap --parallel=$(nproc)
-cd ${CMAKE_FOLDER} && make -j$(nproc) && sudo make install
+make -j$(nproc) && sudo make install
 
 # Intel MKL installation
 
