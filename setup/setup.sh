@@ -4,11 +4,11 @@
 # This setu has only be testes for ubuntu18.04
 ##
 
-print("========================Installing ROS=========================")
+echo "========================Installing ROS========================="
 bash install_ros_melodic.sh
-print("========================Installing Torch=========================")
+echo "========================Installing Torch========================="
 bash install_torch.sh
-print("========================Installing OpenCV=========================")
+echo "========================Installing OpenCV========================="
 bash install_opencv4.sh
 
 mkdir -p catkin_ws/src
