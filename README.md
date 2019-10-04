@@ -36,7 +36,7 @@ The repository also contains two utility folders:
 * __scripts__: Scripts for performing driving in simulators. Main files include:
    * run_data_collection.py: launch the simulator and driving algorithms for data collection or evaluation purposes. One can use the following modes to be set via the `--basedline` argument:
       * imitation (Unity): drive a car directly using a trained policy network.
-      * pomdp (SUMMIT): drive a car using Decoupled-Action POMDP and Hybrid A*.
+      * pomdp (?): drive a car using Decoupled-Action POMDP and Hybrid A*.
       * joint_pomdp (SUMMIT): drive a car using Joint-Action POMDP.
       * lets-drive (?): drive a car using guided belief tree search.
       
@@ -149,14 +149,14 @@ tensorboard --logdir runs --port=6001
 ```
 ssh -4 -N -f -L localhost:6001:localhost:6001 [remote address, e.g. panpan@unicorn4.d2.comp.nus.edu.sg]
 ```
-Then, on your local browser, visit http://localhost:6010/
+Then, on your local browser, visit http://localhost:6001/
 
 **Main Arguments**:
 - `train`: The path to the train dataset.
 - `val`: The path to the validation dataset.
 - `lr`: Learning rate.
 - `batch_size`: Batch size. 
-- `epochs`: Number of epochs to train. Default: 100.
+- `epochs`: Number of epochs to train. Default: 50.
 - `modelfile`: Name of the model file to be saved. Time flag will be appended for the actual save name. To specify the exact name, set `exactname` to be True.
 - `resume`: The model file you want to load and retrain.
 - `k`: Number of Value Iterations in GPPN. Default: 5.
