@@ -101,6 +101,10 @@ catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
 # install python dependencies for the neural network learner.
 cd catkin_ws/src/IL_contoller && pip install -r requirements.txt
 ```
+To validate your environment setup:
+```cd catkin_ws
+catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
+```
 ### 1.4 Setup the SUMMIT simulator
 Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to `~/summit`. 
 Or you can download the [source code](https://github.com/AdaCompNUS/carla.git) from github and compile from source.
