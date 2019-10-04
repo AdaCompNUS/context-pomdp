@@ -25,4 +25,5 @@ rosdep init \
 sudo apt-get update && sudo apt-get install --no-install-recommends -y \
     python-rosdep \
     python-rosinstall \
+    python-catkin-tools \
     python-vcstools
