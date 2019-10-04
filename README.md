@@ -59,52 +59,63 @@ Optionally, append the source ~/lets_drive... line to ~/.bashrc. Also, to deacti
 deactivate
 ```
 ### 1.3 Setup Dependencies
-Download all bash scripts in the [setup](./setup) folder (note: not the full repo), then run
+Download all bash scripts in the [setup](./setup) folder (note: not the full repo). Then, go through the following steps to set up the dependencies:
+#### 1.3.1 install ros-melodic
+Run
 ```
-bash setup.sh
-```
-This setup script will:
-* install ros-melodic
-* build and install the lastest libtorch (the CPP frontend of Pytorch)
-* build and install OpenCV 4.1.0
-* install dependent python packages
-
-The script will prompt for sudo privilege.
-If you already have some dependencies installed, block the cooresponding line in setup.sh:
-```
-# install dependencies
 bash install_ros_melodic.sh
+```
+The script might prompt for sudo privilege.
+Then add the following line to the end of `~/.bashrc`:
+```
+source /opt/ros/melodic/setup.bash
+```
+Logout and login again into your account. Then type `roscd` to validate the installation. The command should navigate you to `/opt/ros/melodic/`.
+#### 1.3.2 build and install the lastest libtorch (the CPP frontend of Pytorch)
+Run
+```
 bash install_torch.sh
-bash install_opencv4.sh
+```
+The script might prompt for sudo privilege.
+Run 
+```ls -alh ~/libtorch```
+to validate the installation. You are expected to see the following directories:
+```include  lib  share```
 
-# prepare catkin workspace
+#### 1.3.3 build and install OpenCV 4.1.0
+The script might prompt for sudo privilege.
+
+#### 1.3.4 prepare the catkin workspace
+Run
+```
 mkdir -p catkin_ws/src
 cd catkin_ws
 catkin config --merge-devel
 catkin build
+```
+#### 1.3.5 fetch the full repository
+Run
+```
+cd src
+git clone https://github.com/cindycia/LeTS-Drive-SUMMIT.git    
+mv LeTS-Drive-SUMMIT/* .
+mv LeTS-Drive-SUMMIT/.git .
+```
+Now all ROS packages should be in `~/catkin_ws/src`.
 
-# fetch the github repository
-if [ -d "~/catkin_ws/src/car_hyp_despot" ] 
-then
-    echo "Directory car_hyp_despot exists, not cloning LeTS-Drive-SUMMIT repository." 
-else
-    cd src
-    git clone https://github.com/cindycia/LeTS-Drive-SUMMIT.git    
-    mv LeTS-Drive-SUMMIT/* .
-    mv LeTS-Drive-SUMMIT/.git .
-fi
-
-# compile the project
+Compile packages in the workspace:
+```
 cd catkin_ws
+catkin config --merge-devel
 catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
+```
 
-# install python dependencies for the neural network learner.
+#### 1.3.4 install dependent python packages
+Run
+```
 cd catkin_ws/src/IL_contoller && pip install -r requirements.txt
 ```
-To validate your environment setup:
-```cd catkin_ws
-catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
-```
+
 ### 1.4 Setup the SUMMIT simulator
 Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to `~/summit`. 
 Or you can download the [source code](https://github.com/AdaCompNUS/carla.git) from github and compile from source.
