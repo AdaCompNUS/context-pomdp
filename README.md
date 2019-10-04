@@ -127,7 +127,7 @@ deactivate
 ```
 (Compulsory) To install python dependencies,run
 ```
-roscd il_controller && pip install -r requirements.txt
+roscd il_controller/src && pip install -r requirements.txt
 ```
 ### 1.3 Setup the SUMMIT simulator
 Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to `~/summit`. 
