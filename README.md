@@ -73,6 +73,13 @@ Run
 to validate the installation. You are expected to see the following directories:
 ```include  lib  share```
 
+An additional step here is to validate the CMake installation:
+```
+cmake --version
+```
+The output version should be `3.14.1`. If not, logout and login again to your account. 
+
+If the output version is still not correct. Redo the CMake installation lines in `install_torch.sh`, then re-login to your account.
 #### 1.2.3 Build and install OpenCV 4.1.0
 Run
 ```
@@ -118,9 +125,9 @@ You can append the source ~/lets_drive... line to ~/.bashrc. Also, to deactivate
 ```
 deactivate
 ```
-(Compulsory) To install python dependencies,run
+(Compulsory) To install python dependencies, run
 ```
-roscd il_contoller && pip install -r requirements.txt
+roscd il_controller/src && pip install -r requirements.txt
 ```
 ### 1.3 Setup the SUMMIT simulator
 Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to `~/summit`. 
