@@ -59,7 +59,7 @@ Optionally, append the source ~/lets_drive... line to ~/.bashrc. Also, to deacti
 deactivate
 ```
 ### 1.3 Setup Dependencies
-Download all bash scripts in the [setup](./setup) folder, then run
+Download all bash scripts in the [setup](./setup) folder (note: not the full repo), then run
 ```
 bash setup.sh
 ```
