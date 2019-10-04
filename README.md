@@ -51,7 +51,7 @@ The repository also contains two utility folders:
 Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
-virtualenv --system-site-packes lets_drive 
+virtualenv --system-site-packages lets_drive 
 source ~/lets_drive/bin/activate
 ```
 Optionally, append the source ~/lets_drive... line to ~/.bashrc. Also, to deactivate the current virtual environment, just type.
