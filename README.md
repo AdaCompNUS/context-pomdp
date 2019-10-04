@@ -50,7 +50,7 @@ The repository also contains two utility folders:
 
 ### 1.2 Setup Dependencies
 Download all bash scripts in the [setup](./setup) folder (note: not the full repo). Then, go through the following steps to set up the dependencies:
-#### 1.2.1 install ros-melodic
+#### 1.2.1 Install ros-melodic
 Run
 ```
 bash install_ros_melodic.sh
@@ -61,24 +61,25 @@ Then add the following line to the end of `~/.bashrc`:
 source /opt/ros/melodic/setup.bash
 ```
 Logout and login again into your account. Then type `roscd` to validate the installation. The command should navigate you to `/opt/ros/melodic/`.
-#### 1.2.2 build and install the lastest libtorch (the CPP frontend of Pytorch)
+#### 1.2.2 Build and install the lastest libtorch (the CPP frontend of Pytorch)
 Run
 ```
 bash install_torch.sh
 ```
 The script might prompt for sudo privilege.
+
 Run 
 ```ls -alh ~/libtorch```
 to validate the installation. You are expected to see the following directories:
 ```include  lib  share```
 
-#### 1.2.3 build and install OpenCV 4.1.0
+#### 1.2.3 Build and install OpenCV 4.1.0
 Run
 ```
 bash install_opencv4.sh 
 ```
 The script might prompt for sudo privilege.
-#### 1.2.4 prepare the catkin workspace
+#### 1.2.4 Prepare the catkin workspace
 Run
 ```
 mkdir -p catkin_ws/src
@@ -90,7 +91,7 @@ Then, add the following line to the end of `~/.bashrc`:
 ```
 source ~/catkin_ws/devel/setup.bash
 ```
-#### 1.2.5 fetch the full repository
+#### 1.2.5 Fetch the full repository
 Run
 ```
 cd src
@@ -107,8 +108,7 @@ catkin config --merge-devel
 catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
 
-#### 1.2.6 install dependent python packages
-
+#### 1.2.6 Install dependent python packages
 (Optional) Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
