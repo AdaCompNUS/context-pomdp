@@ -82,7 +82,7 @@ The script might prompt for sudo privilege.
 #### 1.2.4 Prepare the catkin workspace
 Run
 ```
-mkdir -p catkin_ws/src
+cd && mkdir -p catkin_ws/src
 cd catkin_ws
 catkin config --merge-devel
 catkin build
