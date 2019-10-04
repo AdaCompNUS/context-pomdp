@@ -103,7 +103,7 @@ Now all ROS packages should be in `~/catkin_ws/src`.
 
 Compile packages in the workspace:
 ```
-cd catkin_ws
+cd ~/catkin_ws
 catkin config --merge-devel
 catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
