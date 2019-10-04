@@ -142,13 +142,16 @@ LinuxNoEditor/CarlaUE4.sh -carla-rpc-port=2000 -carla-streaming-port=2001
 ```
 You can change 2000 and 2001 to any unused port you like.
 
-Note: this is only required when launching the simulator and the planning in different containers like docker. For this, you also need to block the cooresponding launching code in experiment_summit.sh.
+Note: this is only required when launching the simulator and the planner in different envirnoments, like local/remote, local/docker. For this, you also need to block the cooresponding launching code in run_data_collection.py:
+```
+launch_summit = True # change to False to avoid automatic launching of SUMMIT before the planner.
+```
 ### 2.2 Launch the Planner
 ```
 cd ~/catkin_ws/src/scripts
 ./experiment_summmit.sh [gpu_id] [start_round] [end_round(inclusive)] [carla_portal, e.g. 2000 as set before]
 ```
-Step 2.1 is not required if experiment_summit.sh launches the summit simulator. 
+Step 2.1 is not required if `launch_summit = True` in `run_data_collection.py`. In this case, `experiment_summmit.sh` will launch the simulator before running the planner.
 
 experiment_summit.sh does not record bags by default. To enable rosbag recording, change the following variable to 1 in the script:
 ```
