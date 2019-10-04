@@ -125,7 +125,7 @@ You can append the source ~/lets_drive... line to ~/.bashrc. Also, to deactivate
 ```
 deactivate
 ```
-(Compulsory) To install python dependencies,run
+(Compulsory) To install python dependencies, run
 ```
 roscd il_controller/src && pip install -r requirements.txt
 ```
