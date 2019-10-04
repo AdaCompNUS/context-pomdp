@@ -120,7 +120,7 @@ deactivate
 ```
 (Compulsory) To install python dependencies,run
 ```
-cd catkin_ws/src/IL_contoller && pip install -r requirements.txt
+roscd il_contoller && pip install -r requirements.txt
 ```
 ### 1.3 Setup the SUMMIT simulator
 Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to `~/summit`. 
