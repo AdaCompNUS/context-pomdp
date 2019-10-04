@@ -68,6 +68,7 @@ This setup script will:
 * build and install the lastest libtorch (the CPP frontend of Pytorch)
 * build and install OpenCV 4.1.0
 * install dependent python packages
+
 The script will prompt for sudo privilege.
 If you already have some dependencies installed, block the cooresponding line in setup.sh:
 ```
