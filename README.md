@@ -87,14 +87,10 @@ cd catkin_ws
 catkin config --merge-devel
 catkin build
 ```
-Then, add the following line to the end of `~/.bashrc`:
-```
-source ~/catkin_ws/devel/setup.bash
-```
 #### 1.2.5 Fetch the full repository
 Run
 ```
-cd src
+cd ~/catkin_ws/src
 git clone https://github.com/cindycia/LeTS-Drive-SUMMIT.git    
 mv LeTS-Drive-SUMMIT/* .
 mv LeTS-Drive-SUMMIT/.git .
@@ -107,7 +103,10 @@ cd ~/catkin_ws
 catkin config --merge-devel
 catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
-
+Then, add the following line to the end of `~/.bashrc`:
+```
+source ~/catkin_ws/devel/setup.bash
+```
 #### 1.2.6 Install dependent python packages
 (Optional) Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
