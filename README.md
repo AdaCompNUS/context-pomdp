@@ -47,20 +47,10 @@ The repository also contains two utility folders:
 ### 1.1 Pre-requisites
 1. Install [CUDA 10.0](https://developer.nvidia.com/cuda-10.0-download-archive) (Note: you need to follow the [official guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) for a successful installation.)
 2. Install [CUDNN 7](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html)
-### 1.2 (Optional) Python Virtual Environment
-Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
-```
-cd
-virtualenv --system-site-packages lets_drive 
-source ~/lets_drive/bin/activate
-```
-Optionally, append the source ~/lets_drive... line to ~/.bashrc. Also, to deactivate the current virtual environment, just type.
-```
-deactivate
-```
-### 1.3 Setup Dependencies
+
+### 1.2 Setup Dependencies
 Download all bash scripts in the [setup](./setup) folder (note: not the full repo). Then, go through the following steps to set up the dependencies:
-#### 1.3.1 install ros-melodic
+#### 1.2.1 install ros-melodic
 Run
 ```
 bash install_ros_melodic.sh
@@ -71,7 +61,7 @@ Then add the following line to the end of `~/.bashrc`:
 source /opt/ros/melodic/setup.bash
 ```
 Logout and login again into your account. Then type `roscd` to validate the installation. The command should navigate you to `/opt/ros/melodic/`.
-#### 1.3.2 build and install the lastest libtorch (the CPP frontend of Pytorch)
+#### 1.2.2 build and install the lastest libtorch (the CPP frontend of Pytorch)
 Run
 ```
 bash install_torch.sh
@@ -82,13 +72,13 @@ Run
 to validate the installation. You are expected to see the following directories:
 ```include  lib  share```
 
-#### 1.3.3 build and install OpenCV 4.1.0
+#### 1.2.3 build and install OpenCV 4.1.0
 Run
 ```
 bash install_opencv4.sh 
 ```
 The script might prompt for sudo privilege.
-#### 1.3.4 prepare the catkin workspace
+#### 1.2.4 prepare the catkin workspace
 Run
 ```
 mkdir -p catkin_ws/src
@@ -100,7 +90,7 @@ Then, add the following line to the end of `~/.bashrc`:
 ```
 source ~/catkin_ws/devel/setup.bash
 ```
-#### 1.3.5 fetch the full repository
+#### 1.2.5 fetch the full repository
 Run
 ```
 cd src
@@ -117,13 +107,23 @@ catkin config --merge-devel
 catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
 
-#### 1.3.4 install dependent python packages
-Run
+#### 1.2.6 install dependent python packages
+
+(Optional) Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
+```
+cd
+virtualenv --system-site-packages lets_drive 
+source ~/lets_drive/bin/activate
+```
+You can append the source ~/lets_drive... line to ~/.bashrc. Also, to deactivate the current virtual environment, just type.
+```
+deactivate
+```
+(Compulsory) To install python dependencies,run
 ```
 cd catkin_ws/src/IL_contoller && pip install -r requirements.txt
 ```
-
-### 1.4 Setup the SUMMIT simulator
+### 1.3 Setup the SUMMIT simulator
 Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to `~/summit`. 
 Or you can download the [source code](https://github.com/AdaCompNUS/carla.git) from github and compile from source.
 For now the code explicitly uses this `~/summit` to find the simulator. So stick to the path for SUMMIT installation.
