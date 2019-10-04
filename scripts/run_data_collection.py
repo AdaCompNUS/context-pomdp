@@ -1014,16 +1014,19 @@ def launch_python_scripts(round, run, case):
 
 def launch_carla_simulator(round, run, case):
     global shell_cmd
-    shell_cmd = 'DISPLAY= ./CarlaUE4.sh -opengl'
-    # shell_cmd = './CarlaUE4.sh'
-    if config.verbosity > 0:
-        print('')
-        print(shell_cmd)
+    
+    launch_summit = True
 
-    carla_proc = subprocess.Popen(shell_cmd, cwd=os.path.join(home, "summit/LinuxNoEditor"), shell = True)
+    if launch_summit:
+        shell_cmd = 'DISPLAY= ./CarlaUE4.sh -opengl'
+        if config.verbosity > 0:
+            print('')
+            print(shell_cmd)
 
-    wait_for(config.max_launch_wait, carla_proc, '[launch] carla_engine')
-    time.sleep(1)   
+        carla_proc = subprocess.Popen(shell_cmd, cwd=os.path.join(home, "summit/LinuxNoEditor"), shell = True)
+
+        wait_for(config.max_launch_wait, carla_proc, '[launch] carla_engine')
+        time.sleep(1)   
 
     shell_cmd = config.ros_pref+'roslaunch connector.launch port:=' + str(config.port)
     if config.verbosity > 0:
