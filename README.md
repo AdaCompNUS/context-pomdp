@@ -34,7 +34,7 @@ Here is the list of ROS packages marked with the simulator they support:
 The repository also contains two utility folders:
 * __setup__: Bash scripts for setting up the environment.
 * __scripts__: Scripts for performing driving in simulators. Main files include:
-   * run_data_collection.py: launch the simulator and driving algorithms for data collection or evaluation purposes. One can use the following modes to be set via the `--basedline` argument:
+   * run_data_collection.py: launch the simulator and driving algorithms for data collection or evaluation purposes. One can use the following modes to be set via the `--baseline` argument:
       * imitation (Unity): drive a car directly using a trained policy network.
       * pomdp (?): drive a car using Decoupled-Action POMDP and Hybrid A*.
       * joint_pomdp (SUMMIT): drive a car using Joint-Action POMDP.
