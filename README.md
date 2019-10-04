@@ -83,8 +83,11 @@ to validate the installation. You are expected to see the following directories:
 ```include  lib  share```
 
 #### 1.3.3 build and install OpenCV 4.1.0
+Run
+```
+bash install_opencv4.sh 
+```
 The script might prompt for sudo privilege.
-
 #### 1.3.4 prepare the catkin workspace
 Run
 ```
@@ -92,6 +95,10 @@ mkdir -p catkin_ws/src
 cd catkin_ws
 catkin config --merge-devel
 catkin build
+```
+Then, add the following line to the end of `~/.bashrc`:
+```
+source ~/catkin_ws/devel/setup.bash
 ```
 #### 1.3.5 fetch the full repository
 Run
