@@ -16,5 +16,5 @@ scikit-image
 scikit-learn
 pyros_setup
 gnupg
-socketio
+python-socketio
 flask
