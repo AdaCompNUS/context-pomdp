@@ -51,6 +51,10 @@ class CrowdProcessor(Drunc):
                 '/agent_array',
                 msg_builder.msg.TrafficAgentArray,
                 queue_size=1)
+        self.agents_path_pub = rospy.Publisher(
+                '/agent_path_array',
+                msg_builder.msg.AgentPathArray,
+                queue_size=1)
 
     def network_agents_callback(self, agents):
         self.network_agents = agents.agents
@@ -95,6 +99,7 @@ class CrowdProcessor(Drunc):
                 ego_car_position.y)
 
         agents_msg = msg_builder.msg.TrafficAgentArray()
+        agents_path_msg = msg_builder.msg.AgentPathArray()
 
         current_time = rospy.Time.now()
         agents = self.network_agents + self.sidewalk_agents
@@ -127,6 +132,12 @@ class CrowdProcessor(Drunc):
                 agent_tmp.bbox.points.append(Point32(
                     x=corner.x, y=corner.y, z=0.0))
 
+            agents_msg.agents.append(agent_tmp)
+
+            agent_paths_tmp = msg_builder.msg.AgentPaths()
+            agent_paths_tmp.id = actor.id
+            agent_paths_tmp.type = agent.type
+
             if type(agent) is msg_builder.msg.CrowdNetworkAgent:
                 initial_route_point = carla.SumoNetworkRoutePoint()
                 initial_route_point.edge = agent.route_point.edge
@@ -149,7 +160,7 @@ class CrowdProcessor(Drunc):
                                     len(next_route_points))
                     paths = next_paths
 
-                agent_tmp.reset_intention = self.topological_hash_map[agent.id] is None or self.topological_hash_map[agent.id] != topological_hash
+                agent_paths_tmp.reset_intention = self.topological_hash_map[agent.id] is None or self.topological_hash_map[agent.id] != topological_hash
                 for path in paths:
                     path_msg = Path()
                     path_msg.header.frame_id = 'map'
@@ -162,8 +173,8 @@ class CrowdProcessor(Drunc):
                         pose_msg.pose.position.y = path_point.y
                         path_msg.poses.append(pose_msg)
                     # self.draw_path(path_msg)
-                    agent_tmp.path_candidates.append(path_msg)
-                agent_tmp.cross_dirs = []
+                    agent_paths_tmp.path_candidates.append(path_msg)
+                agent_paths_tmp.cross_dirs = []
                 self.topological_hash_map[agent.id] = topological_hash
 
             elif type(agent) is msg_builder.msg.CrowdSidewalkAgent:
@@ -181,7 +192,7 @@ class CrowdProcessor(Drunc):
                         path.append(self.sidewalk.get_previous_route_point(path[-1], 1.0)) # TODO Add as ROS parameter.
                 topological_hash = '{},{}'.format(sidewalk_route_point.polygon_id, agent.route_orientation)
 
-                agent_tmp.reset_intention = self.topological_hash_map[agent.id] is None or self.topological_hash_map[agent.id] != topological_hash
+                agent_paths_tmp.reset_intention = self.topological_hash_map[agent.id] is None or self.topological_hash_map[agent.id] != topological_hash
                 path_msg = Path()
                 path_msg.header.frame_id = 'map'
                 path_msg.header.stamp = current_time
@@ -193,15 +204,19 @@ class CrowdProcessor(Drunc):
                     pose_msg.pose.position.y = path_point.y
                     path_msg.poses.append(pose_msg)
                 # self.draw_path(path_msg)
-                agent_tmp.path_candidates = [path_msg]
-                agent_tmp.cross_dirs = [agent.route_orientation]
+                agent_paths_tmp.path_candidates = [path_msg]
+                agent_paths_tmp.cross_dirs = [agent.route_orientation]
                 self.topological_hash_map[agent.id] = topological_hash
             
-            agents_msg.agents.append(agent_tmp)
+            agents_path_msg.agents.append(agent_paths_tmp)
 
         agents_msg.header.frame_id = 'map'
         agents_msg.header.stamp = current_time    
         self.agents_pub.publish(agents_msg)
+
+        agents_path_msg.header.frame_id = 'map'
+        agents_path_msg.header.stamp = current_time
+        self.agents_path_pub.publish(agents_path_msg)
 
         self.do_update = False
         end_time = rospy.Time.now()

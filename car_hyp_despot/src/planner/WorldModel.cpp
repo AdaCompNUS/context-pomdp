@@ -1752,16 +1752,7 @@ void WorldStateTracker::trackVel(Agent& des, const Agent& src, bool& no_move, bo
 
 
 void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
-    // double w,h;
-    // COORD vel;
-    // int id;  
-    // double last_update;
 
-    // bool reset_intention;
-    // std::vector<std::vector<COORD>> paths;  
-
-    // std::vector<COORD> bb;
-    
     int i=0;
     bool no_move = true;
     for(;i<veh_list.size();i++) {
@@ -1774,13 +1765,11 @@ void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
             tracBoundingBox(veh_list[i], veh, doPrint);
 
             veh_list[i].time_stamp = veh.time_stamp;
-            // veh_list[i].last_update = get_timestamp();
-
             break;
         }
 
         if (abs(veh_list[i].w-veh.w)<=0.1 && abs(veh_list[i].h-veh.h)<=0.1)   //overlap
-        {}        
+        {}
     }
 
     if (i==veh_list.size()) {
@@ -1792,7 +1781,6 @@ void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
 
         veh_list.back().vel.x = 0.01; // to avoid subsequent runtime error
         veh_list.back().vel.y = 0.01; // to avoid subsequent runtime error
-        // veh_list.back().last_update = get_timestamp();
         veh_list.back().time_stamp = veh.time_stamp;
 
         updatePathPool(veh_list.back());
@@ -1802,6 +1790,56 @@ void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
         cout << __FUNCTION__ << " no_move veh "<< veh.id <<
                 " caught: vel " << veh_list[i].vel.x <<" "<< veh_list[i].vel.y << endl;
     }
+}
+
+void WorldStateTracker::updateVehState(const Vehicle& veh, bool doPrint){
+
+    int i=0;
+    bool no_move = true;
+    for(;i<veh_list.size();i++) {
+        if (veh_list[i].id==veh.id) {
+            logd <<"[updateVel] updating agent " << veh.id << endl;
+
+            trackVel(veh_list[i], veh, no_move, doPrint);
+            tracPos(veh_list[i], veh, doPrint);
+            tracBoundingBox(veh_list[i], veh, doPrint);
+            veh_list[i].time_stamp = veh.time_stamp;
+            break;
+        }
+
+        if (abs(veh_list[i].w-veh.w)<=0.1 && abs(veh_list[i].h-veh.h)<=0.1)   //overlap
+        {}
+    }
+
+    if (i==veh_list.size()) {
+        logd << "[updateVel] updating new agent " << veh.id << endl;
+
+        no_move = false;
+
+        veh_list.push_back(veh);
+        veh_list.back().vel.x = 0.01; // to avoid subsequent runtime error
+        veh_list.back().vel.y = 0.01; // to avoid subsequent runtime error
+        veh_list.back().time_stamp = veh.time_stamp;
+    }
+
+    if (no_move){
+        cout << __FUNCTION__ << " no_move veh "<< veh.id <<
+                " caught: vel " << veh_list[i].vel.x <<" "<< veh_list[i].vel.y << endl;
+    }
+}
+
+void WorldStateTracker::updateVehPaths(const Vehicle& veh, bool doPrint){
+
+    int i=0;
+    bool no_move = true;
+    for(;i<veh_list.size();i++) {
+        if (veh_list[i].id==veh.id) {
+            logd <<"[updateVel] updating agent path " << veh.id << endl;
+            tracIntention(veh_list[i], veh, doPrint);
+            break;
+        }
+    }
+
 }
 
 void WorldStateTracker::updatePed(const Pedestrian& agent, bool doPrint){
@@ -1817,15 +1855,11 @@ void WorldStateTracker::updatePed(const Pedestrian& agent, bool doPrint){
             tracIntention(ped_list[i], agent, doPrint);
             tracCrossDirs(ped_list[i], agent, doPrint);
             ped_list[i].time_stamp = agent.time_stamp;
-            // ped_list[i].last_update = get_timestamp();
 
             break;
         }
         if (abs(ped_list[i].w-agent.w)<=0.1 && abs(ped_list[i].h-agent.h)<=0.1)   //overlap
-        {
-        	//if (doPrint) cout <<"[updatePed] overlapping agent skipped" << agent.id << endl;
-            //return;
-        }
+        {}
     }
 
     if (i==ped_list.size()) {
@@ -1840,13 +1874,57 @@ void WorldStateTracker::updatePed(const Pedestrian& agent, bool doPrint){
         ped_list.back().time_stamp = agent.time_stamp;
 
         updatePathPool(ped_list.back());
-//        cout <<"[updatePed] new agent added" << agent.id << endl;
     }
 
     if (no_move){
 		cout << __FUNCTION__ << " no_move agent "<< agent.id <<
 				" caught: vel " << ped_list[i].vel.x <<" "<< ped_list[i].vel.y << endl;
-//		raise(SIGABRT);
+    }
+}
+
+void WorldStateTracker::updatePedState(const Pedestrian& agent, bool doPrint){
+    int i=0;
+
+    bool no_move = true;
+    for(;i<ped_list.size();i++) {
+        if (ped_list[i].id==agent.id) {
+            logd <<"[updatePed] updating agent " << agent.id << endl;
+
+            trackVel(ped_list[i], agent, no_move, doPrint);
+            tracPos(ped_list[i], agent, doPrint);
+            ped_list[i].time_stamp = agent.time_stamp;
+            break;
+        }
+        if (abs(ped_list[i].w-agent.w)<=0.1 && abs(ped_list[i].h-agent.h)<=0.1)   //overlap
+        {}
+    }
+
+    if (i==ped_list.size()) {
+    	no_move = false;
+        //not found, new agent
+   	    logd << "[updatePed] updating new agent " << agent.id << endl;
+
+        ped_list.push_back(agent);
+        ped_list.back().vel.x = 0.01; // to avoid subsequent runtime error
+        ped_list.back().vel.y = 0.01; // to avoid subsequent runtime error
+        ped_list.back().time_stamp = agent.time_stamp;
+    }
+
+    if (no_move){
+		cout << __FUNCTION__ << " no_move agent "<< agent.id <<
+				" caught: vel " << ped_list[i].vel.x <<" "<< ped_list[i].vel.y << endl;
+    }
+}
+
+void WorldStateTracker::updatePedPaths(const Pedestrian& agent, bool doPrint){
+    for(int i=0;i<ped_list.size();i++) {
+        if (ped_list[i].id==agent.id) {
+            logd <<"[updatePed] updating agent paths" << agent.id << endl;
+
+            tracIntention(ped_list[i], agent, doPrint);
+            tracCrossDirs(ped_list[i], agent, doPrint);
+            break;
+        }
     }
 }
 

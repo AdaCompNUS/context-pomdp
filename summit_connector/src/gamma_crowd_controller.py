@@ -263,6 +263,8 @@ class GammaCrowdController(Drunc):
                 '/crowd/sidewalk_agents', 
                 msg_builder.msg.CrowdSidewalkAgentArray, 
                 queue_size=1)
+        self.agents_ready_pub = rospy.Publisher('/agents_ready', Bool, queue_size=1, latch=True) 
+
         self.il_car_info_sub = rospy.Subscriber(
                 '/ego_state',
                 CarInfo,
@@ -295,6 +297,7 @@ class GammaCrowdController(Drunc):
         self.log_file = open(os.path.join(os.path.expanduser('~'), 'gamma_data.txt'), 'w', buffering=0)
 
         self.do_publish = False 
+        self.initial_stage = True
         self.timer = rospy.Timer(rospy.Duration(0.1), self.publish_agents)
 
     def get_bounding_box_corners(self, actor, expand = 0.0):
@@ -533,10 +536,9 @@ class GammaCrowdController(Drunc):
                     5.0 + random.uniform(0.0, 0.5)))
                 self.stats_total_num_car += 1
             elapsed_time = time.time() - start_t
-            # if elapsed_time > 3:
-                # break
-            if len(self.network_car_agents) > self.num_network_car_agents/1.2:
-                self.do_publish = True;
+            
+            if len(self.network_car_agents) > 0:
+                self.do_publish = True
 
         start_t = time.time()
         while len(self.network_bike_agents) < self.num_network_bike_agents:
@@ -557,10 +559,8 @@ class GammaCrowdController(Drunc):
                 self.stats_total_num_bike += 1
             elapsed_time = time.time() - start_t
 
-            if len(self.network_bike_agents) > self.num_network_bike_agents/2.0:
-                self.do_publish = True;
-            # if elapsed_time > 3:
-                # break
+            if len(self.network_bike_agents) > 0:
+                self.do_publish = True
 
         start_t = time.time()
         while len(self.sidewalk_agents) < self.num_sidewalk_agents:
@@ -582,11 +582,13 @@ class GammaCrowdController(Drunc):
                 self.stats_total_num_ped += 1
             elapsed_time = time.time() - start_t
 
-            if len(self.sidewalk_agents) > self.num_sidewalk_agents/2.0:
-                self.do_publish = True;
-            # if elapsed_time > 3:
-                # break
+            if len(self.sidewalk_agents) > 0:
+                self.do_publish = True
         
+        if not self.initialized:
+            # send a one time message to inform the pomdp planner
+            self.agents_ready_pub.publish(True)
+
         commands = []
         
         next_agents = []

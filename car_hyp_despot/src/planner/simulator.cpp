@@ -20,6 +20,7 @@ using namespace despot;
 WorldStateTracker* SimulatorBase::stateTracker;
 WorldModel SimulatorBase::worldModel;     
 bool SimulatorBase::agents_data_ready = false;
+bool SimulatorBase::agents_path_data_ready = false;
 
 int n_sim = 1;
 

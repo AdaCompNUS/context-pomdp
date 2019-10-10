@@ -142,7 +142,8 @@ public:
     int NumPaths(int agent_id){ 
         auto it = id_map_num_paths.find(agent_id);
         if (it == id_map_num_paths.end()){
-            ERR(string_sprintf("agent id %d not found in id_map_num_paths\n", agent_id));
+            DEBUG(string_sprintf("agent id %d not found in id_map_num_paths\n", agent_id));
+            return 0;
         }
         return it->second;
     }
@@ -263,8 +264,12 @@ public:
 
     void updatePed(const Pedestrian& ped, bool doPrint = false);
     void updateVeh(const Vehicle& veh, bool doPrint = false); // this is for exo-vehicles
+    void updatePedState(const Pedestrian& ped, bool doPrint = false);
+	void updateVehState(const Vehicle& veh, bool doPrint = false); // this is for exo-vehicles
+	void updatePedPaths(const Pedestrian& ped, bool doPrint = false);
+	void updateVehPaths(const Vehicle& veh, bool doPrint = false); // this is for exo-vehicles
     
-    void trackVel(Agent& des, const Agent& src, bool&, bool);
+	void trackVel(Agent& des, const Agent& src, bool&, bool);
     void tracPos(Agent& des, const Agent& src, bool);
     void tracIntention(Agent& des, const Agent& src, bool);
     void tracBoundingBox(Vehicle& des, const Vehicle& src, bool);
@@ -338,6 +343,7 @@ public:
     std::vector<Vehicle> veh_list;
 
     double latest_time_stamp;
+    double latest_path_time_stamp;
 
     WorldModel& model;
 };

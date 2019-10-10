@@ -96,6 +96,7 @@ public:
 
 public:
 	static bool agents_data_ready;
+	static bool agents_path_data_ready;
 };
 
 

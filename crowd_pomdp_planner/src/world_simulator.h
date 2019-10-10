@@ -137,7 +137,7 @@ public:
 	ros::Publisher pa_pub;
 	ros::Publisher cmdPub_, actionPub_, actionPubPlot_;
 
-    ros::Subscriber speedSub_, agentSub_, mapSub_, scanSub_, move_base_speed_;
+    ros::Subscriber speedSub_, agentSub_, agentpathSub_, mapSub_, scanSub_, move_base_speed_;
 
     ros::Timer timer_speed;
     ros::Timer timer_cmd_update;
