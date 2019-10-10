@@ -117,8 +117,12 @@ bool WorldSimulator::Connect() {
 	carSub_ = nh.subscribe("ego_state", 1, &WorldSimulator::update_il_car,
 			this);
 
+
 	agentSub_ = nh.subscribe("agent_array", 1, agentArrayCallback);
 	agentpathSub_ = nh.subscribe("agent_path_array", 1, agentPathArrayCallback);
+
+	steerSub_ = nh.subscribe("cmd_steer", 1, &WorldSimulator::cmdSteerCallback, this);
+
 
 	logi << "Subscribers and Publishers created at the "
 			<< SolverPrior::get_timestamp() << "th second" << endl;
@@ -998,6 +1002,13 @@ void receive_map_callback(nav_msgs::OccupancyGrid map) {
 	logi << "[receive_map_callback] end " << endl;
 }
 
+
+void WorldSimulator::cmdSteerCallback(const std_msgs::Float32::ConstPtr steer){
+	// receive steering in rad
+	p_IL_data.action_reward.angular.x = float(steer->data);
+}
+
+
 geometry_msgs::PoseStamped WorldSimulator::getPoseAhead(
 		const tf::Stamped<tf::Pose>& carpose) {
 	static int last_i = -1;
@@ -1087,12 +1098,6 @@ void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
 	}
 }
 
-//void WorldSimulator::update_il_steering(const std_msgs::Float32::ConstPtr steer){
-//	if (b_update_il == true){
-//    	p_IL_data.action_reward.angular.x = float(steer->data);
-//    	cout<< "receive steer "<<steer->data <<endl;
-//    }
-//}
 
 void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state,
 		ACT_TYPE safeAction, float reward, float cmd_vel) {
@@ -1115,27 +1120,6 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state,
 
 	p_IL_data.cur_peds = p_ped;
 
-	// ped belief for pushlish
-	// int i=0;
-	// msg_builder::peds_believes pbs;	
-	// for(auto & kv: beliefTracker->agent_beliefs)
-	// {
-	// 	msg_builder::ped_belief pb;
-	// 	AgentBelief belief = kv.second;
-	// 	pb.ped_x=belief.pos.x;
-	// 	pb.ped_y=belief.pos.y;
-	// 	pb.ped_id=belief.id;
-	// 	for(auto & goal_probs : belief.prob_modes_goals)
-	// 		for (auto v: goal_probs)
-	// 			pb.belief_value.push_back(v);
-	// 	pbs.believes.push_back(pb);
-	// }
-	// pbs.cmd_vel=stateTracker->carvel;
-	// pbs.robotx=stateTracker->carpos.x;
-	// pbs.roboty=stateTracker->carpos.y;
-
-	// p_IL_data.believes = pbs.believes;
-
 	// action for publish
 	geometry_msgs::Twist p_action_reward;
 
@@ -1144,11 +1128,10 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state,
 
 	p_IL_data.action_reward.linear.x =
 			static_cast<PedPomdp*>(model_)->GetAccelerationID(safeAction);
-	p_IL_data.action_reward.angular.x =
-			static_cast<PedPomdp*>(model_)->GetSteering(safeAction);
+	// steering come from ROS topic
+    // p_IL_data.action_reward.angular.x = static_cast<PedPomdp*>(model_)->GetSteering(safeAction);
 
 	IL_pub.publish(p_IL_data);
-
 }
 
 void WorldSimulator::Debug_action() {

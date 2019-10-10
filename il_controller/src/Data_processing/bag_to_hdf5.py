@@ -87,9 +87,7 @@ def parse_bag_file(filename=None):
     car_dict = OrderedDict()
     prev_car_dict = OrderedDict()
     act_reward_dict = OrderedDict()
-    # ped_belief_dict = OrderedDict()
     pomdp_act_dict = OrderedDict()
-    vel_dict = OrderedDict()
 
     i = 0
     for topic, msg, timestamp in bag.read_messages():
@@ -104,18 +102,10 @@ def parse_bag_file(filename=None):
         elif topic == '/pomdp_action_plot':
             pomdp_act_dict[timestamp.to_nsec()] = msg
             topic_mode = "seperate"
-        elif topic == '/cmd_vel_to_unity':
-            vel_dict[timestamp.to_nsec()] = msg
-        # elif topic == '/peds_believes':
-        #     ped_belief_dict[timestamp.to_nsec()] = msg
-        #     topic_mode = "seperate"
         elif topic == '/il_data':
             plan_dict[timestamp.to_nsec()] = msg.plan
-            # ped_belief_dict[timestamp.to_nsec()] = msg.believes
             ped_dict[timestamp.to_nsec()] = msg.cur_peds.peds
-            prev_ped_dict[timestamp.to_nsec()] = msg.past_peds.peds
             car_dict[timestamp.to_nsec()] = msg.cur_car
-            prev_car_dict[timestamp.to_nsec()] = msg.past_car
             act_reward_dict[timestamp.to_nsec()] = msg.action_reward
             topic_mode = "combined"
 
@@ -131,7 +121,7 @@ def parse_bag_file(filename=None):
         is_valid = True
 
     if topic_mode == "combined":
-        return map_dict, plan_dict, ped_dict, prev_ped_dict, car_dict, prev_car_dict, act_reward_dict, is_valid
+        return map_dict, plan_dict, ped_dict, car_dict, act_reward_dict, is_valid
     else:
         print("Exception: topic mode {} not defined".format(topic_mode))
         pdb.set_trace()
@@ -241,13 +231,13 @@ def trim_data_after_reach_goal(combined_dict, car_goal):
         # was_near_goal = False
         print("[Warning] Goal proximity path min length: {}, car_goal ({},{}), car_pos ({},{}), last_dist {}".format(
             min_goal_dist, car_goal[0], car_goal[1], cur_car_pos.x, cur_car_pos.y, goal_dist))
-        pass # do_nothing
+        pass  # do_nothing
     else:
         # remove data points after reaching goal
         for i in range(all_keys.index(trim_time) + 1, len(all_keys)):
             del combined_dict[all_keys[i]]
         # was_near_goal = True
-    return True # was_near_goal
+    return True  # was_near_goal
 
 
 def check_path_step_res(cur_plan):
@@ -1241,7 +1231,7 @@ def main(bagspath, peds_goal_path, nped, start_file, end_file, thread_id):
                 car_goal = parse_car_goal_from_txt(txt_file)
                 #
                 if topic_mode == "combined":
-                    map_dict, plan_dict, ped_dict, prev_ped_dict, car_dict, prev_car_dict, \
+                    map_dict, plan_dict, ped_dict, car_dict, \
                     act_reward_dict, topics_complete = parse_bag_file(filename=bag_file)
 
                     if topics_complete:  # all topics in the bag are non-empty
