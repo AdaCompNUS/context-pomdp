@@ -17,9 +17,11 @@ from global_params import config
 
 if config.pycharm_mode:
     import pyros_setup
+
     pyros_setup.configurable_import().configure('mysetup.cfg').activate()
 
 import os
+
 #
 # import cv2
 # import sys
@@ -33,7 +35,6 @@ import fnmatch
 import argparse
 import deepdish as dd
 import numpy as np
-import codecs
 import pdb
 import math
 import glob
@@ -42,11 +43,10 @@ from skimage.draw import polygon, line
 from transforms import *
 
 from geometry_msgs.msg import Twist
-from msg_builder.msg import peds_believes, peds_car_info
+from msg_builder.msg import peds_car_info
 
 import time
 import copy
-
 
 # topic_mode = "seperate"
 topic_mode = "combined"
@@ -67,6 +67,7 @@ GOAL_REWARD = 0.0
 learning_mode = 'im'
 
 agent_file = None
+
 
 def parse_bag_file(filename=None):
     global topic_mode
@@ -136,7 +137,7 @@ def parse_bag_file(filename=None):
         pdb.set_trace()
 
 
-def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_reward_dict):
+def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_reward_dict, car_goal):
     # print("Associating time for data with %d source time steps..." % len(act_reward_dict.keys()))
 
     combined_dict = OrderedDict()
@@ -175,73 +176,78 @@ def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_rewa
             'action': action_data,
         }
 
-    was_near_goal = Was_near_goal(combined_dict)
+    # was_near_goal = Was_near_goal(combined_dict, car_goal)
 
-    if was_near_goal:
-        for timestamp in combined_dict.keys():
-            hist_agents = combined_dict[timestamp]['agents']
-            # agent_file.write("\n****** ts {} ******\n".format(timestamp))
-            # for agent in hist_agents:
-            #     agent_file.write("{},{} ".format(agent.car.car_pos.x, agent.car.car_pos.y))
-
-
-    was_near_goal = trim_data_after_reach_goal(combined_dict)
+    was_near_goal = trim_data_after_reach_goal(combined_dict, car_goal)
     # print("bag: num_keys, near_goal", len(list(combined_dict.keys())), was_near_goal)
     return combined_dict, map_dict, was_near_goal
 
 
-def Was_near_goal(combined_dict):
+def Was_near_goal(combined_dict, car_goal):
     dist_thresh = 2
     reach_goal = False
 
+    min_path_len = 1000000
     for timestamp in list(combined_dict.keys()):
         goal_dist = 1000000
         cur_plan = combined_dict[timestamp]['plan']
         if len(cur_plan.poses) <= 3:
             goal_dist = 0
+
+        if len(cur_plan.poses) < min_path_len:
+            min_path_len = len(cur_plan.poses)
 
         if goal_dist < dist_thresh:
             reach_goal = True
             break
 
+    if reach_goal is False:
+        print("[1] plan min step: {}".format(min_path_len))
+
     return reach_goal
 
 
-def trim_data_after_reach_goal(combined_dict):
-    # get goal coordinates
-    start_ts = min(list(combined_dict.keys()))
-    start_plan = combined_dict[start_ts]['plan']
-    #
-    goal_coord = get_goal(start_plan)
-
-    # check_path_step_res(start_plan)
+def trim_data_after_reach_goal(combined_dict, car_goal):
+    if car_goal is None:
+        # get goal coordinates
+        start_ts = min(list(combined_dict.keys()))
+        start_plan = combined_dict[start_ts]['plan']
+        #
+        car_goal = get_goal(start_plan)
 
     # get time at which car is within 2 meters of goal
     trim_time = None
     dist_thresh = 2
-    if topic_mode == "combined":
-        dist_thresh = 2
 
-    for timestamp in list(combined_dict.keys()):
-        goal_dist = 1000000
-        cur_plan = combined_dict[timestamp]['plan']
-        if len(cur_plan.poses) <= 3:
-            goal_dist = 0
+    min_goal_dist = 1000000
+    cur_car_pos = None
+    goal_dist = None
+
+    all_keys = list(combined_dict.keys())
+    for timestamp in all_keys:
+        cur_car_pos = combined_dict[timestamp]['agents'][0].car.car_pos
+
+        goal_dist = math.sqrt((car_goal[0] - cur_car_pos.x) ** 2 +
+                              (car_goal[1] - cur_car_pos.y) ** 2)
+
+        min_goal_dist = min(goal_dist, min_goal_dist)
 
         if goal_dist < dist_thresh:
             trim_time = timestamp
             break
     #
     # delete all data after trim time
-    all_keys = list(combined_dict.keys())
     if trim_time is None:  # never reach goal
-        was_near_goal = False
+        # was_near_goal = False
+        print("[Warning] Goal proximity path min length: {}, car_goal ({},{}), car_pos ({},{}), last_dist {}".format(
+            min_goal_dist, car_goal[0], car_goal[1], cur_car_pos.x, cur_car_pos.y, goal_dist))
+        pass # do_nothing
     else:
         # remove data points after reaching goal
         for i in range(all_keys.index(trim_time) + 1, len(all_keys)):
             del combined_dict[all_keys[i]]
-        was_near_goal = True
-    return was_near_goal
+        # was_near_goal = True
+    return True # was_near_goal
 
 
 def check_path_step_res(cur_plan):
@@ -261,7 +267,7 @@ def track_history(hist_ts, hist_agents, car_dict, ped_dict, timestamp):
             hist_agents[i].peds = hist_agents[i - 1].peds
             hist_ts[i] = hist_ts[i - 1]
 
-            if config.num_hist_channels == i+1:
+            if config.num_hist_channels == i + 1:
                 history_is_complete = True
         else:
             hist_agents[i].car = None
@@ -378,7 +384,6 @@ def create_h5_data(data_dict,
 def process_peds(data_idx, output_dict, hist_cars, hist_peds, hist_pedmaps,
                  dim, origin, resolution, downsample_ratio, map_intensity,
                  map_intensity_scale):
-
     try:
         nearest_ped_ids = get_nearest_ped_ids(hist_peds[0], hist_cars[0])  # return ped id
         valid_ped = 0
@@ -574,7 +579,7 @@ def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, dim, downsa
         start_time = time.time()
 
         output_dict_entry['car'] = construct_car_data(origin, resolution, dim, downsample_ratio,
-                                                          hist_cars, path_data=path_data)
+                                                      hist_cars, path_data=path_data)
 
         # print('----------------------------------------')
         # print('len of output_dict_entry[car][hist] = {}'.format(len(output_dict_entry['car']['hist'])))
@@ -1187,7 +1192,6 @@ def fill_car_edges(points):
 # save in hdf5 format and load in hdf5 in dataloader class of pytorch
 
 def main(bagspath, peds_goal_path, nped, start_file, end_file, thread_id):
-
     global agent_file
     # Walk into subdirectories recursively and collect all txt files
 
@@ -1234,7 +1238,7 @@ def main(bagspath, peds_goal_path, nped, start_file, end_file, thread_id):
             if True:
                 #
                 # Walk into subdirectories recursively and collect all txt files
-                ped_goal_list = parse_goals_using_h5_name(h5_name, peds_goal_path)
+                car_goal = parse_car_goal_from_txt(txt_file)
                 #
                 if topic_mode == "combined":
                     map_dict, plan_dict, ped_dict, prev_ped_dict, car_dict, prev_car_dict, \
@@ -1243,7 +1247,7 @@ def main(bagspath, peds_goal_path, nped, start_file, end_file, thread_id):
                     if topics_complete:  # all topics in the bag are non-empty
 
                         per_step_data_dict, map_dict, was_near_goal = combine_topics_in_one_dict(
-                            map_dict, plan_dict, ped_dict, car_dict, act_reward_dict)
+                            map_dict, plan_dict, ped_dict, car_dict, act_reward_dict, car_goal)
                         end_time = time.time()
                         print("Thread %d parsed: elapsed time %f s" % (thread_id, end_time - start_time))
                         if was_near_goal:
@@ -1284,6 +1288,20 @@ def main(bagspath, peds_goal_path, nped, start_file, end_file, thread_id):
     print("no of files with imcomplete topics %d" % incomplete_file_counter)
 
     agent_file.close()
+
+
+import codecs
+
+
+def parse_car_goal_from_txt(txt_file):
+    with codecs.open(txt_file, 'r', encoding='utf-8',
+                     errors='ignore') as fdata:
+        for line in fdata:
+            if 'car goal:' in line:
+                line_split = line.split(' ')
+                # print(line)
+                return float(line_split[2]), float(line_split[3])
+    return None
 
 
 def parse_goals_using_h5_name(h5_name, peds_goal_path):

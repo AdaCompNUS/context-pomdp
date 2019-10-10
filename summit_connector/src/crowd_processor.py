@@ -55,6 +55,14 @@ class CrowdProcessor(Drunc):
                 '/agent_path_array',
                 msg_builder.msg.AgentPathArray,
                 queue_size=1)
+        self.obstacles_pub = rospy.Publisher(
+                '/local_obstacles',
+                msg_builder.msg.Obstacles,
+                queue_size=1)
+        self.lanes_pub = rospy.Publisher(
+                '/local_lanes',
+                msg_builder.msg.Lanes,
+                queue_size=1)
 
     def network_agents_callback(self, agents):
         self.network_agents = agents.agents
@@ -91,8 +99,6 @@ class CrowdProcessor(Drunc):
             sys.stdout.flush()
             return
 
-        current_time = rospy.Time.now()
-
         ego_car_position = self.ego_car_info.car_pos
         ego_car_position = carla.Vector2D(
                 ego_car_position.x,
@@ -102,6 +108,30 @@ class CrowdProcessor(Drunc):
         agents_path_msg = msg_builder.msg.AgentPathArray()
 
         current_time = rospy.Time.now()
+
+        # get local occupancy map
+        publish_map_rad = 50
+        OM_bound = carla.OccupancyMap(
+            carla.Vector2D(ego_car_position.x - publish_map_rad, ego_car_position.y - publish_map_rad),
+            carla.Vector2D(ego_car_position.x + publish_map_rad, ego_car_position.y + publish_map_rad))
+
+        local_obstacles = OM_bound.difference(self.network_occupancy_map)
+        obstacle_msg = msg_builder.msg.Obstacles
+        obstacle_msg.contours = []
+
+        # print("get polygon:")
+        # print(dir(local_obstacles))
+        self.obstacles_pub.publish(obstacle_msg)
+
+        # get local lane centers
+        local_lanes = self.network_segment_map.intersection(OM_bound)
+        lane_msg = msg_builder.msg.Lanes
+        lane_msg.lane_centers = []
+
+        # print("get lanes:")
+        # print(dir(local_lanes))
+        self.lanes_pub.publish(lane_msg)
+
         agents = self.network_agents + self.sidewalk_agents
         for agent in agents:
             actor = self.world.get_actor(agent.id)

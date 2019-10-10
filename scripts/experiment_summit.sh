@@ -4,7 +4,7 @@ gpu=$1
 s=$2
 e=$3
 port=$4
-record_bags=0
+record_bags=1
 mode=joint_pomdp
 
 echo "User: $USER"

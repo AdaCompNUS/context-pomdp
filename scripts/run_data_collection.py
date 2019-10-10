@@ -1137,11 +1137,11 @@ def launch_record_bag(round, run, case):
     if config.record_bag:
         global shell_cmd
         if sim_mode is "unity":
-            shell_cmd = config.ros_pref+'rosbag record /il_data /map /cmd_vel_to_unity -o ' \
+            shell_cmd = config.ros_pref+'rosbag record /il_data /map /plan /cmd_vel_to_unity -o ' \
                         + get_bag_file_name(round, run, case) + \
                         ' __name:=bag_record'
         elif sim_mode is "carla":
-            shell_cmd = config.ros_pref+'rosbag record /il_data -o ' \
+            shell_cmd = config.ros_pref+'rosbag record /agent_array /ego_state /plan /cmd_accel /cmd_steer -o ' \
                         + get_bag_file_name(round, run, case) + \
                         ' __name:=bag_record'
 
