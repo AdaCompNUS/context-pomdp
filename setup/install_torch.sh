@@ -1,6 +1,6 @@
 sudo apt-get -y update && apt-get -y upgrade
 sudo apt-get -y install g++ git libgflags-dev libgoogle-glog-dev \
-    libiomp-dev libopenmpi-dev protobuf-compiler \
+    libomp5 libomp-dev libiomp-dev libopenmpi-dev protobuf-compiler \
     python3 python3-pip python3-setuptools python3-yaml wget
 
 # Install CMake 3.14
