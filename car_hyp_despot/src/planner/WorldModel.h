@@ -142,7 +142,7 @@ public:
     int NumPaths(int agent_id){ 
         auto it = id_map_num_paths.find(agent_id);
         if (it == id_map_num_paths.end()){
-            DEBUG(string_sprintf("agent id %d not found in id_map_num_paths\n", agent_id));
+//            DEBUG(string_sprintf("agent id %d not found in id_map_num_paths\n", agent_id));
             return 0;
         }
         return it->second;

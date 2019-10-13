@@ -25,7 +25,8 @@ export TORCH_CUDA_ARCH_LIST="5.2 6.0 6.1 7.0 7.5"
 echo TORCH_CUDA_ARCH_LIST: $TORCH_CUDA_ARCH_LIST
 export TORCH_NVCC_FLAGS="-Xfatbin -compress-all"
 cd && git clone --recurse-submodules -j8 https://github.com/pytorch/pytorch.git
-Compile libtorch and install
+
+# Compile libtorch and install
 cd && cd pytorch && mkdir -p build && cd build && BUILD_TEST=OFF USE_NCCL=OFF python3 ../tools/build_libtorch.py
 cd && mkdir -p ~/libtorch/include && mkdir -p ~/libtorch/share
 cp -r pytorch/build/build/lib ~/libtorch

@@ -1,7 +1,7 @@
 #
 # LeTS-Drive with SUMMIT simulator integration
 
-Driving using Context-POMDP: [![Watch the driving video](https://img.youtube.com/vi/bQjcd-NBdIg/0.jpg)](https://www.youtube.com/watch?v=bQjcd-NBdIg)
+Simulation and driving in SUMMIT: [![Watch the driving video](https://img.youtube.com/vi/bQjcd-NBdIg/0.jpg)](https://youtu.be/wrR1VQUTUEE)
 
 ## Overview
 This repository contains all algorithmic elements for reproducing LeTS-Drive [(paper)](https://arxiv.org/abs/1905.12197) in heterogenous traffic simulated by the SUMMIT simulator [(paper)](https://www.dropbox.com/s/fs0e9j4o0r80e82/SUMMIT.pdf?dl=0).
@@ -161,11 +161,11 @@ record_bags=0
 Convert bags into h5 files using multiple threads:
 ```
 roscd il_controller && cd src
-python3 Data_processing/parallel_parse_pool.py --bagspath [rosbag/path/] --peds_goal_path Maps/
+python3 Data_processing/parallel_parse_pool.py --bagspath [rosbag/path/] --peds_goal_path ../../Maps/
 ```
 or using a single thread:
 ```
-python3 Data_processing/bag_to_hdf5.py --bagspath [rosbag/path/] --peds_goal_path Maps/
+python3 Data_processing/bag_to_hdf5.py --bagspath [rosbag/path/] --peds_goal_path ../../Maps/
 ```
 combine bag_h5 files into training, validation, and test sets:
 ```

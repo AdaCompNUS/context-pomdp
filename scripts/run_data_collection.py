@@ -250,19 +250,19 @@ def update_global_config(cmd_args):
 
     if "joint_pomdp" in cmd_args.baseline:
         config.use_drive_net_mode = JOINT_POMDP
-        config.record_bag = 0 
+        # config.record_bag = 0 
     elif "imitation" in cmd_args.baseline:
         config.use_drive_net_mode = IMITATION
-        config.record_bag = 0
-    elif "porca" in cmd_args.baseline:
+        # config.record_bag = 0
+    elif"porca" in cmd_args.baseline:
         config.use_drive_net_mode = NO_NET
-        config.record_bag = 0
+        # config.record_bag = 0
     elif "lets-drive" in cmd_args.baseline:
         config.use_drive_net_mode = LETS_DRIVE
-        config.record_bag = 0
+        # config.record_bag = 0
     elif "pomdp" in cmd_args.baseline:
         config.use_drive_net_mode = NO_NET
-        config.record_bag = 0
+        # config.record_bag = 0
     elif cmd_args.baseline is "":
         # not baseline
         config.record_bag = 1
@@ -1137,7 +1137,7 @@ def launch_record_bag(round, run, case):
     if config.record_bag:
         global shell_cmd
         if sim_mode is "unity":
-            shell_cmd = config.ros_pref+'rosbag record /il_data /map /cmd_vel_to_unity -o ' \
+            shell_cmd = config.ros_pref+'rosbag record /il_data /map -o ' \
                         + get_bag_file_name(round, run, case) + \
                         ' __name:=bag_record'
         elif sim_mode is "carla":

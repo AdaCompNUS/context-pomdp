@@ -98,6 +98,7 @@ public:
 	void robotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
     void speedCallback(nav_msgs::Odometry odo);
     void moveSpeedCallback(geometry_msgs::Twist speed);
+    void cmdSteerCallback(const std_msgs::Float32::ConstPtr steer);
 	void publishPath();
 
 
@@ -137,7 +138,7 @@ public:
 	ros::Publisher pa_pub;
 	ros::Publisher cmdPub_, actionPub_, actionPubPlot_;
 
-    ros::Subscriber speedSub_, agentSub_, agentpathSub_, mapSub_, scanSub_, move_base_speed_;
+    ros::Subscriber speedSub_, agentSub_, agentpathSub_, mapSub_, scanSub_, move_base_speed_, steerSub_;
 
     ros::Timer timer_speed;
     ros::Timer timer_cmd_update;
@@ -147,14 +148,6 @@ public:
 	PomdpStateWorld current_state;
 
 public:
-	// for imitation learning
-	//ros::Subscriber carSub_;
-	ros::Subscriber steerSub_;
-
-	//ros::Publisher IL_pub; 
-	//bool b_update_il;
-	//msg_builder::imitation_data p_IL_data; 
-
 
     void update_il_car(const msg_builder::car_info::ConstPtr car) ;
     void update_il_steering(const std_msgs::Float32::ConstPtr steer);
