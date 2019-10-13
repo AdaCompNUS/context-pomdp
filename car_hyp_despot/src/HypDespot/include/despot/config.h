@@ -74,12 +74,12 @@ struct Config {
 		printf("=> pruning_constant=%f\n", pruning_constant);
 		printf("=> xi=%f\n", xi);
 		printf("=> sim_len=%d\n", sim_len);
-		printf("=> default_action=%s\n", default_action);
+		printf("=> default_action=%s\n", default_action.c_str());
 		printf("=> max_policy_sim_len=%d\n", max_policy_sim_len);
 		printf("=> noise=%f\n", noise);
 		printf("=> silence=%d\n", silence);
 		printf("=> useGPU=%d\n", useGPU);
-		printf("=> rollout_type=%s\n", rollout_type);
+		printf("=> rollout_type=%s\n", rollout_type.c_str());
 		printf("=> GPUid=%d\n", GPUid);
 		printf("=> use_multi_thread_=%d\n", use_multi_thread_);
 		printf("=> exploration_constant_o=%f\n", exploration_constant_o);
