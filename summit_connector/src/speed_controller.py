@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 
 import sys, os, pdb
-import numpy
+import numpy as np
 
 from util import * 
 from path_smoothing import distance
@@ -27,7 +27,7 @@ class SpeedController(object):
         self.player_pos = None
         self.player_yaw = None
         self.player_vel = None
-        self.peds_pos = None
+        self.peds_pos = []
 
         self.cmd_speed_pub = rospy.Publisher("/cmd_speed", Float32, queue_size=1)
         self.cmd_accel_pub = rospy.Publisher("/cmd_accel", Float32, queue_size=1)
@@ -52,16 +52,16 @@ class SpeedController(object):
         self.cal_proximty()
 
         vel = self.player_vel
-        yaw = numpy.deg2rad(self.player_yaw)
-        v_2d = numpy.array([vel[0], vel[1], 0])
-        forward = numpy.array([math.cos(yaw), math.sin(yaw), 0])
-        speed = numpy.vdot(forward, v_2d)  # numpy.linalg.norm(v)
+        yaw = np.deg2rad(self.player_yaw)
+        v_2d = np.array([vel[0], vel[1], 0])
+        forward = np.array([math.cos(yaw), math.sin(yaw), 0])
+        speed = np.vdot(forward, v_2d)  # np.linalg.norm(v)
 
         return speed
 
 
     def compute_speed_and_publish(self, tick):
-        if self.player_pos is None or self.peds_pos is None:
+        if self.player_pos is None:
             return
 
         curr_vel = self.calculate_player_speed()

@@ -512,7 +512,7 @@ class GammaCrowdController(Drunc):
         # Determine spawning variables.
         if not self.initialized:
             spawn_size_min = 0
-            spawn_size_max = 100
+            spawn_size_max = 150
         else:
             spawn_size_min = 100
             spawn_size_max = 150
@@ -520,7 +520,7 @@ class GammaCrowdController(Drunc):
 
         start_t = time.time()
         while len(self.network_car_agents) < self.num_network_car_agents:
-            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map)
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
@@ -542,7 +542,7 @@ class GammaCrowdController(Drunc):
 
         start_t = time.time()
         while len(self.network_bike_agents) < self.num_network_bike_agents:
-            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map)
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
@@ -564,8 +564,7 @@ class GammaCrowdController(Drunc):
 
         start_t = time.time()
         while len(self.sidewalk_agents) < self.num_sidewalk_agents:
-            spawn_min, spawn_max = self.get_spawn_range(bounds_center, 40)
-            path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_min, spawn_max)
+            path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, bounds_min, bounds_max)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y

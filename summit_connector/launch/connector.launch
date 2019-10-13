@@ -16,7 +16,7 @@
  
   <node name="ego_vehicle" pkg="summit_connector" type="ego_vehicle.py" output="screen"/>
   
-  <!--node name="speed_controller" pkg="summit_connector" type="speed_controller.py" output="screen"/-->
+  <node name="speed_controller" pkg="summit_connector" type="speed_controller.py" output="screen"/>
   
   <node name="purepursuit_controller" pkg="summit_connector" type="purepursuit_controller.py" output="screen"/>
 
@@ -38,6 +38,7 @@
   </node>
   -->
 
-  <node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen"/>
-  <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
+  
+  <!--<node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen"/>-->
+  <!--<node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>-->
 </launch>

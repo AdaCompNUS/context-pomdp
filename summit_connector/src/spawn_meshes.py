@@ -70,7 +70,6 @@ WALL_MAT = [
 class SpawnMeshes(Drunc):
     def __init__(self):
         super(SpawnMeshes, self).__init__()
-        # self.client.reload_world()
 
         self.meshes_spawned_pub = rospy.Publisher('/meshes_spawned', Bool, queue_size=1, latch=True) 
 
@@ -98,7 +97,6 @@ class SpawnMeshes(Drunc):
                 for column in range(top_left_id[2], bottom_right_id[2] + 1):
                     path = os.path.join(os.path.expanduser('~/carla/Data/imagery'), 
                         "{}/{}_{}.jpeg".format(zoom, row, column))
-                    print(path)
                     sys.stdout.flush()
                     if not os.path.exists(path):
                         continue
@@ -115,21 +113,8 @@ class SpawnMeshes(Drunc):
 
                     self.mesh_ids.append(self.world.spawn_dynamic_tile_mesh(bounds_min, bounds_max, data))
 
-
-        # map_location = 'map'
-        #(BOUNDS_MIN, BOUNDS_MAX) = ((1.2894000, 103.7669000), (1.3088000, 103.7853000))
-
-        #map_location = 'meskel_square'
-        (BOUNDS_MIN, BOUNDS_MAX) = ((9.00802, 38.76009), (9.01391, 38.76603))
-
-        #map_location = 'magic'
-        # (BOUNDS_MIN, BOUNDS_MAX) = ((51.5621800, -1.7729100), (51.5633900, -1.7697300))
-
-        #map_location = 'highway'
-        #(BOUNDS_MIN, BOUNDS_MAX) = ((1.2983800, 103.7777000), (1.3003700, 103.7814900))
-
         for zoom in range(18, 19):
-            spawn_tiles(zoom, BOUNDS_MIN, BOUNDS_MAX)
+            spawn_tiles(zoom, self.geo_min, self.geo_max)
 
         time.sleep(1)
 

@@ -1,7 +1,7 @@
 import os, sys, glob
 
-carla_root = os.path.expanduser("~/summit/")
-api_root = os.path.expanduser("~/summit/PythonAPI")
+carla_root = os.path.expanduser("~/carla/")
+api_root = os.path.expanduser("~/carla/PythonAPI")
 try:
     sys.path.append(glob.glob(api_root + '/carla/dist/carla-*%d.%d-%s.egg' % (
         sys.version_info.major,
@@ -55,19 +55,27 @@ class Drunc(object):
             self.scenario_center = carla.Vector2D(825, 1500)
             self.scenario_min = carla.Vector2D(450, 1100)
             self.scenario_max = carla.Vector2D(1200, 1900)
+            self.geo_min = (1.2894000, 103.7669000)
+            self.geo_max =(1.3088000, 103.7853000)
         elif map_location == "meskel_square":
             self.scenario_center = carla.Vector2D(450, 400)
             self.scenario_min = carla.Vector2D(350, 300)
             self.scenario_max = carla.Vector2D(550, 500)
+            self.geo_min = (9.00802, 38.76009)
+            self.geo_max = (9.01391, 38.76603)
         elif map_location == "magic":
             self.scenario_center = carla.Vector2D(180, 220)
             self.scenario_min = carla.Vector2D(80, 120)
             self.scenario_max = carla.Vector2D(280, 320)
+            self.geo_min = (51.5621800, -1.7729100)
+            self.geo_max = (51.5633900, -1.7697300)
         elif map_location == "highway":
             self.scenario_center = carla.Vector2D(100, 400)
             self.scenario_min = carla.Vector2D(0, 300)
             self.scenario_max = carla.Vector2D(200, 500)
-    
+            self.geo_min = (1.2983800, 103.7777000)
+            self.geo_max = (1.3003700, 103.7814900)
+
     def in_scenario_bounds(self, point):
         return self.scenario_min.x <= point.x <= self.scenario_max.x and \
                self.scenario_min.y <= point.y <= self.scenario_max.y

@@ -29,9 +29,18 @@ import tf.transformations as tftrans
 class EgoVehicle(Drunc):
     def __init__(self):
         super(EgoVehicle, self).__init__()
+        
+        # ROS stuff.
+        self.cmd_speed_sub = rospy.Subscriber('/cmd_speed', Float32, self.cmd_speed_callback, queue_size=1)
+        self.cmd_accel_sub = rospy.Subscriber('/cmd_accel', Float32, self.cmd_accel_callback, queue_size=1)
+        self.cmd_steer_sub = rospy.Subscriber('/cmd_steer', Float32, self.cmd_steer_callback, queue_size=1)
 
-        # self.clearscene()
-        # time.sleep(2)
+        self.odom_broadcaster = tf.TransformBroadcaster()
+        self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=1)
+        self.car_info_pub = rospy.Publisher('/ego_state', CarInfo, queue_size=1)
+        self.plan_pub = rospy.Publisher('/plan', NavPath, queue_size=1)
+        self.ego_dead_pub = rospy.Publisher('/ego_dead', Bool, queue_size=1)
+
         # Create path.
         self.actor = None
         self.speed = 0.0
@@ -41,37 +50,8 @@ class EgoVehicle(Drunc):
             shift_x= 0.0
             shift_y= 0.0
 
-            # the complex cross 
-            # scale=0.01
-            # shift_x=-0.145 #(-0.145), 
-            # shift_y= -0.19
-
-            # y-shape
-            # scale=0.01
-            # shift_x=0.030
-            # shift_y= -0.108
-            
-            #spawn_min, spawn_max = self.get_shrinked_range(scale=scale, shift_x=shift_x, shift_y= shift_y, draw_range=False)
-
-            # a narrow road for peds to cross
-            # spawn_min = carla.Vector2D(903.4-20, 1531.7-20)
-            # spawn_max = carla.Vector2D(903.4+20, 1531.7+20)
-            
-            # y-shaped region, msekel, for cars
-            # spawn_min = carla.Vector2D(900.4, 350.33) 
-            # spawn_max = carla.Vector2D(1000.4, 450.33)
-            # self.scenario_min = carla.Vector2D(350, 300)
-            # self.scenario_max = carla.Vector2D(550, 500)
-
-            # single road without building, msekel
-            # spawn_min = carla.Vector2D(1036.5-20, 507.21-20)
-            # spawn_max = carla.Vector2D(1036.5+20, 507.21+20)
-            
-            # self.path = NetworkAgentPath.rand_path(self, 20, 1.0)
-            # self.path = NetworkAgentPath.rand_path(self, 20, 1.0, self.network_segment_map.intersection( 
-                # carla.OccupancyMap(carla.Vector2D(435,340), carla.Vector2D(439,342))))  # 431,359: 433,361
-            self.path = NetworkAgentPath.rand_path(self, 20, 1.0, self.network_segment_map.intersection( 
-                carla.OccupancyMap(carla.Vector2D(400,454), carla.Vector2D(402,456))))  # 431,359: 433,361    
+            self.path = NetworkAgentPath.rand_path(self, 20, 1.0, 100,
+                    self.network_segment_map.intersection(carla.OccupancyMap(self.scenario_min, self.scenario_max)))
             vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.audi.etron'))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')
             spawn_position = self.path.get_position()
@@ -89,63 +69,19 @@ class EgoVehicle(Drunc):
                 self.actor.set_collision_enabled(False)
 
         time.sleep(1) # wait for the vehicle to drop
+        self.publish_odom()
+        self.publish_il_car_info()
+        self.publish_plan()
+        rospy.wait_for_message("/agents_ready", Bool) # wait for agents to initialize
 
         self.cmd_speed = 0
         self.cmd_accel = 0
         self.cmd_steer = 0
 
-        self.cmd_speed_sub = rospy.Subscriber('/cmd_speed', Float32, self.cmd_speed_callback, queue_size=1)
-        self.cmd_accel_sub = rospy.Subscriber('/cmd_accel', Float32, self.cmd_accel_callback, queue_size=1)
-        self.cmd_steer_sub = rospy.Subscriber('/cmd_steer', Float32, self.cmd_steer_callback, queue_size=1)
-
-        self.odom_broadcaster = tf.TransformBroadcaster()
-        self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=1)
-        self.car_info_pub = rospy.Publisher('/ego_state', CarInfo, queue_size=1)
-        self.plan_pub = rospy.Publisher('/plan', NavPath, queue_size=1)
 
         self.broadcaster = None
         self.publish_odom_transform()
         self.transformer = TransformListener()
-
-    def clearscene(self):
-        actors_list = self.world.get_actors()
-        num_old_agents = len(actors_list)
-        commands = []
-        commands.extend(carla.command.DestroyActor(a.id) for a in actors_list if a is carla.Vehicle)
-        commands.extend(carla.command.DestroyActor(a.id) for a in actors_list if a is carla.Walker)
-        self.client.apply_batch(commands)
-        print('cleared {} crowd actors.'.format(num_old_agents))
-        
-    def get_shrinked_range(self, scale = 1.0, shift_x = 0.0, shift_y = 0.0, draw_range = False):
-        if scale == 1.0:
-            return self.map_bounds_min, self.map_bounds_max # TODO: I want to get the actual map range here
-        else: 
-            map_range = self.map_bounds_max - self.map_bounds_min
-            new_map_range = carla.Vector2D(map_range.x * scale, map_range.y * scale)
-            map_margin_range = map_range - new_map_range
-            map_margin_range.x = map_margin_range.x / 2.0
-            map_margin_range.y = map_margin_range.y / 2.0
-
-            shift = carla.Vector2D(shift_x * map_range.x, shift_y * map_range.y) 
-
-            spawn_min = carla.Vector2D(
-                self.map_bounds_min.x + map_margin_range.x, 
-                self.map_bounds_min.y + map_margin_range.y) + shift
-            spawn_max = carla.Vector2D(
-                self.map_bounds_max.x - map_margin_range.x,
-                self.map_bounds_max.y - map_margin_range.y) + shift
-
-            if draw_range:
-                self.world.debug.draw_arrow(
-                    carla.Location(spawn_min.x, spawn_min.y, 0), 
-                    carla.Location(spawn_max.x, spawn_min.y, 0), 
-                    thickness = 3.0, arrow_size = 3.0, color = carla.Color(255,0,0))
-                self.world.debug.draw_arrow(
-                    carla.Location(spawn_min.x, spawn_min.y, 0), 
-                    carla.Location(spawn_min.x, spawn_max.y, 0), 
-                    thickness = 3.0, arrow_size = 3.0, color = carla.Color(0,255,0))
-
-            return spawn_min, spawn_max
 
     def dispose(self):
         self.actor.destroy()
@@ -156,7 +92,6 @@ class EgoVehicle(Drunc):
 
     def get_cur_ros_pose(self):
         cur_pose = geometry_msgs.msg.PoseStamped()
-        # cur_pose = geometry_msgs.msg.TransformStamped()
    
         cur_pose.header.stamp = rospy.Time.now()
         cur_pose.header.frame_id = "/map"
@@ -417,14 +352,14 @@ class EgoVehicle(Drunc):
 
         # Publish info.
         if not self.path.resize():
-            print('Warning : path too short.')
-            # return
+            self.ego_dead_pub.publish(True)
+            return
         else:
             self.path.cut(self.get_position())
             if not self.path.resize():
-                print('Warning : path too short.')
+                self.ego_dead_pub.publish(True)
+                return
                 
-            # return
         # self.draw_path(self.path)
         self.publish_odom()
         self.publish_il_car_info()
