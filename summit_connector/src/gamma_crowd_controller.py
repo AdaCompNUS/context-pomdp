@@ -519,7 +519,7 @@ class GammaCrowdController(Drunc):
         spawn_segment_map = self.network_segment_map.intersection(self.get_spawn_occupancy_map(bounds_center, spawn_size_min, spawn_size_max))
 
         start_t = time.time()
-        while len(self.network_car_agents) < self.num_network_car_agents:
+        for i in range(self.num_network_car_agents - len(self.network_car_agents)):
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
@@ -541,7 +541,7 @@ class GammaCrowdController(Drunc):
                 self.do_publish = True
 
         start_t = time.time()
-        while len(self.network_bike_agents) < self.num_network_bike_agents:
+        for _ in range(self.num_network_bike_agents - len(self.network_bike_agents)):
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
@@ -563,7 +563,7 @@ class GammaCrowdController(Drunc):
                 self.do_publish = True
 
         start_t = time.time()
-        while len(self.sidewalk_agents) < self.num_sidewalk_agents:
+        for _ in range(self.num_sidewalk_agents - len(self.sidewalk_agents)):
             path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, bounds_min, bounds_max)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
@@ -589,7 +589,7 @@ class GammaCrowdController(Drunc):
             self.agents_ready_pub.publish(True)
 
         commands = []
-        
+
         next_agents = []
         for (i, crowd_agent) in enumerate(self.network_car_agents + self.network_bike_agents + self.sidewalk_agents):
             delete = False
@@ -654,6 +654,15 @@ class GammaCrowdController(Drunc):
                 self.gamma.set_agent_velocity(i, carla.Vector2D(0, 0))
                 self.gamma.set_agent_bounding_box_corners(i, default_agent_bbox)
                 commands.append(carla.command.DestroyActor(crowd_agent.actor.id))
+
+        for i in range(
+                len(self.network_car_agents) + len(self.network_bike_agents) + len(self.sidewalk_agents), 
+                self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents):
+            self.gamma.set_agent_position(i, default_agent_pos)
+            self.gamma.set_agent_pref_velocity(i, carla.Vector2D(0, 0))
+            self.gamma.set_agent_velocity(i, carla.Vector2D(0, 0))
+            self.gamma.set_agent_bounding_box_corners(i, default_agent_bbox)
+
 
         # start = timeit.default_timer()
         try:
