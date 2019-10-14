@@ -9,7 +9,7 @@ from collections import defaultdict
 
 import rospy
 import tf
-from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped, Point, Pose, Quaternion, Vector3, Polygon, Point32
+from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped, Point, Pose, Quaternion, Vector3, Polygon, Point32, PoseArray
 from nav_msgs.msg import Path
 from std_msgs.msg import Bool
 
@@ -119,17 +119,29 @@ class CrowdProcessor(Drunc):
         obstacle_msg = msg_builder.msg.Obstacles
         obstacle_msg.contours = []
 
-        # print("get polygon:")
-        # print(dir(local_obstacles))
+        for polygon in local_obstacles.get_polygons():
+            polygon_tmp = Polygon()
+            outer_contour = polygon[0]
+            for point in outer_contour:
+                polygon_tmp.points.append(Point32(point.x, point.y, 0.0))
+            obstacle_msg.contours.append(polygon_tmp)
+
         self.obstacles_pub.publish(obstacle_msg)
 
         # get local lane centers
         local_lanes = self.network_segment_map.intersection(OM_bound)
         lane_msg = msg_builder.msg.Lanes
-        lane_msg.lane_centers = []
+        lane_msg.lane_segments = []
 
-        # print("get lanes:")
-        # print(dir(local_lanes))
+        for lane_seg in local_lanes.get_segments():
+            lane_seg_tmp = msg_builder.msg.LaneSeg()
+            lane_seg_tmp.start.x = lane_seg.start.x
+            lane_seg_tmp.start.y = lane_seg.start.y
+            lane_seg_tmp.end.x = lane_seg.end.x
+            lane_seg_tmp.end.y = lane_seg.end.y
+
+            lane_msg.lane_segments.append(lane_seg_tmp)
+
         self.lanes_pub.publish(lane_msg)
 
         agents = self.network_agents + self.sidewalk_agents

@@ -1141,7 +1141,8 @@ def launch_record_bag(round, run, case):
                         + get_bag_file_name(round, run, case) + \
                         ' __name:=bag_record'
         elif sim_mode is "carla":
-            shell_cmd = config.ros_pref+'rosbag record /il_data -o ' \
+            shell_cmd = config.ros_pref+'rosbag record /il_data ' \
+                        + '/local_obstacles /local_lanes -o ' \
                         + get_bag_file_name(round, run, case) + \
                         ' __name:=bag_record'
 

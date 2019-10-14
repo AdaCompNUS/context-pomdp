@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 from transforms import *
 from Components.mdn import gaussian_probability, gaussian_probability_np, mdn_accuracy
 
+import pdb
+
+
 config = global_params.config
 
 
@@ -329,6 +332,45 @@ def visualize(X, step, root=""):
 
     image_subfolder = 'visualize/input_ped/'
     save_figure(fig, image_subfolder, root, step)
+
+
+vis_step = 0
+
+
+def visualized_exo_agent_data(env_maps, root=""):
+    global vis_step
+    fig, axarr = plt.subplots(2, 2)
+    fig.set_figheight(6*2)
+    fig.set_figwidth(6*2)
+    for i in range(0, 2):
+        for j in range(0, 2):
+            k = i*2+j
+            axarr[i, j].imshow(env_maps[k],
+                       cmap=map_type, interpolation='nearest')
+    plt.tight_layout()
+
+    image_subfolder = 'visualize/h5_env_maps/'
+
+    save_figure(fig, image_subfolder, root, 'raw/'+str(vis_step))
+    vis_step += 1
+
+
+def visualized_car_data(car_map, root=""):
+    try:
+        global vis_step
+        fig, axarr = plt.subplots(1, 1)
+        fig.set_figheight(6)
+        fig.set_figwidth(6)
+        axarr.imshow(car_map,
+                   cmap=map_type, interpolation='nearest')
+        plt.tight_layout()
+
+        image_subfolder = 'visualize/h5_car_map/'
+
+        save_figure(fig, image_subfolder, root, 'raw/'+str(vis_step))
+    except Exception as e:
+        error_handler(e)
+        pdb.set_trace()
 
 
 def visualize_both_agent_inputs(Cart_data, image_data, step, root=""):
