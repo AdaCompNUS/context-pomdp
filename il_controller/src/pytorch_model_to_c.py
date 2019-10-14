@@ -368,7 +368,7 @@ if __name__ == '__main__':
                         help='Batch size')
     parser.add_argument('--no_ped',
                         type=int,
-                        default=0,  # global_config.num_peds_in_NN,
+                        default=0,  # global_config.num_agents_in_NN,
                         help='Number of pedistrians')
     parser.add_argument('--no_car',
                         type=int,
@@ -413,7 +413,7 @@ if __name__ == '__main__':
 
     cmd_args = parser.parse_args()
 
-    global_config.num_peds_in_NN = cmd_args.no_ped
+    global_config.num_agents_in_NN = cmd_args.no_ped
     global_config.vanilla_resnet = cmd_args.no_vin
 
     global_config.default_li = cmd_args.l_i
@@ -428,7 +428,7 @@ if __name__ == '__main__':
 
     model_torchscript.set_globals()
 
-    print("=> num_peds_in_NN ", global_config.num_peds_in_NN)
+    print("=> num_agents_in_NN ", global_config.num_agents_in_NN)
     print("=> vanilla_resnet ", global_config.vanilla_resnet)
     print("=> default_li ", global_config.default_li)
     print("=> default_lh ", global_config.default_lh)

@@ -27,7 +27,7 @@ import gc
 
 config = global_params.config
 imsize = config.imsize
-num_agents = 1 + config.num_peds_in_NN
+num_agents = 1 + config.num_agents_in_NN
 num_steering_bins = config.num_steering_bins
 LARGE_NO = 300000
 populate_images = PopulateImages()
@@ -138,7 +138,7 @@ def save_dataset_to_h5(acc_labels_array, ang_labels_array, counter, data_array, 
 
         print("Saving cart data...")
         print("data shape: {}".format(cart_data_array[0].shape))
-        f.create_dataset('cart_data', maxshape=(None, 2 * (1 + config.num_peds_in_map) * config.num_hist_channels),
+        f.create_dataset('cart_data', maxshape=(None, 2 * (1 + config.num_agents_in_map) * config.num_hist_channels),
                          data=cart_data_array[0:counter], dtype='f4')
 
         print("Saving labels...")
@@ -205,7 +205,7 @@ def put_images_in_dataset(acc, acc_labels_array, ang, ang_labels_array, counter,
 def allocate_containters():
 
     data_array = np.zeros((LARGE_NO, num_agents, config.num_channels, imsize, imsize), dtype=np.float32)
-    cart_data_array = np.zeros((LARGE_NO, 2*(1 + config.num_peds_in_map) * config.num_hist_channels), dtype=np.float32)
+    cart_data_array = np.zeros((LARGE_NO, 2*(1 + config.num_agents_in_map) * config.num_hist_channels), dtype=np.float32)
 
     v_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
     acc_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
@@ -275,11 +275,11 @@ def parse_cmd_args():
     parser.add_argument(
         '--nped',
         type=int,
-        default=config.num_peds_in_NN,
+        default=config.num_agents_in_NN,
         help='Number of neighbouring peds to consider')
     bagspath = parser.parse_args().bagspath
     train_filename = parser.parse_args().outfile
-    config.num_peds_in_NN = parser.parse_args().nped
+    config.num_agents_in_NN = parser.parse_args().nped
     config.sample_mode = parser.parse_args().samplemode
     config.train_set_path = parser.parse_args().outfolder
     config.out_path = parser.parse_args().outpath
@@ -291,7 +291,7 @@ def parse_cmd_args():
     print("===================== cmd_args ======================")
     print("bagspath: ", bagspath)
     print("train_filename: ", train_filename)
-    print("config.num_peds_in_NN: ", config.num_peds_in_NN)
+    print("config.num_agents_in_NN: ", config.num_agents_in_NN)
     print("config.sample_mode: ", config.sample_mode)
     print("config.train_set_path: ", config.train_set_path)
     print("===================== cmd_args ======================")

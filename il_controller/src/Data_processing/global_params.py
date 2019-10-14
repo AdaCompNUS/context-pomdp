@@ -37,7 +37,7 @@ config.num_hist_channels = 4  # 9
 config.num_channels = config.channel_hist1 + config.num_hist_channels
 
 if config.ped_mode == "separate":
-    config.num_peds_in_NN = 5
+    config.num_agents_in_NN = 5
 
     config.channel_map = 0
     config.channel_goal = 1
@@ -48,8 +48,8 @@ if config.ped_mode == "separate":
     config.num_hist_channels = 4
     config.num_channels = 2 + config.num_hist_channels
 elif config.ped_mode == "combined" or config.ped_mode == "new_res":
-    config.num_peds_in_NN = 0
-    config.num_peds_in_map = 20
+    config.num_agents_in_NN = 0
+    config.num_agents_in_map = 20
     config.num_hist_channels = 4
 
     # config.channel_goal = 0

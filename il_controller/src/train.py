@@ -858,7 +858,7 @@ def choose_loss(acc_loss, ang_loss, vel_loss, v_loss, config):
 
 
 def debug_data(data_point):
-    car_channel = config.num_peds_in_NN
+    car_channel = config.num_agents_in_NN
 
     print("max values in last ped:")
     print("map maximum: %f" % torch.max(data_point[car_channel, 0]))
@@ -945,7 +945,7 @@ def parse_cmd_args():
                         help='Weight decay')
     parser.add_argument('--no_ped',
                         type=int,
-                        default=config.num_peds_in_NN,
+                        default=config.num_agents_in_NN,
                         help='Number of pedistrians')
     parser.add_argument('--no_car',
                         type=int,
@@ -1030,7 +1030,7 @@ def update_global_config(cmd_args):
     print(cmd_args)
 
     # Update the global configurations according to command line
-    config.num_peds_in_NN = cmd_args.no_ped
+    config.num_agents_in_NN = cmd_args.no_ped
     config.l2_reg_weight = cmd_args.l2
     config.vanilla_resnet = bool(cmd_args.no_vin)
     config.default_li = cmd_args.l_i

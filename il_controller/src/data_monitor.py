@@ -97,7 +97,7 @@ class DataMonitor(data.Dataset):
         self.data_patience = 10
 
 
-        self.num_agents = 1 + config.num_peds_in_NN
+        self.num_agents = 1 + config.num_agents_in_NN
         imsize = config.imsize
         # container to be updated directly by subscribers
         self.combined_dict = {
@@ -108,7 +108,7 @@ class DataMonitor(data.Dataset):
         # intermediate container for images
         self.output_dict = {
             'maps': None,
-            'ped': [dict({}) for x in range(config.num_peds_in_NN)],
+            'ped': [dict({}) for x in range(config.num_agents_in_NN)],
             'car': {
                 'goal': None,
                 'hist': None
@@ -448,7 +448,7 @@ class DataMonitor(data.Dataset):
                 # print("Map allocation time: " + str(elapsed_time) + " s")
 
                 hist_cars, hist_peds = \
-                    bag_to_hdf5.get_combined_history(self.combined_dict, 'hist')
+                    bag_to_hdf5.get_bounded_history(self.combined_dict, 'hist')
 
                 # for i in reversed(range(0, config.num_hist_channels)):
                 #     if hist_cars[i]:
@@ -459,15 +459,15 @@ class DataMonitor(data.Dataset):
                 self.check_history_completeness(hist_cars)
 
                 # start_time = time.time()
-                peds_are_valid = bag_to_hdf5.process_peds(data_idx=None, output_dict=self.output_dict,
-                                                          hist_peds=hist_peds, hist_cars=hist_cars,
-                                                          dim=self.dim,
-                                                          origin=self.origin, resolution=self.resolution,
-                                                          downsample_ratio=downsample_ratio,
-                                                          map_intensity=self.map_intensity,
-                                                          map_intensity_scale=self.map_intensity_scale,
-                                                          hist_pedmaps=self.ped_map_array
-                                                          )
+                peds_are_valid = bag_to_hdf5.process_exo_agents(data_idx=None, output_dict=self.output_dict,
+                                                                hist_exo_agents=hist_peds, hist_cars=hist_cars,
+                                                                dim=self.dim,
+                                                                origin=self.origin, resolution=self.resolution,
+                                                                down_sample_ratio=downsample_ratio,
+                                                                map_intensity=self.map_intensity,
+                                                                map_intensity_scale=self.map_intensity_scale,
+                                                                hist_env_maps=self.ped_map_array
+                                                                )
 
                 # elapsed_time = time.time() - start_time
                 # print("Peds processing time: " + str(elapsed_time) + " s")
@@ -476,7 +476,7 @@ class DataMonitor(data.Dataset):
                     return False  # report invalid peds
 
                 # start_time = time.time()
-                bag_to_hdf5.process_maps_inner(self.dim, downsample_ratio, map_array, self.output_dict,
+                bag_to_hdf5.process_maps_inner(downsample_ratio, map_array, self.output_dict,
                                                self.ped_map_array)
                 # elapsed_time = time.time() - start_time
                 # print("Map processing time: " + str(elapsed_time) + " s")
@@ -526,7 +526,7 @@ class DataMonitor(data.Dataset):
                         for c in range(0, config.num_hist_channels):
                             self.cur_data['nn_input'][0, i, config.channel_map[c], ...] = 0
 
-                if i >= config.num_peds_in_NN:  # pedestrians
+                if i >= config.num_agents_in_NN:  # pedestrians
                     agent_flag = 'car'
 
                     if self.output_dict[agent_flag]['goal'] is None: ##########################

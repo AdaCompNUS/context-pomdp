@@ -1,1 +1,1 @@
-geometry_msgs/PoseArray[] lane_centers 
+LaneSeg[] lane_segments 

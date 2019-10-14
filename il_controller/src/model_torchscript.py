@@ -23,7 +23,7 @@ head_mode_dict['hybrid'] = 1
 head_mode_dict['catergorical'] = 2
 head_mode = head_mode_dict[global_config.head_mode]
 
-no_ped = global_config.num_peds_in_NN  # 0
+no_ped = global_config.num_agents_in_NN  # 0
 no_car = 1  # default value in train.py
 resblock_in_layers = global_config.resblock_in_layers  # [2, 2, 2, 2]
 disable_bn_in_resnet = global_config.disable_bn_in_resnet  # False

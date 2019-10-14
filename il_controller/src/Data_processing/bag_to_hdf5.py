@@ -41,6 +41,7 @@ import glob
 from skimage.draw import polygon, line
 
 from transforms import *
+import visualization
 
 from geometry_msgs.msg import Twist
 from msg_builder.msg import peds_car_info
@@ -50,6 +51,8 @@ import copy
 
 # topic_mode = "seperate"
 topic_mode = "combined"
+
+default_map_dim = 1024
 
 GOAL_LIST = [(19.9, 0), (0, -19.9), (0, 19.9), (-19.9, 0), (-7, 19.9),
              (-6, 19.9), (-5, 19.9)]
@@ -67,6 +70,7 @@ GOAL_REWARD = 0.0
 learning_mode = 'im'
 
 agent_file = None
+
 
 
 def parse_bag_file(filename=None):
@@ -112,10 +116,17 @@ def parse_bag_file(filename=None):
     bag.close()
 
     # at least 1 message should be there
-    if topic_mode == "combined" and (len(list(map_dict.keys())) < 1 or len(plan_dict.keys()) < 1 or len(
-            ped_dict.keys()) < 1 or len(prev_ped_dict.keys()) < 1 or len(
-        car_dict.keys()) < 1 or len(prev_car_dict.keys()) < 1 or len(list(act_reward_dict.keys())) < 1):
+    if topic_mode == "combined" and (len(plan_dict.keys()) < 1 or len(
+            ped_dict.keys()) < 1 or len(car_dict.keys()) < 1 or len(list(act_reward_dict.keys())) < 1):
         print("invalid bag file: incomplete topics" + filename)
+        print("map_dict {} entries, plan_dict {} entries, ped_dict {} entries, car_dict {} entries, act_reward_dict {"
+              "} entries".format(
+            len(list(map_dict.keys())),
+            len(list(plan_dict.keys())),
+            len(list(ped_dict.keys())),
+            len(list(car_dict.keys())),
+            len(list(act_reward_dict.keys()))
+        ))
         is_valid = False
     else:
         is_valid = True
@@ -127,9 +138,8 @@ def parse_bag_file(filename=None):
         pdb.set_trace()
 
 
-def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_reward_dict, car_goal):
+def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_reward_dict):
     # print("Associating time for data with %d source time steps..." % len(act_reward_dict.keys()))
-
     combined_dict = OrderedDict()
 
     hist_ts = np.zeros(config.num_hist_channels, dtype=np.int32)
@@ -143,12 +153,8 @@ def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_rewa
         hist_agents, hist_complete = \
             track_history(hist_ts, hist_agents, car_dict, ped_dict, timestamp)
 
-        # print("hist_ts: {}".format(hist_ts))
-
         if not hist_complete:
             continue
-
-        # print("hist_agents: {}".format(hist_agents))
 
         vel_data = Twist()
         vel_data.linear.x = None  # current velocity of the car
@@ -166,11 +172,7 @@ def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_rewa
             'action': action_data,
         }
 
-    # was_near_goal = Was_near_goal(combined_dict, car_goal)
-
-    was_near_goal = trim_data_after_reach_goal(combined_dict, car_goal)
-    # print("bag: num_keys, near_goal", len(list(combined_dict.keys())), was_near_goal)
-    return combined_dict, map_dict, was_near_goal
+    return combined_dict, map_dict
 
 
 def Was_near_goal(combined_dict, car_goal):
@@ -317,17 +319,7 @@ def create_h5_data(data_dict,
     # sample data points to h5
     # Change to sample a fixed number of points in the trajectory
 
-    sample_idx = []
-    sample_shuffled_idx = list(range(len(timestamps)))
-
-    if learning_mode == 'rl':
-        random.shuffle(sample_shuffled_idx)
-        sample_shuffled_idx = iter(sample_shuffled_idx)
-        sample_length = -1
-    else:
-        random.shuffle(sample_shuffled_idx)
-        sample_shuffled_idx = iter(sample_shuffled_idx)
-        sample_length = config.num_samples_per_traj
+    sample_idx, sample_length, sample_shuffled_idx = shuffle_and_sample_indices(timestamps)
 
     while not (len(sample_idx) == sample_length):
         old_output_dict_length = len(output_dict.keys())
@@ -337,25 +329,28 @@ def create_h5_data(data_dict,
 
         create_dict_entry(idx, output_dict)
 
-        map_array, hist_pedmaps = \
+        map_array, hist_env_maps = \
             create_maps(map_dict, map_ts, raw_map_array)
 
-        hist_cars, hist_peds = get_history_agents(data_dict, ts)
+        hist_cars, hist_exo_agents = get_history_agents(data_dict, ts)
 
-        peds_are_valid = process_peds(idx, output_dict, hist_cars, hist_peds, hist_pedmaps,
-                                      dim, origin, resolution, downsample_ratio, map_intensity,
-                                      map_intensity_scale)
+        if map_array is None:
+            origin = select_null_map_origin(hist_cars)
 
-        if not peds_are_valid:
+        agents_are_valid = process_exo_agents(idx, output_dict, hist_cars, hist_exo_agents, hist_env_maps,
+                                              dim, origin, resolution, downsample_ratio, map_intensity,
+                                              map_intensity_scale)
+
+        if not agents_are_valid:
             return dict(output_dict), False  # report invalid peds
 
-        process_maps(dim, downsample_ratio, idx, map_array, output_dict, hist_pedmaps)
+        process_maps(downsample_ratio, idx, map_array, output_dict, hist_env_maps)
 
         process_car(idx, ts, output_dict, data_dict, hist_cars, dim, downsample_ratio, origin, resolution)
 
         process_actions(data_dict, idx, output_dict, ts)
 
-        process_cart_agents(idx, output_dict, hist_peds, hist_cars)
+        process_parametric_agents(idx, output_dict, hist_exo_agents, hist_cars)
 
         if len(output_dict.keys()) > old_output_dict_length:
             sample_idx.append(idx)
@@ -371,47 +366,48 @@ def create_h5_data(data_dict,
     return dict(output_dict), True
 
 
-def process_peds(data_idx, output_dict, hist_cars, hist_peds, hist_pedmaps,
-                 dim, origin, resolution, downsample_ratio, map_intensity,
-                 map_intensity_scale):
+def shuffle_and_sample_indices(timestamps):
+    sample_idx = []
+    sample_shuffled_idx = list(range(len(timestamps)))
+    if learning_mode == 'rl':
+        random.shuffle(sample_shuffled_idx)
+        sample_shuffled_idx = iter(sample_shuffled_idx)
+        sample_length = -1
+    else:
+        random.shuffle(sample_shuffled_idx)
+        sample_shuffled_idx = iter(sample_shuffled_idx)
+        sample_length = config.num_samples_per_traj
+    return sample_idx, sample_length, sample_shuffled_idx
+
+
+def process_exo_agents(data_idx, output_dict, hist_cars, hist_exo_agents, hist_env_maps,
+                       dim, origin, resolution, down_sample_ratio, map_intensity,
+                       map_intensity_scale):
     try:
-        nearest_ped_ids = get_nearest_ped_ids(hist_peds[0], hist_cars[0])  # return ped id
-        valid_ped = 0
+        nearest_agent_ids = get_nearest_agent_ids(hist_exo_agents[0], hist_cars[0])  # return ped id
+        valid_agent = 0
 
-        for ped_no in range(len(nearest_ped_ids)):
+        for agent_no in range(len(nearest_agent_ids)):
             #
-            ped_id = nearest_ped_ids[ped_no]
+            agent_id = nearest_agent_ids[agent_no]
 
-            history_is_complete, existing_hist_count = history_complete(ped_id, hist_peds)
-
-            # if not history_is_complete:
-            #     print("Warning: ped {} hist not complete. {} available".format(ped_id, existing_hist_count))
-
-            hist_ped = get_ped_history(ped_id, hist_peds)
+            hist_agent = get_exo_agent_history(agent_id, hist_exo_agents)
 
             # calculate position in map image
-            hist_positions, is_out_map = get_map_indices(hist_ped, dim, origin, resolution)
+            hist_image_space_agent, is_out_map = get_image_space_agent_history(hist_agent, origin, resolution, dim)
 
-            # discard peds outside the map
+            # discard agents outside the map
             if is_out_map:
+                # print("Agent {} outside of map, ".format(agent_id))
                 continue
                 #
-            elif valid_ped < config.num_peds_in_NN:
-                # process nearby valid ped
-                process_ped(data_idx, valid_ped, output_dict, hist_positions, dim, downsample_ratio)
-                valid_ped += 1
-                #
             else:
-                # Treat the rest of far-away peds as static obstacles
-                add_to_ped_map(hist_ped, hist_pedmaps, dim, map_intensity, map_intensity_scale,
-                               origin, resolution)
+                # Project the rest of agents in environment maps
+                fill_agent_map(hist_image_space_agent, hist_env_maps, map_intensity, map_intensity_scale, dim)
+                valid_agent += 1
 
-        if valid_ped < config.num_peds_in_NN:
-            # return dict(output_dict), False  # not going to use this bag
-            print("!!! No enough valid pedestrians for input. Using dummy history at idx %d: Num valid peds %d."
-                  % (data_idx, valid_ped))
-            for i in range(valid_ped, config.num_peds_in_NN):
-                process_blank_ped(data_idx, i, output_dict)
+        print("{} peds used in frame env_map".format(valid_agent))
+        assert(valid_agent > 0)
 
     except Exception as e:
         error_handler(e)
@@ -454,14 +450,11 @@ def process_blank_ped_inner(output_dict_entry, valid_ped):
         output_dict_entry['ped'][valid_ped] = construct_blank_ped_data()
 
 
-def get_agents(data_dict, ts):
-    peds = make_pedid_dict(data_dict[ts]['agent'].peds)
-    car = data_dict[ts]['agent'].car
-    return car, peds
-
-
 def create_maps(map_dict, map_ts, raw_map_array):
-    return create_maps_inner(map_dict[map_ts], raw_map_array)
+    if len(map_dict.keys())>0:
+        return create_maps_inner(map_dict[map_ts], raw_map_array)
+    else:
+        return create_null_maps()
 
 
 def create_maps_inner(map_dict_entry, raw_map_array):
@@ -469,6 +462,15 @@ def create_maps_inner(map_dict_entry, raw_map_array):
     hist_ped_maps = []
     for i in range(config.num_hist_channels):
         hist_ped_maps.append(np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=np.float32))
+
+    return map_array, hist_ped_maps
+
+
+def create_null_maps():
+    map_array = None
+    hist_ped_maps = []
+    for i in range(config.num_hist_channels):
+        hist_ped_maps.append(np.zeros((default_map_dim, default_map_dim), dtype=np.float32))
 
     return map_array, hist_ped_maps
 
@@ -585,73 +587,100 @@ def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, dim, downsa
         pdb.set_trace()
 
 
-def process_maps(dim, downsample_ratio, idx, map_array, output_dict, hist_pedmaps):
-    process_maps_inner(dim, downsample_ratio, map_array, output_dict[idx], hist_pedmaps)
+def process_maps(downsample_ratio, idx, map_array, output_dict, hist_pedmaps):
+    process_maps_inner(downsample_ratio, map_array, output_dict[idx], hist_pedmaps)
 
 
-def process_maps_inner(dim, downsample_ratio, map_array, output_dict_entry, hist_pedmaps):
-    map_array = rescale_image(map_array, dim, downsample_ratio)
-    map_array = np.array(map_array, dtype=np.int32)
-    # print("rescaled map max", map_array.max())
-    map_array = normalize(map_array)
-    # print("normalized map max", map_array.max())
+def process_maps_inner(downsample_ratio, map_array, output_dict_entry, hist_pedmaps):
+    if map_array is not None:
+        map_array = rescale_image(map_array, downsample_ratio)
+        map_array = np.array(map_array, dtype=np.int32)
+        # print("rescaled map max", map_array.max())
+        map_array = normalize(map_array)
+        # print("normalized map max", map_array.max())
 
-    hist_peds_map = []
+    hist_env_map = []
     for i in range(len(hist_pedmaps)):
-        ped_array = rescale_image(hist_pedmaps[i], dim, downsample_ratio)
+        ped_array = rescale_image(hist_pedmaps[i], downsample_ratio)
         # print("rescaled ped_array max", ped_array.max())
         ped_array = normalize(ped_array)
         # print("normalized ped_array max", ped_array.max())
-        ped_array = np.maximum(map_array, ped_array)
+        if map_array is not None:
+            ped_array = np.maximum(map_array, ped_array)
         # print("merged ped_array max", np.maximum(map_array, ped_array).max())
-        hist_peds_map.append(ped_array)
+        hist_env_map.append(ped_array)
 
     # combine the static map and the pedestrian map
-    output_dict_entry['maps'] = hist_peds_map
+    output_dict_entry['maps'] = hist_env_map
+
+    visualization.visualized_exo_agent_data(hist_env_map)
 
 
-def process_cart_agents(idx, output_dict, hist_peds, hist_cars):
-    process_cart_agents_inner(output_dict[idx], hist_peds, hist_cars)
+def process_parametric_agents(idx, output_dict, hist_exo_agents, hist_cars):
+    process_parametric_agents_inner(output_dict[idx], hist_exo_agents, hist_cars)
 
 
-def process_cart_agents_inner(output_dict_entry, hist_peds, hist_cars):
+def get_extent_from_bb(car_pos, car_yaw, car_bbox):
+    bb_x = 0.0
+    bb_y = 0.0
+    tan_dir = (-math.sin(car_yaw), math.cos(car_yaw))
+    along_dir = (math.cos(car_yaw), math.sin(car_yaw))
+    for point in car_bbox.points:
+        p = (point.x - car_pos.x, point.y - car_pos.y)
+        proj = p[0] * tan_dir[0] + p[1] * tan_dir[1]
+        bb_y = max(bb_y, math.fabs(proj))
+        proj = p[0] * along_dir[0] + p[1] * along_dir[1]
+        bb_x = max(bb_x, math.fabs(proj))
+
+    return bb_x, bb_y
+
+
+def process_parametric_agents_inner(output_dict_entry, hist_exo_agents, hist_cars):
     try:
         no_info_value = -100.0
-        hist_cart_positions = []
+        hist_agent_states = []
 
-        nearest_ped_ids = get_nearest_ped_ids(hist_peds[0], hist_cars[0])  # return ped id
+        nearest_ped_ids = get_nearest_agent_ids(hist_exo_agents[0], hist_cars[0])  # return ped id
 
         for ts in range(config.num_hist_channels):
             car = hist_cars[ts]
-            hist_cart_positions.append(car.car_pos.x)
-            hist_cart_positions.append(car.car_pos.y)
+            car_bb_x, car_bb_y = get_extent_from_bb(car.car_pos, car.car_yaw, car.car_bbox)
+
+            hist_agent_states.append(car.car_pos.x)
+            hist_agent_states.append(car.car_pos.y)
+            hist_agent_states.append(car.car_yaw)
+            hist_agent_states.append(car_bb_x)
+            hist_agent_states.append(car_bb_y)
 
             valid_ped = 0
 
             for ped_no in range(len(nearest_ped_ids)):
-                if valid_ped < config.num_peds_in_map:
+                if valid_ped < config.num_agents_in_map:
                     ped_id = nearest_ped_ids[ped_no]
-                    hist_ped = get_ped_history(ped_id, hist_peds)
+                    hist_ped = get_exo_agent_history(ped_id, hist_exo_agents)
 
                     ped = hist_ped[ts]
                     if ped is not None:
-                        hist_cart_positions.append(ped.ped_pos.x)
-                        hist_cart_positions.append(ped.ped_pos.y)
+                        hist_agent_states.append(ped.ped_pos.x)
+                        hist_agent_states.append(ped.ped_pos.y)
+                        hist_agent_states.append(ped.heading)
+                        hist_agent_states.append(ped.bb_x)
+                        hist_agent_states.append(ped.bb_y)
                     else:
-                        hist_cart_positions.append(no_info_value)
-                        hist_cart_positions.append(no_info_value)
+                        for k in range(0, 5):
+                            hist_agent_states.append(no_info_value)
 
                     valid_ped += 1
 
-            if valid_ped < config.num_peds_in_map:
-                for i in range(valid_ped, config.num_peds_in_map):
-                    hist_cart_positions.append(no_info_value)
-                    hist_cart_positions.append(no_info_value)
+            if valid_ped < config.num_agents_in_map:
+                for i in range(valid_ped, config.num_agents_in_map):
+                    for k in range(0, 5):
+                        hist_agent_states.append(no_info_value)
 
     except Exception as e:
         print(e)
 
-    output_dict_entry['cart_agents'] = hist_cart_positions
+    output_dict_entry['cart_agents'] = hist_agent_states
 
 
 def normalize(ped_array):
@@ -660,13 +689,33 @@ def normalize(ped_array):
     return ped_array
 
 
-def get_map_indices(hist_ped, dim, origin, resolution):
+def get_map_indices(hist_agent, dim, origin, resolution):
     hist_positions = []
     is_out_map = True  # it will be true if all hist pos are outside of the map
-    for i in range(len(hist_ped)):
+    for i in range(len(hist_agent)):
         hist_positions.append(np.array([], dtype=np.float32))
         try:
-            ped = hist_ped[i]
+            ped = hist_agent[i]
+
+            if ped is not None:
+                hist_positions[i] = point_to_indices(ped.ped_pos.x, ped.ped_pos.y, origin, resolution, dim)
+                is_out_map = is_out_map and np.any(hist_positions[i] == -1)
+            else:
+                hist_positions[i] = np.array([None, None], dtype=np.float32)
+        except Exception as e:
+            error_handler(e)
+            pdb.set_trace()
+
+    return hist_positions, is_out_map
+
+
+def get_polygons(hist_agent, dim, origin, resolution):
+    hist_positions = []
+    is_out_map = True  # it will be true if all hist pos are outside of the map
+    for i in range(len(hist_agent)):
+        hist_positions.append(np.array([], dtype=np.float32))
+        try:
+            ped = hist_agent[i]
 
             if ped is not None:
                 hist_positions[i] = point_to_indices(ped.ped_pos.x, ped.ped_pos.y, origin, resolution, dim)
@@ -685,50 +734,79 @@ def add_to_ped_map(hist_ped, hist_pedmaps, dim, map_intensity, map_intensity_sca
         ped = hist_ped[ts]
         if ped is not None:
             ped_map_array = hist_pedmaps[ts]
-            add_in_map(dim, map_intensity, map_intensity_scale, origin, ped, ped_map_array, resolution)
+            fill_ped_in_map(dim, map_intensity, map_intensity_scale, origin, ped, ped_map_array, resolution)
         else:
             pass
             # print("Ped hist {} empty".format(ts))
 
 
-def add_in_map(dim, map_intensity, map_intensity_scale, origin, ped, ped_map_array, resolution):
+def fill_agent_map(hist_image_space_agent, hist_env_maps, map_intensity, map_intensity_scale, dim):
+    ts = 0
+    for agent in hist_image_space_agent:
+        if agent is not None:
+            env_map_array = hist_env_maps[ts]
+            if not check_out_map(agent, dim):
+                agent_edge_pixels = fill_polygon_edges(agent)
+                fill_pixels_in_map(map_intensity, map_intensity_scale, agent_edge_pixels, env_map_array)
+        else:
+            pass
+        ts += 1
+
+
+def fill_ped_in_map(dim, map_intensity, map_intensity_scale, origin, ped, ped_map_array, resolution):
     position = point_to_indices(ped.ped_pos.x, ped.ped_pos.y, origin, resolution, dim)
     if np.all(position != -1):
         ped_map_array[int(round(position[1]))][int(round(position[0]))] = map_intensity * map_intensity_scale
     # return position
 
 
-def get_ped_history(ped_id, hist_peds):
-    ped_hist = []
-
-    for i in range(len(hist_peds)):
-        try:
-            if hist_peds[i] is not None and ped_id in hist_peds[i].keys():
-                ped_hist.append(hist_peds[i][ped_id])
+def fill_pixels_in_map(map_intensity, map_intensity_scale, positions, env_map_array):
+    try:
+        for position in positions:
+            position = np.array(position, dtype=np.float32)
+            if np.all(position != -1) and np.all(position >= 0) \
+                    and np.all(position < env_map_array.shape[0]):
+                env_map_array[int(round(position[1]))][int(round(position[0]))] = map_intensity * map_intensity_scale
             else:
-                ped_hist.append(None)
+                pass
+                # print("point out of map bound: point ({},{}), map dim {}.".format(
+                #     position[0], position[1], env_map_array.shape[0]))
+    except Exception as e:
+        error_handler(e)
+        pdb.set_trace()
+
+
+def get_exo_agent_history(ped_id, hist_exo_agents):
+    exo_agent_hist = []
+
+    for i in range(len(hist_exo_agents)):
+        try:
+            if hist_exo_agents[i] is not None and ped_id in hist_exo_agents[i].keys():
+                exo_agent_hist.append(hist_exo_agents[i][ped_id])
+            else:
+                exo_agent_hist.append(None)
         except Exception as e:
             error_handler(e)
             print("!!! Investigate: not able to extract info on ped {} "
-                  "in one of history time step. Ped hist {}".format(ped_id, hist_peds[i]))
+                  "in one of history time step. Ped hist {}".format(ped_id, hist_exo_agents[i]))
             pdb.set_trace()
 
-    return ped_hist
+    return exo_agent_hist
 
 
-def history_complete(ped_id, hist_peds):
+def history_complete(ped_id, hist_exo_agents):
     has_hist = True
     hist_count = 0
 
     try:
         # print('------------------------------------------------')
-        # print(hist_peds)
+        # print(hist_exo_agents)
         # print('------------------------------------------------')
 
-        for i in range(1, len(hist_peds)):
-            if hist_peds[i] is not None:
-                has_hist = has_hist and (ped_id in hist_peds[i].keys())
-                hist_count += int(ped_id in hist_peds[i].keys())
+        for i in range(1, len(hist_exo_agents)):
+            if hist_exo_agents[i] is not None:
+                has_hist = has_hist and (ped_id in hist_exo_agents[i].keys())
+                hist_count += int(ped_id in hist_exo_agents[i].keys())
             else:
                 has_hist = False
     except Exception as e:
@@ -741,17 +819,38 @@ def history_complete(ped_id, hist_peds):
 def get_history_agents(data_dict, ts):
     # agent_file.write("\n====== ts {} ======\n".format(ts))
 
-    hist_cars, hist_peds = \
-        get_combined_history(data_dict[ts], 'agents')
+    hist_cars, hist_exo_agents = \
+        get_bounded_history(data_dict[ts], 'agents')
 
-    agent_file.flush()
+    debug_history(hist_cars, hist_exo_agents)
 
-    return hist_cars, hist_peds
+    return hist_cars, hist_exo_agents
 
 
-def get_combined_history(data_dict_entry, flag_hist):
+def debug_history(hist_cars, hist_exo_agents):
+    car = hist_cars[0]
+    agents = hist_exo_agents[0]
+    print("Frame with {} agents".format(len(agents)))
+    min_dist = 10000000
+    max_dist = -10000000
+    near_count = 0
+
+    for id in agents.keys():
+        agent = agents[id]
+        dist_to_car = math.sqrt((agent.ped_pos.x - car.car_pos.x)**2 + (agent.ped_pos.y - car.car_pos.y)**2)
+        if dist_to_car < 15.0:
+            # print("agent {} nearby, dist {}".format(id, dist_to_car))
+            near_count += 1
+        min_dist = min(dist_to_car, min_dist)
+        max_dist = max(dist_to_car, max_dist)
+
+    print("Min / max distance to car {} / {}".format(min_dist, max_dist))
+    print("{} nearby agents".format(near_count))
+
+
+def get_bounded_history(data_dict_entry, flag_hist):
     hist_cars = []
-    hist_peds = []
+    hist_exo_agents = []
 
     try:
         for i in range(config.num_hist_channels):
@@ -761,10 +860,10 @@ def get_combined_history(data_dict_entry, flag_hist):
             # print("--------------------------------------------------------------------")
 
             if data_dict_entry[flag_hist][i].peds is not None and data_dict_entry[flag_hist][i].car is not None:
-                hist_peds.append(make_pedid_dict(data_dict_entry[flag_hist][i].peds))
+                hist_exo_agents.append(make_agent_id_dict(data_dict_entry[flag_hist][i].peds))
                 hist_cars.append(data_dict_entry[flag_hist][i].car)
             else:
-                hist_peds.append(None)
+                hist_exo_agents.append(None)
                 hist_cars.append(None)
             # agent_file.write("{},{} ".format(hist_cars[i].car_pos.x, hist_cars[i].car_pos.y))
 
@@ -772,13 +871,13 @@ def get_combined_history(data_dict_entry, flag_hist):
         error_handler(e)
         pdb.set_trace()
 
-    return hist_cars, hist_peds
+    return hist_cars, hist_exo_agents
 
 
 def create_dict_entry(idx, output_dict):
     output_dict[idx] = {
         'maps': None,
-        'ped': [dict({}) for x in range(config.num_peds_in_NN)],
+        'ped': [dict({}) for x in range(config.num_agents_in_NN)],
         'car': {
             'goal': None,
             'hist': None,
@@ -796,13 +895,22 @@ def delete_dict_entry(idx, output_dict):
 
 
 def parse_map_data(downsample_ratio, map_dict):
-    # get map data
-    map_ts = list(map_dict.keys())[0]
+    if len(map_dict.keys()) > 0:
+        # get map data if it exists
+        map_ts = list(map_dict.keys())[0]
 
-    dim, map_intensity, map_intensity_scale, new_dim, origin, raw_map_array, resolution = \
-        parse_map_data_from_dict(downsample_ratio, map_dict[map_ts])
+        dim, map_intensity, map_intensity_scale, new_dim, origin, raw_map_array, resolution = \
+            parse_map_data_from_dict(downsample_ratio, map_dict[map_ts])
 
-    return dim, map_intensity, map_intensity_scale, map_ts, new_dim, origin, raw_map_array, resolution
+        return dim, map_intensity, map_intensity_scale, map_ts, new_dim, origin, raw_map_array, resolution
+    else:
+        # create dummy map if no map data.
+        map_ts = None
+        raw_map_array = None
+        origin = None
+        dim, map_intensity, map_intensity_scale, new_dim, resolution = \
+            create_null_map_data(downsample_ratio)
+        return dim, map_intensity, map_intensity_scale, map_ts, new_dim, origin, raw_map_array, resolution
 
 
 def parse_map_data_from_dict(downsample_ratio, map_dict_entry):
@@ -821,13 +929,24 @@ def parse_map_data_from_dict(downsample_ratio, map_dict_entry):
     return dim, map_intensity, map_intensity_scale, new_dim, origin, raw_map_array, resolution
 
 
+def create_null_map_data(downsample_ratio):
+    resolution = 0.0390625
+    dim = default_map_dim
+    map_intensity = 1.0
+    map_intensity_scale = 1500.0
+
+    new_dim = int(dim * downsample_ratio)
+    return dim, map_intensity, map_intensity_scale, new_dim, resolution
+
+
 def rescale_image(image,
-                  dim=1024,
                   downsample_ratio=0.03125):
     image1 = image.copy()
 
     try:
-        for i in range(int(math.log(1 / downsample_ratio, 2))):
+        iters = int(math.log(1 / downsample_ratio, 2))
+        iters = 2 # debugging
+        for i in range(iters):
             image1 = cv2.pyrDown(image1)
 
     except Exception as e:
@@ -837,16 +956,20 @@ def rescale_image(image,
 
 
 def get_pyramid_image_points(points,
-                             dim=1024,
+                             dim=default_map_dim,
                              downsample_ratio=0.03125,
-                             intensities=False):
+                             intensities=False,
+                             draw_image=False):
     format_point = None
     try:
         # !! input points are in Euclidean space (x,y), output points are in image space (row, column) !!
         arr = np.zeros((dim, dim), dtype=np.float32)
         fill_image_with_points(arr, dim, points, intensities)
         # down sample the image
-        arr1 = rescale_image(arr, dim, downsample_ratio)
+        arr1 = rescale_image(arr, downsample_ratio)
+
+        if draw_image:
+            visualization.visualized_car_data(arr1)
 
         format_point = extract_nonzero_points(arr1)
     except Exception as e:
@@ -883,24 +1006,24 @@ def fill_image_with_points(arr, dim, points, intensities=False):
             pass
 
 
-def get_nearest_ped_ids(peds, car):
+def get_nearest_agent_ids(agents, car):
     dist_list = {}
-    for idx, ped in peds.items():
+    for idx, ped in agents.items():
         dist_list[idx] = dist(ped, car)
     dist_list = OrderedDict(sorted(dist_list.items(), key=lambda a: a[1]))
     return list(dist_list.keys())
 
 
-def make_pedid_dict(ped_list):
-    ped_dict = {}
-    for ped in ped_list:
-        ped_dict[ped.ped_id] = ped
-    return ped_dict
+def make_agent_id_dict(agent_list):
+    agent_dict = {}
+    for agent in agent_list:
+        agent_dict[agent.ped_id] = agent
+    return agent_dict
 
 
-def dist(ped, car):
-    return np.sqrt((ped.ped_pos.x - car.car_pos.x) ** 2 +
-                   (ped.ped_pos.y - car.car_pos.y) ** 2)
+def dist(agent, car):
+    return np.sqrt((agent.ped_pos.x - car.car_pos.x) ** 2 +
+                   (agent.ped_pos.y - car.car_pos.y) ** 2)
 
 
 def construct_ped_data(dim, downsample_ratio, hist_positions):
@@ -990,7 +1113,10 @@ def construct_car_data(origin, resolution, dim, downsample_ratio, hist_cars, pat
         car_output_dict['goal'] = path_data['path']
 
         for i in range(len(hist_cars)):
-            car_points = get_car_points(hist_cars[i], origin, dim, downsample_ratio, resolution)
+            draw = False
+            if i == 0:
+                draw = True
+            car_points = get_car_points(hist_cars[i], origin, dim, downsample_ratio, resolution, draw)
             car_output_dict['hist'].append(car_points)
 
     except Exception as e:
@@ -1000,42 +1126,33 @@ def construct_car_data(origin, resolution, dim, downsample_ratio, hist_cars, pat
     return car_output_dict
 
 
-def get_car_points(car, origin, dim_high_res, downsample_ratio, resolution):
+def get_car_points(car, origin, dim_high_res, downsample_ratio, resolution, draw_image=False):
     # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
     car_points = None
 
     if car is not None:
         print_time = False
         start_time = time.time()
-        X = get_transformed_car(car, origin, resolution)
+        image_space_car = get_image_space_car(car, origin, resolution)
         if print_time:
             elapsed_time = time.time() - start_time
             print("Car prepare time: " + str(elapsed_time) + " s")
 
         # construct the image
         start_time = time.time()
-        # car_edge_points = list(fill_inside_car(X))
-        car_edge_points = fill_car_edges(X)
+        car_edge_pixels = fill_polygon_edges(image_space_car)
         if print_time:
             elapsed_time = time.time() - start_time
             print("Fill car time: " + str(elapsed_time) + " s")
 
         try:
             start_time = time.time()
-            # car_points, start_time = get_image_points_local_pyramid(car_edge_points, dim_high_res, downsample_ratio,
-            #                                                         print_time, start_time)
-
-            car_points = get_pyramid_image_points(car_edge_points, dim_high_res, downsample_ratio)
-
+            car_points = get_pyramid_image_points(car_edge_pixels, dim_high_res, downsample_ratio, draw_image=draw_image)
             if print_time:
                 elapsed_time = time.time() - start_time
                 print("Car pyramid time: " + str(elapsed_time) + " s")
         except Exception as e:
             error_handler(e)
-
-        #####################################################################
-        #  points = get_pyramid_image_points(points, dim, downsample_ratio)
-        #####################################################################
 
     return car_points
 
@@ -1070,7 +1187,7 @@ def get_car_points_in_low_res_image(car_edge_points, image_high_res, image_low_r
     image_patch_high_res = image_high_res[x_range_high_res[0]:x_range_high_res[1],
                            y_range_high_res[0]:y_range_high_res[1]].copy()
     # down sample the small patch
-    image_patch_low_res = rescale_image(image_patch_high_res, dim, downsample_ratio)
+    image_patch_low_res = rescale_image(image_patch_high_res, downsample_ratio)
     # copy the patch to the low-res image
     image_low_res[x_range_low_res_dialected[0]:x_range_low_res_dialected[1],
     y_range_low_res_dialected[0]:y_range_low_res_dialected[1]] = image_patch_low_res
@@ -1078,27 +1195,70 @@ def get_car_points_in_low_res_image(car_edge_points, image_high_res, image_low_r
     return car_points
 
 
-def get_transformed_car(car, origin, resolution):
-    theta = np.radians(car.car_yaw)
-    x = car.car_pos.x - origin[0]
-    y = car.car_pos.y - origin[1]
-    # transformation matrix: rotate by theta and translate with (x,y)
-    T = np.asarray([[cos(theta), -sin(theta), x], [sin(theta),
-                                                   cos(theta), y], [0, 0, 1]])
-    # car vertices in its local frame
-    #  (-0.8, 0.95)---(3.6, 0.95)
-    #  |                       |
-    #  |                       |
-    #  |                       |
-    #  (-0.8, -0.95)--(3.6, 0.95)
-    x1, y1, x2, y2, x3, y3, x4, y4 = 3.6, 0.95, -0.8, 0.95, -0.8, -0.95, 3.6, -0.95
-    # homogeneous coordinates
-    X = np.asarray([[x1, y1, 1], [x2, y2, 1], [x3, y3, 1], [x4, y4, 1]])
-    # rotate and translate the car
-    X = np.array([T.dot(x.T) for x in X], dtype=np.float32)
-    # scale the car
-    X = X / resolution
-    return X
+def get_image_space_car(car, origin, resolution):
+    X = []
+    for point in car.car_bbox.points:
+        x = (point.x - origin[0]) / resolution
+        y = (point.y - origin[1]) / resolution
+        X.append([x, y, 1])
+
+    return np.asarray(X)
+
+
+def select_null_map_origin(hist_cars):
+    # origin is the upper-left corner of the map
+    cur_car = hist_cars[0]
+    return [cur_car.car_pos.x - 20.0, cur_car.car_pos.y - 20.0]
+
+
+def get_image_space_agent_history(agent_history, origin, resolution, dim):
+    try:
+        # ped_pos, ped_id, ped_goal_id, ped_speed, ped_vel, bb_x, bb_y, heading
+        is_out_map = True
+        transformed_history = []
+        for hist_agent in agent_history:
+            if hist_agent is not None:
+                theta = hist_agent.heading
+                x = hist_agent.ped_pos.x - origin[0]
+                y = hist_agent.ped_pos.y - origin[1]
+                dist = math.sqrt(x*x+y*y)
+                # transformation matrix: rotate by theta and translate with (x,y)
+                T = np.asarray([[cos(theta), -sin(theta), x], [sin(theta),
+                                                               cos(theta), y], [0, 0, 1]])
+                # car vertices in its local frame
+                x1, y1, x2, y2, x3, y3, x4, y4 = hist_agent.bb_x, hist_agent.bb_y, -hist_agent.bb_x, hist_agent.bb_y, \
+                                                 -hist_agent.bb_x, -hist_agent.bb_y, hist_agent.bb_x, -hist_agent.bb_y
+
+                # homogeneous coordinates
+                X = np.asarray([[x1, y1, 1], [x2, y2, 1], [x3, y3, 1], [x4, y4, 1]])
+
+                # rotate and translate the car
+                X = np.array([T.dot(x.T) for x in X], dtype=np.float32)
+                # scale the car
+                X = X / resolution
+                transformed_history.append(X)
+
+                frame_agent_is_out_map = check_out_map(X, dim)
+
+                # agent should be included if it enters the map ar any of the history time steps
+                if frame_agent_is_out_map is False:
+                    is_out_map = False
+                else:
+                    pass # print("frame out of map, dist to origin {}".format(dist))
+            else:
+                transformed_history.append(None)
+
+        return transformed_history, is_out_map
+    except Exception as e:
+        error_handler(e)
+        pdb.set_trace()
+
+
+def check_out_map(X, dim):
+    for pixel_point in X:
+        if np.any(pixel_point < 0) or np.any(pixel_point >= dim):
+            return True
+    return False
 
 
 def get_range_high_res(x_range_dialected, y_range_dialected, downsample_ratio):
@@ -1154,7 +1314,7 @@ def fill_inside_car(points):
     return list(new_points)
 
 
-def fill_car_edges(points):
+def fill_polygon_edges(points):
     new_points = []
     try:
         points = np.array(np.round(points), dtype=np.int32)
@@ -1181,7 +1341,7 @@ def fill_car_edges(points):
 
 # save in hdf5 format and load in hdf5 in dataloader class of pytorch
 
-def main(bagspath, peds_goal_path, nped, start_file, end_file, thread_id):
+def main(bagspath, nped, start_file, end_file, thread_id):
     global agent_file
     # Walk into subdirectories recursively and collect all txt files
 
@@ -1189,7 +1349,7 @@ def main(bagspath, peds_goal_path, nped, start_file, end_file, thread_id):
 
     # print("Initialize agent file {}".format(agent_file))
 
-    config.num_peds_in_NN = nped
+    config.num_agents_in_NN = nped
     topic_mode = "combined"
 
     txt_files = collect_txt_files(bagspath)
@@ -1228,42 +1388,36 @@ def main(bagspath, peds_goal_path, nped, start_file, end_file, thread_id):
             if True:
                 #
                 # Walk into subdirectories recursively and collect all txt files
-                car_goal = parse_car_goal_from_txt(txt_file)
                 #
                 if topic_mode == "combined":
                     map_dict, plan_dict, ped_dict, car_dict, \
                     act_reward_dict, topics_complete = parse_bag_file(filename=bag_file)
 
                     if topics_complete:  # all topics in the bag are non-empty
-
-                        per_step_data_dict, map_dict, was_near_goal = combine_topics_in_one_dict(
-                            map_dict, plan_dict, ped_dict, car_dict, act_reward_dict, car_goal)
+                        per_step_data_dict, map_dict = combine_topics_in_one_dict(
+                            map_dict, plan_dict, ped_dict, car_dict, act_reward_dict)
                         end_time = time.time()
                         print("Thread %d parsed: elapsed time %f s" % (thread_id, end_time - start_time))
-                        if was_near_goal:
-                            h5_data_dict, data_valid = create_h5_data(per_step_data_dict, map_dict)
-                            end_time = time.time()
-                            print("Thread %d done: elapsed time %f s" % (thread_id, end_time - start_time))
-                            if data_valid:
-                                # save h5 data into file
-                                try:
-                                    dd.io.save(h5_name, h5_data_dict)
-                                except Exception as e:
-                                    print(e)
-                                    print('h5 name: ', h5_name)
-                                    print('txt file name: ', txt_file)
-                                    print('h5 file name from txt: ', get_h5_name_from_txt_name(txt_file))
 
-                                end_time = time.time()
-                                print("Thread %d written: elapsed time %f s" % (thread_id, end_time - start_time))
-                            else:
-                                print(
-                                    "pedestrian data not used. Nearby pedestrians disappear during the drive "
-                                    "(investigate)")
-                                investigate_files.append(txt_file)
-                                continue
-                        else:  # was_near_goal == False
-                            print("car did not reach near goal, not writing")
+                        h5_data_dict, data_valid = create_h5_data(per_step_data_dict, map_dict)
+                        end_time = time.time()
+                        print("Thread %d done: elapsed time %f s" % (thread_id, end_time - start_time))
+                        if data_valid:
+                            # save h5 data into file
+                            try:
+                                dd.io.save(h5_name, h5_data_dict)
+                            except Exception as e:
+                                print(e)
+                                print('h5 name: ', h5_name)
+                                print('txt file name: ', txt_file)
+                                print('h5 file name from txt: ', get_h5_name_from_txt_name(txt_file))
+
+                            end_time = time.time()
+                            print("Thread %d written: elapsed time %f s" % (thread_id, end_time - start_time))
+                        else:
+                            print(
+                                "pedestrian data not used. Nearby pedestrians disappear during the drive "
+                                "(investigate)")
                             investigate_files.append(txt_file)
                             continue
                     else:  # topics_complete == False
@@ -1368,12 +1522,8 @@ def is_valid_file(txtfile):
     try:
         with codecs.open(txtfile, 'r', encoding='utf-8',
                          errors='ignore') as f:
-            # with open(txtfile, 'r') as f:
             for line in f:
 
-                # if config.fit_val:
-                #     reach_goal_flag = True  # doesn't matter if the car reaches the goal for value fitting
-                # else: #  if fitting action
                 if 'goal reached' in line:
                     reach_goal_flag = True
                     break
@@ -1384,6 +1534,9 @@ def is_valid_file(txtfile):
                     break
     except Exception as e:
         print("Get error [{}] when opening txt file {}".format(e, txtfile))
+
+    # Debugging code
+    return True
 
     if reach_goal_flag is True and collision_flag is False:
         return True
@@ -1424,7 +1577,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--nped',
         type=int,
-        default=config.num_peds_in_NN,
+        default=config.num_agents_in_NN,
         help='Number of neighbouring peds to consider')
     parser.add_argument(
         '--start',
@@ -1442,9 +1595,9 @@ if __name__ == "__main__":
     start_file = parser.parse_args().start
     end_file = parser.parse_args().end
 
-    config.num_peds_in_NN = parser.parse_args().nped
+    config.num_agents_in_NN = parser.parse_args().nped
 
-    main(bagspath, peds_goal_path, parser.parse_args().nped, start_file, end_file, 0)
+    main(bagspath, parser.parse_args().nped, start_file, end_file, 0)
 
 
 
