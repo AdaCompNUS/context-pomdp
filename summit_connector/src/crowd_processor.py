@@ -9,12 +9,8 @@ from collections import defaultdict
 
 import rospy
 import tf
-<<<<<<< HEAD
 from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped, Point, Pose, Quaternion, Vector3, Polygon, \
     Point32, PoseArray
-=======
-from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped, Point, Pose, Quaternion, Vector3, Polygon, Point32, PoseArray
->>>>>>> 4f665e31ab575f09315fda4dce5970181097ca91
 from nav_msgs.msg import Path
 from std_msgs.msg import Bool
 

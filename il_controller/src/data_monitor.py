@@ -459,17 +459,9 @@ class DataMonitor(data.Dataset):
                 self.check_history_completeness(hist_cars)
 
                 # start_time = time.time()
-<<<<<<< HEAD
                 peds_are_valid = bag_to_hdf5.process_exo_agents(hist_exo_agents=hist_peds, hist_cars=hist_cars,
                                                                 dim=self.dim,
                                                                 origin=self.origin, resolution=self.resolution,
-=======
-                peds_are_valid = bag_to_hdf5.process_exo_agents(data_idx=None, output_dict=self.output_dict,
-                                                                hist_exo_agents=hist_peds, hist_cars=hist_cars,
-                                                                dim=self.dim,
-                                                                origin=self.origin, resolution=self.resolution,
-                                                                down_sample_ratio=downsample_ratio,
->>>>>>> 4f665e31ab575f09315fda4dce5970181097ca91
                                                                 map_intensity=self.map_intensity,
                                                                 map_intensity_scale=self.map_intensity_scale,
                                                                 hist_env_maps=self.ped_map_array
