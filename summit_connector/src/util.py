@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from drunc import Drunc, get_map_location
+from drunc import Drunc
 import carla
 import sys
 

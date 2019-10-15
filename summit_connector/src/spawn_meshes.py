@@ -9,7 +9,7 @@ import time
 import rospy
 import struct
 
-from drunc import Drunc, summit_root, init_map_location, get_map_location
+from drunc import Drunc, summit_root
 import carla
 
 from std_msgs.msg import Bool
@@ -69,12 +69,7 @@ WALL_MAT = [
 
 class SpawnMeshes(Drunc):
     def __init__(self):
-        init_map_location()
-
         super(SpawnMeshes, self).__init__()
-
-        print("{}: map_location={}".format(__file__, get_map_location()))
-        sys.stdout.flush()
 
         self.meshes_spawned_pub = rospy.Publisher('/meshes_spawned', Bool, queue_size=1, latch=True) 
 
@@ -101,7 +96,6 @@ class SpawnMeshes(Drunc):
             for row in range(top_left_id[1], bottom_right_id[1] + 1):
                 for column in range(top_left_id[2], bottom_right_id[2] + 1):
 
-                    print("row {}, column {}".format(row, column))
                     path = os.path.join(os.path.expanduser(summit_root+ 'Data/imagery'),
                                         "{}/{}_{}.jpeg".format(zoom, row, column))
                     sys.stdout.flush()
@@ -125,17 +119,14 @@ class SpawnMeshes(Drunc):
         commands = []
 
         if do_spawn_tiles:
-
-            for zoom in range(18, 19):
-                spawn_tiles(zoom, self.geo_min, self.geo_max)
-
+            spawn_tiles(18, self.geo_min, self.geo_max)
             time.sleep(1)
 
-            # Roadmark occupancy map.
-            if self.roadmark_occupancy_map is not None:
-                commands.append(carla.command.SpawnDynamicMesh(
-                    self.roadmark_occupancy_map.get_mesh_triangles(-0.0),
-                    '/Game/Carla/Static/GenericMaterials/LaneMarking/M_MarkingLane_W'))
+        # Roadmark occupancy map.
+        if self.roadmark_occupancy_map is not None:
+            commands.append(carla.command.SpawnDynamicMesh(
+                self.roadmark_occupancy_map.get_mesh_triangles(-0.0),
+                '/Game/Carla/Static/GenericMaterials/LaneMarking/M_MarkingLane_W'))
 
         # Network occupancy map.
         if self.network_occupancy_map is not None:

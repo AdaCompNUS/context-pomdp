@@ -29,9 +29,6 @@ import tf.transformations as tftrans
 class EgoVehicle(Drunc):
     def __init__(self):
         super(EgoVehicle, self).__init__()
-
-        print("{}: map_location={}".format(__file__, get_map_location()))
-        sys.stdout.flush()
         
         # ROS stuff.
         self.cmd_speed_sub = rospy.Subscriber('/cmd_speed', Float32, self.cmd_speed_callback, queue_size=1)

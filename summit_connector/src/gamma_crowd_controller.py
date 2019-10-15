@@ -232,9 +232,6 @@ class GammaCrowdController(Drunc):
     def __init__(self):
         super(GammaCrowdController, self).__init__()
 
-        print("{}: map_location={}".format(__file__, get_map_location()))
-        sys.stdout.flush()
-
         self.ego_car_info = None
         self.network_car_agents = []
         self.network_bike_agents = []

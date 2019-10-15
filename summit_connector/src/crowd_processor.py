@@ -17,18 +17,11 @@ from std_msgs.msg import Bool
 import msg_builder.msg
 from msg_builder.msg import car_info as CarInfo  # panpan
 
-'''    
-def get_path_candidates(self, num_points, interval):
-'''
-
 
 # TODO Speed up spawning logic to prevent hangs in ROS.
 class CrowdProcessor(Drunc):
     def __init__(self):
         super(CrowdProcessor, self).__init__()
-
-        print("{}: map_location={}".format(__file__, get_map_location()))
-        sys.stdout.flush()
 
         self.network_agents = []
         self.sidewalk_agents = []
