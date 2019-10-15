@@ -365,7 +365,7 @@ class SimpleCrowdController(Drunc):
             delete = False
             if not delete and not self.check_bounds(crowd_agent.get_position(), bounds_min, bounds_max):
                 delete = True
-            if not delete and crowd_agent.get_position3D().z < -10:
+            if not delete and crowd_agent.get_position_3d().z < -10:
                 delete = True
             if not delete and (type(crowd_agent) is not CrowdSidewalkAgent and \
                     not self.network_occupancy_map.contains(crowd_agent.get_position())):

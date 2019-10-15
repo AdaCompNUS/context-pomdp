@@ -39,6 +39,6 @@
   -->
 
   
-  <!--<node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen"/>-->
-  <!--<node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>-->
+  <node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen"/>
+  <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
 </launch>

@@ -138,17 +138,17 @@ bool WorldSimulator::Connect() {
 
 	auto agent_ready_bool =
 			ros::topic::waitForMessage<std_msgs::Bool>(
-					"agents_ready", ros::Duration(30));
+					"agents_ready", ros::Duration(300));
 
 	auto agent_data =
 			ros::topic::waitForMessage<msg_builder::TrafficAgentArray>(
-					"agent_array", ros::Duration(30));
+					"agent_array", ros::Duration(300));
 
 	logi << "agent_array get at the " << SolverPrior::get_timestamp()
 			<< "th second" << endl;
 
 	if (agent_data == NULL)
-		ERR("No agent array messages received after 30 seconds.");
+		ERR("No agent array messages received after 300 seconds.");
 
 	return true;
 }

@@ -49,9 +49,6 @@ from msg_builder.msg import peds_car_info
 import time
 import copy
 
-# topic_mode = "seperate"
-topic_mode = "combined"
-
 default_map_dim = 1024
 
 GOAL_LIST = [(19.9, 0), (0, -19.9), (0, 19.9), (-19.9, 0), (-7, 19.9),
@@ -72,10 +69,8 @@ learning_mode = 'im'
 agent_file = None
 
 
-
 def parse_bag_file(filename=None):
-    global topic_mode
-
+    bag = None
     try:
         bag = rosbag.Bag(filename)
     except Exception as e:
@@ -87,58 +82,49 @@ def parse_bag_file(filename=None):
     map_dict = OrderedDict()
     plan_dict = OrderedDict()
     ped_dict = OrderedDict()
-    prev_ped_dict = OrderedDict()
     car_dict = OrderedDict()
-    prev_car_dict = OrderedDict()
     act_reward_dict = OrderedDict()
-    pomdp_act_dict = OrderedDict()
+    obs_dict = OrderedDict()
+    lane_dict = OrderedDict()
 
-    i = 0
     for topic, msg, timestamp in bag.read_messages():
         if topic == '/map':
             map_dict[timestamp.to_nsec()] = msg
-        elif topic == '/plan':
-            plan_dict[timestamp.to_nsec()] = msg
-            topic_mode = "seperate"
-        elif topic == '/peds_car_info':
-            ped_dict[timestamp.to_nsec()] = msg
-            topic_mode = "seperate"
-        elif topic == '/pomdp_action_plot':
-            pomdp_act_dict[timestamp.to_nsec()] = msg
-            topic_mode = "seperate"
         elif topic == '/il_data':
             plan_dict[timestamp.to_nsec()] = msg.plan
             ped_dict[timestamp.to_nsec()] = msg.cur_peds.peds
             car_dict[timestamp.to_nsec()] = msg.cur_car
             act_reward_dict[timestamp.to_nsec()] = msg.action_reward
-            topic_mode = "combined"
+        elif topic == '/local_obstacles':
+            obs_dict[timestamp.to_nsec()] = msg.contours
+        elif topic == '/local_lanes':
+            lane_dict[timestamp.to_nsec()] = msg.lane_segments
 
     bag.close()
 
     # at least 1 message should be there
-    if topic_mode == "combined" and (len(plan_dict.keys()) < 1 or len(
-            ped_dict.keys()) < 1 or len(car_dict.keys()) < 1 or len(list(act_reward_dict.keys())) < 1):
+    if (len(plan_dict.keys()) < 1 or len(ped_dict.keys()) < 1 or
+            len(car_dict.keys()) < 1 or len(list(act_reward_dict.keys())) < 1 or
+            len(list(obs_dict.keys())) < 1 or len(list(lane_dict.keys())) < 1):
         print("invalid bag file: incomplete topics" + filename)
-        print("map_dict {} entries, plan_dict {} entries, ped_dict {} entries, car_dict {} entries, act_reward_dict {"
-              "} entries".format(
+        print("map_dict {} entries, plan_dict {} entries, ped_dict {} entries, car_dict {} entries, act_reward_dict {}"
+              " entries, obs_dict {} entries, lane_dict {} entries,".format(
             len(list(map_dict.keys())),
             len(list(plan_dict.keys())),
             len(list(ped_dict.keys())),
             len(list(car_dict.keys())),
-            len(list(act_reward_dict.keys()))
+            len(list(act_reward_dict.keys())),
+            len(list(obs_dict.keys())),
+            len(list(lane_dict.keys()))
         ))
         is_valid = False
     else:
         is_valid = True
 
-    if topic_mode == "combined":
-        return map_dict, plan_dict, ped_dict, car_dict, act_reward_dict, is_valid
-    else:
-        print("Exception: topic mode {} not defined".format(topic_mode))
-        pdb.set_trace()
+    return map_dict, plan_dict, ped_dict, car_dict, act_reward_dict, obs_dict, lane_dict, is_valid
 
 
-def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_reward_dict):
+def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_reward_dict, obs_dict, lane_dict):
     # print("Associating time for data with %d source time steps..." % len(act_reward_dict.keys()))
     combined_dict = OrderedDict()
 
@@ -149,6 +135,12 @@ def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_rewa
         hist_agents.append(peds_car_info())
 
     for timestamp in list(act_reward_dict.keys()):
+
+        obs_ts_neareast = min(obs_dict, key=lambda x: abs(x - timestamp))
+        local_obstacles = obs_dict[obs_ts_neareast]
+
+        lane_ts_neareast = min(lane_dict, key=lambda x: abs(x - timestamp))
+        local_lanes = lane_dict[lane_ts_neareast]
 
         hist_agents, hist_complete = \
             track_history(hist_ts, hist_agents, car_dict, ped_dict, timestamp)
@@ -170,12 +162,14 @@ def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_rewa
             'plan': plan_dict[timestamp],
             'vel': vel_data,
             'action': action_data,
+            'obstacles': local_obstacles,
+            'lanes': local_lanes
         }
 
     return combined_dict, map_dict
 
 
-def Was_near_goal(combined_dict, car_goal):
+def was_near_goal(combined_dict):
     dist_thresh = 2
     reach_goal = False
 
@@ -230,7 +224,6 @@ def trim_data_after_reach_goal(combined_dict, car_goal):
     #
     # delete all data after trim time
     if trim_time is None:  # never reach goal
-        # was_near_goal = False
         print("[Warning] Goal proximity path min length: {}, car_goal ({},{}), car_pos ({},{}), last_dist {}".format(
             min_goal_dist, car_goal[0], car_goal[1], cur_car_pos.x, cur_car_pos.y, goal_dist))
         pass  # do_nothing
@@ -238,8 +231,7 @@ def trim_data_after_reach_goal(combined_dict, car_goal):
         # remove data points after reaching goal
         for i in range(all_keys.index(trim_time) + 1, len(all_keys)):
             del combined_dict[all_keys[i]]
-        # was_near_goal = True
-    return True  # was_near_goal
+    return True
 
 
 def check_path_step_res(cur_plan):
@@ -295,22 +287,21 @@ def point_to_indices(x, y, origin, resolution, dim):
     return indices
 
 
-# now create data in the required format here
-# don't forget to add random data for ped goal beliefs and history too coz pedestrians are not constant, also add car dimensions for history image
-'''coordinate system should be consistent; bottom left is origin, x is 2nd dim, y is 1st dim, x increases up, y increases up, theta increases in anti clockwise'''
+# now create data in the required format here don't forget to add random data for ped goal beliefs and history too
+# coz pedestrians are not constant, also add car dimensions for history image
+'''coordinate system should be consistent; bottom left is origin, x is 2nd dim, y is 1st dim, x increases up, 
+y increases up, theta increases in anti clockwise '''
 
 
 def create_h5_data(data_dict,
                    map_dict,
-                   downsample_ratio=0.03125,
+                   down_sample_ratio=0.03125,
                    gamma=config.gamma):
-    # !! downsample_ratio should be 1/2^n, e.g., 1/2^5=0.03125 !!
+    # !! down_sample_ratio should be 1/2^n, e.g., 1/2^5=0.03125 !!
     print("Processing data with %d source time steps..." % len(data_dict.keys()))
 
-    global topic_mode
-
     dim, map_intensity, map_intensity_scale, map_ts, new_dim, origin, raw_map_array, resolution = \
-        parse_map_data(downsample_ratio, map_dict)
+        parse_map_data(down_sample_ratio, map_dict)
 
     # get data for other topics
     output_dict = OrderedDict()
@@ -337,18 +328,22 @@ def create_h5_data(data_dict,
         if map_array is None:
             origin = select_null_map_origin(hist_cars)
 
-        agents_are_valid = process_exo_agents(idx, output_dict, hist_cars, hist_exo_agents, hist_env_maps,
-                                              dim, origin, resolution, downsample_ratio, map_intensity,
+        agents_are_valid = process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps,
+                                              dim, origin, resolution, map_intensity,
                                               map_intensity_scale)
 
         if not agents_are_valid:
             return dict(output_dict), False  # report invalid peds
 
-        process_maps(downsample_ratio, idx, map_array, output_dict, hist_env_maps)
+        process_maps(down_sample_ratio, idx, map_array, output_dict, hist_env_maps)
 
-        process_car(idx, ts, output_dict, data_dict, hist_cars, dim, downsample_ratio, origin, resolution)
+        process_car(idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio, origin, resolution)
 
         process_actions(data_dict, idx, output_dict, ts)
+
+        process_obstacles(idx, ts, output_dict, data_dict, dim, down_sample_ratio, origin, resolution)
+
+        process_lanes(idx, ts, output_dict, data_dict, dim, down_sample_ratio, origin, resolution)
 
         process_parametric_agents(idx, output_dict, hist_exo_agents, hist_cars)
 
@@ -380,8 +375,8 @@ def shuffle_and_sample_indices(timestamps):
     return sample_idx, sample_length, sample_shuffled_idx
 
 
-def process_exo_agents(data_idx, output_dict, hist_cars, hist_exo_agents, hist_env_maps,
-                       dim, origin, resolution, down_sample_ratio, map_intensity,
+def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps,
+                       dim, origin, resolution, map_intensity,
                        map_intensity_scale):
     try:
         nearest_agent_ids = get_nearest_agent_ids(hist_exo_agents[0], hist_cars[0])  # return ped id
@@ -407,7 +402,7 @@ def process_exo_agents(data_idx, output_dict, hist_cars, hist_exo_agents, hist_e
                 valid_agent += 1
 
         print("{} peds used in frame env_map".format(valid_agent))
-        assert(valid_agent > 0)
+        assert (valid_agent > 0)
 
     except Exception as e:
         error_handler(e)
@@ -417,26 +412,26 @@ def process_exo_agents(data_idx, output_dict, hist_cars, hist_exo_agents, hist_e
 
 
 def process_ped(data_idx, ped_idx, output_dict, hist_positions,
-                dim, downsample_ratio):
+                dim, down_sample_ratio):
     # k-nearest neighbours
     # parse ped goal, and fill history entries
 
-    if data_idx == None:
+    if data_idx is None:
         process_ped_inner(ped_idx, output_dict, hist_positions,
-                          dim, downsample_ratio)
+                          dim, down_sample_ratio)
     else:
         process_ped_inner(ped_idx, output_dict[data_idx], hist_positions,
-                          dim, downsample_ratio)
+                          dim, down_sample_ratio)
 
 
 def process_ped_inner(ped_idx, output_dict_entry, hist_positions,
-                      dim, downsample_ratio):
+                      dim, down_sample_ratio):
     # k-nearest neighbours
     # parse ped goal, and fill history entries
     if config.num_hist_channels > 2:
-        output_dict_entry['ped'][ped_idx] = construct_ped_data(dim, downsample_ratio, hist_positions)
+        output_dict_entry['ped'][ped_idx] = construct_ped_data(dim, down_sample_ratio, hist_positions)
     else:
-        output_dict_entry['ped'][ped_idx] = construct_ped_data(dim, downsample_ratio, hist_positions)
+        output_dict_entry['ped'][ped_idx] = construct_ped_data(dim, down_sample_ratio, hist_positions)
 
 
 def process_blank_ped(data_idx, ped_idx, output_dict):
@@ -451,7 +446,7 @@ def process_blank_ped_inner(output_dict_entry, valid_ped):
 
 
 def create_maps(map_dict, map_ts, raw_map_array):
-    if len(map_dict.keys())>0:
+    if len(map_dict.keys()) > 0:
         return create_maps_inner(map_dict[map_ts], raw_map_array)
     else:
         return create_null_maps()
@@ -504,6 +499,7 @@ def reward_function(prev_steer_data, steer_data, acc_data):
 
 def process_values(data_dict, gamma, output_dict, sample_idx, timestamps):
     reward_arr = np.zeros(len(timestamps), dtype=np.float32)
+    prev_steer_data = None
     for idx in range(len(timestamps)):
         ts = timestamps[idx]
         if config.reward_mode == 'data':
@@ -548,13 +544,13 @@ def process_actions(data_dict, idx, output_dict, ts):
         [data_dict[ts]['action'].linear.x], dtype=np.float32)
 
 
-def process_car(data_idx, ts, output_dict, data_dict, hist_cars, dim, downsample_ratio,
+def process_car(data_idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio,
                 origin, resolution):
-    process_car_inner(output_dict[data_idx], data_dict[ts], hist_cars, dim, downsample_ratio,
+    process_car_inner(output_dict[data_idx], data_dict[ts], hist_cars, dim, down_sample_ratio,
                       origin, resolution)
 
 
-def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, dim, downsample_ratio,
+def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, dim, down_sample_ratio,
                       origin, resolution):
     try:
         print_time = False
@@ -562,7 +558,7 @@ def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, dim, downsa
         # parse path data
         start_time = time.time()
         path_data = construct_path_data(path, origin, resolution, dim,
-                                        downsample_ratio)
+                                        down_sample_ratio)
         if print_time:
             elapsed_time = time.time() - start_time
             print("Construct path time: " + str(elapsed_time) + " s")
@@ -570,7 +566,7 @@ def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, dim, downsa
         # parse car data
         start_time = time.time()
 
-        output_dict_entry['car'] = construct_car_data(origin, resolution, dim, downsample_ratio,
+        output_dict_entry['car'] = construct_car_data(origin, resolution, dim, down_sample_ratio,
                                                       hist_cars, path_data=path_data)
 
         # print('----------------------------------------')
@@ -587,21 +583,21 @@ def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, dim, downsa
         pdb.set_trace()
 
 
-def process_maps(downsample_ratio, idx, map_array, output_dict, hist_pedmaps):
-    process_maps_inner(downsample_ratio, map_array, output_dict[idx], hist_pedmaps)
+def process_maps(down_sample_ratio, idx, map_array, output_dict, hist_ped_maps):
+    process_maps_inner(down_sample_ratio, map_array, output_dict[idx], hist_ped_maps)
 
 
-def process_maps_inner(downsample_ratio, map_array, output_dict_entry, hist_pedmaps):
+def process_maps_inner(down_sample_ratio, map_array, output_dict_entry, hist_ped_maps):
     if map_array is not None:
-        map_array = rescale_image(map_array, downsample_ratio)
+        map_array = rescale_image(map_array, down_sample_ratio)
         map_array = np.array(map_array, dtype=np.int32)
         # print("rescaled map max", map_array.max())
         map_array = normalize(map_array)
         # print("normalized map max", map_array.max())
 
     hist_env_map = []
-    for i in range(len(hist_pedmaps)):
-        ped_array = rescale_image(hist_pedmaps[i], downsample_ratio)
+    for i in range(len(hist_ped_maps)):
+        ped_array = rescale_image(hist_ped_maps[i], down_sample_ratio)
         # print("rescaled ped_array max", ped_array.max())
         ped_array = normalize(ped_array)
         # print("normalized ped_array max", ped_array.max())
@@ -614,6 +610,108 @@ def process_maps_inner(downsample_ratio, map_array, output_dict_entry, hist_pedm
     output_dict_entry['maps'] = hist_env_map
 
     visualization.visualized_exo_agent_data(hist_env_map)
+
+
+def process_obstacles(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio,
+                origin, resolution):
+    process_obstacles_inner(output_dict[data_idx], data_dict[ts], dim, down_sample_ratio,
+                      origin, resolution)
+
+
+def process_obstacles_inner(output_dict_entry, data_dict_entry, dim, down_sample_ratio,
+                      origin, resolution):
+    obstacles = data_dict_entry['obstacles']
+    output_dict_entry['obs'] = construct_obs_data(origin, resolution, dim, down_sample_ratio, obstacles)
+    pass
+
+
+def construct_obs_data(origin, resolution, dim, down_sample_ratio, obstacles):
+    obs_points = get_obs_points(obstacles, origin, dim, down_sample_ratio, resolution)
+    return obs_points
+
+
+def get_obs_points(obstacles, origin, dim_high_res, down_sample_ratio, resolution):
+    # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
+    obs_points = None
+
+    obs_edge_pixels = []
+    for obs in obstacles:
+        print_time = False
+        start_time = time.time()
+        image_space_obstacle = get_image_space_obstacle(obs, origin, resolution)
+        if print_time:
+            elapsed_time = time.time() - start_time
+            print("Obstacle prepare time: " + str(elapsed_time) + " s")
+
+        # construct the image
+        start_time = time.time()
+        obs_edge_pixels = obs_edge_pixels + fill_polygon_edges(image_space_obstacle)
+        if print_time:
+            elapsed_time = time.time() - start_time
+            print("Fill obstacle time: " + str(elapsed_time) + " s")
+
+    try:
+        start_time = time.time()
+        obs_points = get_pyramid_image_points(obs_edge_pixels, dim_high_res, down_sample_ratio,
+                                              draw_image=True)
+        if print_time:
+            elapsed_time = time.time() - start_time
+            print("Obs pyramid time: " + str(elapsed_time) + " s")
+    except Exception as e:
+        error_handler(e)
+
+    return obs_points
+
+
+def process_lanes(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio,
+                origin, resolution):
+    process_lanes_inner(output_dict[data_idx], data_dict[ts], dim, down_sample_ratio,
+                      origin, resolution)
+
+
+def process_lanes_inner(output_dict_entry, data_dict_entry, dim, down_sample_ratio,
+                      origin, resolution):
+    lanes = data_dict_entry['lanes']
+    output_dict_entry['lane'] = construct_lane_data(origin, resolution, dim, down_sample_ratio, lanes)
+    pass
+
+
+def construct_lane_data(origin, resolution, dim, down_sample_ratio, lanes):
+    lane_points = get_lane_points(lanes, origin, dim, down_sample_ratio, resolution)
+    return lane_points
+
+
+def get_lane_points(lanes, origin, dim_high_res, down_sample_ratio, resolution):
+    # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
+    lane_points = None
+
+    lane_pixels = []
+    for lane_seg in lanes:
+        print_time = False
+        start_time = time.time()
+        image_space_lane = get_image_space_lane(lane_seg, origin, resolution)
+        if print_time:
+            elapsed_time = time.time() - start_time
+            print("Lane prepare time: " + str(elapsed_time) + " s")
+
+        # construct the image
+        start_time = time.time()
+        lane_pixels = lane_pixels + fill_polygon_edges(image_space_lane)
+        if print_time:
+            elapsed_time = time.time() - start_time
+            print("Fill lane_seg time: " + str(elapsed_time) + " s")
+
+    try:
+        start_time = time.time()
+        lane_points = get_pyramid_image_points(lane_pixels, dim_high_res, down_sample_ratio,
+                                              draw_image=True)
+        if print_time:
+            elapsed_time = time.time() - start_time
+            print("Lane pyramid time: " + str(elapsed_time) + " s")
+    except Exception as e:
+        error_handler(e)
+
+    return lane_points
 
 
 def process_parametric_agents(idx, output_dict, hist_exo_agents, hist_cars):
@@ -636,9 +734,9 @@ def get_extent_from_bb(car_pos, car_yaw, car_bbox):
 
 
 def process_parametric_agents_inner(output_dict_entry, hist_exo_agents, hist_cars):
+    hist_agent_states = []
     try:
         no_info_value = -100.0
-        hist_agent_states = []
 
         nearest_ped_ids = get_nearest_agent_ids(hist_exo_agents[0], hist_cars[0])  # return ped id
 
@@ -729,11 +827,11 @@ def get_polygons(hist_agent, dim, origin, resolution):
     return hist_positions, is_out_map
 
 
-def add_to_ped_map(hist_ped, hist_pedmaps, dim, map_intensity, map_intensity_scale, origin, resolution):
+def add_to_ped_map(hist_ped, hist_ped_maps, dim, map_intensity, map_intensity_scale, origin, resolution):
     for ts in range(len(hist_ped)):
         ped = hist_ped[ts]
         if ped is not None:
-            ped_map_array = hist_pedmaps[ts]
+            ped_map_array = hist_ped_maps[ts]
             fill_ped_in_map(dim, map_intensity, map_intensity_scale, origin, ped, ped_map_array, resolution)
         else:
             pass
@@ -837,7 +935,7 @@ def debug_history(hist_cars, hist_exo_agents):
 
     for id in agents.keys():
         agent = agents[id]
-        dist_to_car = math.sqrt((agent.ped_pos.x - car.car_pos.x)**2 + (agent.ped_pos.y - car.car_pos.y)**2)
+        dist_to_car = math.sqrt((agent.ped_pos.x - car.car_pos.x) ** 2 + (agent.ped_pos.y - car.car_pos.y) ** 2)
         if dist_to_car < 15.0:
             # print("agent {} nearby, dist {}".format(id, dist_to_car))
             near_count += 1
@@ -886,7 +984,9 @@ def create_dict_entry(idx, output_dict):
         'vel_steer': None,
         'acc_id': None,
         'reward': None,
-        'value': None
+        'value': None,
+        'obs': None,
+        'lane': None
     }
 
 
@@ -894,13 +994,13 @@ def delete_dict_entry(idx, output_dict):
     del output_dict[idx]
 
 
-def parse_map_data(downsample_ratio, map_dict):
+def parse_map_data(down_sample_ratio, map_dict):
     if len(map_dict.keys()) > 0:
         # get map data if it exists
         map_ts = list(map_dict.keys())[0]
 
         dim, map_intensity, map_intensity_scale, new_dim, origin, raw_map_array, resolution = \
-            parse_map_data_from_dict(downsample_ratio, map_dict[map_ts])
+            parse_map_data_from_dict(down_sample_ratio, map_dict[map_ts])
 
         return dim, map_intensity, map_intensity_scale, map_ts, new_dim, origin, raw_map_array, resolution
     else:
@@ -909,11 +1009,11 @@ def parse_map_data(downsample_ratio, map_dict):
         raw_map_array = None
         origin = None
         dim, map_intensity, map_intensity_scale, new_dim, resolution = \
-            create_null_map_data(downsample_ratio)
+            create_null_map_data(down_sample_ratio)
         return dim, map_intensity, map_intensity_scale, map_ts, new_dim, origin, raw_map_array, resolution
 
 
-def parse_map_data_from_dict(downsample_ratio, map_dict_entry):
+def parse_map_data_from_dict(down_sample_ratio, map_dict_entry):
     # get map data
     raw_map_array = np.asarray(map_dict_entry.data).reshape(
         (map_dict_entry.info.height, map_dict_entry.info.width))
@@ -925,27 +1025,27 @@ def parse_map_data_from_dict(downsample_ratio, map_dict_entry):
     map_intensity = np.max(raw_map_array)
     map_intensity_scale = 1500.0
 
-    new_dim = int(dim * downsample_ratio)
+    new_dim = int(dim * down_sample_ratio)
     return dim, map_intensity, map_intensity_scale, new_dim, origin, raw_map_array, resolution
 
 
-def create_null_map_data(downsample_ratio):
+def create_null_map_data(down_sample_ratio):
     resolution = 0.0390625
     dim = default_map_dim
     map_intensity = 1.0
     map_intensity_scale = 1500.0
 
-    new_dim = int(dim * downsample_ratio)
+    new_dim = int(dim * down_sample_ratio)
     return dim, map_intensity, map_intensity_scale, new_dim, resolution
 
 
 def rescale_image(image,
-                  downsample_ratio=0.03125):
+                  down_sample_ratio=0.03125):
     image1 = image.copy()
 
     try:
-        iters = int(math.log(1 / downsample_ratio, 2))
-        iters = 2 # debugging
+        iters = int(math.log(1 / down_sample_ratio, 2))
+        iters = 2  # debugging
         for i in range(iters):
             image1 = cv2.pyrDown(image1)
 
@@ -957,7 +1057,7 @@ def rescale_image(image,
 
 def get_pyramid_image_points(points,
                              dim=default_map_dim,
-                             downsample_ratio=0.03125,
+                             down_sample_ratio=0.03125,
                              intensities=False,
                              draw_image=False):
     format_point = None
@@ -966,7 +1066,7 @@ def get_pyramid_image_points(points,
         arr = np.zeros((dim, dim), dtype=np.float32)
         fill_image_with_points(arr, dim, points, intensities)
         # down sample the image
-        arr1 = rescale_image(arr, downsample_ratio)
+        arr1 = rescale_image(arr, down_sample_ratio)
 
         if draw_image:
             visualization.visualized_car_data(arr1)
@@ -1026,7 +1126,7 @@ def dist(agent, car):
                    (agent.ped_pos.y - car.car_pos.y) ** 2)
 
 
-def construct_ped_data(dim, downsample_ratio, hist_positions):
+def construct_ped_data(dim, down_sample_ratio, hist_positions):
     ped_output_dict = {'hist': [list([])]}
     print_time = True
 
@@ -1039,7 +1139,7 @@ def construct_ped_data(dim, downsample_ratio, hist_positions):
             if position.size:
                 start_time = time.time()
                 hist_positions_in_image.append(get_pyramid_image_points(list([position]), dim=dim,
-                                                                        downsample_ratio=downsample_ratio))
+                                                                        down_sample_ratio=down_sample_ratio))
                 if print_time:
                     elapsed_time = time.time() - start_time
                     print("ped pyramid time: " + str(elapsed_time) + " s")
@@ -1088,7 +1188,7 @@ def construct_blank_ped_data():
     return ped_output_dict
 
 
-def construct_path_data(path, origin, resolution, dim, downsample_ratio):
+def construct_path_data(path, origin, resolution, dim, down_sample_ratio):
     path_output_dict = {'path': list([])}
     for pos in path.poses:
         pix_pos = np.array(
@@ -1102,11 +1202,11 @@ def construct_path_data(path, origin, resolution, dim, downsample_ratio):
     path_output_dict['path'] = np.array(
         path_output_dict['path'], dtype=np.float32)
     path_output_dict['path'] = get_pyramid_image_points(
-        path_output_dict['path'], dim=dim, downsample_ratio=downsample_ratio)
+        path_output_dict['path'], dim=dim, down_sample_ratio=down_sample_ratio)
     return path_output_dict
 
 
-def construct_car_data(origin, resolution, dim, downsample_ratio, hist_cars, path_data=None):
+def construct_car_data(origin, resolution, dim, down_sample_ratio, hist_cars, path_data=None):
     car_output_dict = {'goal': list([]), 'hist': []}
     try:
         # 'goal' contains the rescaled path in pixel points
@@ -1116,7 +1216,7 @@ def construct_car_data(origin, resolution, dim, downsample_ratio, hist_cars, pat
             draw = False
             if i == 0:
                 draw = True
-            car_points = get_car_points(hist_cars[i], origin, dim, downsample_ratio, resolution, draw)
+            car_points = get_car_points(hist_cars[i], origin, dim, down_sample_ratio, resolution, draw)
             car_output_dict['hist'].append(car_points)
 
     except Exception as e:
@@ -1126,7 +1226,7 @@ def construct_car_data(origin, resolution, dim, downsample_ratio, hist_cars, pat
     return car_output_dict
 
 
-def get_car_points(car, origin, dim_high_res, downsample_ratio, resolution, draw_image=False):
+def get_car_points(car, origin, dim_high_res, down_sample_ratio, resolution, draw_image=False):
     # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
     car_points = None
 
@@ -1147,7 +1247,8 @@ def get_car_points(car, origin, dim_high_res, downsample_ratio, resolution, draw
 
         try:
             start_time = time.time()
-            car_points = get_pyramid_image_points(car_edge_pixels, dim_high_res, downsample_ratio, draw_image=draw_image)
+            car_points = get_pyramid_image_points(car_edge_pixels, dim_high_res, down_sample_ratio,
+                                                  draw_image=draw_image)
             if print_time:
                 elapsed_time = time.time() - start_time
                 print("Car pyramid time: " + str(elapsed_time) + " s")
@@ -1157,7 +1258,7 @@ def get_car_points(car, origin, dim_high_res, downsample_ratio, resolution, draw
     return car_points
 
 
-def get_image_points_local_pyramid(car_edge_points, dim_high_res, downsample_ratio, print_time, start_time):
+def get_image_points_local_pyramid(car_edge_points, dim_high_res, down_sample_ratio, print_time, start_time):
     # allocate high-res and low-res images
     image_high_res = np.zeros((dim_high_res, dim_high_res), dtype=np.float32)
     image_low_res = np.zeros((config.imsize, config.imsize), dtype=np.float32)
@@ -1171,23 +1272,23 @@ def get_image_points_local_pyramid(car_edge_points, dim_high_res, downsample_rat
         print("Fill image time: " + str(elapsed_time) + " s")
     start_time = time.time()
     car_points = get_car_points_in_low_res_image(car_edge_points, image_high_res, image_low_res, dim_high_res,
-                                                 downsample_ratio)
+                                                 down_sample_ratio)
     return car_points, start_time
 
 
-def get_car_points_in_low_res_image(car_edge_points, image_high_res, image_low_res, dim, downsample_ratio):
+def get_car_points_in_low_res_image(car_edge_points, image_high_res, image_low_res, dim, down_sample_ratio):
     # find the corresponding range in the low-res image
-    x_range_low_res, y_range_low_res = get_car_range_low_res(car_edge_points, downsample_ratio)
+    x_range_low_res, y_range_low_res = get_car_range_low_res(car_edge_points, down_sample_ratio)
     # find the high-res image range
     x_range_low_res_dialected, y_range_low_res_dialected = dialect_range_low_res(x_range_low_res, y_range_low_res,
-                                                                                 downsample_ratio)
+                                                                                 down_sample_ratio)
     x_range_high_res, y_range_high_res = get_range_high_res(x_range_low_res_dialected, y_range_low_res_dialected,
-                                                            downsample_ratio)
+                                                            down_sample_ratio)
     # copy the range into a small patch
     image_patch_high_res = image_high_res[x_range_high_res[0]:x_range_high_res[1],
                            y_range_high_res[0]:y_range_high_res[1]].copy()
     # down sample the small patch
-    image_patch_low_res = rescale_image(image_patch_high_res, downsample_ratio)
+    image_patch_low_res = rescale_image(image_patch_high_res, down_sample_ratio)
     # copy the patch to the low-res image
     image_low_res[x_range_low_res_dialected[0]:x_range_low_res_dialected[1],
     y_range_low_res_dialected[0]:y_range_low_res_dialected[1]] = image_patch_low_res
@@ -1201,6 +1302,28 @@ def get_image_space_car(car, origin, resolution):
         x = (point.x - origin[0]) / resolution
         y = (point.y - origin[1]) / resolution
         X.append([x, y, 1])
+
+    return np.asarray(X)
+
+
+def get_image_space_obstacle(obs, origin, resolution):
+    X = []
+    for point in obs.points:
+        x = (point.x - origin[0]) / resolution
+        y = (point.y - origin[1]) / resolution
+        X.append([x, y, 1])
+
+    return np.asarray(X)
+
+
+def get_image_space_lane(lane_segment, origin, resolution):
+    X = []
+    x = (lane_segment.start.x - origin[0]) / resolution
+    y = (lane_segment.start.y - origin[1]) / resolution
+    X.append([x, y, 1])
+    x = (lane_segment.end.x - origin[0]) / resolution
+    y = (lane_segment.end.y - origin[1]) / resolution
+    X.append([x, y, 1])
 
     return np.asarray(X)
 
@@ -1221,7 +1344,7 @@ def get_image_space_agent_history(agent_history, origin, resolution, dim):
                 theta = hist_agent.heading
                 x = hist_agent.ped_pos.x - origin[0]
                 y = hist_agent.ped_pos.y - origin[1]
-                dist = math.sqrt(x*x+y*y)
+                dist = math.sqrt(x * x + y * y)
                 # transformation matrix: rotate by theta and translate with (x,y)
                 T = np.asarray([[cos(theta), -sin(theta), x], [sin(theta),
                                                                cos(theta), y], [0, 0, 1]])
@@ -1244,7 +1367,7 @@ def get_image_space_agent_history(agent_history, origin, resolution, dim):
                 if frame_agent_is_out_map is False:
                     is_out_map = False
                 else:
-                    pass # print("frame out of map, dist to origin {}".format(dist))
+                    pass  # print("frame out of map, dist to origin {}".format(dist))
             else:
                 transformed_history.append(None)
 
@@ -1261,15 +1384,15 @@ def check_out_map(X, dim):
     return False
 
 
-def get_range_high_res(x_range_dialected, y_range_dialected, downsample_ratio):
-    upsample_scale = 1.0 / downsample_ratio
+def get_range_high_res(x_range_dialected, y_range_dialected, down_sample_ratio):
+    upsample_scale = 1.0 / down_sample_ratio
     x_range_high_res = [int(x_range_dialected[0] * upsample_scale), int(x_range_dialected[1] * upsample_scale)]
     y_range_high_res = [int(y_range_dialected[0] * upsample_scale), int(y_range_dialected[1] * upsample_scale)]
     return x_range_high_res, y_range_high_res
 
 
-def dialect_range_low_res(x_range_low_res, y_range_low_res, downsample_ratio):
-    rescale_times = int(math.log(1 / downsample_ratio, 2))
+def dialect_range_low_res(x_range_low_res, y_range_low_res, down_sample_ratio):
+    rescale_times = int(math.log(1 / down_sample_ratio, 2))
     x_range_dialected = [x_range_low_res[0] - rescale_times, x_range_low_res[1] + rescale_times]
     y_range_dialected = [y_range_low_res[0] - rescale_times, y_range_low_res[1] + rescale_times]
 
@@ -1281,15 +1404,15 @@ def dialect_range_low_res(x_range_low_res, y_range_low_res, downsample_ratio):
     return x_range_dialected, y_range_dialected
 
 
-def get_car_range_low_res(points, downsample_ratio):
+def get_car_range_low_res(points, down_sample_ratio):
     i_range = [1000000000, 0]
     j_range = [1000000000, 0]
     try:
         for point in points:
             x = point[0]
             y = point[1]
-            x_low_res = int(x * downsample_ratio)
-            y_low_res = int(y * downsample_ratio)
+            x_low_res = int(x * down_sample_ratio)
+            y_low_res = int(y * down_sample_ratio)
             if j_range[0] > x_low_res:
                 j_range[0] = x_low_res
             if i_range[0] > y_low_res:
@@ -1350,7 +1473,6 @@ def main(bagspath, nped, start_file, end_file, thread_id):
     # print("Initialize agent file {}".format(agent_file))
 
     config.num_agents_in_NN = nped
-    topic_mode = "combined"
 
     txt_files = collect_txt_files(bagspath)
 
@@ -1389,44 +1511,40 @@ def main(bagspath, nped, start_file, end_file, thread_id):
                 #
                 # Walk into subdirectories recursively and collect all txt files
                 #
-                if topic_mode == "combined":
-                    map_dict, plan_dict, ped_dict, car_dict, \
-                    act_reward_dict, topics_complete = parse_bag_file(filename=bag_file)
+                map_dict, plan_dict, ped_dict, car_dict, \
+                act_reward_dict, obs_dict, lane_dict, topics_complete = parse_bag_file(filename=bag_file)
 
-                    if topics_complete:  # all topics in the bag are non-empty
-                        per_step_data_dict, map_dict = combine_topics_in_one_dict(
-                            map_dict, plan_dict, ped_dict, car_dict, act_reward_dict)
+                if topics_complete:  # all topics in the bag are non-empty
+                    per_step_data_dict, map_dict = combine_topics_in_one_dict(
+                        map_dict, plan_dict, ped_dict, car_dict, act_reward_dict, obs_dict, lane_dict)
+                    end_time = time.time()
+                    print("Thread %d parsed: elapsed time %f s" % (thread_id, end_time - start_time))
+
+                    h5_data_dict, data_valid = create_h5_data(per_step_data_dict, map_dict)
+                    end_time = time.time()
+                    print("Thread %d done: elapsed time %f s" % (thread_id, end_time - start_time))
+                    if data_valid:
+                        # save h5 data into file
+                        try:
+                            dd.io.save(h5_name, h5_data_dict)
+                        except Exception as e:
+                            print(e)
+                            print('h5 name: ', h5_name)
+                            print('txt file name: ', txt_file)
+                            print('h5 file name from txt: ', get_h5_name_from_txt_name(txt_file))
+
                         end_time = time.time()
-                        print("Thread %d parsed: elapsed time %f s" % (thread_id, end_time - start_time))
-
-                        h5_data_dict, data_valid = create_h5_data(per_step_data_dict, map_dict)
-                        end_time = time.time()
-                        print("Thread %d done: elapsed time %f s" % (thread_id, end_time - start_time))
-                        if data_valid:
-                            # save h5 data into file
-                            try:
-                                dd.io.save(h5_name, h5_data_dict)
-                            except Exception as e:
-                                print(e)
-                                print('h5 name: ', h5_name)
-                                print('txt file name: ', txt_file)
-                                print('h5 file name from txt: ', get_h5_name_from_txt_name(txt_file))
-
-                            end_time = time.time()
-                            print("Thread %d written: elapsed time %f s" % (thread_id, end_time - start_time))
-                        else:
-                            print(
-                                "pedestrian data not used. Nearby pedestrians disappear during the drive "
-                                "(investigate)")
-                            investigate_files.append(txt_file)
-                            continue
-                    else:  # topics_complete == False
-                        print("doing nothing coz invalid bag file")
-                        incomplete_file_counter += 1
+                        print("Thread %d written: elapsed time %f s" % (thread_id, end_time - start_time))
+                    else:
+                        print(
+                            "pedestrian data not used. Nearby pedestrians disappear during the drive "
+                            "(investigate)")
+                        investigate_files.append(txt_file)
                         continue
-                else:
-                    print("Exception: topic mode {} not defined".format(topic_mode))
-                    pdb.set_trace()
+                else:  # topics_complete == False
+                    print("doing nothing coz invalid bag file")
+                    incomplete_file_counter += 1
+                    continue
 
     # print("number of filtered files %d" % len(filtered_files))
     print("no of files with imcomplete topics %d" % incomplete_file_counter)

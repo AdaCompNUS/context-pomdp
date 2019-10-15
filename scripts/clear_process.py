@@ -40,7 +40,7 @@ def clear_process(clear_outter=False, port=2000):
     subprocess.call('pkill -9 roslaunch', shell=True)
     subprocess.call('pkill -9 python2.7', shell=True)
     # time.sleep(1)
-    subprocess.call('pkill -9 python', shell=True)
+    subprocess.call('pkill -9 python2', shell=True)
     subprocess.call('yes | rosclean purge', shell=True)
     subprocess.call('pkill -9 rosmaster', shell=True)
     subprocess.call('pkill -9 roscore', shell=True)

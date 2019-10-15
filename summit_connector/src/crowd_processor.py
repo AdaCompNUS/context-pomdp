@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-from drunc import Drunc
+from util import *
 import carla
 import sys
 
@@ -9,60 +9,64 @@ from collections import defaultdict
 
 import rospy
 import tf
-from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped, Point, Pose, Quaternion, Vector3, Polygon, Point32, PoseArray
+from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped, Point, Pose, Quaternion, Vector3, Polygon, \
+    Point32, PoseArray
 from nav_msgs.msg import Path
 from std_msgs.msg import Bool
 
 import msg_builder.msg
-from msg_builder.msg import car_info as CarInfo # panpan
-from util import *
+from msg_builder.msg import car_info as CarInfo  # panpan
 
 '''    
 def get_path_candidates(self, num_points, interval):
 '''
+
 
 # TODO Speed up spawning logic to prevent hangs in ROS.
 class CrowdProcessor(Drunc):
     def __init__(self):
         super(CrowdProcessor, self).__init__()
 
+        print("{}: map_location={}".format(__file__, get_map_location()))
+        sys.stdout.flush()
+
         self.network_agents = []
         self.sidewalk_agents = []
         self.do_update = False
         self.ego_car_info = None
-        self.topological_hash_map = defaultdict(lambda: None) # TODO Expiry to prevent memory explosion.
+        self.topological_hash_map = defaultdict(lambda: None)  # TODO Expiry to prevent memory explosion.
 
         self.network_agents_sub = rospy.Subscriber(
-                '/crowd/network_agents', 
-                msg_builder.msg.CrowdNetworkAgentArray,
-                self.network_agents_callback,
-                queue_size=1)
+            '/crowd/network_agents',
+            msg_builder.msg.CrowdNetworkAgentArray,
+            self.network_agents_callback,
+            queue_size=1)
         self.sidewalk_agents_sub = rospy.Subscriber(
-                '/crowd/sidewalk_agents',
-                msg_builder.msg.CrowdSidewalkAgentArray,
-                self.sidewalk_agents_callback,
-                queue_size=1)
+            '/crowd/sidewalk_agents',
+            msg_builder.msg.CrowdSidewalkAgentArray,
+            self.sidewalk_agents_callback,
+            queue_size=1)
         self.il_car_info_sub = rospy.Subscriber(
-                '/ego_state',
-                CarInfo,
-                self.il_car_info_callback,
-                queue_size=1)
+            '/ego_state',
+            CarInfo,
+            self.il_car_info_callback,
+            queue_size=1)
         self.agents_pub = rospy.Publisher(
-                '/agent_array',
-                msg_builder.msg.TrafficAgentArray,
-                queue_size=1)
+            '/agent_array',
+            msg_builder.msg.TrafficAgentArray,
+            queue_size=1)
         self.agents_path_pub = rospy.Publisher(
-                '/agent_path_array',
-                msg_builder.msg.AgentPathArray,
-                queue_size=1)
+            '/agent_path_array',
+            msg_builder.msg.AgentPathArray,
+            queue_size=1)
         self.obstacles_pub = rospy.Publisher(
-                '/local_obstacles',
-                msg_builder.msg.Obstacles,
-                queue_size=1)
+            '/local_obstacles',
+            msg_builder.msg.Obstacles,
+            queue_size=1)
         self.lanes_pub = rospy.Publisher(
-                '/local_lanes',
-                msg_builder.msg.Lanes,
-                queue_size=1)
+            '/local_lanes',
+            msg_builder.msg.Lanes,
+            queue_size=1)
 
     def network_agents_callback(self, agents):
         self.network_agents = agents.agents
@@ -82,8 +86,8 @@ class CrowdProcessor(Drunc):
             pos = pos_msg.pose.position
             loc = carla.Location(pos.x, pos.y, 0.1)
             if last_loc is not None:
-                self.world.debug.draw_line(last_loc,loc,life_time = 0.1, 
-                    color = carla.Color(color_i,0, color_i,0))
+                self.world.debug.draw_line(last_loc, loc, life_time=0.1,
+                                           color=carla.Color(color_i, 0, color_i, 0))
             last_loc = carla.Location(pos.x, pos.y, 0.1)
 
     def update(self):
@@ -101,8 +105,8 @@ class CrowdProcessor(Drunc):
 
         ego_car_position = self.ego_car_info.car_pos
         ego_car_position = carla.Vector2D(
-                ego_car_position.x,
-                ego_car_position.y)
+            ego_car_position.x,
+            ego_car_position.y)
 
         agents_msg = msg_builder.msg.TrafficAgentArray()
         agents_path_msg = msg_builder.msg.AgentPathArray()
@@ -148,14 +152,14 @@ class CrowdProcessor(Drunc):
         for agent in agents:
             actor = self.world.get_actor(agent.id)
 
-            if actor is None: 
+            if actor is None:
                 continue
 
             actor_pos = carla.Vector2D(actor.get_location().x, actor.get_location().y)
 
-            if (actor_pos - ego_car_position).length() > 50: # TODO Add as ROS parameter.
+            if (actor_pos - ego_car_position).length() > 50:  # TODO Add as ROS parameter.
                 continue
-            
+
             agent_tmp = msg_builder.msg.TrafficAgent()
             agent_tmp.last_update = current_time
             agent_tmp.id = actor.id
@@ -164,8 +168,8 @@ class CrowdProcessor(Drunc):
             agent_tmp.pose.position.y = actor.get_location().y
             agent_tmp.pose.position.z = actor.get_location().z
             quat_tf = tf.transformations.quaternion_from_euler(
-                    0, 0, 
-                    np.deg2rad(actor.get_transform().rotation.yaw))
+                0, 0,
+                np.deg2rad(actor.get_transform().rotation.yaw))
             agent_tmp.pose.orientation = Quaternion(quat_tf[0], quat_tf[1], quat_tf[2], quat_tf[3])
 
             agent_tmp.bbox = Polygon()
@@ -189,8 +193,8 @@ class CrowdProcessor(Drunc):
 
                 paths = [[initial_route_point]]
                 topological_hash = ''
-            
-                #TODO Add 20, 1.0 as ROS paramters.
+
+                # TODO Add 20, 1.0 as ROS paramters.
                 for _ in range(20):
                     next_paths = []
                     for path in paths:
@@ -198,16 +202,18 @@ class CrowdProcessor(Drunc):
                         next_paths.extend(path + [route_point] for route_point in next_route_points)
                         if len(next_route_points) > 1:
                             topological_hash += '({},{},{},{}={})'.format(
-                                    path[-1].edge, path[-1].lane, path[-1].segment, path[-1].offset, 
-                                    len(next_route_points))
+                                path[-1].edge, path[-1].lane, path[-1].segment, path[-1].offset,
+                                len(next_route_points))
                     paths = next_paths
 
-                agent_paths_tmp.reset_intention = self.topological_hash_map[agent.id] is None or self.topological_hash_map[agent.id] != topological_hash
+                agent_paths_tmp.reset_intention = self.topological_hash_map[agent.id] is None or \
+                                                  self.topological_hash_map[agent.id] != topological_hash
                 for path in paths:
                     path_msg = Path()
                     path_msg.header.frame_id = 'map'
                     path_msg.header.stamp = current_time
-                    for path_point in [actor_pos] + [self.network.get_route_point_position(route_point) for route_point in path]:
+                    for path_point in [actor_pos] + [self.network.get_route_point_position(route_point) for route_point
+                                                     in path]:
                         pose_msg = PoseStamped()
                         pose_msg.header.frame_id = 'map'
                         pose_msg.header.stamp = current_time
@@ -229,16 +235,18 @@ class CrowdProcessor(Drunc):
                 path = [sidewalk_route_point]
                 for _ in range(20):
                     if sidewalk_route_orientation:
-                        path.append(self.sidewalk.get_next_route_point(path[-1], 1.0)) # TODO Add as ROS parameter.
+                        path.append(self.sidewalk.get_next_route_point(path[-1], 1.0))  # TODO Add as ROS parameter.
                     else:
-                        path.append(self.sidewalk.get_previous_route_point(path[-1], 1.0)) # TODO Add as ROS parameter.
+                        path.append(self.sidewalk.get_previous_route_point(path[-1], 1.0))  # TODO Add as ROS parameter.
                 topological_hash = '{},{}'.format(sidewalk_route_point.polygon_id, agent.route_orientation)
 
-                agent_paths_tmp.reset_intention = self.topological_hash_map[agent.id] is None or self.topological_hash_map[agent.id] != topological_hash
+                agent_paths_tmp.reset_intention = self.topological_hash_map[agent.id] is None or \
+                                                  self.topological_hash_map[agent.id] != topological_hash
                 path_msg = Path()
                 path_msg.header.frame_id = 'map'
                 path_msg.header.stamp = current_time
-                for path_point in [actor_pos] + [self.sidewalk.get_route_point_position(route_point) for route_point in path]:
+                for path_point in [actor_pos] + [self.sidewalk.get_route_point_position(route_point) for route_point in
+                                                 path]:
                     pose_msg = PoseStamped()
                     pose_msg.header.frame_id = 'map'
                     pose_msg.header.stamp = current_time
@@ -249,11 +257,11 @@ class CrowdProcessor(Drunc):
                 agent_paths_tmp.path_candidates = [path_msg]
                 agent_paths_tmp.cross_dirs = [agent.route_orientation]
                 self.topological_hash_map[agent.id] = topological_hash
-            
+
             agents_path_msg.agents.append(agent_paths_tmp)
 
         agents_msg.header.frame_id = 'map'
-        agents_msg.header.stamp = current_time    
+        agents_msg.header.stamp = current_time
         self.agents_pub.publish(agents_msg)
 
         agents_path_msg.header.frame_id = 'map'
@@ -267,7 +275,7 @@ class CrowdProcessor(Drunc):
         # print('agent_array update at {}'.format(elapsed))
         # sys.stdout.flush()
 
-    
+
 if __name__ == '__main__':
     rospy.init_node('crowd_processor')
     init_time = rospy.Time.now()
@@ -278,5 +286,3 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         crowd_processor.update()
         rate.sleep()
-
-

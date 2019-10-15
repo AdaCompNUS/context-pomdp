@@ -9,7 +9,7 @@ import time
 import rospy
 import struct
 
-from drunc import Drunc
+from drunc import Drunc, summit_root, init_map_location, get_map_location
 import carla
 
 from std_msgs.msg import Bool
@@ -69,7 +69,12 @@ WALL_MAT = [
 
 class SpawnMeshes(Drunc):
     def __init__(self):
+        init_map_location()
+
         super(SpawnMeshes, self).__init__()
+
+        print("{}: map_location={}".format(__file__, get_map_location()))
+        sys.stdout.flush()
 
         self.meshes_spawned_pub = rospy.Publisher('/meshes_spawned', Bool, queue_size=1, latch=True) 
 
@@ -86,19 +91,22 @@ class SpawnMeshes(Drunc):
             if bottom_right_id[1] >= top_left_id[1]:
                 height = bottom_right_id[1] - top_left_id[1] + 1
             else:
-                height = (top_left_id[1] + 1) + (2**zoom - bottom_right_id[1])
+                height = (top_left_id[1] + 1) + (2 ** zoom - bottom_right_id[1])
 
             if bottom_right_id[2] >= top_left_id[2]:
                 width = bottom_right_id[2] - top_left_id[2] + 1
             else:
-                width = (top_left_id[2] + 1) + (2**zoom - bottom_right_id[2])
+                width = (top_left_id[2] + 1) + (2 ** zoom - bottom_right_id[2])
 
             for row in range(top_left_id[1], bottom_right_id[1] + 1):
                 for column in range(top_left_id[2], bottom_right_id[2] + 1):
-                    path = os.path.join(os.path.expanduser('~/carla/Data/imagery'), 
-                        "{}/{}_{}.jpeg".format(zoom, row, column))
+
+                    print("row {}, column {}".format(row, column))
+                    path = os.path.join(os.path.expanduser(summit_root+ 'Data/imagery'),
+                                        "{}/{}_{}.jpeg".format(zoom, row, column))
                     sys.stdout.flush()
                     if not os.path.exists(path):
+                        print("jpeg for row {} column {} missing in {}Data/imagery".format(row, column, summit_root))
                         continue
 
                     data = []
@@ -107,23 +115,27 @@ class SpawnMeshes(Drunc):
                         while byte != "":
                             data += [ord(byte)]
                             byte = f.read(1)
-                    
+
                     bounds_min = project(num2deg(zoom, row + 1, column)) + self.network.offset
                     bounds_max = project(num2deg(zoom, row, column + 1)) + self.network.offset
 
                     self.mesh_ids.append(self.world.spawn_dynamic_tile_mesh(bounds_min, bounds_max, data))
 
-        for zoom in range(18, 19):
-            spawn_tiles(zoom, self.geo_min, self.geo_max)
-
-        time.sleep(1)
-
+        do_spawn_tiles = True
         commands = []
-        # Roadmark occupancy map.
-        if self.roadmark_occupancy_map is not None:
-            commands.append(carla.command.SpawnDynamicMesh(
-                self.roadmark_occupancy_map.get_mesh_triangles(-0.0),
-                '/Game/Carla/Static/GenericMaterials/LaneMarking/M_MarkingLane_W'))
+
+        if do_spawn_tiles:
+
+            for zoom in range(18, 19):
+                spawn_tiles(zoom, self.geo_min, self.geo_max)
+
+            time.sleep(1)
+
+            # Roadmark occupancy map.
+            if self.roadmark_occupancy_map is not None:
+                commands.append(carla.command.SpawnDynamicMesh(
+                    self.roadmark_occupancy_map.get_mesh_triangles(-0.0),
+                    '/Game/Carla/Static/GenericMaterials/LaneMarking/M_MarkingLane_W'))
 
         # Network occupancy map.
         if self.network_occupancy_map is not None:

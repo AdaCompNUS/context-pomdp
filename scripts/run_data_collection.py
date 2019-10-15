@@ -1019,6 +1019,7 @@ def launch_carla_simulator(round, run, case):
 
     if launch_summit:
         shell_cmd = 'DISPLAY= ./CarlaUE4.sh -opengl'
+        # shell_cmd = './CarlaUE4.sh -opengl'
         if config.verbosity > 0:
             print('')
             print(shell_cmd)
