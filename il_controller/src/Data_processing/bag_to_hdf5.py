@@ -51,6 +51,8 @@ import copy
 
 default_map_dim = 1024
 
+default_map_dim = 1024
+
 GOAL_LIST = [(19.9, 0), (0, -19.9), (0, 19.9), (-19.9, 0), (-7, 19.9),
              (-6, 19.9), (-5, 19.9)]
 
@@ -1046,6 +1048,7 @@ def rescale_image(image,
     try:
         iters = int(math.log(1 / down_sample_ratio, 2))
         iters = 2  # debugging
+
         for i in range(iters):
             image1 = cv2.pyrDown(image1)
 
@@ -1216,6 +1219,7 @@ def construct_car_data(origin, resolution, dim, down_sample_ratio, hist_cars, pa
             draw = False
             if i == 0:
                 draw = True
+
             car_points = get_car_points(hist_cars[i], origin, dim, down_sample_ratio, resolution, draw)
             car_output_dict['hist'].append(car_points)
 
@@ -1386,6 +1390,7 @@ def check_out_map(X, dim):
 
 def get_range_high_res(x_range_dialected, y_range_dialected, down_sample_ratio):
     upsample_scale = 1.0 / down_sample_ratio
+
     x_range_high_res = [int(x_range_dialected[0] * upsample_scale), int(x_range_dialected[1] * upsample_scale)]
     y_range_high_res = [int(y_range_dialected[0] * upsample_scale), int(y_range_dialected[1] * upsample_scale)]
     return x_range_high_res, y_range_high_res
@@ -1540,6 +1545,7 @@ def main(bagspath, nped, start_file, end_file, thread_id):
                             "pedestrian data not used. Nearby pedestrians disappear during the drive "
                             "(investigate)")
                         investigate_files.append(txt_file)
+
                         continue
                 else:  # topics_complete == False
                     print("doing nothing coz invalid bag file")
