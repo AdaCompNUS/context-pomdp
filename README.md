@@ -44,6 +44,34 @@ The repository also contains two utility folders:
    * experiment_summit.sh: Script for executing repetitive experiments by calling run_data_collection.py.
 
 ## 1. Setup
+### 1.0 (optional) Using the environment readily available in Docker
+If you don't want to setup the environment in your local machine, you can download and use this docker image with the full environment setup:
+```
+docker pull cppmayo/melodic_cuda10_1_cudnn7_libtorch_opencv4_ws
+```
+
+A docker container can be launched using [launch_docker.py](./scripts/launch_docker.py).
+This script will mount two folders to the docker container:
+* `~/catkin_ws`: for accessing your catkin workspace inside the docker container.
+* `~/driving_data`: for outputing driving data (txt records and ros bag files) to the external system. (This directory should exist before mounting).
+
+You can then [compile the catkin_ws](#fetchrepo) inside the docker container.
+
+Note that here you need to set `launch_summit = False` in [run_data_collection.py](./scripts/run_data_collection.py), and manually launch the summit simulator outside the docker container. 
+I have provided a [server_pipline.py](./scripts/server_pipline.py) for this purpose. Just run:
+```
+cd ~/catkin_ws/src/scripts
+python server_pipline.py --port <summit_port, e.g. 2000> --sport <summit_stream_port, e.g. 2001>
+```
+It will run the simulator and launch the docker container. Now you can run experiments inside the container:
+```
+cd src/scripts
+bash experiment_summit.sh <gpu_id> <start_run> <end_run_inclusive> <summit_port>
+```
+The recorded data will appear in `~/driving_data` on your machine.
+
+The rest of processures are for setting up the envirnoment in your PC or server.
+
 ### 1.1 Pre-requisites
 1. Install [CUDA 10.0](https://developer.nvidia.com/cuda-10.0-download-archive) (Note: you need to follow the [official guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) for a successful installation.)
 2. Install [CUDNN 7](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html)
@@ -103,7 +131,7 @@ cd catkin_ws
 catkin config --merge-devel
 catkin build
 ```
-#### 1.2.5 Fetch the full repository
+#### <a name="fetchrepo"></a>1.2.5 Fetch the full repository
 Run
 ```
 cd ~/catkin_ws/src
@@ -144,7 +172,7 @@ Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjk
 Or you can download the [source code](https://github.com/AdaCompNUS/carla.git) from github and compile from source.
 For now the code explicitly uses this `~/summit` to find the simulator. So stick to the path for SUMMIT installation.
 
-## 2. Run the System
+## 2. <a name="runcode"></a>Run the System
 ### 2.1 Launch the SUMMIT Simulator
 ```
 export SDL_VIDEODRIVER=offscreen
