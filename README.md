@@ -52,8 +52,8 @@ docker pull cppmayo/melodic_cuda10_1_cudnn7_libtorch_opencv4_ws
 
 A docker container can be launched using [launch_docker.py](./scripts/launch_docker.py):
 This script will mount two folders to the docker container:
-*`~/catkin_ws`: for accessing your catkin workspace inside the docker container.
-*`~/driving_data`: for outputing driving data (txt records and ros bag files) to the external system. (This directory should exist before mounting).
+* `~/catkin_ws`: for accessing your catkin workspace inside the docker container.
+* `~/driving_data`: for outputing driving data (txt records and ros bag files) to the external system. (This directory should exist before mounting).
 
 You can then [compile the catkin_ws](#fetchrepo) inside the docker container.
 
