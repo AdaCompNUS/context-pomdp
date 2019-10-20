@@ -101,6 +101,7 @@ cd ~/catkin_ws/src
 git clone https://github.com/cindycia/LeTS-Drive-SUMMIT.git    
 mv LeTS-Drive-SUMMIT/* .
 mv LeTS-Drive-SUMMIT/.git .
+rm -r LeTS-Drive-SUMMIT
 ```
 Now all ROS packages should be in `~/catkin_ws/src`.
 
