@@ -5,6 +5,7 @@ s=$2
 e=$3
 port=$4
 record_bags=1
+maploc=magic
 mode=joint_pomdp
 
 echo "User: $USER"
@@ -27,9 +28,9 @@ do
     echo "[repeat_run] gpu_id: $gpu"
     python3 run_data_collection.py --record $record_bags \
     --sround $start_batch --eround $end_batch \
-    --make 1 --verb 1 --port $port --baseline $mode 2>&1 | tee -a exp_log_$s'_'$e
+    --make 1 --verb 1 --port $port --maploc $maploc --baseline $mode 2>&1 | tee -a exp_log_$s'_'$e
     echo "[repeat_run] clearing process"
     python ./clear_process.py $port
     sleep 3
 done
-echo "Exp finished in "$SECONDS
+echo "Exp finished in "$SECONDS" seconds"

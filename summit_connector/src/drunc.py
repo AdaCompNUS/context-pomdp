@@ -30,6 +30,7 @@ class Drunc(object):
         address = rospy.get_param('address', '127.0.0.1')
         port = rospy.get_param('port', 2000)
         self.map_location = rospy.get_param('map_location', 'meskel_square')
+        print("Map location set in SUMMIT: {}".format(self.map_location))
         self.client = carla.Client(address, port)
         self.client.set_timeout(10.0)
         self.world = self.client.get_world()
