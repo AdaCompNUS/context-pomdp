@@ -50,12 +50,21 @@ The repository also contains two utility folders:
 
 ### 1.2 Setup Dependencies
 Download all bash scripts in the [setup](./setup) folder (note: not the full repo). Then, go through the following steps to set up the dependencies:
+#### 1.2.0 Check your apt-get
+Make sure that your apt-get functions properly. Run:
+```
+sudo apt-get update
+```
+If you see an error like "The following signatures couldn't be verified because the public key is not available: NO_PUBKEY 6ED91CA3AC1160CD". It is the Nvidia-docker2 apt key expired. You will need to run the following line to reactivate the key:
+```
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | \
+  sudo apt-key add -
+```
 #### 1.2.1 Install ros-melodic
-Run
+To install ROS Melodic, run
 ```
-bash install_ros_melodic.sh
+sudo bash install_ros_melodic.sh
 ```
-The script might prompt for sudo privilege.
 Then add the following line to the end of `~/.bashrc`:
 ```
 source /opt/ros/melodic/setup.bash
