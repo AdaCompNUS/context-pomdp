@@ -3,10 +3,12 @@
   <arg name="port" default="2000" />
   <arg name="map_location" default="meskel_square" />
   <arg name="ego_control_mode" default="gamma" />
+  <arg name="random_seed" default="0" />
 
   <param name="address" type="string" value="$(arg address)" />
   <param name="port" type="int" value="$(arg port)" />
   <param name="map_location" type="string" value="$(arg map_location)" />
+  <param name="random_seed" type="int" value="$(arg random_seed)" />
   
   <node name="map_server" pkg="map_server" type="map_server" args="$(find summit_connector)/launch/map.yaml" />
 
@@ -20,10 +22,14 @@
   <node name="ego_vehicle" pkg="summit_connector" type="ego_vehicle.py" output="screen">
     <param name="control_mode" value="$(arg ego_control_mode)"/>
   </node>
-  
+
+  <!--
   <node name="speed_controller" pkg="summit_connector" type="speed_controller.py" output="screen"/>
+  -->
   
+  <!--
   <node name="purepursuit_controller" pkg="summit_connector" type="purepursuit_controller.py" output="screen"/>
+  -->
 
   <node name="gamma_crowd_controller" pkg="summit_connector" type="gamma_crowd_controller.py" output="screen">
     <param name="num_network_car_agents" value="70"/>

@@ -469,23 +469,24 @@ class GammaCrowdController(Drunc):
             spawn_size_max = 150
         spawn_segment_map = self.network_segment_map.intersection(
             get_spawn_occupancy_map(bounds_center, spawn_size_min, spawn_size_max))
+        spawn_segment_map.seed_rand(self.rng.getrandbits(32))
 
         start_t = time.time()
         for i in range(self.num_network_car_agents - len(self.network_car_agents)):
-            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map)
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map, self.rng)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
             trans.location.z = 0.2
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
-                random.choice(self.cars_blueprints),
+                self.rng.choice(self.cars_blueprints),
                 trans)
             self.world.wait_for_tick(5.0)
             if actor:
                 self.network_car_agents.append(CrowdNetworkCarAgent(
                     actor, path,
-                    5.0 + random.uniform(0.0, 0.5)))
+                    5.0 + self.rng.uniform(0.0, 0.5)))
                 self.stats_total_num_car += 1
             elapsed_time = time.time() - start_t
 
@@ -494,20 +495,20 @@ class GammaCrowdController(Drunc):
 
         start_t = time.time()
         for _ in range(self.num_network_bike_agents - len(self.network_bike_agents)):
-            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map)
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map, self.rng)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
             trans.location.z = 0.2
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
-                random.choice(self.bikes_blueprints),
+                self.rng.choice(self.bikes_blueprints),
                 trans)
             self.world.wait_for_tick(5.0)
             if actor:
                 self.network_bike_agents.append(CrowdNetworkBikeAgent(
                     actor, path,
-                    3.0 + random.uniform(0, 0.5)))
+                    3.0 + self.rng.uniform(0, 0.5)))
                 self.stats_total_num_bike += 1
             elapsed_time = time.time() - start_t
 
@@ -516,20 +517,20 @@ class GammaCrowdController(Drunc):
 
         start_t = time.time()
         for _ in range(self.num_sidewalk_agents - len(self.sidewalk_agents)):
-            path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, bounds_min, bounds_max)
+            path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, bounds_min, bounds_max, self.rng)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
             trans.location.z = 0.2
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
-                random.choice(self.walker_blueprints),
+                self.rng.choice(self.walker_blueprints),
                 trans)
             self.world.wait_for_tick(5.0)
             if actor:
                 self.sidewalk_agents.append(CrowdSidewalkAgent(
                     actor, path,
-                    0.5 + random.uniform(0.0, 1.0)))
+                    0.5 + self.rng.uniform(0.0, 1.0)))
                 self.stats_total_num_ped += 1
             elapsed_time = time.time() - start_t
 

@@ -10,11 +10,13 @@ class NetworkAgentPath:
         self.route_points = []
 
     @staticmethod
-    def rand_path(drunc, min_points, interval, min_safe_points=None, segment_map=None):
+    def rand_path(drunc, min_points, interval, min_safe_points=None, segment_map=None, rng=None):
         if segment_map is None:
             segment_map = drunc.network_segment_map
         if min_safe_points is None:
             min_safe_points = min_points
+        if rng is None:
+            rng = random
 
         spawn_point = None
         route_paths = None
@@ -24,15 +26,18 @@ class NetworkAgentPath:
             route_paths = drunc.network.get_next_route_paths(spawn_point, min_safe_points - 1, interval)
 
         path = NetworkAgentPath(drunc, min_points, interval)
-        path.route_points = random.choice(route_paths)[0:min_points]
+        path.route_points = rng.choice(route_paths)[0:min_points]
         return path
 
-    def resize(self):
+    def resize(self, rng=None):
+        if rng is None:
+            rng = random
+
         while len(self.route_points) < self.min_points:
             next_points = self.drunc.network.get_next_route_points(self.route_points[-1], self.interval)
             if len(next_points) == 0:
                 return False
-            self.route_points.append(random.choice(next_points))
+            self.route_points.append(rng.choice(next_points))
         return True
 
     def cut(self, position):

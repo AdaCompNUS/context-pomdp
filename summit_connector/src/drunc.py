@@ -12,7 +12,6 @@ except IndexError:
     sys.exit()
 
 import carla
-import random
 import rospy
 import time
 import random
@@ -25,32 +24,11 @@ class Drunc(object):
         address = rospy.get_param('address', '127.0.0.1')
         port = rospy.get_param('port', 2000)
         self.map_location = rospy.get_param('map_location', 'meskel_square')
+        self.rng = random.Random(rospy.get_param('random_seed', 0))
         print("Map location set in SUMMIT: {}".format(self.map_location))
         self.client = carla.Client(address, port)
         self.client.set_timeout(10.0)
         self.world = self.client.get_world()
-
-        # Load network.
-        self.network = carla.SumoNetwork.load(summit_root + 'Data/' + self.map_location + '.net.xml')
-        self.network_occupancy_map = carla.OccupancyMap.load(summit_root + 'Data/' + self.map_location + '.wkt')
-        self.network_segment_map = self.network.create_segment_map()
-
-        # Roadmarks.
-        self.roadmark_occupancy_map = self.network.create_roadmark_occupancy_map()
-
-        # Load sidewalk.
-        self.sidewalk = self.network_occupancy_map.create_sidewalk(1.5)
-        self.sidewalk_occupancy_map = carla.OccupancyMap.load(summit_root + 'Data/' + self.map_location + '.sidewalk.wkt')
-        with open(summit_root + 'Data/' + self.map_location + '.sidewalk.mesh', 'r') as file:
-            sidewalk_mesh_data = file.read()
-        sidewalk_mesh_data = sidewalk_mesh_data.split(',')
-
-        # Load landmarks.
-        self.landmarks = []
-        self.landmarks = carla.Landmark.load(summit_root + 'Data/' + self.map_location + '.osm', self.network.offset)
-        self.landmarks = [l.difference(self.network_occupancy_map).difference(self.sidewalk_occupancy_map) for l in
-                          self.landmarks]
-        self.landmarks = [l for l in self.landmarks if not l.is_empty]
 
         # Define bounds.
         if self.map_location == "map":
@@ -96,6 +74,29 @@ class Drunc(object):
             self.geo_min = (39.897975, 116.270888)
             self.geo_max = (39.990929, 116.610580)
 
+        # Load network.
+        self.network = carla.SumoNetwork.load(summit_root + 'Data/' + self.map_location + '.net.xml')
+        self.network_occupancy_map = carla.OccupancyMap.load(summit_root + 'Data/' + self.map_location + '.wkt')
+        self.network_segment_map = self.network.create_segment_map()
+        self.network_segment_map.seed_rand(self.rng.getrandbits(32))
+
+        # Roadmarks.
+        self.roadmark_occupancy_map = self.network.create_roadmark_occupancy_map()
+
+        # Load sidewalk.
+        self.sidewalk = self.network_occupancy_map.create_sidewalk(1.5)
+        self.sidewalk_occupancy_map = carla.OccupancyMap.load(summit_root + 'Data/' + self.map_location + '.sidewalk.wkt')
+        with open(summit_root + 'Data/' + self.map_location + '.sidewalk.mesh', 'r') as file:
+            sidewalk_mesh_data = file.read()
+        sidewalk_mesh_data = sidewalk_mesh_data.split(',')
+
+        # Load landmarks.
+        self.landmarks = []
+        self.landmarks = carla.Landmark.load(summit_root + 'Data/' + self.map_location + '.osm', self.network.offset)
+        self.landmarks = [l.difference(self.network_occupancy_map).difference(self.sidewalk_occupancy_map) for l in
+                          self.landmarks]
+        self.landmarks = [l for l in self.landmarks if not l.is_empty]
+
     def in_scenario_bounds(self, point):
         return self.scenario_min.x <= point.x <= self.scenario_max.x and \
                self.scenario_min.y <= point.y <= self.scenario_max.y
@@ -107,8 +108,8 @@ class Drunc(object):
             bounds_max = self.scenario_max
 
         return carla.Vector2D(
-            random.uniform(bounds_min.x, bounds_max.x),
-            random.uniform(bounds_min.y, bounds_max.y))
+            self.rng.uniform(bounds_min.x, bounds_max.x),
+            self.rng.uniform(bounds_min.y, bounds_max.y))
 
     def rand_sidewalk_route_point(self, bounds_min=None, bounds_max=None):
         point = self.sidewalk.get_nearest_route_point(self.rand_bounds_point(bounds_min, bounds_max))
