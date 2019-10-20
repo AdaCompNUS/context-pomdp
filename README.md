@@ -178,6 +178,14 @@ Start training and open tensorboard port
 python3 train.py --batch_size 128 --lr 0.0001 --train train.h5 --val val.h5
 tensorboard --logdir runs --port=6001
 ```
+If the port is unfortunately taken by some other process, you can choose another port or free up the port using
+```
+netstat -anp|grep 6001
+```
+to check the PID of the process using the port, and kill the process:
+```
+kill -9 <the PID>
+```
 [Optional] If you are running a learning section on the server, to check the learning curve, run the following line on your local machine to bind the log port:
 ```
 ssh -4 -N -f -L localhost:6001:localhost:6001 [remote address, e.g. panpan@unicorn4.d2.comp.nus.edu.sg]
