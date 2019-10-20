@@ -8,22 +8,18 @@ import numpy as np
 import rospy
 import os
 
-from std_msgs.msg import Bool
+from std_msgs.msg import Float32, Bool
 from network_agent_path import NetworkAgentPath
 from sidewalk_agent_path import SidewalkAgentPath
 import msg_builder.msg
 from msg_builder.msg import car_info as CarInfo
 import timeit
 import time
-
-
-first_time = True
-prev_time = timeit.default_timer()
+from geometry_msgs.msg import Twist
 
 default_agent_pos = carla.Vector2D(10000, 10000)
 default_agent_bbox = [default_agent_pos + carla.Vector2D(1, -1), default_agent_pos + carla.Vector2D(1, 1),
                       default_agent_pos + carla.Vector2D(-1, 1), default_agent_pos + carla.Vector2D(-1, -1)]
-
 
 class CrowdAgent(object):
     def __init__(self, actor, preferred_speed):
@@ -130,12 +126,8 @@ class CrowdNetworkAgent(CrowdAgent):
         k = 1.0  # 1.0
         steer = k * steer / (max_steering_angle - min_steering_angle) * 2.0
         desired_speed = velocity.length()
-        # steer_tmp = get_signed_angle_diff(velocity, self.get_forward_direction())
         cur_speed = self.get_velocity().length()
         control = self.actor.get_control()
-
-        # if desired_speed < 0.5:
-        #     desired_speed = 0
 
         k2 = 1.5  # 1.5
         k3 = 2.5  # 2.5
@@ -243,6 +235,7 @@ class GammaCrowdController(Drunc):
         self.walker_blueprints = self.world.get_blueprint_library().filter("walker.pedestrian.*")
         self.vehicles_blueprints = self.world.get_blueprint_library().filter('vehicle.*')
         self.cars_blueprints = [x for x in self.vehicles_blueprints if int(x.get_attribute('number_of_wheels')) == 4]
+        self.cars_blueprints = [x for x in self.vehicles_blueprints if x.id != 'vehicle.audi.etron']
         self.bikes_blueprints = [x for x in self.vehicles_blueprints if int(x.get_attribute('number_of_wheels')) == 2]
 
         self.num_network_car_agents = rospy.get_param('~num_network_car_agents')
@@ -259,6 +252,8 @@ class GammaCrowdController(Drunc):
             msg_builder.msg.CrowdSidewalkAgentArray,
             queue_size=1)
         self.agents_ready_pub = rospy.Publisher('/agents_ready', Bool, queue_size=1, latch=True)
+        self.gamma_cmd_accel_pub = rospy.Publisher('/gamma_cmd_accel', Float32, queue_size=1)
+        self.gamma_cmd_steer_pub = rospy.Publisher('/gamma_cmd_steer', Float32, queue_size=1)
 
         self.il_car_info_sub = rospy.Subscriber(
             '/ego_state',
@@ -325,28 +320,6 @@ class GammaCrowdController(Drunc):
 
     def il_car_info_callback(self, car_info):
         self.ego_car_info = car_info
-        i = self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents
-
-        if self.ego_car_info:
-            self.gamma.set_agent_position(i, carla.Vector2D(
-                self.ego_car_info.car_pos.x,
-                self.ego_car_info.car_pos.y))
-            self.gamma.set_agent_velocity(i, carla.Vector2D(
-                self.ego_car_info.car_vel.x,
-                self.ego_car_info.car_vel.y))
-            self.gamma.set_agent_heading(i, carla.Vector2D(
-                math.cos(self.ego_car_info.car_yaw),
-                math.sin(self.ego_car_info.car_yaw)))
-            self.find_ego_actor()
-            self.gamma.set_agent_bounding_box_corners(i, self.get_bounding_box_corners(self.ego_actor, 0.2))
-            self.gamma.set_agent_pref_velocity(i, carla.Vector2D(
-                self.ego_car_info.car_pref_vel.x,
-                self.ego_car_info.car_pref_vel.y))
-        else:
-            self.gamma.set_agent_position(i, default_agent_pos)
-            self.gamma.set_agent_pref_velocity(i, carla.Vector2D(0, 0))
-            self.gamma.set_agent_velocity(i, carla.Vector2D(0, 0))
-            self.gamma.set_agent_bounding_box_corners(i, default_agent_bbox)
 
     def det(self, vector1, vector2):
         return vector1.y * vector2.x - vector1.x * vector2.y
@@ -460,16 +433,16 @@ class GammaCrowdController(Drunc):
         # right_lane_constrained_by_sidewalk or right_lane_constrained_by_vehicle
         return left_lane_constrained_by_sidewalk, right_lane_constrained_by_sidewalk
 
+    def no_collision(self):
+        for (i, crowd_agent) in enumerate(self.network_car_agents + self.network_bike_agents + self.sidewalk_agents):
+            crowd_agent.disable_collision()
+
     def find_ego_actor(self):
         if self.ego_actor is None:
             for actor in self.world.get_actors():
                 if actor.attributes.get('role_name') == 'ego_vehicle':
                     self.ego_actor = actor
                     break
-
-    def no_collision(self):
-        for (i, crowd_agent) in enumerate(self.network_car_agents + self.network_bike_agents + self.sidewalk_agents):
-            crowd_agent.disable_collision()
 
     def update(self):
         update_time = rospy.Time.now()
@@ -647,60 +620,64 @@ class GammaCrowdController(Drunc):
             self.gamma.set_agent_velocity(i, carla.Vector2D(0, 0))
             self.gamma.set_agent_bounding_box_corners(i, default_agent_bbox)
 
-        # start = timeit.default_timer()
+        ego_gamma_index = self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents
+        if self.ego_car_info and self.ego_actor:
+            self.gamma.set_agent_position(ego_gamma_index, carla.Vector2D(
+                self.ego_car_info.car_pos.x,
+                self.ego_car_info.car_pos.y))
+            self.gamma.set_agent_velocity(ego_gamma_index, carla.Vector2D(
+                self.ego_car_info.car_vel.x,
+                self.ego_car_info.car_vel.y))
+            self.gamma.set_agent_heading(ego_gamma_index, carla.Vector2D(
+                math.cos(self.ego_car_info.car_yaw),
+                math.sin(self.ego_car_info.car_yaw)))
+            self.gamma.set_agent_bounding_box_corners(ego_gamma_index, self.get_bounding_box_corners(self.ego_actor, 0.2))
+            self.gamma.set_agent_pref_velocity(ego_gamma_index, carla.Vector2D(
+                self.ego_car_info.car_pref_vel.x,
+                self.ego_car_info.car_pref_vel.y))
+        else:
+            self.gamma.set_agent_position(ego_gamma_index, default_agent_pos)
+            self.gamma.set_agent_pref_velocity(ego_gamma_index, carla.Vector2D(0, 0))
+            self.gamma.set_agent_velocity(ego_gamma_index, carla.Vector2D(0, 0))
+            self.gamma.set_agent_bounding_box_corners(ego_gamma_index, default_agent_bbox)
+
         try:
             self.gamma.do_step()
         except Exception as e:
             print(e)
 
-        # run_time = timeit.default_timer() - start
-        # print("dostep ======================")
-        # print(run_time)
-        global first_time
-        global prev_time
-        if first_time:
-            prev_time = timeit.default_timer()
-            first_time = False
-        cur_time = timeit.default_timer()
-        prev_time = cur_time
-
         if not self.initialized:
             self.start_time = rospy.Time.now()
             self.initialized = True
 
-        # simu_time = 0.05 #self.world.wait_for_tick(5.0).timestamp.delta_seconds
         for (i, crowd_agent) in enumerate(next_agents):
             if crowd_agent:
-
                 vel_to_exe = self.gamma.get_agent_velocity(i)
-
-                # self.draw_line(crowd_agent.get_position(), vel_to_exe, carla.Color (0,0,255))
-
                 cur_vel = crowd_agent.actor.get_velocity()
-
                 cur_vel = carla.Vector2D(cur_vel.x, cur_vel.y)
 
                 angle_diff = get_signed_angle_diff(vel_to_exe, cur_vel)
                 if angle_diff > 30 or angle_diff < -30:
                     vel_to_exe = 0.5 * (vel_to_exe + cur_vel)
-                    # self.draw_line(crowd_agent.get_position(), vel_to_exe, carla.Color (255,255,255))
-
-                # cur_loc = crowd_agent.actor.get_location()
-                # translation = simu_time * vel_to_exe
-                # loc = cur_loc + carla.Vector3D(translation.x, translation.y, 0)
-                # #crowd_agent.actor.set_location(loc)
-
-                # trans = crowd_agent.actor.get_transform()
-                # trans.location = loc
-                # if vel_to_exe.length() != 0:
-                #     trans.rotation.yaw = np.rad2deg(math.atan2(vel_to_exe.y, vel_to_exe.x))
-                # crowd_agent.actor.set_transform(trans)
 
                 control = crowd_agent.get_control(vel_to_exe)
                 if type(crowd_agent) is CrowdNetworkCarAgent or type(crowd_agent) is CrowdNetworkBikeAgent:
                     commands.append(carla.command.ApplyVehicleControl(crowd_agent.actor.id, control))
                 elif type(crowd_agent) is CrowdSidewalkAgent:
                     commands.append(carla.command.ApplyWalkerControl(crowd_agent.actor.id, control))
+
+        # Publish ego vehicle velocity.
+        if self.ego_car_info is not None:
+            ego_gamma_vel = self.gamma.get_agent_velocity(
+                    self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents)
+            ego_cur_vel = carla.Vector2D(self.ego_car_info.car_vel.x, self.ego_car_info.car_vel.y)
+            ego_angle_diff = get_signed_angle_diff(ego_gamma_vel, ego_cur_vel)
+            if ego_angle_diff > 30 or ego_angle_diff < -30:
+                ego_gamma_vel = 0.5 * (ego_gamma_vel + ego_cur_vel)
+            ego_control = CrowdNetworkAgent(self.ego_actor, None, None).get_control(ego_gamma_vel) # TODO: Is there a better way using static methods?
+            self.gamma_cmd_accel_pub.publish(ego_control.throttle)
+            self.gamma_cmd_steer_pub.publish(ego_control.steer)
+
 
         self.network_car_agents = [a for a in next_agents if a and type(a) is CrowdNetworkCarAgent]
         self.network_bike_agents = [a for a in next_agents if a and type(a) is CrowdNetworkBikeAgent]

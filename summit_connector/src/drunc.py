@@ -19,14 +19,9 @@ import random
 
 import rospy
 
-# map_locations = ['map', 'meskel_square', 'magic', 'highway', 'chandni_chowk', 'shi_men_er_lu', 'beijing']
-
 class Drunc(object):
 
     def __init__(self):
-        global map_location
-        # Create connection to simulator.
-        time.sleep(1)
         address = rospy.get_param('address', '127.0.0.1')
         port = rospy.get_param('port', 2000)
         self.map_location = rospy.get_param('map_location', 'meskel_square')

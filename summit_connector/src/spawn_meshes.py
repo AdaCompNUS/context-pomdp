@@ -120,7 +120,6 @@ class SpawnMeshes(Drunc):
 
         if do_spawn_tiles:
             spawn_tiles(18, self.geo_min, self.geo_max)
-            time.sleep(1)
 
         # Roadmark occupancy map.
         if self.roadmark_occupancy_map is not None:
@@ -142,7 +141,6 @@ class SpawnMeshes(Drunc):
         
         results = self.client.apply_batch_sync(commands)
         self.mesh_ids.extend(result.actor_id for result in results)
-        time.sleep(1)
 
         commands = []
         # Landmarks.

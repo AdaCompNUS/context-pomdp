@@ -29,11 +29,20 @@ import tf.transformations as tftrans
 class EgoVehicle(Drunc):
     def __init__(self):
         super(EgoVehicle, self).__init__()
+
+        # Initialize fields.
+        self.gamma_cmd_accel = 0
+        self.gamma_cmd_steer = 0
+        self.cmd_accel = 0
+        self.cmd_steer = 0
         
         # ROS stuff.
-        self.cmd_speed_sub = rospy.Subscriber('/cmd_speed', Float32, self.cmd_speed_callback, queue_size=1)
+        self.control_mode = rospy.get_param('~control_mode', 'gamma')
+
         self.cmd_accel_sub = rospy.Subscriber('/cmd_accel', Float32, self.cmd_accel_callback, queue_size=1)
         self.cmd_steer_sub = rospy.Subscriber('/cmd_steer', Float32, self.cmd_steer_callback, queue_size=1)
+        self.gamma_cmd_accel_sub = rospy.Subscriber('/gamma_cmd_accel', Float32, self.gamma_cmd_accel_callback, queue_size=1)
+        self.gamma_cmd_steer_sub = rospy.Subscriber('/gamma_cmd_steer', Float32, self.gamma_cmd_steer_callback, queue_size=1)
 
         self.odom_broadcaster = tf.TransformBroadcaster()
         self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=1)
@@ -66,17 +75,13 @@ class EgoVehicle(Drunc):
             self.actor = self.world.try_spawn_actor(vehicle_bp, spawn_trans)
 
             if self.actor:
-                self.actor.set_collision_enabled(False)
+                self.actor.set_collision_enabled(True)
 
         time.sleep(1) # wait for the vehicle to drop
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()
         rospy.wait_for_message("/agents_ready", Bool) # wait for agents to initialize
-
-        self.cmd_speed = 0
-        self.cmd_accel = 0
-        self.cmd_steer = 0
 
         self.broadcaster = None
         self.publish_odom_transform()
@@ -242,6 +247,16 @@ class EgoVehicle(Drunc):
         car_info_msg.car_vel.x = vel.x
         car_info_msg.car_vel.y = vel.y
         car_info_msg.car_vel.z = vel.z
+
+        # WARNING: this section is hardcoded against the internals of gamma controller.
+        # GAMMA assumes these calculations, and is required for controlling ego vehicle
+        # using GAMMA. When not controlling using GAMMA, pref_vel is practically not used,
+        # since the other crowd agents calculate their velocities without knowledge of the
+        # ego vehicle's pref_vel anyway.
+        target_position = self.path.get_position(5)
+        pref_vel = 6.0 * (target_position - pos2D).make_unit_vector()
+        car_info_msg.car_pref_vel.x = pref_vel.x
+        car_info_msg.car_pref_vel.y = pref_vel.y
             
         car_info_msg.car_bbox = Polygon()
         corners = get_bounding_box_corners(self.actor)
@@ -272,7 +287,6 @@ class EgoVehicle(Drunc):
         gui_path = NavPath()
         gui_path.header.frame_id = 'map'
         gui_path.header.stamp = current_time
-
         
         values = [(carla.Vector2D(self.actor.get_location().x, self.actor.get_location().y), self.actor.get_transform().rotation.yaw)]
         # Exclude last point because no yaw information.
@@ -293,19 +307,17 @@ class EgoVehicle(Drunc):
         
         self.plan_pub.publish(gui_path)
 
-    def cmd_speed_callback(self, speed):
-        self.cmd_speed = speed.data
-
     def cmd_accel_callback(self, accel):
         self.cmd_accel = accel.data
-        end_time = rospy.Time.now()
-        elapsed = (end_time - init_time).to_sec()
-        # print('agent_array update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
-        # print('cmd_acc received at {}'.format(elapsed))
-        # sys.stdout.flush()
 
     def cmd_steer_callback(self, steer):
         self.cmd_steer = steer.data
+    
+    def gamma_cmd_accel_callback(self, accel):
+        self.gamma_cmd_accel = accel.data
+    
+    def gamma_cmd_steer_callback(self, steer):
+        self.gamma_cmd_steer = steer.data
 
     def draw_path(self, path):
         color_i = 255
@@ -323,12 +335,19 @@ class EgoVehicle(Drunc):
         # print("controlling vehicle with acc={} cur_vel={}".format(self.cmd_accel, self.speed))
         control = self.actor.get_control()
         control.gear = 1
-        control.steer = self.cmd_steer
-        if self.cmd_accel > 0:
-            control.throttle = self.cmd_accel
+        if self.control_mode == 'gamma':
+            cmd_accel = self.gamma_cmd_accel
+            cmd_steer = self.gamma_cmd_steer
+        elif self.control_mode == 'other':
+            cmd_accel = self.cmd_accel
+            cmd_steer = self.cmd_steer
+
+        control.steer = cmd_steer
+        if cmd_accel > 0:
+            control.throttle = cmd_accel
             control.brake = 0.0
             control.reverse = False
-        elif self.cmd_accel == 0:
+        elif cmd_accel == 0:
             control.throttle = 0.0
             control.brake = 0.0
             control.reverse = False
@@ -338,7 +357,7 @@ class EgoVehicle(Drunc):
                 control.brake = 1.0
                 control.reverse = False
             else:
-                control.throttle = -self.cmd_accel
+                control.throttle = -cmd_accel
                 control.brake = 0.0
                 control.reverse = True
 

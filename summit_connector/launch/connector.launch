@@ -1,7 +1,7 @@
 <launch>
   <arg name="address" default="127.0.0.1" />
   <arg name="port" default="2000" />
-  <arg name="map_location" default="beijing" />
+  <arg name="map_location" default="meskel_square" />
 
   <param name="address" type="string" value="$(arg address)" />
   <param name="port" type="int" value="$(arg port)" />
@@ -16,7 +16,9 @@
 
   <node name="spawn_meshes" pkg="summit_connector" type="spawn_meshes.py" output="screen"/>
  
-  <node name="ego_vehicle" pkg="summit_connector" type="ego_vehicle.py" output="screen"/>
+  <node name="ego_vehicle" pkg="summit_connector" type="ego_vehicle.py" output="screen">
+    <param name="control_mode" value="gamma"/>
+  </node>
   
   <!--
   <node name="speed_controller" pkg="summit_connector" type="speed_controller.py" output="screen"/>
@@ -46,6 +48,7 @@
 
   <!--
   <node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen"/>
-  <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
   -->
+
+  <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
 </launch>
