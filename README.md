@@ -44,7 +44,7 @@ The repository also contains two utility folders:
    * experiment_summit.sh: Script for executing repetitive experiments by calling run_data_collection.py.
 
 ## 1. Setup
-### 1.0 (optional) Using the environment readily available in Docker.
+### 1.0 (optional) Using the environment readily available in Docker
 If you don't want to setup the environment in your local machine, you can download and use this docker image with the full environment setup:
 ```
 docker pull cppmayo/melodic_cuda10_1_cudnn7_libtorch_opencv4_ws
