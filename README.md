@@ -50,7 +50,7 @@ The repository also contains two utility folders:
 
 ### 1.2 Setup Dependencies
 Download all bash scripts in the [setup](./setup) folder (note: not the full repo). Then, go through the following steps to set up the dependencies:
-#### 1.2.1 Install ros-melodic
+#### 1.2.0 Check your apt-get
 Make sure that your apt-get functions properly. Run:
 ```
 sudo apt-get update
@@ -60,6 +60,7 @@ If you see an error like "The following signatures couldn't be verified because 
 curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | \
   sudo apt-key add -
 ```
+#### 1.2.1 Install ros-melodic
 To install ROS Melodic, run
 ```
 bash install_ros_melodic.sh
