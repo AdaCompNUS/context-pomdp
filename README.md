@@ -50,20 +50,20 @@ If you don't want to setup the environment in your local machine, you can downlo
 docker pull cppmayo/melodic_cuda10_1_cudnn7_libtorch_opencv4_ws
 ```
 
-A docker container can be launched using [launch_docker.py](./scripts/launch_docker.py):
+A docker container can be launched using [launch_docker.py](./scripts/launch_docker.py).
 This script will mount two folders to the docker container:
 * `~/catkin_ws`: for accessing your catkin workspace inside the docker container.
 * `~/driving_data`: for outputing driving data (txt records and ros bag files) to the external system. (This directory should exist before mounting).
 
 You can then [compile the catkin_ws](#fetchrepo) inside the docker container.
 
-Note that in this case, you should set `launch_summit = False` in [run_data_collection.py](./scripts/run_data_collection.py), and manually launch the summit simulator outside of the docker container. 
+Note that here you need to set `launch_summit = False` in [run_data_collection.py](./scripts/run_data_collection.py), and manually launch the summit simulator outside the docker container. 
 I have provided a [server_pipline.py](./scripts/server_pipline.py) for this purpose. Just run:
 ```
 cd ~/catkin_ws/src/scripts
 python server_pipline.py --port <summit_port, e.g. 2000> --sport <summit_stream_port, e.g. 2001>
 ```
-It will run the simulator and launch the docker container. You can then run experiments inside the container:
+It will run the simulator and launch the docker container. Now you can run experiments inside the container:
 ```
 cd src/scripts
 bash experiment_summit.sh <gpu_id> <start_run> <end_run_inclusive> <summit_port>
