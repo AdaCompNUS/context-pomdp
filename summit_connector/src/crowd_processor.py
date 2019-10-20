@@ -113,7 +113,7 @@ class CrowdProcessor(Drunc):
             carla.Vector2D(ego_car_position.x + publish_map_rad, ego_car_position.y + publish_map_rad))
 
         local_obstacles = OM_bound.difference(self.network_occupancy_map)
-        obstacle_msg = msg_builder.msg.Obstacles
+        obstacle_msg = msg_builder.msg.Obstacles()
         obstacle_msg.contours = []
 
         for polygon in local_obstacles.get_polygons():
@@ -127,7 +127,7 @@ class CrowdProcessor(Drunc):
 
         # get local lane centers
         local_lanes = self.network_segment_map.intersection(OM_bound)
-        lane_msg = msg_builder.msg.Lanes
+        lane_msg = msg_builder.msg.Lanes()
         lane_msg.lane_segments = []
 
         for lane_seg in local_lanes.get_segments():

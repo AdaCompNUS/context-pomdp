@@ -18,6 +18,7 @@ from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from msg_builder.msg import car_info as CarInfo  # panpan
 
+
 PURSUIT_DIST = 5.0  ##1.5 for golfcart
 RATIO_ANGULAR = 0.3
 WHEEL_DIST = 2.66

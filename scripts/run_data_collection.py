@@ -188,6 +188,10 @@ def parse_cmd_args():
                         type=int,
                         default=2000,
                         help='carla_port')
+    parser.add_argument('--maploc',
+                        type=str,
+                        default="random",
+                        help='map location in summit simulator')
 
     return parser.parse_args()
 
@@ -204,12 +208,17 @@ def update_global_config(cmd_args):
     config.record_bag = bool(cmd_args.record)
     config.gpu_id = int(cmd_args.gpu_id)
     config.port = int(cmd_args.port)
-    print(config.port)
+    print("port={}".format(config.port))
     config.ros_port = config.port + 111
-    print(config.ros_port)
+    print("ros_port={}".format(config.ros_port))
     config.ros_master_url = "http://localhost:{}".format(config.ros_port)
     config.ros_pref = "ROS_MASTER_URI=http://localhost:{} ".format(config.ros_port)
-    print(config.ros_pref)
+    print("ros command prefix: {}".format(config.ros_pref))
+    if cmd_args.maploc is 'random':
+        config.summit_maploc = random.choice(['map', 'meskel_square', 'magic', 'highway', 'chandni_chowk', 'shi_men_er_lu', 'beijing'])
+    else:
+        config.summit_maploc = cmd_args.maploc
+    print("summit map location: {}".format(config.summit_maploc))
     if "no" in cmd_args.net:
         config.use_drive_net_mode = NO_NET
     elif "imitation" in cmd_args.net:
@@ -1029,7 +1038,8 @@ def launch_carla_simulator(round, run, case):
         wait_for(config.max_launch_wait, carla_proc, '[launch] carla_engine')
         time.sleep(1)   
 
-    shell_cmd = config.ros_pref+'roslaunch connector.launch port:=' + str(config.port)
+    shell_cmd = config.ros_pref+'roslaunch connector.launch port:=' + \
+    str(config.port) + ' map_location:=' + str(config.summit_maploc)
     if config.verbosity > 0:
         print('')
         print(shell_cmd)
