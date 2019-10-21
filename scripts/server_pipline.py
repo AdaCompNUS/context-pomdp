@@ -28,7 +28,7 @@ if __name__ == '__main__':
     shell_cmd = "export SDL_VIDEODRIVER=offscreen"
     subprocess.call(shell_cmd, shell = True)
 
-    shell_cmd = "bash ~/summit/LinuxNoEditor/CarlaUE4.sh -carla-rpc-port={} -carla-streaming-port={}".format(config.port, config.sport)
+    shell_cmd = "bash " + os.path.expanduser("~/summit/LinuxNoEditor/CarlaUE4.sh") + " -carla-rpc-port={} -carla-streaming-port={}".format(config.port, config.sport)
 
     carla_proc = subprocess.Popen(shell_cmd.split())
 
