@@ -63,21 +63,20 @@ elif config.ped_mode == "combined" or config.ped_mode == "new_res":
     # for i in range(config.num_hist_channels):
     #     config.channel_hist.append(i + map_last)
 
-    config.channel_goal = 4
-
+    # exo history 1-4
     config.channel_map = []
     for i in range(config.num_hist_channels):
         config.channel_map.append(i)
 
-    map_last = config.channel_map[-1] + 1
-    if config.channel_map != 0:
-        map_last = config.channel_goal + 1
+    config.channel_lane = 4
+    config.channel_goal = 5
 
+    # ego history 1-4
     config.channel_hist = []
     for i in range(config.num_hist_channels):
-        config.channel_hist.append(i + map_last)
+        config.channel_hist.append(i + config.channel_goal + 1)
 
-    config.num_channels = 1 + 2 * config.num_hist_channels
+    config.num_channels = 2 + 2 * config.num_hist_channels
 
 # size of downsampled map
 config.imsize = 32
@@ -86,8 +85,8 @@ config.imsize = 32
 config.value_normalizer = 10.0
 
 # cross validation setting
-config.train_split = 0.8 # 0.7
-config.val_split = 0.2 # 0.25
+config.train_split = 1.0 # 0.7
+config.val_split = 0.0 # 0.25
 config.test_split = 0.00 # 0.05
 
 # training settings
