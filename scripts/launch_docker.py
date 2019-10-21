@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
         additional_mounts = "-v " + catkin_ws_path + ":/root/catkin_ws -v " + carla_egg_path + ":/root/summit/PythonAPI/carla/dist "
 
-	cmd_args = "docker run --runtime=nvidia -it " + \
+	cmd_args = "docker run --runtime=nvidia -it --network host " + \
 				"-v " + result_path + ":/root/driving_data " + \
                                 additional_mounts + \
 				"-e DISPLAY=${DISPLAY} -v /tmp/.X11-unix:/tmp/.X11-unix " + \

@@ -14,7 +14,7 @@ import carla
 
 from std_msgs.msg import Bool
 
-TILE_PATH = '/home/leeyiyuan/carla/Data/imagery/{}/{}/{}_{}.jpeg'
+TILE_PATH = os.path.expanduser('~/summit/Data/imagery/{}/{}/{}_{}.jpeg')
 
 def deg2num(zoom, lat_deg, lon_deg):
     lat_rad = math.radians(lat_deg)
@@ -95,7 +95,7 @@ class SpawnMeshes(Drunc):
 
             for row in range(top_left_id[1], bottom_right_id[1] + 1):
                 for column in range(top_left_id[2], bottom_right_id[2] + 1):
-                    path = os.path.join(os.path.expanduser('~/carla/Data/imagery'), 
+                    path = os.path.join(os.path.expanduser('~/summit/Data/imagery'), 
                         "{}/{}_{}.jpeg".format(zoom, row, column))
                     sys.stdout.flush()
                     if not os.path.exists(path):

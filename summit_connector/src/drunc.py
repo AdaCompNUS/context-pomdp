@@ -1,7 +1,7 @@
 import os, sys, glob
 
-carla_root = os.path.expanduser("~/carla/")
-api_root = os.path.expanduser("~/carla/PythonAPI")
+carla_root = os.path.expanduser("~/summit/")
+api_root = os.path.expanduser("~/summit/PythonAPI")
 try:
     sys.path.append(glob.glob(api_root + '/carla/dist/carla-*%d.%d-%s.egg' % (
         sys.version_info.major,
