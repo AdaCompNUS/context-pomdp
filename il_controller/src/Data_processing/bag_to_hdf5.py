@@ -51,7 +51,7 @@ import copy
 
 default_map_dim = 1024
 
-default_map_dim = 1024
+# default_map_dim = 1024
 
 GOAL_LIST = [(19.9, 0), (0, -19.9), (0, 19.9), (-19.9, 0), (-7, 19.9),
              (-6, 19.9), (-5, 19.9)]
@@ -1047,7 +1047,7 @@ def rescale_image(image,
 
     try:
         iters = int(math.log(1 / down_sample_ratio, 2))
-        iters = 2  # debugging
+        # iters = 2  # debugging
 
         for i in range(iters):
             image1 = cv2.pyrDown(image1)

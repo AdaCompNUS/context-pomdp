@@ -266,6 +266,7 @@ class Ped_data(data.Dataset):
         return self.transform_list[transform_idx](input_data, steer)
 
     def get_item(self, global_index):
+
         data_index = global_index % self.data_len
         transform_idx = global_index // self.data_len
         if not config.augment_data:  # no data augmentation
