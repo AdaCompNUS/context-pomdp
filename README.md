@@ -131,7 +131,7 @@ cd catkin_ws
 catkin config --merge-devel
 catkin build
 ```
-#### <a name="fetchrepo"></a>1.2.5 Fetch the full repository
+#### 1.2.5 Fetch the full repository
 Run
 ```
 cd ~/catkin_ws/src
@@ -142,6 +142,7 @@ rm -r LeTS-Drive-SUMMIT
 ```
 Now all ROS packages should be in `~/catkin_ws/src`.
 
+#### <a name="fetchrepo"></a>1.2.6 Compile the repository
 Compile packages in the workspace:
 ```
 cd ~/catkin_ws
@@ -152,7 +153,7 @@ Then, add the following line to the end of `~/.bashrc`:
 ```
 source ~/catkin_ws/devel/setup.bash
 ```
-#### 1.2.6 Install dependent python packages
+#### 1.2.7 Install dependent python packages
 (Optional) Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
@@ -187,11 +188,11 @@ launch_summit = True # change to False to avoid automatic launching of SUMMIT be
 ### 2.2 Launch the Planner
 ```
 cd ~/catkin_ws/src/scripts
-./experiment_summmit.sh [gpu_id] [start_round] [end_round(inclusive)] [carla_portal, e.g. 2000 as set before]
+./experiment_summit.sh [gpu_id] [start_round] [end_round(inclusive)] [carla_portal, e.g. 2000 as set before]
 ```
-Step 2.1 is not required if `launch_summit = True` in `run_data_collection.py`. In this case, `experiment_summmit.sh` will launch the simulator before running the planner.
+Step 2.1 is not required if `launch_summit = True` in `run_data_collection.py`. In this case, `experiment_summit.sh` will launch the simulator before running the planner.
 
-experiment_summit.sh does not record bags by default. To enable rosbag recording, change the following variable to 1 in `experiment_summmit.sh`:
+experiment_summit.sh does not record bags by default. To enable rosbag recording, change the following variable to 1 in `experiment_summit.sh`:
 ```
 record_bags=0
 ```
