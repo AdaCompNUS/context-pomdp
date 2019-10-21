@@ -131,7 +131,7 @@ cd catkin_ws
 catkin config --merge-devel
 catkin build
 ```
-#### <a name="fetchrepo"></a>1.2.5 Fetch the full repository
+#### 1.2.5 Fetch the full repository
 Run
 ```
 cd ~/catkin_ws/src
@@ -142,6 +142,7 @@ rm -r LeTS-Drive-SUMMIT
 ```
 Now all ROS packages should be in `~/catkin_ws/src`.
 
+#### <a name="fetchrepo"></a>1.2.6 Compile the repository
 Compile packages in the workspace:
 ```
 cd ~/catkin_ws
@@ -152,7 +153,7 @@ Then, add the following line to the end of `~/.bashrc`:
 ```
 source ~/catkin_ws/devel/setup.bash
 ```
-#### 1.2.6 Install dependent python packages
+#### 1.2.7 Install dependent python packages
 (Optional) Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
