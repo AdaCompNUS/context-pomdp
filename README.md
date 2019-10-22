@@ -57,17 +57,19 @@ This script will mount two folders to the docker container:
 
 You can then [compile the catkin_ws](#fetchrepo) inside the docker container.
 
-Note that here you need to set `launch_summit = False` in [run_data_collection.py](./scripts/run_data_collection.py), and manually launch the summit simulator outside the docker container. 
+Here the summit simulator need to be launched outside the docker container instead of inside the container.
 I have provided a [server_pipline.py](./scripts/server_pipline.py) for this purpose. Just run:
 ```
 cd ~/catkin_ws/src/scripts
 python server_pipline.py --port <summit_port, e.g. 2000> --sport <summit_stream_port, e.g. 2001>
 ```
-It will run the simulator and launch the docker container. Now you can run experiments inside the container:
+It will run the simulator on your external system, then launch and enter the docker container. Now you can run experiments inside the container:
 ```
 cd src/scripts
-bash experiment_summit.sh <gpu_id> <start_run> <end_run_inclusive> <summit_port>
+bash experiment_summit.sh <gpu_id> <start_run> <end_run_inclusive> <summit_port> <launch_sim = 0>
 ```
+The last argument tells the script not to launch the simulator with it.
+The script will run episode `<start_run>` to `<end_run>` and tag data files with expisode numbers.
 The recorded data will appear in `~/driving_data` on your machine.
 
 The rest of processures are for setting up the envirnoment in your PC or server.
@@ -174,28 +176,24 @@ Or you can download the [source code](https://github.com/AdaCompNUS/carla.git) f
 For now the code explicitly uses this `~/summit` to find the simulator. So stick to the path for SUMMIT installation.
 
 ## 2. <a name="runcode"></a>Run the System
-### 2.1 Launch the SUMMIT Simulator
+### 2.1 To launch SUMMIT with the planner
 ```
-export SDL_VIDEODRIVER=offscreen
+cd ~/catkin_ws/src/scripts
+./experiment_summit.sh [gpu_id] [start_round] [end_round(inclusive)] [carla_portal, e.g. 2000 as set before] [launch_sim = 1]
+```
+When you set the last arument to `1`, `experiment_summit.sh` will launch the simulator before running the planner.
+
+experiment_summit.sh does not record bags by default. To enable rosbag recording, change the following variable to 1 in `experiment_summit.sh`:
+```
+record_bags=1
+```
+### 2.2 To launch the SUMMIT Simulator alone
+If you just want to lauch SUMMIT (for testing purpose), just run:
+```
 LinuxNoEditor/CarlaUE4.sh -carla-rpc-port=2000 -carla-streaming-port=2001
 ```
 You can change 2000 and 2001 to any unused port you like.
 
-Note: this is only required when launching the simulator and the planner in different environments, like local/remote, local/docker. For this, you also need to block the cooresponding launching code in run_data_collection.py:
-```
-launch_summit = True # change to False to avoid automatic launching of SUMMIT before the planner.
-```
-### 2.2 Launch the Planner
-```
-cd ~/catkin_ws/src/scripts
-./experiment_summit.sh [gpu_id] [start_round] [end_round(inclusive)] [carla_portal, e.g. 2000 as set before]
-```
-Step 2.1 is not required if `launch_summit = True` in `run_data_collection.py`. In this case, `experiment_summit.sh` will launch the simulator before running the planner.
-
-experiment_summit.sh does not record bags by default. To enable rosbag recording, change the following variable to 1 in `experiment_summit.sh`:
-```
-record_bags=0
-```
 ## 3. Process ROS Bags to HDF5 Datasets
 Convert bags into h5 files using multiple threads:
 ```
