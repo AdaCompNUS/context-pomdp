@@ -706,7 +706,7 @@ def get_lane_points(lanes, origin, dim_high_res, down_sample_ratio, resolution):
     try:
         start_time = time.time()
         lane_points = get_pyramid_image_points(lane_pixels, dim_high_res, down_sample_ratio,
-                                              draw_image=True)
+                                              draw_image=False)
         if print_time:
             elapsed_time = time.time() - start_time
             print("Lane pyramid time: " + str(elapsed_time) + " s")
@@ -1047,8 +1047,6 @@ def rescale_image(image,
 
     try:
         iters = int(math.log(1 / down_sample_ratio, 2))
-        # iters = 2  # debugging
-
         for i in range(iters):
             image1 = cv2.pyrDown(image1)
 
@@ -1252,7 +1250,7 @@ def get_car_points(car, origin, dim_high_res, down_sample_ratio, resolution, dra
         try:
             start_time = time.time()
             car_points = get_pyramid_image_points(car_edge_pixels, dim_high_res, down_sample_ratio,
-                                                  draw_image=draw_image)
+                                                  draw_image=False)
             if print_time:
                 elapsed_time = time.time() - start_time
                 print("Car pyramid time: " + str(elapsed_time) + " s")

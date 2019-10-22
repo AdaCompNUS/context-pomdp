@@ -82,7 +82,6 @@ def save(files, filename, flag=-1):
 
         visualization_done = False
         for file in files:
-
             if "train" not in file and "val" not in file and "test" not in file:
 
                 d, skip_file = load_file(file)
@@ -190,7 +189,7 @@ def put_images_in_dataset(acc, acc_labels_array, ang, ang_labels_array, counter,
                           value, vel, vel_labels_array):
     try:
         data_array[counter] = data
-        cart_data_array[counter] = cart_data
+        #cart_data_array[counter] = cart_data
         v_labels_array[counter][0] = value
         acc_labels_array[counter][0] = acc
         ang_labels_array[counter][0] = ang
@@ -377,8 +376,8 @@ def split_h5_files(files=[], file_dict=None, file_num_dict=None):
         print("Data split: train %.0f%%, validation %.0f%%, test %.0f%%" % (
             config.train_split * 100, config.val_split * 100, config.test_split * 100))
         train_files = files[0:int(round(config.train_split * len(files)))]
-        test_files = None
-        val_files = None
+        test_files = []
+        val_files = []
         if (config.test_split > 0.0):
             test_files = files[int(round(config.train_split * len(files))):int(
                 round((config.train_split + config.test_split) * len(files)))]
