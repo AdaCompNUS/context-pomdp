@@ -98,10 +98,10 @@ class SubprocessMonitor(Process):
             process_alive = check_process(self.pomdp_proc, "pomdp_proc")
 
             if process_alive is True:
-                print("Killing POMDP planning...")
-                os.kill(self.pomdp_proc.pid, signal.SIGKILL)
-                if config.verbosity > 0:
-                    print("[DEBUG] pomdp_proc killed")
+               print("Killing POMDP planning...")
+               os.kill(self.pomdp_proc.pid, signal.SIGKILL)
+               if config.verbosity > 0:
+                  print("[DEBUG] pomdp_proc killed")
         else:
             if config.verbosity > 0:
                 print("[DEBUG] pomdp_proc is None")
@@ -1037,8 +1037,8 @@ def launch_python_scripts(round, run, case):
 def launch_carla_simulator(round, run, case):
     global shell_cmd
     
-    launch_summit = True
-
+    launch_summit = False 
+    
     if launch_summit:
         shell_cmd = 'DISPLAY= ./CarlaUE4.sh -opengl'
         # shell_cmd = './CarlaUE4.sh -opengl'

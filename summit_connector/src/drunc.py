@@ -1,6 +1,7 @@
 import os, sys, glob
 
 summit_root = os.path.expanduser("~/summit/")
+
 api_root = os.path.expanduser("~/summit/PythonAPI")
 try:
     sys.path.append(glob.glob(api_root + '/carla/dist/carla-*%d.%d-%s.egg' % (

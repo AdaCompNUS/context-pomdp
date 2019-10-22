@@ -242,7 +242,7 @@ at::Tensor gm_pdf(at::Tensor &pi, at::Tensor &sigma,
 }
 
 void Show_params(std::shared_ptr<torch::jit::script::Module> drive_net){
-	const auto& model_params = drive_net->get_modules();
+	/*const auto& model_params = drive_net->get_modules();
 
 	int iter = 0;
 
@@ -278,7 +278,7 @@ void Show_params(std::shared_ptr<torch::jit::script::Module> drive_net){
 //		if (iter == 20) break;
 	}
 
-	fout.close();
+	fout.close();*/
 }
 
 void PedNeuralSolverPrior::Init(){

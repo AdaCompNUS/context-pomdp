@@ -435,7 +435,7 @@ def visualize_hybrid_predictions(epoch, acc_labels, acc_mu, acc_pi, acc_sigma, a
 
         ang_probs = sm(ang)
 
-        for i in range(0,10):
+        for i in range(0, min(10, cmd_args.batch_size)):
             if value is None:
                 value_vis = None
             else:
@@ -1027,7 +1027,10 @@ def parse_cmd_args():
 
 
 def update_global_config(cmd_args):
-    print(cmd_args)
+    print("\n=========================== Command line arguments ==========================")
+    for arg in vars(cmd_args):
+        print("==> {}: {}".format(arg, getattr(cmd_args, arg)))
+    print("=========================== Command line arguments ==========================\n")
 
     # Update the global configurations according to command line
     config.num_agents_in_NN = cmd_args.no_ped
@@ -1063,7 +1066,10 @@ def update_global_config(cmd_args):
 
     print("Fitting " + cmd_args.fit)
 
-    print(config)
+    print("\n=========================== Global configuration ==========================")
+    for arg in vars(config):
+        print("===> {}: {}".format(arg, getattr(config, arg)))
+    print("=========================== Global configuration ==========================\n")
 
 
 def set_fit_mode_bools(cmd_args):

@@ -44,18 +44,55 @@ The repository also contains two utility folders:
    * experiment_summit.sh: Script for executing repetitive experiments by calling run_data_collection.py.
 
 ## 1. Setup
+### 1.0 (optional) Using the environment readily available in Docker
+If you don't want to setup the environment in your local machine, you can download and use this docker image with the full environment setup:
+```
+docker pull cppmayo/melodic_cuda10_1_cudnn7_libtorch_opencv4_ws
+```
+
+A docker container can be launched using [launch_docker.py](./scripts/launch_docker.py).
+This script will mount two folders to the docker container:
+* `~/catkin_ws`: for accessing your catkin workspace inside the docker container.
+* `~/driving_data`: for outputing driving data (txt records and ros bag files) to the external system. (This directory should exist before mounting).
+
+You can then [compile the catkin_ws](#fetchrepo) inside the docker container.
+
+Note that here you need to set `launch_summit = False` in [run_data_collection.py](./scripts/run_data_collection.py), and manually launch the summit simulator outside the docker container. 
+I have provided a [server_pipline.py](./scripts/server_pipline.py) for this purpose. Just run:
+```
+cd ~/catkin_ws/src/scripts
+python server_pipline.py --port <summit_port, e.g. 2000> --sport <summit_stream_port, e.g. 2001>
+```
+It will run the simulator and launch the docker container. Now you can run experiments inside the container:
+```
+cd src/scripts
+bash experiment_summit.sh <gpu_id> <start_run> <end_run_inclusive> <summit_port>
+```
+The recorded data will appear in `~/driving_data` on your machine.
+
+The rest of processures are for setting up the envirnoment in your PC or server.
+
 ### 1.1 Pre-requisites
 1. Install [CUDA 10.0](https://developer.nvidia.com/cuda-10.0-download-archive) (Note: you need to follow the [official guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) for a successful installation.)
 2. Install [CUDNN 7](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html)
 
 ### 1.2 Setup Dependencies
 Download all bash scripts in the [setup](./setup) folder (note: not the full repo). Then, go through the following steps to set up the dependencies:
+#### 1.2.0 Check your apt-get
+Make sure that your apt-get functions properly. Run:
+```
+sudo apt-get update
+```
+If you see an error like "The following signatures couldn't be verified because the public key is not available: NO_PUBKEY 6ED91CA3AC1160CD". It is the Nvidia-docker2 apt key expired. You will need to run the following line to reactivate the key:
+```
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | \
+  sudo apt-key add -
+```
 #### 1.2.1 Install ros-melodic
-Run
+To install ROS Melodic, run
 ```
-bash install_ros_melodic.sh
+sudo bash install_ros_melodic.sh
 ```
-The script might prompt for sudo privilege.
 Then add the following line to the end of `~/.bashrc`:
 ```
 source /opt/ros/melodic/setup.bash
@@ -101,9 +138,11 @@ cd ~/catkin_ws/src
 git clone https://github.com/cindycia/LeTS-Drive-SUMMIT.git    
 mv LeTS-Drive-SUMMIT/* .
 mv LeTS-Drive-SUMMIT/.git .
+rm -r LeTS-Drive-SUMMIT
 ```
 Now all ROS packages should be in `~/catkin_ws/src`.
 
+#### <a name="fetchrepo"></a>1.2.6 Compile the repository
 Compile packages in the workspace:
 ```
 cd ~/catkin_ws
@@ -114,7 +153,7 @@ Then, add the following line to the end of `~/.bashrc`:
 ```
 source ~/catkin_ws/devel/setup.bash
 ```
-#### 1.2.6 Install dependent python packages
+#### 1.2.7 Install dependent python packages
 (Optional) Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
 ```
 cd
@@ -134,7 +173,7 @@ Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjk
 Or you can download the [source code](https://github.com/AdaCompNUS/carla.git) from github and compile from source.
 For now the code explicitly uses this `~/summit` to find the simulator. So stick to the path for SUMMIT installation.
 
-## 2. Run the System
+## 2. <a name="runcode"></a>Run the System
 ### 2.1 Launch the SUMMIT Simulator
 ```
 export SDL_VIDEODRIVER=offscreen
@@ -149,11 +188,11 @@ launch_summit = True # change to False to avoid automatic launching of SUMMIT be
 ### 2.2 Launch the Planner
 ```
 cd ~/catkin_ws/src/scripts
-./experiment_summmit.sh [gpu_id] [start_round] [end_round(inclusive)] [carla_portal, e.g. 2000 as set before]
+./experiment_summit.sh [gpu_id] [start_round] [end_round(inclusive)] [carla_portal, e.g. 2000 as set before]
 ```
-Step 2.1 is not required if `launch_summit = True` in `run_data_collection.py`. In this case, `experiment_summmit.sh` will launch the simulator before running the planner.
+Step 2.1 is not required if `launch_summit = True` in `run_data_collection.py`. In this case, `experiment_summit.sh` will launch the simulator before running the planner.
 
-experiment_summit.sh does not record bags by default. To enable rosbag recording, change the following variable to 1 in `experiment_summmit.sh`:
+experiment_summit.sh does not record bags by default. To enable rosbag recording, change the following variable to 1 in `experiment_summit.sh`:
 ```
 record_bags=0
 ```
@@ -176,6 +215,14 @@ Start training and open tensorboard port
 ```
 python3 train.py --batch_size 128 --lr 0.0001 --train train.h5 --val val.h5
 tensorboard --logdir runs --port=6001
+```
+If the port is unfortunately taken by some other process, you can choose another port or free up the port using
+```
+netstat -anp|grep 6001
+```
+to check the PID of the process using the port, and kill the process:
+```
+kill -9 <the PID>
 ```
 [Optional] If you are running a learning section on the server, to check the learning curve, run the following line on your local machine to bind the log port:
 ```

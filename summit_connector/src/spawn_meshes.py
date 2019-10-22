@@ -14,7 +14,7 @@ import carla
 
 from std_msgs.msg import Bool
 
-TILE_PATH = '/home/leeyiyuan/carla/Data/imagery/{}/{}/{}_{}.jpeg'
+TILE_PATH = os.path.expanduser('~/summit/Data/imagery/{}/{}/{}_{}.jpeg')
 
 def deg2num(zoom, lat_deg, lon_deg):
     lat_rad = math.radians(lat_deg)
@@ -78,6 +78,7 @@ class SpawnMeshes(Drunc):
         print('Spawning meshes...')
 
         self.mesh_ids = []
+
         commands = []
 
         # Roadmark occupancy map.

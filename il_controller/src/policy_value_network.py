@@ -411,12 +411,15 @@ def print_model_size(model):
     if model.car_resnet:
         resnet_size += get_module_size(model.car_resnet)
 
+    gppn_size = 0
     if global_config.lstm_mode is 'convlstm':
-        gppn_size = get_module_size(model.ped_lstm)
+        if model.ped_lstm:
+            gppn_size += get_module_size(model.ped_lstm)
         if model.car_hist_VIN:
             gppn_size += get_module_size(model.car_lstm)
     else:
-        gppn_size = get_module_size(model.car_VIN)
+        if model.car_VIN:
+            gppn_size += get_module_size(model.car_VIN)
         if model.car_hist_VIN:
             gppn_size += get_module_size(model.car_hist_VIN)
 
@@ -428,12 +431,13 @@ def print_model_size(model):
     if model.value_head:
         head_size += get_module_size(model.value_head)
 
-
+    print("\n=========================== Model statistics ==========================")
     print("No. trainable parameters in model: %d" % params)
     print("No. parameters in heads: %d" % head_size)
     print("No. parameters in resnet: %d" % resnet_size)
-    if not global_config.vanilla_resnet:
-        print("No. parameters in GPPN: %d" % gppn_size)
+    # if not global_config.vanilla_resnet:
+    print("No. parameters in GPPN: %d" % gppn_size)
+    print("=========================== Model statistics ==========================\n")
 
 
 def get_module_size(module):
