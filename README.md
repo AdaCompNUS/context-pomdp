@@ -66,8 +66,9 @@ python server_pipline.py --port <summit_port, e.g. 2000> --sport <summit_stream_
 It will run the simulator on your external system, then launch and enter the docker container. Now you can run experiments inside the container:
 ```
 cd src/scripts
-bash experiment_summit.sh <gpu_id> <start_run> <end_run_inclusive> <summit_port> <whether to launch_sim = 0>
+bash experiment_summit.sh <gpu_id> <start_run> <end_run_inclusive> <summit_port> <launch_sim = 0>
 ```
+The last argument tells the script not to launch the simulator with it.
 The script will run episode `<start_run>` to `<end_run>` and tag data files with expisode numbers.
 The recorded data will appear in `~/driving_data` on your machine.
 
