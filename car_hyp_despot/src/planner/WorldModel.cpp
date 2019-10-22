@@ -1636,7 +1636,7 @@ void WorldStateTracker::cleanAgents() {
     cleanPed();
     cleanVeh();
 
-    DEBUG("After cleaning agents");
+//    DEBUG("After cleaning agents");
     model.print_path_map();
 }
 
@@ -1746,7 +1746,7 @@ void WorldStateTracker::trackVel(Agent& des, const Agent& src, bool& no_move, bo
         no_move = false;
     }
     else{
-        DEBUG(string_sprintf("Vel too small: (%f, %f)", des.vel.x, des.vel.y));   
+//        DEBUG(string_sprintf("Vel too small: (%f, %f)", des.vel.x, des.vel.y));
     }
 }
 
@@ -1823,8 +1823,8 @@ void WorldStateTracker::updateVehState(const Vehicle& veh, bool doPrint){
     }
 
     if (no_move){
-        cout << __FUNCTION__ << " no_move veh "<< veh.id <<
-                " caught: vel " << veh_list[i].vel.x <<" "<< veh_list[i].vel.y << endl;
+//        cout << __FUNCTION__ << " no_move veh "<< veh.id <<
+//                " caught: vel " << veh_list[i].vel.x <<" "<< veh_list[i].vel.y << endl;
     }
 }
 
@@ -2171,7 +2171,7 @@ void WorldBeliefTracker::update() {
     car.vel = stateTracker.carvel;
 	car.heading_dir = /*0*/stateTracker.car_heading_dir;
 
-    DEBUG("Before belief update");
+//    DEBUG("Before belief update");
     stateTracker.model.print_path_map();
 
     // DEBUG("update existing agent_beliefs");
@@ -2183,7 +2183,7 @@ void WorldBeliefTracker::update() {
         model.updatePedBelief(kv.second, *newagents[kv.first]);
     }
 
-    DEBUG("add new agent_beliefs");
+//    DEBUG("add new agent_beliefs");
     // 
     for(const auto& kv: newagents) {
 		auto& p = *kv.second;

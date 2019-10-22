@@ -54,9 +54,9 @@ class EgoVehicle(Drunc):
         self.actor = None
         self.speed = 0.0
         while self.actor is None:
-            # scenario_segment_map = self.network_segment_map.intersection(carla.OccupancyMap(self.scenario_min, self.scenario_max))
-            scenario_segment_map = self.network_segment_map.intersection(
-                carla.OccupancyMap(carla.Vector2D(400, 454), carla.Vector2D(402, 456)))
+            scenario_segment_map = self.network_segment_map.intersection(carla.OccupancyMap(self.scenario_min, self.scenario_max))
+            # scenario_segment_map = self.network_segment_map.intersection(
+            #     carla.OccupancyMap(carla.Vector2D(400, 454), carla.Vector2D(402, 456)))
             scenario_segment_map.seed_rand(self.rng.getrandbits(32))
             self.path = NetworkAgentPath.rand_path(self, 20, 1.0, 100, scenario_segment_map, self.rng)
 

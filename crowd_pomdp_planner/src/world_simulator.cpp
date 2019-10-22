@@ -117,35 +117,13 @@ bool WorldSimulator::Connect() {
 	carSub_ = nh.subscribe("ego_state", 1, &WorldSimulator::update_il_car,
 			this);
 
-
 	agentSub_ = nh.subscribe("agent_array", 1, agentArrayCallback);
 	agentpathSub_ = nh.subscribe("agent_path_array", 1, agentPathArrayCallback);
 
 	steerSub_ = nh.subscribe("cmd_steer", 1, &WorldSimulator::cmdSteerCallback, this);
 
-
 	logi << "Subscribers and Publishers created at the "
 			<< SolverPrior::get_timestamp() << "th second" << endl;
-
-	auto odom_data = ros::topic::waitForMessage<nav_msgs::Odometry>("odom");
-	logi << "odom get at the " << SolverPrior::get_timestamp() << "th second"
-			<< endl;
-
-	auto car_data = ros::topic::waitForMessage<msg_builder::car_info>(
-			"ego_state");
-	logi << "ego_state get at the " << SolverPrior::get_timestamp()
-			<< "th second" << endl;
-
-	auto agent_ready_bool =
-			ros::topic::waitForMessage<std_msgs::Bool>(
-					"agents_ready", ros::Duration(300));
-
-	auto agent_data =
-			ros::topic::waitForMessage<msg_builder::TrafficAgentArray>(
-					"agent_array", ros::Duration(300));
-
-	logi << "agent_array get at the " << SolverPrior::get_timestamp()
-			<< "th second" << endl;
 
 	auto path_data =
 				ros::topic::waitForMessage<nav_msgs::Path>(
@@ -153,8 +131,57 @@ bool WorldSimulator::Connect() {
 
 	logi << "plan get at the " << SolverPrior::get_timestamp()
 				<< "th second" << endl;
+	ros::spinOnce();
 
-	if (agent_data == NULL)
+	int tick = 0;
+	bool agent_data_ok=false, odom_data_ok=false, car_data_ok=false, agent_flag_ok=false;
+	while(tick < 300){
+		auto agent_data =
+					ros::topic::waitForMessage<msg_builder::TrafficAgentArray>(
+							"agent_array", ros::Duration(3));
+
+		if (agent_data && !agent_data_ok){
+			logi << "agent_array get at the " << SolverPrior::get_timestamp()
+				<< "th second" << endl;
+			agent_data_ok = true;
+		}
+		ros::spinOnce();
+
+		auto odom_data = ros::topic::waitForMessage<nav_msgs::Odometry>(
+				"odom", ros::Duration(1));
+		if (odom_data && !odom_data_ok){
+			logi << "odom get at the " << SolverPrior::get_timestamp() << "th second"
+				<< endl;
+			odom_data_ok = true;
+		}
+		ros::spinOnce();
+
+		auto car_data = ros::topic::waitForMessage<msg_builder::car_info>(
+				"ego_state", ros::Duration(1));
+		if (car_data && !car_data_ok){
+			logi << "ego_state get at the " << SolverPrior::get_timestamp()
+				<< "th second" << endl;
+			car_data_ok = true;
+		}
+		ros::spinOnce();
+
+		auto agent_ready_bool =
+				ros::topic::waitForMessage<std_msgs::Bool>(
+						"agents_ready", ros::Duration(1));
+		if (agent_ready_bool && !agent_flag_ok){
+			logi << "agents ready at get at the " << SolverPrior::get_timestamp()
+				<< "th second" << endl;
+			agent_flag_ok = true;
+		}
+		ros::spinOnce();
+
+		if (agent_data_ok && odom_data_ok && car_data_ok && agent_flag_ok)
+			tick = 100000;
+		else
+			tick++;
+	}
+
+	if (tick == 300)
 		ERR("No agent array messages received after 300 seconds.");
 
 	return true;
@@ -185,8 +212,8 @@ tf::Stamped<tf::Pose> WorldSimulator::GetBaseLinkPose() {
 	in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
 
 	while (!getObjectPose(global_frame_id, in_pose, out_pose)) {
-		cerr << "transform error within GetCurrentState" << endl;
-		cout << "laser frame " << in_pose.frame_id_ << endl;
+		logd << "transform error within GetCurrentState" << endl;
+		logd << "laser frame " << in_pose.frame_id_ << endl;
 		ros::Rate err_retry_rate(10);
 		err_retry_rate.sleep();
 	}
@@ -775,9 +802,9 @@ bool WorldSimulator::getObjectPose(string target_frame,
 		tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const {
 	out_pose.setIdentity();
 
-	cout << "laser frame " << in_pose.frame_id_ << endl;
+	logd << "laser frame " << in_pose.frame_id_ << endl;
 
-	cout << "getting transform of frame " << target_frame << endl;
+	logd << "getting transform of frame " << target_frame << endl;
 
 	try {
 		tf_.transformPose(target_frame, in_pose, out_pose);
@@ -798,7 +825,8 @@ bool WorldSimulator::getObjectPose(string target_frame,
 
 void WorldSimulator::speedCallback(nav_msgs::Odometry odo) {
 
-	DEBUG("")
+//	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
+
 	odom_vel_ = COORD(odo.twist.twist.linear.x, odo.twist.twist.linear.y);
 	// real_speed_=sqrt(odo.twist.twist.linear.x * odo.twist.twist.linear.x + 
 	// odo.twist.twist.linear.y * odo.twist.twist.linear.y);
@@ -832,7 +860,7 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 	WorldSimulator::stateTracker->latest_time_stamp = data_time_sec;
 
 	DEBUG(
-			string_sprintf("receive agent num %d at time %f \n",
+			string_sprintf("receive agent num %d at time %f",
 					data.agents.size(), SolverPrior::get_timestamp()));
 
 	vector<Pedestrian> ped_list;
@@ -880,9 +908,9 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 	WorldSimulator::stateTracker->cleanAgents();
 
-	DEBUG(
-				string_sprintf("Finish agent update at time %f \n",
-						SolverPrior::get_timestamp()));
+//	DEBUG(
+//				string_sprintf("Finish agent update at time %f",
+//						SolverPrior::get_timestamp()));
 
 	WorldSimulator::stateTracker->model.print_path_map();
 
@@ -906,7 +934,7 @@ void agentPathArrayCallback(msg_builder::AgentPathArray data) {
 	WorldSimulator::stateTracker->latest_path_time_stamp = data_time_sec;
 
 	DEBUG(
-			string_sprintf("receive agent num %d at time %f \n",
+			string_sprintf("receive agent num %d at time %f",
 					data.agents.size(), SolverPrior::get_timestamp()));
 
 	vector<Pedestrian> ped_list;
@@ -962,9 +990,9 @@ void agentPathArrayCallback(msg_builder::AgentPathArray data) {
 		WorldSimulator::stateTracker->updateVehPaths(veh);
 	}
 
-	DEBUG(
-			string_sprintf("Finish agent paths update at time %f \n",
-					SolverPrior::get_timestamp()));
+//	DEBUG(
+//			string_sprintf("Finish agent paths update at time %f",
+//					SolverPrior::get_timestamp()));
 
 	SimulatorBase::agents_path_data_ready = true;
 }
@@ -1014,7 +1042,7 @@ void receive_map_callback(nav_msgs::OccupancyGrid map) {
 
 
 void WorldSimulator::cmdSteerCallback(const std_msgs::Float32::ConstPtr steer){
-	DEBUG("")
+//	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
 	// receive steering in rad
 	p_IL_data.action_reward.angular.x = float(steer->data);
 }
@@ -1059,7 +1087,8 @@ double xylength(geometry_msgs::Point32 p) {
 bool car_data_ready = false;
 
 void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
-	DEBUG("")
+//	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
+
 	if (b_update_il == true) {
 		p_IL_data.cur_car = *car;
 	}

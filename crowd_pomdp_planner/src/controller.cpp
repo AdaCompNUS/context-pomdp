@@ -174,7 +174,7 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 	}
 
 	prior_ = SolverPrior::nn_priors[0];
-	cerr << "DEBUG: Created solver prior " << typeid(*prior_).name() <<
+	logd << "DEBUG: Created solver prior " << typeid(*prior_).name() <<
 			"at ts " << SolverPrior::get_timestamp() << endl;
 }
 
@@ -339,6 +339,8 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 }
 
 void Controller::setGoal(const geometry_msgs::PoseStamped::ConstPtr goal) {
+	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
+
 	goalx_ = goal->pose.position.x;
 	goaly_ = goal->pose.position.y;
 }
@@ -349,8 +351,9 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 			<< " at the " << SolverPrior::get_timestamp()
 			<< "th second" << endl;
 
-	if (fixed_path_ && path_from_topic.size() > 0)
+	if (fixed_path_ && path_from_topic.size() > 0){
 		return;
+	}
 
 	if (path->poses.size() == 0) {
 		path_missing = true;
@@ -361,9 +364,14 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 		path_missing = false;
 	}
 
-	if (simulation_mode_ == UNITY
-			&& unity_driving_simulator_->b_update_il == true)
-		unity_driving_simulator_->p_IL_data.plan = *path; // record to be further published for imitation learning
+	if (simulation_mode_ == UNITY && unity_driving_simulator_){
+		if (unity_driving_simulator_->b_update_il == true){
+			cout << " unity_driving_simulator_ = " << unity_driving_simulator_ << endl;
+			cout << " path = " << path << endl;
+
+			unity_driving_simulator_->p_IL_data.plan = *path; // record to be further published for imitation learning
+		}
+	}
 
 	Path p;
 	for (int i = 0; i < path->poses.size(); i++) {
@@ -373,8 +381,8 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 		p.push_back(coord);
 	}
 
-	if (p.getlength() < 18) {
-		ERR("Path length shorter than 18 meters.");
+	if (p.getlength() < 3) {
+		ERR("Path length shorter than 3 meters.");
 	}
 
 	// cout << "Path start " << p[0] << " end " << p.back() << endl;
@@ -442,11 +450,11 @@ bool Controller::getUnityPos() {
 	in_pose.setIdentity();
 	in_pose.frame_id_ = ModelParams::rosns + "/base_link";
 	assert(unity_driving_simulator_);
-	cout << "global_frame_id: " << global_frame_id << " " << endl;
+	logd << "global_frame_id: " << global_frame_id << " " << endl;
 	if (!unity_driving_simulator_->getObjectPose(global_frame_id, in_pose,
 			out_pose)) {
 		cerr << "transform error within Controller::RunStep" << endl;
-		cout << "laser frame " << in_pose.frame_id_ << endl;
+		logd << "laser frame " << in_pose.frame_id_ << endl;
 		ros::Rate err_retry_rate(10);
 		err_retry_rate.sleep();
 		return false; // skip the current step

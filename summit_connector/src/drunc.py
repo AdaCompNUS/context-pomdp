@@ -25,9 +25,10 @@ class Drunc(object):
         address = rospy.get_param('address', '127.0.0.1')
         port = rospy.get_param('port', 2000)
         self.map_location = rospy.get_param('map_location', 'meskel_square')
+        self.random_seed = rospy.get_param('random_seed', 1)
         self.rng = random.Random(rospy.get_param('random_seed', 0))
         print("Map location set in SUMMIT: {}".format(self.map_location))
-        print("Random seed set in SUMMIT: {}".format(rospy.get_param('random_seed', 1)))
+        print("Random seed set in SUMMIT: {}".format(self.random_seed))
 
         self.client = carla.Client(address, port)
         self.client.set_timeout(10.0)
