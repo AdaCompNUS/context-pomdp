@@ -797,6 +797,8 @@ bool WorldSimulator::getObjectPose(string target_frame,
 //=============== from pedpomdpnode ==============
 
 void WorldSimulator::speedCallback(nav_msgs::Odometry odo) {
+
+	DEBUG("")
 	odom_vel_ = COORD(odo.twist.twist.linear.x, odo.twist.twist.linear.y);
 	// real_speed_=sqrt(odo.twist.twist.linear.x * odo.twist.twist.linear.x + 
 	// odo.twist.twist.linear.y * odo.twist.twist.linear.y);
@@ -1012,6 +1014,7 @@ void receive_map_callback(nav_msgs::OccupancyGrid map) {
 
 
 void WorldSimulator::cmdSteerCallback(const std_msgs::Float32::ConstPtr steer){
+	DEBUG("")
 	// receive steering in rad
 	p_IL_data.action_reward.angular.x = float(steer->data);
 }
@@ -1056,6 +1059,7 @@ double xylength(geometry_msgs::Point32 p) {
 bool car_data_ready = false;
 
 void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
+	DEBUG("")
 	if (b_update_il == true) {
 		p_IL_data.cur_car = *car;
 	}

@@ -884,6 +884,9 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world,
 
 	ros::spinOnce();
 
+	logi << "First ROS spin finished at the " << SolverPrior::get_timestamp()
+					<< "th second" << endl;
+
 	int pre_step_count = 0;
 	if (Globals::config.use_prior)
 		pre_step_count = 4;
