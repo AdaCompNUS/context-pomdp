@@ -91,7 +91,7 @@ curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | \
 #### 1.2.1 Install ros-melodic
 To install ROS Melodic, run
 ```
-sudo bash install_ros_melodic.sh
+bash install_ros_melodic.sh
 ```
 Then add the following line to the end of `~/.bashrc`:
 ```
