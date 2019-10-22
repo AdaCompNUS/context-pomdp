@@ -197,6 +197,10 @@ def parse_cmd_args():
                         type=int,
                         default=0,
                         help='random seed in summit simulator')
+    parser.add_argument('--launch_sim',
+                        type=int,
+                        default=1,
+                        help='choose whether to launch the summit simulator')
 
     return parser.parse_args()
 
@@ -213,19 +217,16 @@ def update_global_config(cmd_args):
     config.record_bag = bool(cmd_args.record)
     config.gpu_id = int(cmd_args.gpu_id)
     config.port = int(cmd_args.port)
-    print("port={}".format(config.port))
     config.ros_port = config.port + 111
-    print("ros_port={}".format(config.ros_port))
     config.ros_master_url = "http://localhost:{}".format(config.ros_port)
     config.ros_pref = "ROS_MASTER_URI=http://localhost:{} ".format(config.ros_port)
-    print("ros command prefix: {}".format(config.ros_pref))
     if cmd_args.maploc is 'random':
         config.summit_maploc = random.choice(['map', 'meskel_square', 'magic', 'highway', 'chandni_chowk', 'shi_men_er_lu', 'beijing'])
     else:
         config.summit_maploc = cmd_args.maploc
     config.random_seed = cmd_args.rands
-    print("summit map location: {}".format(config.summit_maploc))
-    print("summit random seed: {}".format(config.random_seed))
+    config.launch_summit = bool(cmd_args.launch_sim)
+
     if "no" in cmd_args.net:
         config.use_drive_net_mode = NO_NET
     elif "imitation" in cmd_args.net:
@@ -295,6 +296,14 @@ def update_global_config(cmd_args):
         cmd_args.record = config.record_bag
 
     print('============== cmd_args ==============')
+    print("port={}".format(config.port))
+    print("ros_port={}".format(config.ros_port))
+    print("ros command prefix: {}".format(config.ros_pref))
+
+    print("summit map location: {}".format(config.summit_maploc))
+    print("summit random seed: {}".format(config.random_seed))
+    print("launch summit: {}".format(config.launch_summit))
+
     print("start_round: " + str(cmd_args.sround))
     print("end_round: " + str(cmd_args.eround))
     print("timeout: " + str(config.timeout))
@@ -1035,11 +1044,9 @@ def launch_python_scripts(round, run, case):
     return odom_proc, connector_proc, pursuit_proc, odom_out, connector_out, pursuit_out
 
 def launch_carla_simulator(round, run, case):
-    global shell_cmd
+    global shell_cmd 
     
-    launch_summit = False 
-    
-    if launch_summit:
+    if config.launch_summit:
         shell_cmd = 'DISPLAY= ./CarlaUE4.sh -opengl'
         # shell_cmd = './CarlaUE4.sh -opengl'
         if config.verbosity > 0:
