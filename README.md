@@ -9,15 +9,43 @@ This repository contains all algorithmic elements for reproducing LeTS-Drive [(p
 * The current repository is in progress of migrating from the Unity pedestrian simulator to SUMMIT. Some modules like the neural networks learner package is still for the old Unity simulator. For now, one can use the [existing pedestrain datasets](https://www.dropbox.com/s/bl093sneceu40fe/ped_datasets.zip?dl=0) to test imitation learning.
 
 Here is the list of ROS packages marked with the simulator they support:
-* (SUMMIT) __summit_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. summit_connector publishes the following ROS topics to driving algorithms: 
-    * /odom: Odometry of the exo-vehicle;
-    * /ego_state: State of the exo_vehicle;
-    * /plan: Reference path of the ego-vehicle;
-    * /agent_array: State and intended paths of exo-agents.
+* (SUMMIT) __summit_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. summit_connector consists of the following files:
+    
+    * `drunc.py` : Base class for all nodes in summit_connector (this package). Includes initialization code to load simulation data, and to connect to the SUMMIT simulator. Simulation data includes:
+    
+        * Lane network
+        * Sidewalk network
+        * Roadmark mesh data
+        * Sidewalk mesh data
+        * Landmark mesh data
+    
+    * `spawn_meshes.py` : Node that spawns mesh (roadmark + sidewalk + landmark) data and satellite imagery in SUMMIT. To toggle what is spawned, see `launch/connector.launch`.
+    
+    * `ego_vehicle.py` : Node that spawns and interacts with ego vehicle in SUMMIT. Publishes state and goal path information pertaining to the ego vehicle, and sends control commands to SUMMIT to control the ego vehicle. 
+    
+        Control mode can be set to either `control_mode = gamma` in which case the ego vehicle uses controls calculated by `gamma_crowd_controller.py`, or `control_mode = other` in which case the ego vehicle uses controls calculated by `pure_pursuit_controller.py`.
+    
+    * (Unmaintained) ~~`joystick_teleop.py` : Node that listens to a joystick and produces controls to be consumed by `ego_vehicle.py`.~~
+    
+    * `spectator.py` : Node that attaches a camera sensor to the ego vehicle and displays the camera readings onto the screen.
+    
+    * `gamma_crowd_controller.py` : Node that spawns and manages a heterogeneous crowd in SUMMIT using GAMMA. `gamma_crowd_controller.py` considers the ego vehicle when managing the crowd by subscribing to the published state and goal path information from `ego_vehicle.py`. 
+    
+        `gamma_crowd_controller.py` publishes state information for the exo-agents it manages. It also publishes control velocities for the ego vehicle as determined by GAMMA, which is used to control the ego vehicle when the parameter `control_mode = gamma` is set for `ego_vehicle.py`.
+    
+    * (Unmaintained) ~~`simple_crowd_controller.py` : Node that spawns and manages a heterogeneous crowd in SUMMIT using reactive time-to-collision. Does not consider ego vehicle.~~
+    
+    * `crowd_processor.py` : Processes exo-agents' information produced by `gamma_crowd_controller.py` into a form that is published for consumption by the POMDP planner.
+    
+    * `pure_pursuit_controller.py` : Receives output from the POMDP planner and process it into a form that is published for consumption by `ego_vehicle.py`. `ego_vehicle.py` consumes the published information under the parameter `control_mode = other`.
+    
+    The other files in this package are either auxiliary class files or are scripts specific to experiments.
+    
 * (SUMMIT) __car_hyp_despot__: The core POMDP planner performing guided tree search using HyP-DESPOT and policy/value networks. It contains the following source folders:
     * HypDespot: The HyP-DESPOT POMDP solver.
     * planner: The POMDP model for the driving problem.
     * Porca: The PORCA motion model for predicting agent's motion.
+    
 * (SUMMIT) __crowd_pomdp_planner__: A wrapping over the POMDP planner. It receives information from the simulator and run belief tracking and POMDP planning. Key files in the package include:
     * PedPomdpNode.cpp: A ROS node host which also receives ROS parameters.
     * controller.cpp: A class that launches the planning loop.
@@ -25,6 +53,7 @@ Here is the list of ROS packages marked with the simulator they support:
     * VelPublisher.cpp: A velocity controller that converts accelaration output by POMDP planning to command velocities. It publishes the following ROS topics:
         * \cmd_vel: command velocity for the ego-vehicle converted from accelaration and the current velocity.
         * \cmd_accel: command accelaration given by the POMDP planner if one wish to directly apply it.
+    
 * (Unity) __il_controller__: The neural network learner for imitation learning. The key files include:
     * data_processing.sh: Script for executing the data_processing pipeline given a folder path of recorded rosbags;
     * policy_value_network.py: The neural network architectures for the policy and the value networks.
