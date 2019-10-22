@@ -23,18 +23,12 @@
     <param name="control_mode" value="$(arg ego_control_mode)"/>
   </node>
 
-  <!--
-  <node name="speed_controller" pkg="summit_connector" type="speed_controller.py" output="screen"/>
-  -->
-  
-  <!--
   <node name="purepursuit_controller" pkg="summit_connector" type="purepursuit_controller.py" output="screen"/>
-  -->
 
   <node name="gamma_crowd_controller" pkg="summit_connector" type="gamma_crowd_controller.py" output="screen">
-    <param name="num_network_car_agents" value="70"/>
+    <param name="num_network_car_agents" value="80"/>
     <param name="num_network_bike_agents" value="25"/>
-    <param name="num_sidewalk_agents" value="10"/>
+    <param name="num_sidewalk_agents" value="15"/>
     <param name="path_min_points" value="20"/>
     <param name="path_interval" value="1.0"/>
   </node>
@@ -49,8 +43,6 @@
   </node>
   -->
 
-  <!--
   <node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen"/>
   <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
-  -->
 </launch>

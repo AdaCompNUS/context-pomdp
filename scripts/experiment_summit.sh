@@ -5,8 +5,11 @@ s=$2
 e=$3
 port=$4
 record_bags=1
-maploc=magic
+maploc=meskel_square
+# mode=rollout
 mode=joint_pomdp
+# mode=gamma
+rands=12
 
 echo "User: $USER"
 echo "PATH: $PATH"
@@ -28,7 +31,7 @@ do
     echo "[repeat_run] gpu_id: $gpu"
     python3 run_data_collection.py --record $record_bags \
     --sround $start_batch --eround $end_batch \
-    --make 1 --verb 1 --port $port --maploc $maploc --baseline $mode 2>&1 | tee -a exp_log_$s'_'$e
+    --make 1 --verb 1 --port $port --maploc $maploc --rands $rands --baseline $mode 2>&1 | tee -a exp_log_$s'_'$e
     echo "[repeat_run] clearing process"
     python ./clear_process.py $port
     sleep 3

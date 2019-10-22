@@ -11,6 +11,7 @@ def clear_nodes(port=2000):
 
     shell_cmds = []
     shell_cmds.append("pkill -2 roslaunch")
+    shell_cmds.append("pkill -2 record")
     # shell_cmds.append(ros_pref+"rosnode kill spawn_meshes")
     # shell_cmds.append(ros_pref+"rosnode kill ego_vehicle")
     # shell_cmds.append(ros_pref+"rosnode kill gamma_crowd_controller")
@@ -26,6 +27,7 @@ def clear_process(clear_outter=False, port=2000):
 
     clear_nodes(port)    
     subprocess.call('pkill -9 CarlaUE4-Linux-', shell=True)
+    time.sleep(1)
     subprocess.call('pkill -9 record', shell=True)
 
     # time.sleep(2)

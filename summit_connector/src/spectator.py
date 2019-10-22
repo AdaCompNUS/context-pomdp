@@ -12,6 +12,7 @@ import rospy
 from carla import ColorConverter
 
 from nav_msgs.msg import Odometry
+import msg_builder.msg
 
 # TODO Improve logic to allow registration against ego vehicle add/deletion/change.
 class Spectator(Drunc):
@@ -42,7 +43,7 @@ class Spectator(Drunc):
                 camera_blueprint,
                 # carla.Transform(carla.Location(x=-32.0, z=24.0), carla.Rotation(pitch=-30.0)),
                 # carla.Transform(carla.Location(x=-16.0, z=12.0), carla.Rotation(pitch=-30.0)),
-                carla.Transform(carla.Location(x=0.6,z=1.4), carla.Rotation(pitch=0.0)),
+                carla.Transform(carla.Location(x=0.5,y=-0.3,z=1.4), carla.Rotation(pitch=0.0)),
 
                 # carla.Transform(carla.Location(x=-320.0, z=480.0), carla.Rotation(pitch=-60.0)),
                 attach_to=self.actor)
@@ -65,7 +66,7 @@ class Spectator(Drunc):
 if __name__ == '__main__':
     rospy.init_node('spectator')
     
-    data = rospy.wait_for_message('/odom', Odometry)
+    data = rospy.wait_for_message('/ego_state', msg_builder.msg.car_info) # /odom, Odometry
 
     spectator = Spectator()
 

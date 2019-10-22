@@ -16,6 +16,7 @@ from msg_builder.msg import car_info as CarInfo
 import timeit
 import time
 from geometry_msgs.msg import Twist
+import nav_msgs.msg
 
 default_agent_pos = carla.Vector2D(10000, 10000)
 default_agent_bbox = [default_agent_pos + carla.Vector2D(1, -1), default_agent_pos + carla.Vector2D(1, 1),
@@ -261,6 +262,24 @@ class GammaCrowdController(Drunc):
             self.il_car_info_callback,
             queue_size=1)
 
+        rospy.Subscriber(
+                "/agent_array", 
+                msg_builder.msg.TrafficAgentArray,
+                self.agent_array_callback,
+                queue_size=1)
+
+        rospy.Subscriber(
+            "/odom",
+            nav_msgs.msg.Odometry,
+            self.odom_callback,
+            queue_size=1)
+
+        rospy.Subscriber(
+            "/plan",
+            nav_msgs.msg.Path,
+            self.path_callback,
+            queue_size=1)
+
         for i in range(self.num_network_car_agents):
             self.gamma.add_agent(carla.AgentParams.get_default('Car'), i)
 
@@ -290,6 +309,9 @@ class GammaCrowdController(Drunc):
         self.log_file = open(os.path.join(os.path.expanduser('~'), 'gamma_data.txt'), 'w', buffering=0)
 
         self.do_publish = False
+        self.agent_info_ready = False
+        self.odom_ready = False
+        self.path_ready = False
         self.initial_stage = True
         self.timer = rospy.Timer(rospy.Duration(0.1), self.publish_agents)
 
@@ -320,6 +342,15 @@ class GammaCrowdController(Drunc):
 
     def il_car_info_callback(self, car_info):
         self.ego_car_info = car_info
+
+    def agent_array_callback(self, agent_array):
+        self.agent_info_ready = True
+
+    def odom_callback(self, odom):
+        self.odom_ready = True
+
+    def path_callback(self, path):
+        self.path_ready = True
 
     def det(self, vector1, vector2):
         return vector1.y * vector2.x - vector1.x * vector2.y
@@ -668,7 +699,8 @@ class GammaCrowdController(Drunc):
                     commands.append(carla.command.ApplyWalkerControl(crowd_agent.actor.id, control))
 
         # Publish ego vehicle velocity.
-        if self.ego_car_info is not None:
+        if self.ego_car_info is not None and self.agent_info_ready and self.odom_ready and self.path_ready:
+            # pass
             ego_gamma_vel = self.gamma.get_agent_velocity(
                     self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents)
             ego_cur_vel = carla.Vector2D(self.ego_car_info.car_vel.x, self.ego_car_info.car_vel.y)

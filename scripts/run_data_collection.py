@@ -52,6 +52,7 @@ NO_NET = 0
 IMITATION = 1
 LETS_DRIVE = 2
 JOINT_POMDP = 3
+ROLL_OUT = 4
 
 class SubprocessMonitor(Process):
     def __init__(self, queue, id):
@@ -192,6 +193,10 @@ def parse_cmd_args():
                         type=str,
                         default="random",
                         help='map location in summit simulator')
+    parser.add_argument('--rands',
+                        type=int,
+                        default=0,
+                        help='random seed in summit simulator')
 
     return parser.parse_args()
 
@@ -218,7 +223,9 @@ def update_global_config(cmd_args):
         config.summit_maploc = random.choice(['map', 'meskel_square', 'magic', 'highway', 'chandni_chowk', 'shi_men_er_lu', 'beijing'])
     else:
         config.summit_maploc = cmd_args.maploc
+    config.random_seed = cmd_args.rands
     print("summit map location: {}".format(config.summit_maploc))
+    print("summit random seed: {}".format(config.random_seed))
     if "no" in cmd_args.net:
         config.use_drive_net_mode = NO_NET
     elif "imitation" in cmd_args.net:
@@ -227,6 +234,8 @@ def update_global_config(cmd_args):
         config.use_drive_net_mode = LETS_DRIVE
     elif "joint_pomdp" in cmd_args.net:
         config.use_drive_net_mode = JOINT_POMDP
+    elif "rollout" in cmd_args.net:
+        config.use_drive_net_mode = ROLL_OUT
     else:
         print("CAUTION: unsupported drive net mode")
         exit(-1)
@@ -259,7 +268,11 @@ def update_global_config(cmd_args):
 
     if "joint_pomdp" in cmd_args.baseline:
         config.use_drive_net_mode = JOINT_POMDP
-        # config.record_bag = 0 
+        # config.record_bag = 0
+    elif "gamma" in cmd_args.baseline:
+        config.use_drive_net_mode = JOINT_POMDP
+    elif "rollout" in cmd_args.baseline:
+        config.use_drive_net_mode = ROLL_OUT
     elif "imitation" in cmd_args.baseline:
         config.use_drive_net_mode = IMITATION
         # config.record_bag = 0
@@ -1036,10 +1049,18 @@ def launch_carla_simulator(round, run, case):
         carla_proc = subprocess.Popen(shell_cmd, cwd=os.path.join(home, "summit/LinuxNoEditor"), shell = True)
 
         wait_for(config.max_launch_wait, carla_proc, '[launch] carla_engine')
-        time.sleep(1)   
+        time.sleep(3)   
 
     shell_cmd = config.ros_pref+'roslaunch connector.launch port:=' + \
-    str(config.port) + ' map_location:=' + str(config.summit_maploc)
+    	str(config.port) + ' map_location:=' + str(config.summit_maploc) + \
+        ' random_seed:=' + str(config.random_seed)
+
+    if "gamma" in cmd_args.baseline:
+    	print("launching connector with GAMMA controller...")
+    	shell_cmd = shell_cmd + ' ego_control_mode:=gamma'
+    else:
+    	shell_cmd = shell_cmd + ' ego_control_mode:=other'
+
     if config.verbosity > 0:
         print('')
         print(shell_cmd)
@@ -1323,9 +1344,9 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
         # time.sleep(600)
 
         if config.test_mode:
-            pomdp_proc.wait(timeout=int(120.0/config.time_scale))
+            pomdp_proc.wait(timeout=int(70.0/config.time_scale))
         else:
-            pomdp_proc.wait(timeout=int(120.0/config.time_scale))
+            pomdp_proc.wait(timeout=int(70.0/config.time_scale))
         print("[INFO] waiting successfully ended", flush=True)
 
         monitor_worker.terminate()
@@ -1606,7 +1627,7 @@ if __name__ == '__main__':
                 if "imitation" in cmd_args.baseline:
                     drive_net_proc, drive_net_out = launch_drive_net(round, run, case)
 
-                if "imitation" in cmd_args.baseline or "pomdp" in cmd_args.baseline or "lets-drive" in cmd_args.baseline:
+                if "imitation" in cmd_args.baseline or "pomdp" in cmd_args.baseline or "lets-drive" in cmd_args.baseline or "gamma" in cmd_args.baseline or "rollout" in cmd_args.baseline:
                     pomdp_proc, pomdp_out = launch_pomdp_planner(round, run, case, drive_net_proc)
 
                 kill_inner_timer(Timeout_inner_monitor_pid)

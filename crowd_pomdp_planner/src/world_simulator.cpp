@@ -147,6 +147,13 @@ bool WorldSimulator::Connect() {
 	logi << "agent_array get at the " << SolverPrior::get_timestamp()
 			<< "th second" << endl;
 
+	auto path_data =
+				ros::topic::waitForMessage<nav_msgs::Path>(
+						"plan", ros::Duration(300));
+
+	logi << "plan get at the " << SolverPrior::get_timestamp()
+				<< "th second" << endl;
+
 	if (agent_data == NULL)
 		ERR("No agent array messages received after 300 seconds.");
 
@@ -209,7 +216,7 @@ State* WorldSimulator::GetCurrentState() {
 	coord = poseToCoord(out_pose);
 	//}
 
-	cout << "======transformed pose = " << coord.x << " " << coord.y << endl;
+	logd << "======transformed pose = " << coord.x << " " << coord.y << endl;
 
 	updated_car.pos = coord;
 	updated_car.vel = real_speed_;
@@ -229,7 +236,7 @@ State* WorldSimulator::GetCurrentState() {
 
 	current_state.time_stamp = SolverPrior::get_timestamp();
 
-	logi << " current state time stamp " << current_state.time_stamp << endl;
+	logd << " current state time stamp " << current_state.time_stamp << endl;
 
 	// logi << "&current_state " << &current_state << endl;
 	return static_cast<State*>(&current_state);
@@ -824,7 +831,7 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 	DEBUG(
 			string_sprintf("receive agent num %d at time %f \n",
-					data.agents.size(), data_time_sec));
+					data.agents.size(), SolverPrior::get_timestamp()));
 
 	vector<Pedestrian> ped_list;
 	vector<Vehicle> veh_list;
@@ -871,7 +878,9 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 	WorldSimulator::stateTracker->cleanAgents();
 
-	DEBUG("Finish agent update");
+	DEBUG(
+				string_sprintf("Finish agent update at time %f \n",
+						SolverPrior::get_timestamp()));
 
 	WorldSimulator::stateTracker->model.print_path_map();
 
@@ -880,8 +889,8 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 	// DEBUG(string_sprintf("ped_list len %d", ped_list.size()));
 	// DEBUG(string_sprintf("veh_list len %d", veh_list.size()));
-	logd << "====================[ agentArrayCallback end ]================="
-			<< endl;
+//	logd << "====================[ agentArrayCallback end ]================="
+//			<< endl;
 
 	SimulatorBase::agents_data_ready = true;
 }
@@ -896,7 +905,7 @@ void agentPathArrayCallback(msg_builder::AgentPathArray data) {
 
 	DEBUG(
 			string_sprintf("receive agent num %d at time %f \n",
-					data.agents.size(), data_time_sec));
+					data.agents.size(), SolverPrior::get_timestamp()));
 
 	vector<Pedestrian> ped_list;
 	vector<Vehicle> veh_list;
@@ -951,10 +960,9 @@ void agentPathArrayCallback(msg_builder::AgentPathArray data) {
 		WorldSimulator::stateTracker->updateVehPaths(veh);
 	}
 
-	DEBUG("Finish agent paths update");
-
-		logd << "====================[ agentPathArrayCallback end ]================="
-			<< endl;
+	DEBUG(
+			string_sprintf("Finish agent paths update at time %f \n",
+					SolverPrior::get_timestamp()));
 
 	SimulatorBase::agents_path_data_ready = true;
 }
@@ -989,7 +997,7 @@ void pedPoseCallback(msg_builder::ped_local_frame_vector lPedLocal) {
 }
 
 void receive_map_callback(nav_msgs::OccupancyGrid map) {
-	logi << "[receive_map_callback] " << endl;
+	logi << "[receive_map_callback] ts: " << SolverPrior::get_timestamp() << endl;
 
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 		PedNeuralSolverPrior * nn_prior =
@@ -999,7 +1007,7 @@ void receive_map_callback(nav_msgs::OccupancyGrid map) {
 		nn_prior->Init();
 	}
 
-	logi << "[receive_map_callback] end " << endl;
+	logi << "[receive_map_callback] end ts: " << SolverPrior::get_timestamp() << endl;
 }
 
 

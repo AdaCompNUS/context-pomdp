@@ -147,7 +147,8 @@ DSPOMDP* Controller::InitializeModel(option::Option* options) {
 }
 
 void Controller::CreateNNPriors(DSPOMDP* model) {
-	cerr << "DEBUG: Creating solver prior " << endl;
+
+	logd << "DEBUG: Creating solver prior " << endl;
 
 	if (Globals::config.use_multi_thread_) {
 		SolverPrior::nn_priors.resize(Globals::config.NUM_THREADS);
@@ -155,7 +156,7 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 		SolverPrior::nn_priors.resize(1);
 
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-		cerr << "DEBUG: Creating prior " << i << endl;
+		logd << "DEBUG: Creating prior " << i << endl;
 
 		SolverPrior::nn_priors[i] =
 				static_cast<PedPomdp*>(model)->CreateSolverPrior(
@@ -173,10 +174,8 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 	}
 
 	prior_ = SolverPrior::nn_priors[0];
-	cerr << "DEBUG: Created solver prior " << typeid(*prior_).name() << endl;
-
-//	logi << "Created solver prior " << typeid(*prior_).name() << endl;
-
+	cerr << "DEBUG: Created solver prior " << typeid(*prior_).name() <<
+			"at ts " << SolverPrior::get_timestamp() << endl;
 }
 
 World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
@@ -280,14 +279,17 @@ void Controller::InitializeDefaultParameters() {
 	else
 		Globals::config.use_prior = false;
 
-	if (b_use_drive_net_ == JOINT_POMDP) {
+	if (b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == ROLL_OUT) {
 		Globals::config.useGPU = false;
 		Globals::config.num_scenarios = 5;
 		Globals::config.NUM_THREADS = 10;
 		Globals::config.discount = 0.95;
 		Globals::config.search_depth = 20;
 		Globals::config.max_policy_sim_len = /*Globals::config.sim_len+30*/20;
-		Globals::config.pruning_constant = 0.001; // 100000000.0;
+		if (b_use_drive_net_ == JOINT_POMDP)
+			Globals::config.pruning_constant = 0.001;
+		else if (b_use_drive_net_ == ROLL_OUT)
+			Globals::config.pruning_constant = 100000000.0;
 		Globals::config.exploration_constant = 0.1;
 		Globals::config.silence = true;
 	}
@@ -343,7 +345,9 @@ void Controller::setGoal(const geometry_msgs::PoseStamped::ConstPtr goal) {
 
 void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 
-	logi << "receive path from navfn " << path->poses.size() << endl;
+	logi << "receive path from navfn " << path->poses.size()
+			<< " at the " << SolverPrior::get_timestamp()
+			<< "th second" << endl;
 
 	if (fixed_path_ && path_from_topic.size() > 0)
 		return;
@@ -387,7 +391,7 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 		setCarGoal(p.back());
 	}
 
-	if (b_use_drive_net_ == LETS_DRIVE || b_use_drive_net_ == JOINT_POMDP
+	if (b_use_drive_net_ == LETS_DRIVE || b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == ROLL_OUT
 			|| b_use_drive_net_ == IMITATION) {
 		pathplan_ahead_ = 0;
 	}
@@ -732,7 +736,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 			static_cast<const PedPomdp*>(ped_pomdp_model)->GetActionID(0.0,
 					0.0);
 	double step_reward;
-	if (b_use_drive_net_ == NO || b_use_drive_net_ == JOINT_POMDP) {
+	if (b_use_drive_net_ == NO || b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == ROLL_OUT) {
 		cerr << "DEBUG: Search for action using " << typeid(*solver).name()
 				<< endl;
 		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(
@@ -875,17 +879,22 @@ static int wait_count = 0;
 void Controller::PlanningLoop(despot::Solver*& solver, World* world,
 		Logger* logger) {
 
+	logi << "Planning loop started at the " << SolverPrior::get_timestamp()
+					<< "th second" << endl;
+
+	ros::spinOnce();
+
 	int pre_step_count = 0;
 	if (Globals::config.use_prior)
 		pre_step_count = 4;
 	else
 		pre_step_count = 0;
 	while (path_from_topic.size() == 0) {
-		cout << "Waiting for path" << endl;
+		cout << "Waiting for path, ts: " << SolverPrior::get_timestamp() << endl;
 		ros::spinOnce();
-		Globals::sleep_ms(1000.0 / control_freq / time_scale_);
+		Globals::sleep_ms(100.0 / control_freq / time_scale_);
 		wait_count++;
-		if (wait_count == 5) {
+		if (wait_count == 50) {
 			ros::shutdown();
 		}
 	}

@@ -66,7 +66,8 @@ public:
             steer_sub = nh.subscribe("cmd_vel_drive_net", 1, &VelPublisher::steerCallBack, this);
             vel_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::velCallBack, this);
         }
-        else if (b_use_drive_net_ == despot::NO || b_use_drive_net_ == despot::LETS_DRIVE ||b_use_drive_net_ == despot::JOINT_POMDP)
+        else if (b_use_drive_net_ == despot::NO || b_use_drive_net_ == despot::LETS_DRIVE
+        		|| b_use_drive_net_ == despot::JOINT_POMDP || b_use_drive_net_ == despot::ROLL_OUT)
             action_sub = nh.subscribe("cmd_vel_pomdp", 1, &VelPublisher::actionCallBack, this);
         
         speedSub = nh.subscribe("odom", 1, &VelPublisher::odomCallback, this);
