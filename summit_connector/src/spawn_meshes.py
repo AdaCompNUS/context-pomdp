@@ -71,6 +71,8 @@ class SpawnMeshes(Drunc):
     def __init__(self):
         super(SpawnMeshes, self).__init__()
 
+        self.reload_world()
+
         self.spawn_imagery = rospy.get_param('~spawn_imagery', True)
         self.spawn_landmarks = rospy.get_param('~spawn_landmarks', True)
         self.meshes_spawned_pub = rospy.Publisher('/meshes_spawned', Bool, queue_size=1, latch=True) 
