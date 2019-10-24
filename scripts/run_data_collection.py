@@ -225,8 +225,8 @@ def update_global_config(cmd_args):
     config.ros_master_url = "http://localhost:{}".format(config.ros_port)
     config.ros_pref = "ROS_MASTER_URI=http://localhost:{} ".format(config.ros_port)
     if 'random' in cmd_args.maploc:
-    	config.summit_maploc = random.choice(['meskel_square', 'magic', 'highway'])
-        # config.summit_maploc = random.choice(['map', 'meskel_square', 'magic', 'highway', 'chandni_chowk', 'shi_men_er_lu', 'beijing'])
+    	# config.summit_maploc = random.choice(['meskel_square', 'magic', 'highway'])
+        config.summit_maploc = random.choice(['meskel_square', 'magic', 'highway', 'chandni_chowk', 'shi_men_er_lu', 'beijing'])
     else:
         config.summit_maploc = cmd_args.maploc
     config.random_seed = cmd_args.rands

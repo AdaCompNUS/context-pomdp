@@ -90,10 +90,12 @@ class Spectator(Drunc):
 
 
 def release_video():
-    print("Exiting speculator..... releaseing video {}".format(video_file))
-    global video_out, record_video
-    record_video = False
-    video_out.release()
+    global record_video
+    if record_video:
+        global video_out
+        print("Exiting speculator..... releaseing video {}".format(video_file))
+        record_video = False
+        video_out.release()
 
 
 import atexit

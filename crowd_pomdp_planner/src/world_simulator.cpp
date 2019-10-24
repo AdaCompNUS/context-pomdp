@@ -135,7 +135,7 @@ bool WorldSimulator::Connect() {
 
 	int tick = 0;
 	bool agent_data_ok=false, odom_data_ok=false, car_data_ok=false, agent_flag_ok=false;
-	while(tick < 300){
+	while(tick < 28){
 		auto agent_data =
 					ros::topic::waitForMessage<msg_builder::TrafficAgentArray>(
 							"agent_array", ros::Duration(3));
@@ -181,8 +181,8 @@ bool WorldSimulator::Connect() {
 			tick++;
 	}
 
-	if (tick == 300)
-		ERR("No agent array messages received after 300 seconds.");
+	if (tick == 28)
+		ERR("No agent array messages received after 30 seconds.");
 
 	return true;
 }

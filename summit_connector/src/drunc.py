@@ -29,6 +29,7 @@ class Drunc(object):
         self.rng = random.Random(rospy.get_param('random_seed', 0))
         print("Map location set in SUMMIT: {}".format(self.map_location))
         print("Random seed set in SUMMIT: {}".format(self.random_seed))
+        sys.stdout.flush()
 
         self.client = carla.Client(address, port)
         self.client.set_timeout(10.0)
@@ -75,31 +76,38 @@ class Drunc(object):
             self.scenario_center = carla.Vector2D(2080, 1860)
             self.scenario_min = carla.Vector2D(490, 1730)
             self.scenario_max = carla.Vector2D(3680, 2000)
-            self.geo_min = (39.897975, 116.270888)
-            self.geo_max = (39.990929, 116.610580)
+            self.geo_min = (39.8992818, 116.4099687)
+            self.geo_max = (39.9476116, 116.4438916)
+
+        print("Loading map data")
 
         # Load network.
         self.network = carla.SumoNetwork.load(summit_root + 'Data/' + self.map_location + '.net.xml')
         self.network_occupancy_map = carla.OccupancyMap.load(summit_root + 'Data/' + self.map_location + '.wkt')
         self.network_segment_map = self.network.create_segment_map()
         self.network_segment_map.seed_rand(self.rng.getrandbits(32))
-
+        print("Lane network loaded")
+        sys.stdout.flush()
         # Roadmarks.
         self.roadmark_occupancy_map = self.network.create_roadmark_occupancy_map()
-
+        print("Roadmarks loaded")
+        sys.stdout.flush()
         # Load sidewalk.
         self.sidewalk = self.network_occupancy_map.create_sidewalk(1.5)
         self.sidewalk_occupancy_map = carla.OccupancyMap.load(summit_root + 'Data/' + self.map_location + '.sidewalk.wkt')
         with open(summit_root + 'Data/' + self.map_location + '.sidewalk.mesh', 'r') as file:
             sidewalk_mesh_data = file.read()
         sidewalk_mesh_data = sidewalk_mesh_data.split(',')
-
+        print("Sidewalk loaded")
+        sys.stdout.flush()
         # Load landmarks.
         self.landmarks = []
         self.landmarks = carla.Landmark.load(summit_root + 'Data/' + self.map_location + '.osm', self.network.offset)
         self.landmarks = [l.difference(self.network_occupancy_map).difference(self.sidewalk_occupancy_map) for l in
                           self.landmarks]
         self.landmarks = [l for l in self.landmarks if not l.is_empty]
+        print("Landmarks loaded")
+        sys.stdout.flush()
 
     def in_scenario_bounds(self, point):
         return self.scenario_min.x <= point.x <= self.scenario_max.x and \

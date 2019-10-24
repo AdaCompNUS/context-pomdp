@@ -6,6 +6,7 @@ e=$3
 port=$4
 launch_sim=$5
 record_bags=0
+# maploc=beijing
 maploc=random
 # maploc=meskel_square
 # mode=rollout

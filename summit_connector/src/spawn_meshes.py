@@ -127,7 +127,7 @@ class SpawnMeshes(Drunc):
                                             "{}/{}_{}.jpeg".format(zoom, row, column))
                         sys.stdout.flush()
                         if not os.path.exists(path):
-                            print("jpeg for row {} column {} missing in {}Data/imagery".format(row, column, summit_root))
+                            print("{} for row {} column {} missing in {}Data/imagery".format(path, row, column, summit_root))
                             continue
 
                         data = []
