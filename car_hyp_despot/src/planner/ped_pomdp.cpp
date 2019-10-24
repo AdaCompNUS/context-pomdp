@@ -1358,11 +1358,11 @@ SolverPrior *PedPomdp::CreateSolverPrior(World *world, std::string name, bool up
         prior = new PedNeuralSolverPrior(this, *world_model);
     }
 
-    cerr << "DEBUG: Getting initial state " << endl;
+    logd << "DEBUG: Getting initial state " << endl;
 
     const State *init_state = world->GetCurrentState();
 
-    cerr << "DEBUG: Adding initial state " << endl;
+    logd << "DEBUG: Adding initial state " << endl;
 
     if (init_state != NULL && update_prior)
     {

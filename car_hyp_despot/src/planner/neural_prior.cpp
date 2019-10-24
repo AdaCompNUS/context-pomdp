@@ -381,7 +381,7 @@ PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 		SolverPrior(model), world_model(world) {
 
 	prior_id_ = 0;
-	cerr << "DEBUG: Initializing PedNeuralSolverPrior" << endl;
+	logd << "DEBUG: Initializing PedNeuralSolverPrior" << endl;
 
 	action_probs_.resize(model->NumActions());
 
@@ -393,7 +393,7 @@ PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 	// DONE Declare the neural network as a class member, and load it here
 
 
-	cerr << "DEBUG: Initializing car shape" << endl;
+	logd << "DEBUG: Initializing car shape" << endl;
 
 	// Car geometry
 	car_shape = vector<cv::Point3f>({ Point3f(3.6, 0.95, 1), Point3f(-0.8, 0.95, 1), Point3f(-0.8, -0.95, 1), Point3f(3.6, -0.95, 1)});
@@ -403,11 +403,11 @@ PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 
   if (Globals::config.use_prior){
 
-    cerr << "[" << __FUNCTION__<< "] Testing model start" << endl;
+    logd << "[" << __FUNCTION__<< "] Testing model start" << endl;
 
     Test_model("");
 
-    cerr << "[" << __FUNCTION__<< "] Testing model end" << endl;
+    logd << "[" << __FUNCTION__<< "] Testing model end" << endl;
   }
 }
 

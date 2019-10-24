@@ -201,6 +201,10 @@ def parse_cmd_args():
                         type=int,
                         default=1,
                         help='choose whether to launch the summit simulator')
+    parser.add_argument('--eps_len',
+                        type=float,
+                        default=70.0,
+                        help='Length of episodes in terms of seconds')
 
     return parser.parse_args()
 
@@ -220,12 +224,17 @@ def update_global_config(cmd_args):
     config.ros_port = config.port + 111
     config.ros_master_url = "http://localhost:{}".format(config.ros_port)
     config.ros_pref = "ROS_MASTER_URI=http://localhost:{} ".format(config.ros_port)
-    if cmd_args.maploc is 'random':
-        config.summit_maploc = random.choice(['map', 'meskel_square', 'magic', 'highway', 'chandni_chowk', 'shi_men_er_lu', 'beijing'])
+    if 'random' in cmd_args.maploc:
+    	config.summit_maploc = random.choice(['meskel_square', 'magic', 'highway'])
+        # config.summit_maploc = random.choice(['map', 'meskel_square', 'magic', 'highway', 'chandni_chowk', 'shi_men_er_lu', 'beijing'])
     else:
         config.summit_maploc = cmd_args.maploc
     config.random_seed = cmd_args.rands
+    if cmd_args.rands == -1:
+    	config.random_seed = random.randint(0, 10000000)
+
     config.launch_summit = bool(cmd_args.launch_sim)
+    config.eps_length = cmd_args.eps_len
 
     if "no" in cmd_args.net:
         config.use_drive_net_mode = NO_NET
@@ -405,7 +414,7 @@ def get_bag_file_name(round, run, case):
     dir = result_subfolder
 
     file_name = problem_flag + '_case_' + goal_flag + '_sample-' + \
-                str(round) + '-' + str(run) + '-' + str(case)
+                str(round) + '-' + str(run) + '-' + str(case) + '_pid-'+ str(os.getpid())
 
     existing_bags = glob.glob(dir + "*.bag")
 
@@ -427,7 +436,7 @@ def get_bag_file_name(round, run, case):
 
 
 def get_txt_file_name(round, run, case):
-    # rand = random.randint(0,10000000)
+
     return get_bag_file_name(round, run, case) + '.txt'
 
 def choose_problem(run, batch):
@@ -901,7 +910,8 @@ def init_case_dirs():
 
     global subfolder, obstacle_file, goal_file, result_subfolder
 
-    subfolder = 'map_' + problem_flag + '_case_' + goal_flag
+    # subfolder = 'map_' + problem_flag + '_case_' + goal_flag
+    subfolder = config.summit_maploc
 
     if cmd_args.baseline is not "":
         result_subfolder = path.join(root_path, 'result', cmd_args.baseline + '_baseline', subfolder)
@@ -1351,9 +1361,9 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
         # time.sleep(600)
 
         if config.test_mode:
-            pomdp_proc.wait(timeout=int(70.0/config.time_scale))
+            pomdp_proc.wait(timeout=int(config.eps_length/config.time_scale))
         else:
-            pomdp_proc.wait(timeout=int(70.0/config.time_scale))
+            pomdp_proc.wait(timeout=int(config.eps_length/config.time_scale))
         print("[INFO] waiting successfully ended", flush=True)
 
         monitor_worker.terminate()
