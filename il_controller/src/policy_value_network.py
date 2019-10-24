@@ -150,7 +150,7 @@ class PolicyValueNet(nn.Module):
                 global_config.vin_out_channels = config.l_h
 
             else:  # default
-                self.car_VIN = GPPN.GPPN(config, 1+global_config.num_hist_channels)
+                self.car_VIN = GPPN.GPPN(config, 2 + global_config.num_hist_channels)
                 self.car_hist_VIN = None
                 self.output_channels_VIN = self.car_VIN.output_channels + global_config.num_hist_channels
 
@@ -336,6 +336,7 @@ class PolicyValueNet(nn.Module):
                 car_hist_data = self.car_hist_VIN(car_hist_data, config)
 
             car_features = torch.cat((car_values, car_hist_data), 1).contiguous()  # stack the channels
+
 
         if global_config.vanilla_resnet:
             car_res_features = car_features
