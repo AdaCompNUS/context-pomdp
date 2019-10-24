@@ -1,7 +1,7 @@
 #
 # LeTS-Drive with SUMMIT simulator integration
 
-Simulation and driving in SUMMIT: [![Watch the driving video](https://img.youtube.com/vi/bQjcd-NBdIg/0.jpg)](https://youtu.be/wrR1VQUTUEE "Watch the driving video")
+Simulation and driving in SUMMIT (click to see video): [![Watch the driving video](https://img.youtube.com/vi/bQjcd-NBdIg/0.jpg)](https://youtu.be/wrR1VQUTUEE "Watch the driving video")
 
 ## Overview
 Existing driving simulators do not capture the full complexity of real-world, unregulated, densely-crowded urban environments, such as complex road structures and traffic behaviors, and are thus insufficient for testing or training robust driving algorithms. We aim to fill this gap.  SUMMIT is a high-fidelity simulator that facilitates the development and testing of crowd-driving algorithm extending CARLA to support the following additional features:
@@ -28,4 +28,4 @@ To briefly explain the core sub-systems:
 
 * **IL Controller** The neural network learner for imitation learning (dashed lines denote that once trained these networks can be used to control the driver).
 
-**Information on the Installation Steps or Technical User Guide of SUMMIT can be located on our [wiki](https://github.com/AdaCompNUS/LeTS-Drive-SUMMIT.wiki.git).**
+**Information on the Installation Steps or Technical User Guide of SUMMIT can be located on our [wiki](https://github.com/AdaCompNUS/LeTS-Drive-SUMMIT/wiki).**
