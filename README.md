@@ -216,6 +216,8 @@ Start training and open tensorboard port
 python3 train.py --batch_size 128 --lr 0.0001 --train train.h5 --val val.h5
 tensorboard --logdir runs --port=6001
 ```
+If your system cannot find tensorboard, use `pip install tensorboard` to install it.
+
 If the port is unfortunately taken by some other process, you can choose another port or free up the port using
 ```
 netstat -anp|grep 6001
