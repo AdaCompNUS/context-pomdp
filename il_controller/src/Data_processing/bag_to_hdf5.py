@@ -322,7 +322,7 @@ def create_h5_data(data_dict,
         except Exception as e:
             error_handler(e)
             print("--Sampling warning details: already sampled {}, to sample {}, total data {}".format(
-                len(sample_idx), sample_length, len(sample_shuffled_idx)))
+                len(sample_idx), sample_length, len(timestamps)))
             return dict(output_dict), False
 
         ts = timestamps[idx]
