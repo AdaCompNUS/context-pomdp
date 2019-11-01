@@ -316,7 +316,14 @@ def create_h5_data(data_dict,
 
     while not (len(sample_idx) == sample_length):
         old_output_dict_length = len(output_dict.keys())
-        idx = next(sample_shuffled_idx)
+
+        try:
+            idx = next(sample_shuffled_idx)
+        except Exception as e:
+            error_handler(e)
+            print("--Sampling warning details: already sampled {}, to sample {}, total data {}".format(
+                len(sample_idx), sample_length, len(sample_shuffled_idx)))
+            return dict(output_dict), False
 
         ts = timestamps[idx]
 
