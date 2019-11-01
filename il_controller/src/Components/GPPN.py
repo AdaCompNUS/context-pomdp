@@ -86,7 +86,7 @@ class GPPN(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def forward(self, X, config):
+    def forward(self, X):
         maze_size = X.size()[2] # image size
 
         hid = self.hid(X)

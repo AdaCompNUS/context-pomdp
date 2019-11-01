@@ -129,34 +129,9 @@ class PolicyValueNet(nn.Module):
         self.car_lstm = None
         self.map_lstm = None
         if not global_config.vanilla_resnet:
-            if global_config.lstm_mode == 'convlstm':
-                self.car_lstm = ConvLSTM.ConvLSTM(input_size=(config.imsize, config.imsize),
-                     input_dim=1,
-                     hidden_dim=config.l_h,
-                     kernel_size=(config.f, config.f),
-                     num_layers=5,
-                     batch_first=True,
-                     bias=True,
-                     return_all_layers=False)
-                self.ped_lstm = ConvLSTM.ConvLSTM(input_size=(config.imsize, config.imsize),
-                     input_dim=1,
-                     hidden_dim= config.l_h,
-                     kernel_size=(config.f, config.f),
-                     num_layers=5,
-                     batch_first=True,
-                     bias=True,
-                     return_all_layers=False)
-                self.output_channels_VIN = 2*config.l_h
-                global_config.vin_out_channels = config.l_h
-
-            else:  # default
-                self.car_VIN = GPPN.GPPN(config, 2 + global_config.num_hist_channels)
-                self.car_hist_VIN = None
-                self.output_channels_VIN = self.car_VIN.output_channels + global_config.num_hist_channels
-
-                # self.car_hist_VIN = GPPN.GPPN(config, global_config.num_hist_channels)
-                # self.output_channels_VIN = self.car_VIN.output_channels + self.car_VIN.output_channels
-
+            self.car_VIN = GPPN.GPPN(config, 2 + global_config.num_hist_channels)
+            self.car_hist_VIN = None
+            self.output_channels_VIN = self.car_VIN.output_channels + global_config.num_hist_channels
         else:
             self.output_channels_VIN = 1 + global_config.num_hist_channels + global_config.num_hist_channels
             global_config.vin_out_channels = 1 + global_config.num_hist_channels
@@ -212,10 +187,7 @@ class PolicyValueNet(nn.Module):
         self.resnet_size = get_module_size(self.resnet)
 
         if not global_config.vanilla_resnet:
-            if global_config.lstm_mode is "convlstm":
-                self.gppn_size = get_module_size(self.car_lstm)
-            else:
-                self.gppn_size = get_module_size(self.car_VIN)
+            self.gppn_size = get_module_size(self.car_VIN)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -292,51 +264,29 @@ class PolicyValueNet(nn.Module):
         reshape_car_input = car_input.view(batch_size * config.no_car, global_config.num_channels, config.imsize,
                                            config.imsize).contiguous()
 
-        if global_config.lstm_mode is 'convlstm':
-            ped_input = reshape_car_input[:, self.ped_start:self.ped_end, :, :].unsqueeze(2)  # unqueeze the channel dim
+        car_vin_input = reshape_car_input[:, 0:max(self.ped_end, global_config.channel_goal + 1), :, :]  # with 4 ped
+        # maps, lane, and goal channel
 
-            goal_input = reshape_car_input[:, global_config.channel_goal, :, :] # unqueeze the channel dim
-            goal_input = goal_input.unsqueeze(1)
-
-            # print("ped input shape: {}".format(ped_input.shape))
-            # print("goal input shape: {}".format(goal_input.shape))
-
-            ped_features, _ = self.ped_lstm(ped_input, goal_input)
-
-            car_input = reshape_car_input[:, self.hist_start:self.hist_end, :, :].unsqueeze(
-                2)  # unqueeze the channel dim
-
-            car_hist_features, _ = self.car_lstm(car_input)  # collapse the channel dim
-
-            # print("ped lstm output shape: {}".format(ped_features.shape))
-            # print("goal lstm output shape: {}".format(car_hist_features.shape))
-
-            # ped_features = ped_features.squeeze(2)
-            # car_hist_features = car_hist_features.squeeze(2)
-
-            car_features = torch.cat((ped_features, car_hist_features), 1).contiguous()  # stack the channels
-
-            car_values = ped_features
-        else:
-
-            car_vin_input = reshape_car_input[:, 0:max(self.ped_end, global_config.channel_goal + 1), :, :]  # with 4 ped maps and goal channel
-
+        car_hist_data = None
+        if config.use_hist_channels:
             car_hist_data = reshape_car_input[:, self.hist_start:self.hist_end, :, :]  # with 4 hist channels
 
-            # Container for the output value images
-            # 3 channels include the Value image and the 2 hist layers (idx 0 is value image)
-            # adding 1 extra dummy dimension because VIN produces single channel output
+        # Container for the output value images
+        # 3 channels include the Value image and the 2 hist layers (idx 0 is value image)
+        # adding 1 extra dummy dimension because VIN produces single channel output
 
-            if global_config.vanilla_resnet:
-                car_values = car_vin_input
-            else:
-                car_values = self.car_VIN(car_vin_input, config)
+        if global_config.vanilla_resnet:
+            car_values = car_vin_input
+        else:
+            car_values = self.car_VIN(car_vin_input)
 
-            if not global_config.vanilla_resnet and self.car_hist_VIN is not None:
-                car_hist_data = self.car_hist_VIN(car_hist_data, config)
+        if not global_config.vanilla_resnet and self.car_hist_VIN is not None:
+            car_hist_data = self.car_hist_VIN(car_hist_data, config)
 
+        if config.use_hist_channels:
             car_features = torch.cat((car_values, car_hist_data), 1).contiguous()  # stack the channels
-
+        else:
+            car_features = car_values
 
         if global_config.vanilla_resnet:
             car_res_features = car_features
@@ -413,16 +363,11 @@ def print_model_size(model):
         resnet_size += get_module_size(model.car_resnet)
 
     gppn_size = 0
-    if global_config.lstm_mode is 'convlstm':
-        if model.ped_lstm:
-            gppn_size += get_module_size(model.ped_lstm)
-        if model.car_hist_VIN:
-            gppn_size += get_module_size(model.car_lstm)
-    else:
-        if model.car_VIN:
-            gppn_size += get_module_size(model.car_VIN)
-        if model.car_hist_VIN:
-            gppn_size += get_module_size(model.car_hist_VIN)
+
+    if model.car_VIN:
+        gppn_size += get_module_size(model.car_VIN)
+    if model.car_hist_VIN:
+        gppn_size += get_module_size(model.car_hist_VIN)
 
     head_size = 0
     if model.ang_head:

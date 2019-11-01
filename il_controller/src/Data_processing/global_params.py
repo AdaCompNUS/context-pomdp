@@ -52,17 +52,6 @@ elif config.ped_mode == "combined" or config.ped_mode == "new_res":
     config.num_agents_in_map = 20
     config.num_hist_channels = 4
 
-    # config.channel_goal = 0
-    #
-    # config.channel_map = []
-    # for i in range(config.num_hist_channels):
-    #     config.channel_map.append(i+1)
-    # map_last = config.channel_map[-1] + 1
-    #
-    # config.channel_hist = []
-    # for i in range(config.num_hist_channels):
-    #     config.channel_hist.append(i + map_last)
-
     # exo history 1-4, channel 0-3
     config.channel_map = []
     for i in range(config.num_hist_channels):
