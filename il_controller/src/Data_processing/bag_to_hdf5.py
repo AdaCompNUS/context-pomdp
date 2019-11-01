@@ -1565,7 +1565,7 @@ def main(bagspath, nped, start_file, end_file, thread_id):
                         print("Thread %d written: elapsed time %f s" % (thread_id, end_time - start_time))
                     else:
                         print(
-                            "pedestrian data not used. Nearby pedestrians disappear during the drive "
+                            "Bag data incomplete "
                             "(investigate)")
                         investigate_files.append(txt_file)
 
