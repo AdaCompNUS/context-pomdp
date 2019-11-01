@@ -145,6 +145,7 @@ config.resnet_width = 32
 config.visualize_train_data = True
 config.visualize_val_data = False
 config.visualize_inter_data = False
+config.visualize_raw_data = False
 
 # toggle debug printing
 config.print_preds = False
