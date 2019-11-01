@@ -706,7 +706,7 @@ def get_lane_points(lanes, origin, dim_high_res, down_sample_ratio, resolution):
     try:
         start_time = time.time()
         lane_points = get_pyramid_image_points(lane_pixels, dim_high_res, down_sample_ratio,
-                                              draw_image=False, draw_flag='lane')
+                                              draw_image=True, draw_flag='lane')
         if print_time:
             elapsed_time = time.time() - start_time
             print("Lane pyramid time: " + str(elapsed_time) + " s")
@@ -1255,7 +1255,7 @@ def get_car_points(car, origin, dim_high_res, down_sample_ratio, resolution, dra
         try:
             start_time = time.time()
             car_points = get_pyramid_image_points(car_edge_pixels, dim_high_res, down_sample_ratio,
-                                                  draw_image=False, draw_flag='car')
+                                                  draw_image=True, draw_flag='car')
             if print_time:
                 elapsed_time = time.time() - start_time
                 print("Car pyramid time: " + str(elapsed_time) + " s")
