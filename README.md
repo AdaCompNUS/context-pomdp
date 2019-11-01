@@ -135,7 +135,7 @@ catkin build
 Run
 ```
 cd ~/catkin_ws/src
-git clone https://github.com/cindycia/LeTS-Drive-SUMMIT.git    
+git clone https://github.com/AdaCompNUS/LeTS-Drive-SUMMIT.git
 mv LeTS-Drive-SUMMIT/* .
 mv LeTS-Drive-SUMMIT/.git .
 rm -r LeTS-Drive-SUMMIT
