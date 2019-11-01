@@ -131,7 +131,10 @@ class PolicyValueNet(nn.Module):
         if not global_config.vanilla_resnet:
             self.car_VIN = GPPN.GPPN(config, 2 + global_config.num_hist_channels)
             self.car_hist_VIN = None
-            self.output_channels_VIN = self.car_VIN.output_channels + global_config.num_hist_channels
+            if global_config.use_hist_channels:
+                self.output_channels_VIN = self.car_VIN.output_channels + global_config.num_hist_channels
+            else:
+                self.output_channels_VIN = self.car_VIN.output_channels
         else:
             self.output_channels_VIN = 1 + global_config.num_hist_channels + global_config.num_hist_channels
             global_config.vin_out_channels = 1 + global_config.num_hist_channels
