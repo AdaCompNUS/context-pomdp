@@ -268,7 +268,7 @@ class PolicyValueNet(nn.Module):
         # maps, lane, and goal channel
 
         car_hist_data = None
-        if config.use_hist_channels:
+        if global_config.use_hist_channels:
             car_hist_data = reshape_car_input[:, self.hist_start:self.hist_end, :, :]  # with 4 hist channels
 
         # Container for the output value images
@@ -283,7 +283,7 @@ class PolicyValueNet(nn.Module):
         if not global_config.vanilla_resnet and self.car_hist_VIN is not None:
             car_hist_data = self.car_hist_VIN(car_hist_data, config)
 
-        if config.use_hist_channels:
+        if global_config.use_hist_channels:
             car_features = torch.cat((car_values, car_hist_data), 1).contiguous()  # stack the channels
         else:
             car_features = car_values
