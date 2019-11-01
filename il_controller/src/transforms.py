@@ -74,7 +74,7 @@ class PopulateImages(object):
 
     def populate_goal_and_hist_images(self, i, output_arr, sample):
         try:
-            if i < config.num_agents_in_NN:  # pedestrians
+            if i < config.num_agents_in_NN:  # pedestrians, the number is set to 0
                 agent_key = 'ped'
                 src_entry = sample[agent_key][i]
             else:
@@ -85,10 +85,11 @@ class PopulateImages(object):
                 output_arr[i, config.channel_goal, int(
                     point[0]), int(point[1])] = point[2]
 
-            for ts in range(config.num_hist_channels):
-                for point in src_entry['hist'][ts]:
-                    output_arr[i, config.channel_hist[ts], int(
-                        point[0]), int(point[1])] = point[2]
+            if config.use_hist_channels:
+                for ts in range(config.num_hist_channels):
+                    for point in src_entry['hist'][ts]:
+                        output_arr[i, config.channel_hist[ts], int(
+                            point[0]), int(point[1])] = point[2]
         except Exception as e:
             print(e)
 

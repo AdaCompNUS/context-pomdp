@@ -459,13 +459,12 @@ class DataMonitor(data.Dataset):
                 self.check_history_completeness(hist_cars)
 
                 # start_time = time.time()
-                peds_are_valid = bag_to_hdf5.process_exo_agents(hist_exo_agents=hist_peds, hist_cars=hist_cars,
-                                                                dim=self.dim,
-                                                                origin=self.origin, resolution=self.resolution,
+                peds_are_valid = bag_to_hdf5.process_exo_agents(hist_cars=hist_cars, hist_exo_agents=hist_peds,
+                                                                hist_env_maps=self.ped_map_array, dim=self.dim,
+                                                                resolution=self.resolution,
                                                                 map_intensity=self.map_intensity,
                                                                 map_intensity_scale=self.map_intensity_scale,
-                                                                hist_env_maps=self.ped_map_array
-                                                                )
+                                                                origin=self.origin)
 
                 # elapsed_time = time.time() - start_time
                 # print("Peds processing time: " + str(elapsed_time) + " s")

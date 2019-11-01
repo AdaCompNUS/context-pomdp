@@ -71,12 +71,16 @@ elif config.ped_mode == "combined" or config.ped_mode == "new_res":
     config.channel_lane = config.num_hist_channels       # channel 4
     config.channel_goal = config.num_hist_channels + 1   # channel 5
 
+    config.use_hist_channels = False
     # ego history 1-4, channel 6-9
     config.channel_hist = []
     for i in range(config.num_hist_channels):
         config.channel_hist.append(i + config.channel_goal + 1)
 
-    config.num_channels = 2 + 2 * config.num_hist_channels
+    if config.use_hist_channels:
+        config.num_channels = 2 + 2 * config.num_hist_channels
+    else:
+        config.num_channels = 2 + config.num_hist_channels
 
 # size of downsampled map
 config.imsize = 32

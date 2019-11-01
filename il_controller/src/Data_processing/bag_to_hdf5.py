@@ -328,24 +328,26 @@ def create_h5_data(data_dict,
         hist_cars, hist_exo_agents = get_history_agents(data_dict, ts)
 
         if map_array is None:
-            origin = select_null_map_origin(hist_cars)
+            origin = None
 
-        agents_are_valid = process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps,
-                                              dim, origin, resolution, map_intensity,
-                                              map_intensity_scale)
+        agents_are_valid = process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution, map_intensity,
+                                              map_intensity_scale, origin)
 
         if not agents_are_valid:
             return dict(output_dict), False  # report invalid peds
 
+        if map_array is None:
+            origin = select_null_map_origin(hist_cars, 0)
+
         process_maps(down_sample_ratio, idx, map_array, output_dict, hist_env_maps)
 
-        process_car(idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio, origin, resolution)
+        process_car(idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio, resolution, origin)
 
         process_actions(data_dict, idx, output_dict, ts)
 
-        process_obstacles(idx, ts, output_dict, data_dict, dim, down_sample_ratio, origin, resolution)
+        process_obstacles(idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, origin)
 
-        process_lanes(idx, ts, output_dict, data_dict, dim, down_sample_ratio, origin, resolution)
+        process_lanes(idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, origin)
 
         process_parametric_agents(idx, output_dict, hist_exo_agents, hist_cars)
 
@@ -377,9 +379,8 @@ def shuffle_and_sample_indices(timestamps):
     return sample_idx, sample_length, sample_shuffled_idx
 
 
-def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps,
-                       dim, origin, resolution, map_intensity,
-                       map_intensity_scale):
+def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution, map_intensity, map_intensity_scale,
+                       origin=None):
     try:
         nearest_agent_ids = get_nearest_agent_ids(hist_exo_agents[0], hist_cars[0])  # return ped id
         valid_agent = 0
@@ -390,8 +391,15 @@ def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps,
 
             hist_agent = get_exo_agent_history(agent_id, hist_exo_agents)
 
+            origins = []
+            for i in config.num_hist_channels:
+                if origin is None:
+                    origins.append(select_null_map_origin(hist_cars, i))
+                else:
+                    origins.append(origin)
+
             # calculate position in map image
-            hist_image_space_agent, is_out_map = get_image_space_agent_history(hist_agent, origin, resolution, dim)
+            hist_image_space_agent, is_out_map = get_image_space_agent_history(hist_agent, origins, resolution, dim)
 
             # discard agents outside the map
             if is_out_map:
@@ -547,8 +555,7 @@ def process_actions(data_dict, idx, output_dict, ts):
         [data_dict[ts]['action'].linear.x], dtype=np.float32)
 
 
-def process_car(data_idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio,
-                origin, resolution):
+def process_car(data_idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio, resolution, origin):
     process_car_inner(output_dict[data_idx], data_dict[ts], hist_cars, dim, down_sample_ratio,
                       origin, resolution)
 
@@ -616,8 +623,7 @@ def process_maps_inner(down_sample_ratio, map_array, output_dict_entry, hist_ped
         visualization.visualized_exo_agent_data(hist_env_map, root='Data_processing/')
 
 
-def process_obstacles(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio,
-                origin, resolution):
+def process_obstacles(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, origin):
     process_obstacles_inner(output_dict[data_idx], data_dict[ts], dim, down_sample_ratio,
                       origin, resolution)
 
@@ -667,8 +673,7 @@ def get_obs_points(obstacles, origin, dim_high_res, down_sample_ratio, resolutio
     return obs_points
 
 
-def process_lanes(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio,
-                origin, resolution):
+def process_lanes(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, origin):
     process_lanes_inner(output_dict[data_idx], data_dict[ts], dim, down_sample_ratio,
                       origin, resolution)
 
@@ -1221,13 +1226,14 @@ def construct_car_data(origin, resolution, dim, down_sample_ratio, hist_cars, pa
         # 'goal' contains the rescaled path in pixel points
         car_output_dict['goal'] = path_data['path']
 
-        for i in range(len(hist_cars)):
-            draw = False
-            if i == 0:
-                draw = True
+        if config.use_hist_channels:
+            for i in range(len(hist_cars)):
+                draw = False
+                if i == 0:
+                    draw = True
 
-            car_points = get_car_points(hist_cars[i], origin, dim, down_sample_ratio, resolution, draw)
-            car_output_dict['hist'].append(car_points)
+                car_points = get_car_points(hist_cars[i], origin, dim, down_sample_ratio, resolution, draw)
+                car_output_dict['hist'].append(car_points)
 
     except Exception as e:
         error_handler(e)
@@ -1338,22 +1344,23 @@ def get_image_space_lane(lane_segment, origin, resolution):
     return np.asarray(X)
 
 
-def select_null_map_origin(hist_cars):
+def select_null_map_origin(hist_cars, ts=0):
     # origin is the upper-left corner of the map
-    cur_car = hist_cars[0]
+    cur_car = hist_cars[ts]
     return [cur_car.car_pos.x - 20.0, cur_car.car_pos.y - 20.0]
 
 
-def get_image_space_agent_history(agent_history, origin, resolution, dim):
+def get_image_space_agent_history(agent_history, origins, resolution, dim):
     try:
         # ped_pos, ped_id, ped_goal_id, ped_speed, ped_vel, bb_x, bb_y, heading
         is_out_map = True
         transformed_history = []
+        i = 0
         for hist_agent in agent_history:
             if hist_agent is not None:
                 theta = hist_agent.heading
-                x = hist_agent.ped_pos.x - origin[0]
-                y = hist_agent.ped_pos.y - origin[1]
+                x = hist_agent.ped_pos.x - origins[i][0]
+                y = hist_agent.ped_pos.y - origins[i][1]
                 # transformation matrix: rotate by theta and translate with (x,y)
                 T = np.asarray([[cos(theta), -sin(theta), x], [sin(theta),
                                                                cos(theta), y], [0, 0, 1]])
@@ -1381,6 +1388,8 @@ def get_image_space_agent_history(agent_history, origin, resolution, dim):
                     pass  # print("frame out of map, dist to origin {}".format(dist))
             else:
                 transformed_history.append(None)
+
+            i += 1
 
         return transformed_history, is_out_map
     except Exception as e:

@@ -463,7 +463,7 @@ def save_figure(fig, image_subfolder, root, step):
         else:
             if not os.path.exists(folder):
                 os.makedirs(folder)
-        flag = step.split("/")[1]
+        flag = '_' + step.split("/")[1]
         fig.savefig(os.path.join(folder, flag + '.png'), bbox_inches='tight', transparent=False)
 
         print("Figure {} generated".format(folder + flag + '.png'))
