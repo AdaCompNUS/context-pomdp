@@ -404,7 +404,8 @@ def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps,
                 valid_agent += 1
 
         print("{} peds used in frame env_map".format(valid_agent))
-        assert (valid_agent > 0)
+        if valid_agent == 0:
+            print("Warning!!!!!!: no exo-agent appeared in the local map")
 
     except Exception as e:
         error_handler(e)
@@ -1353,13 +1354,14 @@ def get_image_space_agent_history(agent_history, origin, resolution, dim):
                 theta = hist_agent.heading
                 x = hist_agent.ped_pos.x - origin[0]
                 y = hist_agent.ped_pos.y - origin[1]
-                dist = math.sqrt(x * x + y * y)
                 # transformation matrix: rotate by theta and translate with (x,y)
                 T = np.asarray([[cos(theta), -sin(theta), x], [sin(theta),
                                                                cos(theta), y], [0, 0, 1]])
+
+                # bb_x is width of agent, bb_y is forward of agents.
                 # car vertices in its local frame
-                x1, y1, x2, y2, x3, y3, x4, y4 = hist_agent.bb_x, hist_agent.bb_y, -hist_agent.bb_x, hist_agent.bb_y, \
-                                                 -hist_agent.bb_x, -hist_agent.bb_y, hist_agent.bb_x, -hist_agent.bb_y
+                x1, y1, x2, y2, x3, y3, x4, y4 = hist_agent.bb_y, hist_agent.bb_x, -hist_agent.bb_y, hist_agent.bb_x, \
+                                                 -hist_agent.bb_y, -hist_agent.bb_x, hist_agent.bb_y, -hist_agent.bb_x
 
                 # homogeneous coordinates
                 X = np.asarray([[x1, y1, 1], [x2, y2, 1], [x3, y3, 1], [x4, y4, 1]])
