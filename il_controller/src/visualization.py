@@ -342,6 +342,7 @@ vis_step = 0
 
 def visualized_exo_agent_data(env_maps, root=""):
     global vis_step
+    vis_step += 1
     fig, axarr = plt.subplots(2, 2)
     fig.set_figheight(6*2)
     fig.set_figwidth(6*2)
@@ -355,7 +356,6 @@ def visualized_exo_agent_data(env_maps, root=""):
     image_subfolder = 'visualize/h5_env_maps/'
 
     save_figure(fig, image_subfolder, root, 'raw/'+str(vis_step))
-    vis_step += 1
 
 
 def visualize_image(car_map, root="", subfolder="h5_car_map"):
