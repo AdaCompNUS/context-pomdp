@@ -311,7 +311,10 @@ def visualize(X, step, root=""):
                     if j == 1:
                         axarr[i, j].imshow(X[last_ped, config.channel_goal],
                                            cmap=map_type, interpolation='nearest')
-                    if j >= 2:
+                    if j == 2:
+                        axarr[i, j].imshow(X[last_ped, config.channel_lane],
+                                           cmap=map_type, interpolation='nearest')
+                    if j >= 3:
                         axarr[i, j].imshow(np.ones((config.imsize, config.imsize), dtype=np.float32),
                                            cmap='gist_yarg', interpolation='nearest')
                         axarr[i, j].axis('off')
@@ -355,7 +358,7 @@ def visualized_exo_agent_data(env_maps, root=""):
     vis_step += 1
 
 
-def visualized_car_data(car_map, root=""):
+def visualize_image(car_map, root="", subfolder="h5_car_map"):
     try:
         global vis_step
         fig, axarr = plt.subplots(1, 1)
@@ -365,7 +368,7 @@ def visualized_car_data(car_map, root=""):
                    cmap=map_type, interpolation='nearest')
         plt.tight_layout()
 
-        image_subfolder = 'visualize/h5_car_map/'
+        image_subfolder = 'visualize/' + subfolder
 
         save_figure(fig, image_subfolder, root, 'raw/'+str(vis_step))
     except Exception as e:

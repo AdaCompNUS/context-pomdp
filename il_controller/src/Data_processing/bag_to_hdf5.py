@@ -611,7 +611,7 @@ def process_maps_inner(down_sample_ratio, map_array, output_dict_entry, hist_ped
     # combine the static map and the pedestrian map
     output_dict_entry['maps'] = hist_env_map
 
-    visualization.visualized_exo_agent_data(hist_env_map)
+    visualization.visualized_exo_agent_data(hist_env_map, root='Data_processing/')
 
 
 def process_obstacles(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio,
@@ -655,7 +655,7 @@ def get_obs_points(obstacles, origin, dim_high_res, down_sample_ratio, resolutio
     try:
         start_time = time.time()
         obs_points = get_pyramid_image_points(obs_edge_pixels, dim_high_res, down_sample_ratio,
-                                              draw_image=True)
+                                              draw_image=True, draw_flag='obs')
         if print_time:
             elapsed_time = time.time() - start_time
             print("Obs pyramid time: " + str(elapsed_time) + " s")
@@ -706,7 +706,7 @@ def get_lane_points(lanes, origin, dim_high_res, down_sample_ratio, resolution):
     try:
         start_time = time.time()
         lane_points = get_pyramid_image_points(lane_pixels, dim_high_res, down_sample_ratio,
-                                              draw_image=False)
+                                              draw_image=False, draw_flag='lane')
         if print_time:
             elapsed_time = time.time() - start_time
             print("Lane pyramid time: " + str(elapsed_time) + " s")
@@ -1060,7 +1060,7 @@ def get_pyramid_image_points(points,
                              dim=default_map_dim,
                              down_sample_ratio=0.03125,
                              intensities=False,
-                             draw_image=False):
+                             draw_image=False, draw_flag='car'):
     format_point = None
     try:
         # !! input points are in Euclidean space (x,y), output points are in image space (row, column) !!
@@ -1070,7 +1070,12 @@ def get_pyramid_image_points(points,
         arr1 = rescale_image(arr, down_sample_ratio)
 
         if draw_image:
-            visualization.visualized_car_data(arr1)
+            if draw_flag is 'car':
+                visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_car_image')
+            elif draw_flag is 'lane':
+                visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_lane_image')
+            elif draw_flag is 'obs':
+                visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_obs_image')
 
         format_point = extract_nonzero_points(arr1)
     except Exception as e:
@@ -1250,7 +1255,7 @@ def get_car_points(car, origin, dim_high_res, down_sample_ratio, resolution, dra
         try:
             start_time = time.time()
             car_points = get_pyramid_image_points(car_edge_pixels, dim_high_res, down_sample_ratio,
-                                                  draw_image=False)
+                                                  draw_image=False, draw_flag='car')
             if print_time:
                 elapsed_time = time.time() - start_time
                 print("Car pyramid time: " + str(elapsed_time) + " s")

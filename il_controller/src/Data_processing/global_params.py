@@ -63,15 +63,15 @@ elif config.ped_mode == "combined" or config.ped_mode == "new_res":
     # for i in range(config.num_hist_channels):
     #     config.channel_hist.append(i + map_last)
 
-    # exo history 1-4
+    # exo history 1-4, channel 0-3
     config.channel_map = []
     for i in range(config.num_hist_channels):
         config.channel_map.append(i)
 
-    config.channel_lane = 4
-    config.channel_goal = 5
+    config.channel_lane = config.num_hist_channels       # channel 4
+    config.channel_goal = config.num_hist_channels + 1   # channel 5
 
-    # ego history 1-4
+    # ego history 1-4, channel 6-9
     config.channel_hist = []
     for i in range(config.num_hist_channels):
         config.channel_hist.append(i + config.channel_goal + 1)
