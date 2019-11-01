@@ -392,7 +392,7 @@ def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolutio
             hist_agent = get_exo_agent_history(agent_id, hist_exo_agents)
 
             origins = []
-            for i in config.num_hist_channels:
+            for i in range(config.num_hist_channels):
                 if origin is None:
                     origins.append(select_null_map_origin(hist_cars, i))
                 else:
