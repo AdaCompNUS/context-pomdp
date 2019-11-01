@@ -368,7 +368,7 @@ def visualize_image(car_map, root="", subfolder="h5_car_map"):
                    cmap=map_type, interpolation='nearest')
         plt.tight_layout()
 
-        image_subfolder = 'visualize/' + subfolder
+        image_subfolder = os.path.join('visualize/', subfolder)
 
         save_figure(fig, image_subfolder, root, 'raw/'+str(vis_step))
     except Exception as e:
@@ -456,14 +456,15 @@ def draw_cart(ax, data):
 def save_figure(fig, image_subfolder, root, step):
     # print('[save_figure]')
     try:
-        folder = root + image_subfolder + step.split('/')[0] + '/ssm' + str(config.sigma_smoothing) + '/'
+        folder = os.path.join(os.path.join(root, image_subfolder),
+                              os.path.join(step.split('/')[0], 'ssm' + str(config.sigma_smoothing)))
         if sys.version_info[0] > 2:
             os.makedirs(folder, exist_ok=True)
         else:
             if not os.path.exists(folder):
                 os.makedirs(folder)
         flag = step.split("/")[1]
-        fig.savefig(folder + flag + '.png', bbox_inches='tight', transparent=False)
+        fig.savefig(os.path.join(folder, flag + '.png'), bbox_inches='tight', transparent=False)
 
         print("Figure {} generated".format(folder + flag + '.png'))
         plt.close(fig)

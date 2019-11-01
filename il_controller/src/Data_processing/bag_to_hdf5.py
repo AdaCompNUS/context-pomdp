@@ -1070,11 +1070,11 @@ def get_pyramid_image_points(points,
         arr1 = rescale_image(arr, down_sample_ratio)
 
         if draw_image:
-            if draw_flag is 'car':
+            if 'car' in draw_flag:
                 visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_car_image')
-            elif draw_flag is 'lane':
+            elif 'lane' in draw_flag:
                 visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_lane_image')
-            elif draw_flag is 'obs':
+            elif 'obs' in draw_flag:
                 visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_obs_image')
 
         format_point = extract_nonzero_points(arr1)
