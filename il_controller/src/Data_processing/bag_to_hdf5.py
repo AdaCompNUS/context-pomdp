@@ -411,7 +411,7 @@ def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolutio
                 fill_agent_map(hist_image_space_agent, hist_env_maps, map_intensity, map_intensity_scale, dim)
                 valid_agent += 1
 
-        print("{} peds used in frame env_map".format(valid_agent))
+        # print("{} peds used in frame env_map".format(valid_agent))
         if valid_agent == 0:
             print("Warning!!!!!!: no exo-agent appeared in the local map")
 
@@ -937,7 +937,7 @@ def get_history_agents(data_dict, ts):
 def debug_history(hist_cars, hist_exo_agents):
     car = hist_cars[0]
     agents = hist_exo_agents[0]
-    print("Frame with {} agents".format(len(agents)))
+    # print("Frame with {} agents".format(len(agents)))
     min_dist = 10000000
     max_dist = -10000000
     near_count = 0
@@ -951,8 +951,8 @@ def debug_history(hist_cars, hist_exo_agents):
         min_dist = min(dist_to_car, min_dist)
         max_dist = max(dist_to_car, max_dist)
 
-    print("Min / max distance to car {} / {}".format(min_dist, max_dist))
-    print("{} nearby agents".format(near_count))
+    # print("Min / max distance to car {} / {}".format(min_dist, max_dist))
+    # print("{} nearby agents".format(near_count))
 
 
 def get_bounded_history(data_dict_entry, flag_hist):
@@ -1564,7 +1564,7 @@ def main(bagspath, nped, start_file, end_file, thread_id):
 
                         continue
                 else:  # topics_complete == False
-                    print("doing nothing coz invalid bag file")
+                    print("Warning!!!!!: doing nothing coz invalid bag file")
                     incomplete_file_counter += 1
                     continue
 
