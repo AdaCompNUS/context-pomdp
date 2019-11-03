@@ -11,9 +11,17 @@ config.label_angular = 1
 config.label_cmdvel = 2
 
 # global car parameters
-config.steering_resolution = 5.0  # in degrees
-config.max_steering = 35.0  # in degrees
+# unity setting
+# config.steering_resolution = 5.0  # in degrees
+# config.max_steering = 35.0  # in degrees
+
+# summit setting
+config.steering_resolution = 1.0/7.0  # no unit
+config.max_steering = 1.0  # no unit
+
 config.num_steering_bins = 2 * int(round(config.max_steering / config.steering_resolution))
+
+
 
 config.num_acc_bins = 14
 config.acc_resolution = 2.0 / config.num_acc_bins
