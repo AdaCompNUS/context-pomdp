@@ -18,7 +18,7 @@ if __name__ == '__main__':
                         default=0,
                         help='GPU to use')
 
-     parser.add_argument('--trials',
+    parser.add_argument('--trials',
                                             type=int,
                                             default=10,
                                             help='number of trials')
