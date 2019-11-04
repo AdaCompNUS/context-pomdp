@@ -6,7 +6,7 @@ home = expanduser("~")
 
 catkin_ws_path = home + '/workspace/catkin_ws'
 
-carla_egg_path = home + "/summit/PythonAPI/carla/dist"
+carla_egg_path = home + "/summit"
 
 if not os.path.isdir(catkin_ws_path):
     catkin_ws_path = home + '/catkin_ws'
@@ -41,7 +41,7 @@ if __name__ == '__main__':
 	config = parser.parse_args()
 
 
-        additional_mounts = "-v " + catkin_ws_path + ":/root/catkin_ws -v " + carla_egg_path + ":/root/summit/PythonAPI/carla/dist "
+        additional_mounts = "-v " + catkin_ws_path + ":/root/catkin_ws -v " + carla_egg_path + ":/root/summit "
 
 	cmd_args = "docker run --runtime=nvidia -it --network host " + \
 				"-v " + result_path + ":/root/driving_data " + \
