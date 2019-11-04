@@ -318,7 +318,7 @@ public:
 
     template<typename T>
         bool AgentIsUp2Date(T& agent) {
-            if (timestamp() - agent.time_stamp > 1.0){ // agent disappeared for 1 second
+            if (timestamp() - agent.time_stamp > 3.0){ // agent disappeared for 1 second
                 cout << "agent "<< agent.id << " disappeared for too long (>1.0s)." << endl;
                 return false;
             }
