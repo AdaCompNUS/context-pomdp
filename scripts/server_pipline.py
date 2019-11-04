@@ -48,7 +48,7 @@ if __name__ == '__main__':
     for trial in range(config.trials):
         shell_cmd = shell_prefix + "bash " + os.path.expanduser("~/summit/LinuxNoEditor/CarlaUE4.sh") + " -carla-rpc-port={} -carla-streaming-port={}".format(config.port, config.sport)
 
-        carla_proc = subprocess.Popen(shell_cmd, shell = True)
+        carla_proc = subprocess.Popen(shell_cmd, shell = True, preexec_fn=os.setsid)
 
         print("Ececuting: "+shell_cmd)
         time.sleep(1)
