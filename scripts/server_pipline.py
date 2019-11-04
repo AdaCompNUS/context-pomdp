@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
         print "Docker exited, closing simulator."
         subprocess.call('pkill -P ' + str(carla_proc.pid), shell=True)
-        os.kill(carla_proc.pid, signal.SIGKILL)
+        os.killpg(os.getpgid(carla_proc.pid), signal.SIGKILL)
         time.sleep(3)
 
 
