@@ -20,17 +20,17 @@ if __name__ == '__main__':
 
     parser.add_argument('--port',
                                             type=int,
-                                            default="",
+                                            default=0,
                                             help='carla port')
 
     parser.add_argument('--sport',
                                             type=int,
-                                            default="",
+                                            default=0,
                                             help='carla port')
 
     config = parser.parse_args()
 
-    if config.port is "":
+    if config.port == 0:
         config.port = str(2000 + condig.gpu*1000)
         config.sport = config.port +1
 
