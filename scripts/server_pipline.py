@@ -42,13 +42,13 @@ if __name__ == '__main__':
     shell_cmd = "export SDL_VIDEODRIVER=offscreen"
     subprocess.call(shell_cmd, shell = True)
 
-    shell_cmd = "export CUDA_VISIBLE_DEVICES=" + str(config.gpu)
-    subprocess.call(shell_cmd, shell = True)
+    shell_prefix = "CUDA_VISIBLE_DEVICES=" + str(config.gpu) + " "
+    # subprocess.call(shell_cmd, shell = True)
 
     for trial in range(config.trials):
-        shell_cmd = "bash " + os.path.expanduser("~/summit/LinuxNoEditor/CarlaUE4.sh") + " -carla-rpc-port={} -carla-streaming-port={}".format(config.port, config.sport)
+        shell_cmd = shell_prefix + "bash " + os.path.expanduser("~/summit/LinuxNoEditor/CarlaUE4.sh") + " -carla-rpc-port={} -carla-streaming-port={}".format(config.port, config.sport)
 
-        carla_proc = subprocess.Popen(shell_cmd.split())
+        carla_proc = subprocess.Popen(shell_cmd, shell = True)
 
         print("Ececuting: "+shell_cmd)
         time.sleep(1)

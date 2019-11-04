@@ -23,7 +23,7 @@ echo $(nvidia-smi)
 num_rounds=1
 rm exp_log_$s'_'$e
 echo "log: exp_log_"$s'_'$e
-export CUDA_VISIBLE_DEVICES=$gpu
+# export CUDA_VISIBLE_DEVICES=$gpu
 echo "CUDA_VISIBLE_DEVICES=" $CUDA_VISIBLE_DEVICES
 for i in $(seq $s $e)
 do
