@@ -47,10 +47,18 @@ if __name__ == '__main__':
 
     carla_proc = None
 
+
+
     for trial in range(config.trials):
         shell_cmd = shell_prefix + "bash " + os.path.expanduser("~/summit/LinuxNoEditor/CarlaUE4.sh") + " -carla-rpc-port={} -carla-streaming-port={}".format(config.port, config.sport)
 
         carla_proc = subprocess.Popen(shell_cmd, shell = True, preexec_fn=os.setsid)
+
+        @atexit.register
+        def goodbye():
+            print "Exiting server pipeline."
+            if carla_proc:
+                os.killpg(os.getpgid(carla_proc.pid), signal.SIGKILL)
 
         print("Ececuting: "+shell_cmd)
         time.sleep(1)
@@ -64,11 +72,5 @@ if __name__ == '__main__':
         # subprocess.call('pkill -P ' + str(carla_proc.pid), shell=True)
         os.killpg(os.getpgid(carla_proc.pid), signal.SIGKILL)
         #time.sleep(3)
-
-    @atexit.register
-    def goodbye():
-        print "Exiting server pipeline."
-        if carla_proc:
-            os.killpg(os.getpgid(carla_proc.pid), signal.SIGKILL)
 
 
