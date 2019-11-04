@@ -45,6 +45,8 @@ if __name__ == '__main__':
     shell_prefix = "CUDA_VISIBLE_DEVICES=" + str(config.gpu) + " "
     # subprocess.call(shell_cmd, shell = True)
 
+    carla_proc = None
+
     for trial in range(config.trials):
         shell_cmd = shell_prefix + "bash " + os.path.expanduser("~/summit/LinuxNoEditor/CarlaUE4.sh") + " -carla-rpc-port={} -carla-streaming-port={}".format(config.port, config.sport)
 
@@ -59,10 +61,14 @@ if __name__ == '__main__':
         docker_proc = subprocess.call(shell_cmd, shell = True)
 
         print "Docker exited, closing simulator."
-        subprocess.call('pkill -P ' + str(carla_proc.pid), shell=True)
+        # subprocess.call('pkill -P ' + str(carla_proc.pid), shell=True)
         os.killpg(os.getpgid(carla_proc.pid), signal.SIGKILL)
-        time.sleep(3)
+        #time.sleep(3)
 
-
+    @atexit.register
+    def goodbye():
+        print "Exiting server pipeline."
+        if carla_proc:
+            os.killpg(os.getpgid(carla_proc.pid), signal.SIGKILL)
 
 
