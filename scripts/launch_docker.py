@@ -29,6 +29,14 @@ if __name__ == '__main__':
 						type=str,
 						default="cppmayo/melodic_cuda10_1_cudnn7_libtorch_opencv4_ws",
 						help='Image to launch')
+	parser.add_argument('--port',
+                        type=int,
+                        default=2000,
+                        help='carla_port')
+	parser.add_argument('--gpu',
+                        type=int,
+                        default=0,
+                        help='GPU to use')
 
 	config = parser.parse_args()
 
@@ -39,6 +47,6 @@ if __name__ == '__main__':
 				"-v " + result_path + ":/root/driving_data " + \
                                 additional_mounts + \
 				"-e DISPLAY=${DISPLAY} -v /tmp/.X11-unix:/tmp/.X11-unix " + \
-				config.image + " bash " 
+				config.image + " " + str(config.gpu) + " " + str(config.port) 
 
 	subprocess.call(cmd_args.split())

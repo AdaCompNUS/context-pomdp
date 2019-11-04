@@ -227,6 +227,8 @@ tf::Stamped<tf::Pose> WorldSimulator::GetBaseLinkPose() {
  */
 State* WorldSimulator::GetCurrentState() {
 
+	stateTracker->check_world_status();
+
 	/* Get current car coordinates */
 
 	tf::Stamped<tf::Pose> out_pose = GetBaseLinkPose();
@@ -856,6 +858,8 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 	double data_nsec = data.header.stamp.nsec;
 
 	double data_time_sec = data_sec + data_nsec * 1e-9;
+
+	data_time_sec = WorldSimulator::stateTracker->timestamp();
 
 	WorldSimulator::stateTracker->latest_time_stamp = data_time_sec;
 

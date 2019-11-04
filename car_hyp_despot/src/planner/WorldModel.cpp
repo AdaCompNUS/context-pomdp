@@ -3203,3 +3203,20 @@ void WorldStateTracker::text(const vector<Vehicle>& tracked_vehs) const{
     }
 }
 
+void WorldStateTracker::check_world_status() {
+	int alive_count = 0;
+	for (auto& walker: ped_list){
+		if (AgentIsUp2Date(ped_list[i])){
+			alive_count += 1;
+		}
+	}
+
+	for (auto& vehicle: veh_list){
+		if (AgentIsUp2Date(veh_list[i])){
+			alive_count += 1;
+		}
+	}
+
+	if (alive_count == 0)
+		ERROR("No agent alive in the current scene.");
+}

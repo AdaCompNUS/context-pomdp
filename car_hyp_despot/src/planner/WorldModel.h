@@ -316,12 +316,24 @@ public:
         return insert;
     }
 
+    template<typename T>
+        bool AgentIsUp2Date(T& agent) {
+            if (timestamp() - agent.time_stamp > 1.0){ // agent disappeared for 1 second
+                cout << "agent "<< agent.id << " disappeared for too long (>1.0s)." << endl;
+                return false;
+            }
+            else
+                return true;
+        }
+
     void ValidateCar(const char* func);
 
     void setPomdpCar(CarStruct& car);
     void setPomdpPed(AgentStruct& agent, const Agent& src);
 
     bool emergency();
+
+    void check_world_status();
 
     std::vector<AgentDistPair> getSortedAgents(bool doPrint = false);
 

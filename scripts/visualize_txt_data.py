@@ -114,11 +114,11 @@ def agent_rect(agent_dict, origin, color):
     heading = agent_dict['heading']
     bb_x, bb_y = agent_dict['bb']
 
-    x_shift = [-bb_x/2.0 * math.cos(heading), bb_x/2.0 * math.sin(heading)]
-    x_shift = [-bb_y/2.0 * math.sin(heading), -bb_y/2.0 * math.cos(heading)]
+    x_shift = [bb_y/2.0 * math.cos(heading), bb_y/2.0 * math.sin(heading)]
+    y_shift = [-bb_x/2.0 * math.sin(heading), bb_x/2.0 * math.cos(heading)]
     
     # y_shift = -bb_y/2.0 * math.sin(heading) + bb_x/2.0 * math.cos(heading)
-    y_shift = [0.0, 0.0]
+    # x_shift = [0.0, 0.0]
 
     rect = mpatches.Rectangle(
         xy=[pos[0] - origin[0] - x_shift[0] - y_shift[0], pos[1] - origin[1] - x_shift[1] - y_shift[1]], 

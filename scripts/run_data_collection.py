@@ -414,7 +414,7 @@ def get_bag_file_name(round, run, case):
     dir = result_subfolder
 
     file_name = problem_flag + '_case_' + goal_flag + '_sample-' + \
-                str(round) + '-' + str(run) + '-' + str(case) + '_pid-'+ str(os.getpid())
+                str(round) + '-' + str(run) + '-' + str(case) + '_pid-'+ str(os.getpid()) + '_r-'+ str(random.randint(0,10000))
 
     existing_bags = glob.glob(dir + "*.bag")
 
