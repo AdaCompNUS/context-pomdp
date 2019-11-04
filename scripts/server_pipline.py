@@ -31,7 +31,7 @@ if __name__ == '__main__':
     config = parser.parse_args()
 
     if config.port == 0:
-        config.port = str(2000 + condig.gpu*1000)
+        config.port = str(2000 + config.gpu*1000)
         config.sport = config.port +1
 
     shell_cmd = "export SDL_VIDEODRIVER=offscreen"
