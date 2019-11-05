@@ -29,10 +29,10 @@ To briefly explain the core sub-systems:
 
 * **Summit Server** SUMMIT server for rendering environment.
 
-* **Summit Connector** A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information.
+* [**Summit Connector**](summit_connector/) A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information.
 
-* **Crowd Pomdp Controller** A wrapping over the POMDP planner. It receives information from the simulator and run belief tracking and POMDP planning.
+* [**Crowd Pomdp Controller**](crowd_pomdp_planner) A wrapping over the POMDP planner. It receives information from the simulator and run belief tracking and POMDP planning.
 
-* **IL Controller** The neural network learner for imitation learning (dashed lines denote that once trained these networks can be used to control the driver).
+* [**IL Controller**](il_controller) The neural network learner for imitation learning (dashed lines denote that once trained these networks can be used to control the driver).
 
 **Information on the Installation Steps or Technical User Guide of SUMMIT can be located on our [wiki](https://github.com/AdaCompNUS/LeTS-Drive-SUMMIT/wiki).**
