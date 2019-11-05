@@ -8,7 +8,7 @@ Simulation and driving in SUMMIT (click to see video):
 ## Overview
 This repository contains all algorithmic elements for reproducing **LeTS-Drive** [(paper)](https://arxiv.org/abs/1905.12197) in heterogenous traffic simulated by the **SUMMIT simulator** [(paper)](https://www.dropbox.com/s/fs0e9j4o0r80e82/SUMMIT.pdf?dl=0).
 
-## The SUMMIT Simulator
+### The SUMMIT Simulator
 Existing driving simulators do not capture the full complexity of real-world, unregulated, densely-crowded urban environments, such as complex road structures and traffic behaviors, and are thus insufficient for testing or training robust driving algorithms. SUMMIT aim to fill this gap.  It is a high-fidelity simulator that facilitates the development and testing of crowd-driving algorithm extending CARLA to support the following additional features:
 
 1. _Real-World Maps:_ generates real-world maps from online open sources (e.g. OpenStreetMap) to provide a virtually unlimited source of complex environments. 
@@ -19,7 +19,7 @@ Existing driving simulators do not capture the full complexity of real-world, un
 
 4. _Realistic Visuals and Sensors:_ extending off CARLA there is support for a rich set of sensors such as cameras, Lidar, depth cameras, semantic segmentation etc. 
 
-## Architecture and Components
+### Architecture and Components
 
 The repository structure has the following conceptual architecture:
 
@@ -35,4 +35,5 @@ To briefly explain the core sub-systems:
 
 * [**IL Controller**](il_controller) The neural network learner for imitation learning (dashed lines denote that once trained these networks can be used to control the driver).
 
+## Getting Started
 **Information on the Installation Steps or Technical User Guide of SUMMIT can be located on our [wiki](https://github.com/AdaCompNUS/LeTS-Drive-SUMMIT/wiki).**
