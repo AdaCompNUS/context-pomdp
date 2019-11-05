@@ -86,8 +86,8 @@ config.imsize = 32
 config.value_normalizer = 10.0
 
 # cross validation setting
-config.train_split = 1.0 # 0.7
-config.val_split = 0.0 # 0.25
+config.train_split = 0.8 # 0.7
+config.val_split = 0.2 # 0.25
 config.test_split = 0.00 # 0.05
 
 # training settings
