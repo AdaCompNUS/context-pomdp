@@ -40,8 +40,7 @@ if __name__ == '__main__':
 
 	config = parser.parse_args()
 
-
-        additional_mounts = "-v " + catkin_ws_path + ":/root/catkin_ws -v " + carla_egg_path + ":/root/summit "
+    additional_mounts = "-v " + catkin_ws_path + ":/root/catkin_ws -v " + carla_egg_path + ":/root/summit "
 
 	cmd_args = "docker run --rm --runtime=nvidia -it --network host " + \
 				"-v " + result_path + ":/root/driving_data " + \
