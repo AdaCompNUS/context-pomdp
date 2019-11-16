@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import math
+import carla
 
 class SidewalkAgentPath:
     def __init__(self, drunc, min_points, interval):
@@ -11,12 +12,18 @@ class SidewalkAgentPath:
         self.route_orientations = []
 
     @staticmethod
-    def rand_path(drunc, min_points, interval, bounds_min=None, bounds_max=None, rng=None):
+    def rand_path(drunc, min_points, interval, bounds_min, bounds_max, rng=None):
         if rng is None:
             rng = random
+    
+        point = None
+        while point is None or not (bounds_min.x <= point_position.x <= bounds_max.x and bounds_min.y <= point_position.y <= bounds_max.y):
+            point = carla.Vector2D(rng.uniform(bounds_min.x, bounds_max.x), rng.uniform(bounds_min.y, bounds_max.y))
+            point = drunc.sidewalk.get_nearest_route_point(point)
+            point_position = drunc.sidewalk.get_route_point_position(point)
 
         path = SidewalkAgentPath(drunc, min_points, interval)
-        path.route_points = [drunc.rand_sidewalk_route_point(bounds_min, bounds_max)]
+        path.route_points = [point]
         path.route_orientations = [rng.choice([True, False])]
         path.resize()
         return path

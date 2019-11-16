@@ -10,9 +10,7 @@ class NetworkAgentPath:
         self.route_points = []
 
     @staticmethod
-    def rand_path(drunc, min_points, interval, min_safe_points=None, segment_map=None, rng=None):
-        if segment_map is None:
-            segment_map = drunc.network_segment_map
+    def rand_path(drunc, min_points, interval, min_safe_points=None, segment_map, rng=None):
         if min_safe_points is None:
             min_safe_points = min_points
         if rng is None:
