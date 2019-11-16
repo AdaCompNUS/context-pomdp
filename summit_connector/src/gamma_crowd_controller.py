@@ -504,7 +504,7 @@ class GammaCrowdController(Drunc):
 
         start_t = time.time()
         for i in range(self.num_network_car_agents - len(self.network_car_agents)):
-            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map, self.rng)
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map, rng=self.rng)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
@@ -526,7 +526,7 @@ class GammaCrowdController(Drunc):
 
         start_t = time.time()
         for _ in range(self.num_network_bike_agents - len(self.network_bike_agents)):
-            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map, self.rng)
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map, rng=self.rng)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
