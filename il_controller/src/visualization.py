@@ -17,8 +17,8 @@ config = global_params.config
 
 
 def inspect(X):
-    last_ped = config.num_agents_in_NN - 1
-    car_channel = config.num_agents_in_NN
+    last_ped = config.0 - 1
+    car_channel = config.0
 
     print("X data dims: %d %d %d %d" % (X.size(0), X.size(1), X.size(2), X.size(3)))
     # print ("max values in last ped:")
@@ -291,7 +291,7 @@ def visualize(X, step, root=""):
     print("==> goal channel to plot: {}".format(config.channel_goal))
 
     last_ped = 0
-    car_channel = config.num_agents_in_NN
+    car_channel = config.0
 
     x_dim = 3
     y_dim = 4  # config.num_hist_channels
@@ -481,9 +481,6 @@ def visualize_input_output(X, ped_vin_out, car_vin_out, res_out, res_image, step
             visualize_VIN(ped_vin_out, 'ped', flag)
         if car_vin_out.size(0) > 0:
             visualize_VIN(car_vin_out, 'car', flag)
-        if not config.ped_mode == "new_res":
-            if res_out.size(0) > 0:
-                visualize_res(res_out, flag)
         if res_image.size(0) > 0:
             visualize_resimage(res_image, flag)
 
@@ -594,8 +591,7 @@ if __name__ == '__main__':
     config.augment_data = True
 
     # Instantiate a BTS-RL model
-    if config.ped_mode == "new_res":
-        net = PolicyValueNet(cmd_args)
+    net = PolicyValueNet(cmd_args)
 
     net = nn.DataParallel(net, device_ids=[0]).to(device)  # device_ids= config.GPU_devices
 

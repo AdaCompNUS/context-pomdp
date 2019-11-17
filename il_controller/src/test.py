@@ -724,13 +724,8 @@ if __name__ == '__main__':
         checkpoint = torch.load(cmd_args.modelfile)
         load_settings_from_model(checkpoint, global_config, cmd_args)
 
-        # Instantiate a BTS-RL model
-        if config.ped_mode == "separate":
-            net = drive_net(cmd_args)
-        elif config.ped_mode == "combined":
-            net = DriveNetZeroPed(cmd_args)
-        elif config.ped_mode == "new_res":
-            net = PolicyValueNet(cmd_args)
+        # Instantiate the NN model
+        net = PolicyValueNet(cmd_args)
 
         print_model_size(net)
         net = nn.DataParallel(net, device_ids=[0]).to(device)  # device_ids= config.GPU_devices

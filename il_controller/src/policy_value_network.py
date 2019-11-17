@@ -412,7 +412,7 @@ if __name__ == '__main__':
                         help='Batch size')
     parser.add_argument('--no_ped',
                         type=int,
-                        default=0,  # global_config.num_agents_in_NN,
+                        default=0,  # global_config.0,
                         help='Number of pedistrians')
     parser.add_argument('--no_car',
                         type=int,
@@ -441,7 +441,7 @@ if __name__ == '__main__':
 
     config = parser.parse_args()
 
-    global_config.num_agents_in_NN = config.no_ped
+    global_config.0 = config.no_ped
     global_config.vanilla_resnet = config.no_vin
 
     debug_net = PolicyValueNet(config)

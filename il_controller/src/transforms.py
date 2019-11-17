@@ -38,7 +38,7 @@ class PopulateImages(object):
     def __call__(self, sample, doprint=False):
         # sample: 1 data point from the h5 table
         imsize = config.imsize
-        num_agents = 1 + config.num_agents_in_NN
+        num_agents = 1 + config.0
         output_arr = np.zeros(
             (num_agents, config.num_channels, imsize, imsize), dtype=np.float32)
         for i in range(num_agents):
@@ -74,7 +74,7 @@ class PopulateImages(object):
 
     def populate_goal_and_hist_images(self, i, output_arr, sample):
         try:
-            if i < config.num_agents_in_NN:  # pedestrians, the number is set to 0
+            if i < config.0:  # pedestrians, the number is set to 0
                 agent_key = 'ped'
                 src_entry = sample[agent_key][i]
             else:
@@ -435,7 +435,7 @@ class Fliplr(object):
         # input: dim (num_agents, congig.num_channels, imsize, imsize)
         #
         output = np.zeros_like(input, dtype=np.float32)
-        for i in range(1 + config.num_agents_in_NN):
+        for i in range(1 + config.0):
             for j in range(config.num_channels):
                 output[i, j] = np.fliplr(input[i, j])
 
@@ -453,7 +453,7 @@ class Flipud(object):
         # input: dim (num_agents, congig.num_channels, imsize, imsize)
         #
         output = np.zeros_like(input, dtype=np.float32)
-        for i in range(1 + config.num_agents_in_NN):
+        for i in range(1 + config.0):
             for j in range(config.num_channels):
                 output[i, j] = np.flipud(input[i, j])
         return output, -steer  # flip the steering
@@ -469,7 +469,7 @@ class Rot(object):
     def __call__(self, input, steer):
         # input: dim (num_agents, congig.num_channels, imsize, imsize)
         output = np.zeros_like(input, dtype=np.float32)
-        for i in range(1 + config.num_agents_in_NN):
+        for i in range(1 + config.0):
             for j in range(config.num_channels):
                 output[i, j] = np.rot90(input[i, j], self.amount)
 
@@ -486,7 +486,7 @@ class FlipRot(object):
     def __call__(self, input, steer):
         # input: dim (num_agents, congig.num_channels, imsize, imsize)
         output = np.zeros_like(input, dtype=np.float32)
-        for i in range(1 + config.num_agents_in_NN):
+        for i in range(1 + config.0):
             for j in range(config.num_channels):
                 output[i, j] = np.rot90(np.flipud(input[i, j]), self.amount)
 
@@ -512,7 +512,7 @@ class Normalize(object):
         pass
 
     def __call__(self, input):
-        num_agents = 1 + config.num_agents_in_NN
+        num_agents = 1 + config.0
         for i in range(num_agents):
             for c in range(config.num_channels):
                 maxval = np.max(input[i, c])

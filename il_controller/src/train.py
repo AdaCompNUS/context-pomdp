@@ -506,19 +506,7 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
         torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0)
     if global_config.head_mode == "mdn":
         value, acc_pi, acc_mu, acc_sigma, \
-        ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma \
-            = None, None, None, None, None, None, None, None, None, None
-        if global_config.ped_mode == "separate":
-            value, acc_pi, acc_mu, acc_sigma, \
-            ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, ped_vin_out, car_vin_out, res_out, res_image \
-                = drive_net.forward(X, cmd_config)
-        elif global_config.ped_mode == "combined":
-            value, acc_pi, acc_mu, acc_sigma, \
-            ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, car_vin_out, res_out, res_image \
-                = drive_net.forward(X, cmd_config)
-        elif global_config.ped_mode == "new_res":
-            value, acc_pi, acc_mu, acc_sigma, \
-            ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, car_vin_out, res_image = drive_net.forward(X,
+        ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, car_vin_out, res_image = drive_net.forward(X,
                                                                                                              cmd_config)
         if global_config.print_preds:
             print("predicted angle:")
@@ -535,22 +523,8 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
 
     elif global_config.head_mode == "hybrid":
         value, acc_pi, acc_mu, acc_sigma, \
-        ang, vel_pi, vel_mu, vel_sigma \
-            = None, None, None, None, None, None, None, None
-        if global_config.ped_mode == "separate":
-            value, acc_pi, acc_mu, acc_sigma, \
-            ang, vel_pi, vel_mu, vel_sigma, ped_vin_out, car_vin_out, res_out, res_image \
-                = drive_net.forward(X, cmd_config)
-        elif global_config.ped_mode == "combined":
-            value, acc_pi, acc_mu, acc_sigma, \
-            ang, vel_pi, vel_mu, vel_sigma, car_vin_out, res_out, res_image \
-                = drive_net.forward(X, cmd_config)
-        elif global_config.ped_mode == "new_res":
-            try:
-                value, acc_pi, acc_mu, acc_sigma, \
-                ang, vel_pi, vel_mu, vel_sigma, car_vin_out, res_image = drive_net.forward(X, cmd_config)
-            except Exception as e:
-                error_handler(e)
+        ang, vel_pi, vel_mu, vel_sigma, car_vin_out, res_image = drive_net.forward(X, cmd_config)
+
         if global_config.print_preds:
             print("predicted angle:")
             print(ang)
@@ -568,13 +542,7 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
                ang, vel_pi, vel_mu, vel_sigma, value
 
     else:
-        value, acc, ang, vel = None, None, None, None
-        if global_config.ped_mode == "separate":
-            value, acc, ang, vel, ped_vin_out, car_vin_out, res_out, res_image = drive_net.forward(X, cmd_config)
-        elif global_config.ped_mode == "combined":
-            value, acc, ang, vel, car_vin_out, res_out, res_image = drive_net.forward(X, cmd_config)
-        elif global_config.ped_mode == "new_res":
-            value, acc, ang, vel, car_vin_out, res_image = drive_net.forward(X, cmd_config)
+        value, acc, ang, vel, car_vin_out, res_image = drive_net.forward(X, cmd_config)
         if global_config.print_preds:
             print("predicted angle:")
             print(ang)
@@ -601,15 +569,8 @@ def forward_pass_jit(X, step=0, drive_net=None, cmd_config=None, print_time=Fals
 
     if global_config.head_mode == "hybrid":
         value, acc_pi, acc_mu, acc_sigma, \
-        ang, vel_pi, vel_mu, vel_sigma \
-            = None, None, None, None, None, None, None, None
+        ang, car_vin_out, res_image = drive_net.forward(X.squeeze(0))
 
-        if global_config.ped_mode == "new_res":
-            value, acc_pi, acc_mu, acc_sigma, \
-            ang, car_vin_out, res_image = drive_net.forward(X.squeeze(0))
-        else:
-            print("jit model can only be of new_res ped mode!!!")
-            exit(1)
         if global_config.print_preds:
             print("predicted angle:")
             print(ang)
@@ -858,7 +819,7 @@ def choose_loss(acc_loss, ang_loss, vel_loss, v_loss, config):
 
 
 def debug_data(data_point):
-    car_channel = config.num_agents_in_NN
+    car_channel = config.0
 
     print("max values in last ped:")
     print("map maximum: %f" % torch.max(data_point[car_channel, 0]))
@@ -945,7 +906,7 @@ def parse_cmd_args():
                         help='Weight decay')
     parser.add_argument('--no_ped',
                         type=int,
-                        default=config.num_agents_in_NN,
+                        default=config.0,
                         help='Number of pedistrians')
     parser.add_argument('--no_car',
                         type=int,
@@ -1042,7 +1003,7 @@ def update_global_config(cmd_args):
     print("=========================== Command line arguments ==========================\n")
 
     # Update the global configurations according to command line
-    config.num_agents_in_NN = cmd_args.no_ped
+    config.0 = cmd_args.no_ped
     config.l2_reg_weight = cmd_args.l2
     config.vanilla_resnet = bool(cmd_args.no_vin)
     config.default_li = cmd_args.l_i
@@ -1145,7 +1106,6 @@ def set_file_names():
                          '_t_' + train_file_name + \
                          '_v_' + val_file_name + \
                          '_vanilla_' + str(global_config.vanilla_resnet) + \
-                         '_mode_' + str(global_config.ped_mode) + \
                          '_k_' + str(cmd_args.k) + \
                          '_lh_' + str(cmd_args.l_h) + \
                          '_nped_' + str(cmd_args.no_ped) + \
@@ -1310,13 +1270,9 @@ if __name__ == '__main__':
 
     train_filename, val_filename = set_file_names()
 
-    # Instantiate a BTS-RL model
-    if config.ped_mode == "separate":
-        net = nn.DataParallel(drive_net(cmd_args), device_ids=config.GPU_devices).to(device)
-    elif config.ped_mode == "combined":
-        net = nn.DataParallel(DriveNetZeroPed(cmd_args), device_ids=config.GPU_devices).to(device)
-    elif config.ped_mode == "new_res":
-        net = nn.DataParallel(PolicyValueNet(cmd_args), device_ids=config.GPU_devices).to(device)
+    # Instantiate the NN model
+    net = nn.DataParallel(PolicyValueNet(cmd_args), device_ids=config.GPU_devices).to(device)
+
     # Loss
     criterion = nn.MSELoss().to(device)
     # Cross Entropy Loss criterion
