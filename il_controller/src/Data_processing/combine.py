@@ -27,7 +27,7 @@ import gc
 
 config = global_params.config
 imsize = config.imsize
-num_agents = 1 + config.0
+num_agents = 1 + 0
 num_steering_bins = config.num_steering_bins
 LARGE_NO = 300000
 populate_images = PopulateImages()
@@ -274,11 +274,11 @@ def parse_cmd_args():
     parser.add_argument(
         '--nped',
         type=int,
-        default=config.0,
+        default=0,
         help='Number of neighbouring peds to consider')
     bagspath = parser.parse_args().bagspath
     train_filename = parser.parse_args().outfile
-    config.0 = parser.parse_args().nped
+    0 = parser.parse_args().nped
     config.sample_mode = parser.parse_args().samplemode
     config.train_set_path = parser.parse_args().outfolder
     config.out_path = parser.parse_args().outpath
@@ -290,7 +290,7 @@ def parse_cmd_args():
     print("===================== cmd_args ======================")
     print("bagspath: ", bagspath)
     print("train_filename: ", train_filename)
-    print("config.0: ", config.0)
+    print("0: ", 0)
     print("config.sample_mode: ", config.sample_mode)
     print("config.train_set_path: ", config.train_set_path)
     print("===================== cmd_args ======================")

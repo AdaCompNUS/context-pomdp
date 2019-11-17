@@ -67,7 +67,7 @@ if __name__ == '__main__':
     set_fit_mode_bools(cmd_args)
     torchscript_models.set_globals()
 
-    print("=> 0 ", global_config.0)
+    print("=> 0 ", global_0)
     print("=> vanilla_resnet ", global_config.vanilla_resnet)
     print("=> default_li ", global_config.default_li)
     print("=> default_lh ", global_config.default_lh)

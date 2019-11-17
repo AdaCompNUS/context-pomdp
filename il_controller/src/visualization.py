@@ -17,8 +17,8 @@ config = global_params.config
 
 
 def inspect(X):
-    last_ped = config.0 - 1
-    car_channel = config.0
+    last_ped = 0 - 1
+    car_channel = 0
 
     print("X data dims: %d %d %d %d" % (X.size(0), X.size(1), X.size(2), X.size(3)))
     # print ("max values in last ped:")
@@ -291,7 +291,7 @@ def visualize(X, step, root=""):
     print("==> goal channel to plot: {}".format(config.channel_goal))
 
     last_ped = 0
-    car_channel = config.0
+    car_channel = 0
 
     x_dim = 3
     y_dim = 4  # config.num_hist_channels

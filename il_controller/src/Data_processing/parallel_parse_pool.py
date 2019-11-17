@@ -47,7 +47,7 @@ class Parser(Process):
             folder, start, end = self.queue.get()
             # print (self, self.is_alive())
             # Get the work from the queue and expand the tuple
-            bag_to_hdf5.main(folder, config.0, start, end, self.id)
+            bag_to_hdf5.main(folder, 0, start, end, self.id)
 
             print("Thread %d finished work %s (%d to %d)" % (self.id, folder, start, end))
 
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--nped',
         type=int,
-        default=config.0,
+        default=0,
         help='Number of neighbouring peds to consider')
 
     parser.add_argument(
@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
     bagspath = parser.parse_args().bagspath
     peds_goal_path = parser.parse_args().peds_goal_path
-    config.0 = parser.parse_args().nped
+    0 = parser.parse_args().nped
     config.num_samples_per_traj = parser.parse_args().nsample
 
     folders = list([])

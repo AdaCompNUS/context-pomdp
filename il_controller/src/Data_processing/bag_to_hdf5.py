@@ -991,7 +991,7 @@ def get_bounded_history(data_dict_entry, flag_hist):
 def create_dict_entry(idx, output_dict):
     output_dict[idx] = {
         'maps': None,
-        'ped': [dict({}) for x in range(config.0)],
+        'ped': [dict({}) for x in range(0)],
         'car': {
             'goal': None,
             'hist': None,
@@ -1500,7 +1500,7 @@ def main(bagspath, nped, start_file, end_file, thread_id):
 
     # print("Initialize agent file {}".format(agent_file))
 
-    config.0 = nped
+    0 = nped
 
     txt_files = collect_txt_files(bagspath)
 
@@ -1724,7 +1724,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--nped',
         type=int,
-        default=config.0,
+        default=0,
         help='Number of neighbouring peds to consider')
     parser.add_argument(
         '--start',
@@ -1742,7 +1742,7 @@ if __name__ == "__main__":
     start_file = parser.parse_args().start
     end_file = parser.parse_args().end
 
-    config.0 = parser.parse_args().nped
+    0 = parser.parse_args().nped
 
     main(bagspath, parser.parse_args().nped, start_file, end_file, 0)
 

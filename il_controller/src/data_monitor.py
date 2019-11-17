@@ -97,7 +97,7 @@ class DataMonitor(data.Dataset):
         self.data_patience = 10
 
 
-        self.num_agents = 1 + config.0
+        self.num_agents = 1 + 0
         imsize = config.imsize
         # container to be updated directly by subscribers
         self.combined_dict = {
@@ -108,7 +108,7 @@ class DataMonitor(data.Dataset):
         # intermediate container for images
         self.output_dict = {
             'maps': None,
-            'ped': [dict({}) for x in range(config.0)],
+            'ped': [dict({}) for x in range(0)],
             'car': {
                 'goal': None,
                 'hist': None
@@ -523,7 +523,7 @@ class DataMonitor(data.Dataset):
                         for c in range(0, config.num_hist_channels):
                             self.cur_data['nn_input'][0, i, config.channel_map[c], ...] = 0
 
-                if i >= config.0:  # pedestrians
+                if i >= 0:  # pedestrians
                     agent_flag = 'car'
 
                     if self.output_dict[agent_flag]['goal'] is None: ##########################

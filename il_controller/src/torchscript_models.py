@@ -47,7 +47,7 @@ def set_globals():
     vanilla_resnet = global_config.vanilla_resnet  # False
     resnet_width = global_config.resnet_width  # 32
 
-    no_ped = global_config.0
+    no_ped = global_0
     no_car = 1  # default value in train.py
 
     resblock_in_layers = global_config.resblock_in_layers  # [2, 2, 2, 2]
