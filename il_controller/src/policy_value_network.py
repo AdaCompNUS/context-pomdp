@@ -124,73 +124,65 @@ class PolicyValueNet(nn.Module):
         self.num_vel_bins = global_config.num_vel_bins
         self.num_acc_bins = global_config.num_acc_bins
 
-        self.car_VIN = None
+        self.car_gppn = None
         self.car_hist_VIN = None
         self.car_lstm = None
         self.map_lstm = None
         if not global_config.vanilla_resnet:
-            self.car_VIN = GPPN.GPPN(config, 2 + global_config.num_hist_channels)
-            self.car_hist_VIN = None
+            self.car_gppn = GPPN.GPPN(config, l_i=global_config.num_vin_inputs)
+            self.gppn_size = get_module_size(self.car_gppn)
             if global_config.use_hist_channels:
-                self.output_channels_VIN = self.car_VIN.output_channels + global_config.num_hist_channels
+                self.input_channels_resnet = self.car_gppn.output_channels + global_config.num_hist_channels
             else:
-                self.output_channels_VIN = self.car_VIN.output_channels
+                self.input_channels_resnet = self.car_gppn.output_channels
         else:
-            self.output_channels_VIN = 1 + global_config.num_hist_channels + global_config.num_hist_channels
-            global_config.vin_out_channels = 1 + global_config.num_hist_channels
+            self.input_channels_resnet = global_config.num_channels
 
         # 3 channels include the Value image and the 2 hist layers (idx 0 is value image)
-        self.no_input_resnet = self.output_channels_VIN * (config.no_ped + config.no_car)
+
+        self.pre_resnet = None
+        if not global_config.vanilla_resnet:
+            self.pre_resnet = nn.Sequential(
+                resnet_modified.BasicBlock(self.input_channels_resnet, self.input_channels_resnet),
+                resnet_modified.BasicBlock(self.input_channels_resnet, self.input_channels_resnet),
+            )
 
         self.resnet = resnet_modified.ResNetModified(block=resnet_modified.BasicBlock,
                                                      layers=global_config.resblock_in_layers,
-                                                     ip_channels=self.no_input_resnet)
-
-        self.num_resnet_out_features = self.resnet.num_outfeatures
-
-        self.car_resnet = None
-        if not global_config.vanilla_resnet:
-            self.car_resnet = nn.Sequential(
-                resnet_modified.BasicBlock(self.output_channels_VIN, self.output_channels_VIN),
-                resnet_modified.BasicBlock(self.output_channels_VIN, self.output_channels_VIN),
-            )
+                                                     ip_channels=self.input_channels_resnet)
+        self.resnet_size = get_module_size(self.resnet)
 
         self.drop_o = nn.Dropout()
         self.drop_o_2d = nn.Dropout2d()
 
-        self.value_head = ValueHead(inplanes=self.num_resnet_out_features)
+        self.value_head = ValueHead(inplanes=self.resnet.num_out_features)
+        self.fc_modules_size += get_module_size(self.value_head)
 
         if global_config.head_mode == "mdn":
-            self.acc_head = ActionMdnHead(inplanes=self.num_resnet_out_features)
-            self.ang_head = ActionMdnHead(inplanes=self.num_resnet_out_features, num_modes=10)
+            self.acc_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
+            self.ang_head = ActionMdnHead(inplanes=self.resnet.num_out_features, num_modes=10)
 
             if global_config.use_vel_head:
-                self.vel_head = ActionMdnHead(inplanes=self.num_resnet_out_features)
+                self.vel_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
         elif global_config.head_mode == "hybrid":
-            self.acc_head = ActionMdnHead(inplanes=self.num_resnet_out_features)
+            self.acc_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
             if global_config.use_vel_head:
-                self.vel_head = ActionMdnHead(inplanes=self.num_resnet_out_features)
-            self.ang_head = ActionHead(inplanes=self.num_resnet_out_features,
+                self.vel_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
+            self.ang_head = ActionHead(inplanes=self.resnet.num_out_features,
                                        num_classes=self.num_steering_bins)
         else:
-            self.acc_head = ActionHead(inplanes=self.num_resnet_out_features,
+            self.acc_head = ActionHead(inplanes=self.resnet.num_out_features,
                                        num_classes=self.num_acc_bins)
-            self.ang_head = ActionHead(inplanes=self.num_resnet_out_features,
+            self.ang_head = ActionHead(inplanes=self.resnet.num_out_features,
                                        num_classes=self.num_steering_bins)
             if global_config.use_vel_head:
-                self.vel_head = ActionHead(inplanes=self.num_resnet_out_features,
+                self.vel_head = ActionHead(inplanes=self.resnet.num_out_features,
                                            num_classes=self.num_vel_bins)
 
-        self.fc_modules_size += get_module_size(self.value_head)
         self.fc_modules_size += get_module_size(self.acc_head)
         self.fc_modules_size += get_module_size(self.ang_head)
         if global_config.use_vel_head:
             self.fc_modules_size += get_module_size(self.vel_head)
-
-        self.resnet_size = get_module_size(self.resnet)
-
-        if not global_config.vanilla_resnet:
-            self.gppn_size = get_module_size(self.car_VIN)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -216,21 +208,9 @@ class PolicyValueNet(nn.Module):
 
         self.ped_start = min(global_config.channel_map)
         self.ped_end = max(global_config.channel_map) + 1
+        self.vin_end = max(self.ped_end, global_config.channel_goal + 1, global_config.channel_lane + 1)
         self.hist_start = min(global_config.channel_hist)
         self.hist_end = max(global_config.channel_hist) + 1
-
-        # # init categorical heads weights to be near zero
-        #
-        # if global_config.head_mode == 'hybrid' or global_config.head_mode == 'categorical':
-        #     for m in self.ang_head.modules():
-        #         if isinstance(m, nn.Linear):
-        #             nn.init.xavier_uniform_(m.weight, gain=np.sqrt(0.00002))
-        #             m.bias.data.normal_(0, 0.0001)
-        # if global_config.head_mode == 'categorical':
-        #     for m in self.acc_head.modules():
-        #         if isinstance(m, nn.Linear):
-        #             nn.init.xavier_uniform_(m.weight, gain=np.sqrt(0.00002))
-        #             m.bias.data.normal_(0, 0.0001)
 
     def freeze_parameters(self):
         for module in self.freezed_modules:
@@ -252,22 +232,17 @@ class PolicyValueNet(nn.Module):
                         print("{}:{}".format(name, param.requires_grad), end=',')
 
     def forward(self, X, config):
-        # Input Tensor is of the form ==> batch_size * Agent * map/goal/hist * Width * height
+        # Input Tensor is of the form ==> batch_size * 1 * map/goal/hist * Width * height
         # switches batch and agent dim in order to iterate over the agent dim
-        # reshape_X = X.permute(1, 0, 2, 3, 4)
-        # with torch.no_grad():
-        # self.print_grad_state()
-        # try:
         self.check_grad_state()
 
         batch_size = X.size(0)
-        num_agents = config.no_ped + config.no_car
-        car_input = X[:, config.no_ped:num_agents, :, :, :].contiguous()
+        car_input = X[:, :, :, :, :].contiguous()
 
-        reshape_car_input = car_input.view(batch_size * config.no_car, global_config.num_channels, config.imsize,
+        reshape_car_input = car_input.view(batch_size, global_config.num_channels, config.imsize,
                                            config.imsize).contiguous()
 
-        car_vin_input = reshape_car_input[:, 0:max(self.ped_end, global_config.channel_goal + 1), :, :]  # with 4 ped
+        car_vin_input = reshape_car_input[:, 0:self.vin_end, :, :]  # with 4 ped
         # maps, lane, and goal channel
 
         car_hist_data = None
@@ -281,9 +256,9 @@ class PolicyValueNet(nn.Module):
         if global_config.vanilla_resnet:
             car_values = car_vin_input
         else:
-            car_values = self.car_VIN(car_vin_input)
+            car_values = self.car_gppn(car_vin_input)
 
-        if not global_config.vanilla_resnet and self.car_hist_VIN is not None:
+        if not global_config.vanilla_resnet and self.car_hist_VIN:
             car_hist_data = self.car_hist_VIN(car_hist_data, config)
 
         if global_config.use_hist_channels:
@@ -294,24 +269,16 @@ class PolicyValueNet(nn.Module):
         if global_config.vanilla_resnet:
             car_res_features = car_features
         else:
-            car_res_features = self.car_resnet(car_features)
+            car_res_features = self.pre_resnet(car_features)
 
-        car_res_features_recover = car_res_features.view(batch_size, config.no_car, self.output_channels_VIN,
-                                                         config.imsize, config.imsize).contiguous()
-
-        res_features = car_res_features_recover.contiguous()
-
-        res_features_reshape = res_features.view(batch_size, num_agents * self.output_channels_VIN, config.imsize,
-                                                 config.imsize).contiguous()
-
-        if global_config.do_dropout and num_agents * self.output_channels_VIN > 100 \
+        if global_config.do_dropout and self.input_channels_resnet > 100 \
                 and global_config.head_mode == 'categorical':
-            res_features_reshape = self.drop_o_2d(res_features_reshape)
+            car_res_features = self.drop_o_2d(car_res_features)
 
-        res_image = self.resnet(res_features_reshape)
+        res_images = self.resnet(car_res_features)
 
         if global_config.do_dropout and global_config.head_mode == 'categorical':
-            res_image = self.drop_o_2d(res_image)
+            res_images = self.drop_o_2d(res_images)
 
         # except Exception as e:
         #     print("Exception in forward~!!!!!!!")
@@ -320,38 +287,38 @@ class PolicyValueNet(nn.Module):
         if global_config.head_mode == "mdn":
             value, acc_pi, acc_sigma, acc_mu, ang_pi, ang_mu, ang_sigma = None, None, None, None, None, None, None
             if global_config.fit_all or global_config.fit_val:
-                value = self.value_head(res_image)
+                value = self.value_head(res_images)
             if global_config.fit_all or global_config.fit_action or global_config.fit_acc:
-                acc_pi, acc_sigma, acc_mu = self.acc_head(res_image)
+                acc_pi, acc_sigma, acc_mu = self.acc_head(res_images)
             if global_config.fit_all or global_config.fit_action or global_config.fit_ang:
-                ang_pi, ang_sigma, ang_mu = self.ang_head(res_image)
+                ang_pi, ang_sigma, ang_mu = self.ang_head(res_images)
             if global_config.use_vel_head:
-                vel_pi, vel_sigma, vel_mu = self.vel_head(res_image)
+                vel_pi, vel_sigma, vel_mu = self.vel_head(res_images)
             else:
                 vel_pi, vel_sigma, vel_mu = None, None, None
             return value, acc_pi, acc_mu, acc_sigma, ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, \
-                   car_values[0], res_image[0]
+                   car_values[0], res_images[0]
         elif global_config.head_mode == "hybrid":
             value, acc_pi, acc_sigma, acc_mu, ang = None, None, None, None, None
             if global_config.fit_all or global_config.fit_val:
-                value = self.value_head(res_image)
+                value = self.value_head(res_images)
             if global_config.fit_all or global_config.fit_action or global_config.fit_acc:
-                acc_pi, acc_sigma, acc_mu = self.acc_head(res_image)
+                acc_pi, acc_sigma, acc_mu = self.acc_head(res_images)
             if global_config.fit_all or global_config.fit_action or global_config.fit_ang:
-                ang = self.ang_head(res_image)
+                ang = self.ang_head(res_images)
             if global_config.use_vel_head:
-                vel_pi, vel_sigma, vel_mu = self.vel_head(res_image)
+                vel_pi, vel_sigma, vel_mu = self.vel_head(res_images)
             else:
                 vel_pi, vel_sigma, vel_mu = None, None, None
             return value, acc_pi, acc_mu, acc_sigma, ang, vel_pi, vel_mu, vel_sigma, \
-                   car_values[0], res_image[0]
+                   car_values[0], res_images[0]
         else:
             if global_config.use_vel_head:
-                vel_out = self.vel_head(res_image)
+                vel_out = self.vel_head(res_images)
             else:
                 vel_out = None
-            return self.value_head(res_image), self.acc_head(res_image), self.ang_head(res_image), vel_out, \
-                   car_values[0], res_image[0]
+            return self.value_head(res_images), self.acc_head(res_images), self.ang_head(res_images), vel_out, \
+                   car_values[0], res_images[0]
 
 
 def print_model_size(model):
@@ -362,8 +329,8 @@ def print_model_size(model):
     if model.resnet:
         resnet_size = get_module_size(model.resnet)
 
-    if model.car_resnet:
-        resnet_size += get_module_size(model.car_resnet)
+    if model.pre_resnet:
+        resnet_size += get_module_size(model.pre_resnet)
 
     gppn_size = 0
 

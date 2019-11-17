@@ -121,7 +121,7 @@ class ResNetModified(nn.Module):
         if self.num_layers == 4:
             self.layer4 = self._make_layer(block, self.in_planes, layers[3])
 
-        self.num_outfeatures = self.in_planes
+        self.num_out_features = self.in_planes
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

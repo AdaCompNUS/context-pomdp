@@ -15,10 +15,7 @@ class GPPN(nn.Module):
     def __init__(self, args, l_i=None):
         super(GPPN, self).__init__()
 
-        if config.vanilla_resnet:  # In this case VIN will be disabled.
-            self.output_channels = args.l_i 
-        else:    
-            self.output_channels = config.vin_out_channels # 1
+        self.output_channels = config.vin_out_channels  # 1
 
         if l_i is not None:
             self.l_i = l_i

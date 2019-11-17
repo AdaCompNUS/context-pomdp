@@ -21,8 +21,6 @@ config.max_steering = 1.0  # no unit
 
 config.num_steering_bins = 2 * int(round(config.max_steering / config.steering_resolution))
 
-
-
 config.num_acc_bins = 14
 config.acc_resolution = 2.0 / config.num_acc_bins
 config.max_acc = 1.5  # in degrees
@@ -38,46 +36,30 @@ config.lstm_mode = 'gppn'  # 'gppn' or 'convlstm'
 
 # traning data structure labels for dim 1 (except the batch dim)
 
-config.channel_map = 0  # hist maps from 0 to 8
-config.channel_goal = 4  # 9
-config.channel_hist1 = 5  # 10  # current step
-config.num_hist_channels = 4  # 9
-config.num_channels = config.channel_hist1 + config.num_hist_channels
+config.num_agents_in_NN = 0
+config.num_agents_in_map = 20
+config.num_hist_channels = 4
 
-if config.ped_mode == "separate":
-    config.num_agents_in_NN = 5
+# exo history 1-4, channel 0-3
+config.channel_map = []
+for i in range(config.num_hist_channels):
+    config.channel_map.append(i)
 
-    config.channel_map = 0
-    config.channel_goal = 1
-    config.channel_hist1 = 2  # current step
-    config.channel_hist2 = 3  # previous steps
-    config.channel_hist3 = 4  # previous steps
-    config.channel_hist4 = 5  # previous steps
-    config.num_hist_channels = 4
+config.channel_lane = config.num_hist_channels       # channel 4
+config.channel_goal = config.num_hist_channels + 1   # channel 5
+
+config.use_hist_channels = False
+# ego history 1-4, channel 6-9
+config.channel_hist = []
+for i in range(config.num_hist_channels):
+    config.channel_hist.append(i + config.channel_goal + 1)
+
+config.num_vin_inputs = 2 + config.num_hist_channels
+
+if config.use_hist_channels:
+    config.num_channels = 2 + 2 * config.num_hist_channels
+else:
     config.num_channels = 2 + config.num_hist_channels
-elif config.ped_mode == "combined" or config.ped_mode == "new_res":
-    config.num_agents_in_NN = 0
-    config.num_agents_in_map = 20
-    config.num_hist_channels = 4
-
-    # exo history 1-4, channel 0-3
-    config.channel_map = []
-    for i in range(config.num_hist_channels):
-        config.channel_map.append(i)
-
-    config.channel_lane = config.num_hist_channels       # channel 4
-    config.channel_goal = config.num_hist_channels + 1   # channel 5
-
-    config.use_hist_channels = False
-    # ego history 1-4, channel 6-9
-    config.channel_hist = []
-    for i in range(config.num_hist_channels):
-        config.channel_hist.append(i + config.channel_goal + 1)
-
-    if config.use_hist_channels:
-        config.num_channels = 2 + 2 * config.num_hist_channels
-    else:
-        config.num_channels = 2 + config.num_hist_channels
 
 # size of downsampled map
 config.imsize = 32

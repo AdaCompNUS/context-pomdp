@@ -1023,6 +1023,15 @@ def parse_cmd_args():
                         type=float,
                         default=config.do_prob,
                         help='drop out prob')
+    parser.add_argument('--input_model',
+                        type=str,
+                        default='',
+                        help='[model conversion] Input model in pth format')
+    parser.add_argument('--output_model',
+                        type=str,
+                        default="torchscript_version.pt",
+                        help='[model conversion] Output model in pt format')
+
     return parser.parse_args()
 
 
