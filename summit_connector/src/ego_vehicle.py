@@ -58,7 +58,7 @@ class EgoVehicle(Drunc):
             # scenario_segment_map = self.network_segment_map.intersection(
             #     carla.OccupancyMap(carla.Vector2D(400, 454), carla.Vector2D(402, 456)))
             scenario_segment_map.seed_rand(self.rng.getrandbits(32))
-            self.path = NetworkAgentPath.rand_path(self, 20, 1.0, 100, scenario_segment_map, self.rng)
+            self.path = NetworkAgentPath.rand_path(self, 20, 1.0, scenario_segment_map, min_safe_points=100, rng=self.rng)
 
             vehicle_bp = self.rng.choice(self.world.get_blueprint_library().filter('vehicle.audi.etron'))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')

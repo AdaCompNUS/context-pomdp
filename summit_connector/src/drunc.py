@@ -113,26 +113,6 @@ class Drunc(object):
         self.client.reload_world()
         self.world = self.client.get_world()
 
-    def in_scenario_bounds(self, point):
-        return self.scenario_min.x <= point.x <= self.scenario_max.x and \
-               self.scenario_min.y <= point.y <= self.scenario_max.y
-
-    def rand_bounds_point(self, bounds_min=None, bounds_max=None):
-        if bounds_min is None:
-            bounds_min = self.scenario_min
-        if bounds_max is None:
-            bounds_max = self.scenario_max
-
-        return carla.Vector2D(
-            self.rng.uniform(bounds_min.x, bounds_max.x),
-            self.rng.uniform(bounds_min.y, bounds_max.y))
-
-    def rand_sidewalk_route_point(self, bounds_min=None, bounds_max=None):
-        point = self.sidewalk.get_nearest_route_point(self.rand_bounds_point(bounds_min, bounds_max))
-        while not self.in_scenario_bounds(self.sidewalk.get_route_point_position(point)):
-            point = self.sidewalk.get_nearest_route_point(self.rand_bounds_point(bounds_min, bounds_max))
-        return point
-
     def draw_point(self, position, color=carla.Color(255, 0, 0), life_time=-1.0):
         self.world.debug.draw_point(
             carla.Location(position.x, position.y, 0.0),
