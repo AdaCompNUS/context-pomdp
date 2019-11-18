@@ -255,6 +255,7 @@ class GammaCrowdController(Drunc):
         self.num_sidewalk_agents = rospy.get_param('~num_sidewalk_agents')
         self.path_min_points = rospy.get_param('~path_min_points')
         self.path_interval = rospy.get_param('~path_interval')
+        self.lane_change_probability = rospy.get_param('~lane_change_probability')
         self.network_agents_pub = rospy.Publisher(
             '/crowd/network_agents',
             msg_builder.msg.CrowdNetworkAgentArray,
@@ -622,7 +623,7 @@ class GammaCrowdController(Drunc):
                 continue
 
             self.gamma.set_agent(i, crowd_agent.get_agent_params())
-            pref_vel = crowd_agent.get_preferred_velocity(0.10, self.rng)
+            pref_vel = crowd_agent.get_preferred_velocity(self.lane_change_probability, self.rng)
             if pref_vel:
                 # self.draw_line(crowd_agent.get_position(), pref_vel, carla.Color (255,0,0))
                 # self.draw_line(crowd_agent.get_position(), crowd_agent.get_velocity(), carla.Color (0,255,0))
