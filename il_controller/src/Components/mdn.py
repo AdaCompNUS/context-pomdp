@@ -53,18 +53,20 @@ def validate_pi(pi):
 
 
 def validate_prob(prob, pi, mu, sigma):
-    if hasinf(prob) or hasnan(prob):
-        error_handler("inf or nan in prob")
-    if hasinf(pi) or hasnan(pi):
-        error_handler("inf or nan in pi")
-    if hasinf(mu) or hasnan(mu):
-        error_handler("inf or nan in mu")
-    if hasinf(sigma) or hasnan(sigma):
-        error_handler("inf or nan in sigma")
+    return
+    # if hasinf(prob) or hasnan(prob):
+    #     error_handler("inf or nan in prob")
+    # if hasinf(pi) or hasnan(pi):
+    #     error_handler("inf or nan in pi")
+    # if hasinf(mu) or hasnan(mu):
+    #     error_handler("inf or nan in mu")
+    # if hasinf(sigma) or hasnan(sigma):
+    #     error_handler("inf or nan in sigma")
 
 
 def validate_prob1(prob, data, mu, sigma):
-    validate_prob(prob, data, mu, sigma)
+    return
+    # validate_prob(prob, data, mu, sigma)
 
 
 class MDN(nn.Module):
@@ -118,10 +120,10 @@ class MDN(nn.Module):
         # scalar = sigma.new_empty(sigma.shape).fill_(1.0 + global_config.sigma_smoothing)
 
         # sigma = sigma + scalar
-        sigma = torch.add(sigma, global_config.sigma_smoothing)
+        sigma = torch.add(sigma, global_config.sigma_smoothing + 1.0)
 
-        if hasnan(sigma) or hasinf(sigma):
-            error_handler("isnan in mdn forward")
+        # if hasnan(sigma) or hasinf(sigma):
+        #     error_handler("isnan in mdn forward")
 
         sigma = sigma.view(-1, self.num_gaussians, self.out_features)
 
@@ -227,9 +229,9 @@ def gaussian_probability(sigma, mu, data):
 
     data = data.unsqueeze(1).expand_as(sigma)
     ret = ONEOVERSQRT2PI * torch.exp(-0.5 * ((data - mu) / sigma) ** 2) / sigma
-    if hasnan(ret):
-        print("Investigate nan: sigma = 0 count ", torch.sum(sigma == 0))
-        print("Investigate nan: ret = nan count", torch.sum(sigma == float('nan')))
+    # if hasnan(ret):
+    #     print("Investigate nan: sigma = 0 count ", torch.sum(sigma == 0))
+    #     print("Investigate nan: ret = nan count", torch.sum(sigma == float('nan')))
 
     probs = torch.prod(ret, 2)
     validate_prob1(probs, data, mu, sigma)
@@ -269,8 +271,8 @@ def mdn_loss(pi, sigma, mu, target):
 
     safe_sum = safe_prob(safe_sum)
 
-    if hasinf(safe_sum) or hasnan(safe_sum):
-        error_handler("inf or nan in safe_sum")
+    # if hasinf(safe_sum) or hasnan(safe_sum):
+    #     error_handler("inf or nan in safe_sum")
 
     nll = -torch.log(safe_sum)
     # print(" mdn loss nll: ", nll)

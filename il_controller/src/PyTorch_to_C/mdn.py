@@ -71,7 +71,7 @@ class MDN(torch.jit.ScriptModule):
         mu = self.mu(minibatch)
 
         # scalar = sigma.zeros(sigma.shape).fill_(1.0 + self.sigma_smoothing)
-        sigma = torch.add(sigma, self.sigma_smoothing)
+        sigma = torch.add(sigma, self.sigma_smoothing + 1.0)
 
         # sigma = sigma + scalar
 
