@@ -34,6 +34,7 @@
     <param name="num_sidewalk_agents" value="10"/>
     <param name="path_min_points" value="20"/>
     <param name="path_interval" value="1.0"/>
+    <param name="lane_change_probability" value="0.10"/>
   </node>
   
   <!--

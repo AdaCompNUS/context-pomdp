@@ -23,7 +23,8 @@ default_agent_bbox = [default_agent_pos + carla.Vector2D(1, -1), default_agent_p
                       default_agent_pos + carla.Vector2D(-1, 1), default_agent_pos + carla.Vector2D(-1, -1)]
 
 class CrowdAgent(object):
-    def __init__(self, actor, preferred_speed):
+    def __init__(self, drunc, actor, preferred_speed):
+        self.drunc = drunc
         self.actor = actor
         self.preferred_speed = preferred_speed
         self.actor.set_collision_enabled(
@@ -64,8 +65,8 @@ class CrowdAgent(object):
 
 
 class CrowdNetworkAgent(CrowdAgent):
-    def __init__(self, actor, path, preferred_speed):
-        super(CrowdNetworkAgent, self).__init__(actor, preferred_speed)
+    def __init__(self, drunc, actor, path, preferred_speed):
+        super(CrowdNetworkAgent, self).__init__(drunc, actor, preferred_speed)
         self.path = path
 
     def get_agent_params(self):
@@ -88,12 +89,22 @@ class CrowdNetworkAgent(CrowdAgent):
 
         return corners
 
-    def get_preferred_velocity(self):
+    def get_preferred_velocity(self, lane_change_probability=0.0, rng=random):
         position = self.get_position()
 
         ## to check
         if not self.path.resize():
             return None
+
+        current_offset = self.path.get_min_offset(position)
+        nearest_route_point = self.drunc.network.get_nearest_route_point(position)
+        if nearest_route_point.edge == self.path.route_points[0].edge and nearest_route_point.lane != self.path.route_points[0].lane:
+            if rng.uniform(0.0, 1.0) <= lane_change_probability:
+                new_path_candidates = self.drunc.network.get_next_route_paths(nearest_route_point, self.path.min_points - 1, self.path.interval)
+                new_path = NetworkAgentPath(self.drunc, self.path.min_points, self.path.interval)
+                new_path.route_points = rng.choice(new_path_candidates)[0:self.path.min_points]
+                self.path = new_path
+
         self.path.cut(position)
         if not self.path.resize():
             return None
@@ -147,8 +158,8 @@ class CrowdNetworkAgent(CrowdAgent):
 
 
 class CrowdNetworkCarAgent(CrowdNetworkAgent):
-    def __init__(self, actor, path, preferred_speed):
-        super(CrowdNetworkCarAgent, self).__init__(actor, path, preferred_speed)
+    def __init__(self, drunc, actor, path, preferred_speed):
+        super(CrowdNetworkCarAgent, self).__init__(drunc, actor, path, preferred_speed)
 
     def get_agent_params(self):
         return carla.AgentParams.get_default('Car')
@@ -158,8 +169,8 @@ class CrowdNetworkCarAgent(CrowdNetworkAgent):
 
 
 class CrowdNetworkBikeAgent(CrowdNetworkAgent):
-    def __init__(self, actor, path, preferred_speed):
-        super(CrowdNetworkBikeAgent, self).__init__(actor, path, preferred_speed)
+    def __init__(self, drunc, actor, path, preferred_speed):
+        super(CrowdNetworkBikeAgent, self).__init__(drunc, actor, path, preferred_speed)
 
     def get_agent_params(self):
         return carla.AgentParams.get_default('Bicycle')
@@ -169,8 +180,8 @@ class CrowdNetworkBikeAgent(CrowdNetworkAgent):
 
 
 class CrowdSidewalkAgent(CrowdAgent):
-    def __init__(self, actor, path, preferred_speed):
-        super(CrowdSidewalkAgent, self).__init__(actor, preferred_speed)
+    def __init__(self, drunc, actor, path, preferred_speed):
+        super(CrowdSidewalkAgent, self).__init__(drunc, actor, preferred_speed)
         self.path = path
 
     def get_agent_params(self):
@@ -196,7 +207,7 @@ class CrowdSidewalkAgent(CrowdAgent):
 
         return corners
 
-    def get_preferred_velocity(self):
+    def get_preferred_velocity(self, lane_change_probability=0.0, rng=random):
         position = self.get_position()
 
         if not self.path.resize():
@@ -244,6 +255,7 @@ class GammaCrowdController(Drunc):
         self.num_sidewalk_agents = rospy.get_param('~num_sidewalk_agents')
         self.path_min_points = rospy.get_param('~path_min_points')
         self.path_interval = rospy.get_param('~path_interval')
+        self.lane_change_probability = rospy.get_param('~lane_change_probability')
         self.network_agents_pub = rospy.Publisher(
             '/crowd/network_agents',
             msg_builder.msg.CrowdNetworkAgentArray,
@@ -516,7 +528,7 @@ class GammaCrowdController(Drunc):
             self.world.wait_for_tick(5.0)
             if actor:
                 self.network_car_agents.append(CrowdNetworkCarAgent(
-                    actor, path,
+                    self, actor, path,
                     5.0 + self.rng.uniform(0.0, 0.5)))
                 self.stats_total_num_car += 1
             elapsed_time = time.time() - start_t
@@ -538,7 +550,7 @@ class GammaCrowdController(Drunc):
             self.world.wait_for_tick(5.0)
             if actor:
                 self.network_bike_agents.append(CrowdNetworkBikeAgent(
-                    actor, path,
+                    self, actor, path,
                     3.0 + self.rng.uniform(0, 0.5)))
                 self.stats_total_num_bike += 1
             elapsed_time = time.time() - start_t
@@ -560,7 +572,7 @@ class GammaCrowdController(Drunc):
             self.world.wait_for_tick(5.0)
             if actor:
                 self.sidewalk_agents.append(CrowdSidewalkAgent(
-                    actor, path,
+                    self, actor, path,
                     0.5 + self.rng.uniform(0.0, 1.0)))
                 self.stats_total_num_ped += 1
             elapsed_time = time.time() - start_t
@@ -611,7 +623,7 @@ class GammaCrowdController(Drunc):
                 continue
 
             self.gamma.set_agent(i, crowd_agent.get_agent_params())
-            pref_vel = crowd_agent.get_preferred_velocity()
+            pref_vel = crowd_agent.get_preferred_velocity(self.lane_change_probability, self.rng)
             if pref_vel:
                 # self.draw_line(crowd_agent.get_position(), pref_vel, carla.Color (255,0,0))
                 # self.draw_line(crowd_agent.get_position(), crowd_agent.get_velocity(), carla.Color (0,255,0))
@@ -707,7 +719,7 @@ class GammaCrowdController(Drunc):
             ego_angle_diff = get_signed_angle_diff(ego_gamma_vel, ego_cur_vel)
             if ego_angle_diff > 30 or ego_angle_diff < -30:
                 ego_gamma_vel = 0.5 * (ego_gamma_vel + ego_cur_vel)
-            ego_control = CrowdNetworkAgent(self.ego_actor, None, None).get_control(ego_gamma_vel) # TODO: Is there a better way using static methods?
+            ego_control = CrowdNetworkAgent(self, self.ego_actor, None, None).get_control(ego_gamma_vel) # TODO: Is there a better way using static methods?
             self.gamma_cmd_accel_pub.publish(ego_control.throttle)
             self.gamma_cmd_steer_pub.publish(ego_control.steer)
 
