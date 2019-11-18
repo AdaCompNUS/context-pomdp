@@ -142,7 +142,7 @@ class PolicyValueNet(torch.jit.ScriptModule):
     __constants__ = ['num_steering_bins', 'num_vel_bins',
                      'num_acc_bins', 'output_channels_gppn', 'no_input_resnet',
                      'num_resnet_out_features', 'imsize',
-                     'total_num_channels', 'num_hist_channels',
+                     'total_num_channels', 'num_hist_channels', 'gppn_end',
                      'resblock_in_layers']
 
     def __init__(self):
@@ -204,7 +204,7 @@ class PolicyValueNetMdn(torch.jit.ScriptModule):
                      'num_acc_bins', 'output_channels_gppn', 'no_input_resnet',
                      'num_resnet_out_features', 'imsize',
                      'total_num_channels', 'num_hist_channels',
-                     'resblock_in_layers', 'batchsize']
+                     'resblock_in_layers', 'batchsize', 'gppn_end']
 
     def __init__(self):
         super(PolicyValueNetMdn, self).__init__()

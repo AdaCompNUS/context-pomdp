@@ -7,7 +7,7 @@ import torch.nn as nn
 #
 # print (sys.path)
 
-from PyTorch_to_C import global_params
+from Data_processing import global_params
 
 config = global_params.config
 

@@ -41,9 +41,9 @@ def init_ts_module(model_checkpoint):
     TorchScript_module = None
     if cmd_args.fit == 'all':
         if global_config.head_mode is "hybrid":
-            TorchScript_module = torchscript_models.PolicyValueNet(cmd_args.batch_size)
+            TorchScript_module = torchscript_models.PolicyValueNet()
         elif global_config.head_mode is "mdn":
-            TorchScript_module = torchscript_models.PolicyValueNetMdn(cmd_args.batch_size)
+            TorchScript_module = torchscript_models.PolicyValueNetMdn()
 
     if cmd_args.fit == 'val':
         TorchScript_module = torchscript_models.ValueNet(cmd_args.batch_size)

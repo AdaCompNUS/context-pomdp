@@ -117,7 +117,7 @@ config.lstm_mode = 'gppn'  # 'gppn' or 'convlstm'
 config.vanilla_resnet = False
 # GPPN params
 config.num_gppn_inputs = config.channel_hist[0]
-config.num_gppn_hidden_channels = 50  # 16
+config.num_gppn_hidden_channels = 2  # 50
 config.num_gppn_iterations = 5  # 10
 config.gppn_kernelsize = 7  # 9
 config.num_acc_bins_in_gppn = 1  # this is a latent number

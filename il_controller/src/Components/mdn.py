@@ -178,9 +178,10 @@ class MDN(nn.Module):
         # sigma = self.safe_sigma(sigma)
         # scalar = sigma.new_empty(sigma.shape).fill_(global_config.sigma_smoothing)
 
-        scalar = sigma.new_empty(sigma.shape).fill_(1.0 + global_config.sigma_smoothing)
+        # scalar = sigma.new_empty(sigma.shape).fill_(1.0 + global_config.sigma_smoothing)
 
-        sigma = sigma + scalar
+        # sigma = sigma + scalar
+        sigma = torch.add(sigma, self.sigma_smoothing)
 
         validate_sigma(sigma)
 
