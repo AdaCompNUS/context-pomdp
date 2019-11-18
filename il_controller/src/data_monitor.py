@@ -124,7 +124,7 @@ class DataMonitor(data.Dataset):
             'true_acc': None,
             'true_vel': None,
             'nn_input': np.zeros(
-                (1, self.num_agents, config.num_channels, imsize, imsize), dtype=np.float32)
+                (1, self.num_agents, config.total_num_channels, imsize, imsize), dtype=np.float32)
         }
 
         set_topic_mode("combined")

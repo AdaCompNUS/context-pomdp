@@ -8,10 +8,18 @@ from Data_processing import global_params
 from Components.nan_police import *
 import sys
 
-
 global_config = global_params.config
 ''' Input Tensor is of the form ==> BatchSize * Ped * map/goal/hist * Width * height
 '''
+
+
+def get_input_slicing():
+    ped_start = min(global_config.channel_map)
+    ped_end = max(global_config.channel_map) + 1
+    gppn_end = max(ped_end, global_config.channel_goal + 1, global_config.channel_lane + 1)
+    hist_start = min(global_config.channel_hist)
+    hist_end = max(global_config.channel_hist) + 1
+    return ped_start, ped_end, gppn_end, hist_start, hist_end
 
 
 def conv1x1(in_planes, out_planes, stride=1):
@@ -42,10 +50,8 @@ class ActionHead(nn.Module):
                             bias=True)
 
     def forward(self, x):
-
         if global_config.do_dropout:
             x = self.drop_o_2d(x)
-
         out = self.conv(x)
         if not global_config.disable_bn_in_resnet:
             out = self.bn(out)
@@ -89,28 +95,18 @@ class ValueHead(nn.Module):
         if not global_config.disable_bn_in_resnet:
             self.bn = nn.BatchNorm2d(outplanes, track_running_stats=global_config.track_running_stats)
         self.relu = nn.ReLU(inplace=True)
-        # self.fc1 = nn.Linear(in_features=imsize * imsize * outplanes,
-        #                      out_features=256,
-        #                      bias=True)
-        # self.fc2 = nn.Linear(in_features=256,
-        #                      out_features=1,
-        #                      bias=True)
         self.fc = nn.Linear(in_features=imsize * imsize * outplanes,
                             out_features=1,
                             bias=True)
 
     def forward(self, x):
-
         if global_config.do_dropout:
             x = self.drop_o_2d(x)
-
         out = self.conv(x)
         if not global_config.disable_bn_in_resnet:
             out = self.bn(out)
         out = self.relu(out)
         out = out.view(out.size(0), -1)
-        # out = self.fc1(out)
-        # out = self.fc2(out)
         out = self.fc(out)
         return out
 
@@ -124,27 +120,25 @@ class PolicyValueNet(nn.Module):
         self.num_vel_bins = global_config.num_vel_bins
         self.num_acc_bins = global_config.num_acc_bins
 
-        self.car_gppn = None
-        self.car_hist_VIN = None
-        self.car_lstm = None
-        self.map_lstm = None
+        self.car_gppn, self.car_lstm, self.map_lstm = None, None, None
         if not global_config.vanilla_resnet:
-            self.car_gppn = GPPN.GPPN(config, l_i=global_config.num_vin_inputs)
+            self.input_channels_resnet = global_config.total_num_channels
+        else:
+            self.car_gppn = GPPN.GPPN(config, l_i=global_config.num_gppn_inputs,
+                                      out_planes=global_config.gppn_out_channels)
             self.gppn_size = get_module_size(self.car_gppn)
             if global_config.use_hist_channels:
-                self.input_channels_resnet = self.car_gppn.output_channels + global_config.num_hist_channels
+                self.input_channels_resnet = global_config.gppn_out_channels + global_config.num_hist_channels
             else:
-                self.input_channels_resnet = self.car_gppn.output_channels
-        else:
-            self.input_channels_resnet = global_config.num_channels
+                self.input_channels_resnet = global_config.gppn_out_channels
 
         # 3 channels include the Value image and the 2 hist layers (idx 0 is value image)
 
         self.pre_resnet = None
         if not global_config.vanilla_resnet:
             self.pre_resnet = nn.Sequential(
-                resnet_modified.BasicBlock(self.input_channels_resnet, self.input_channels_resnet),
-                resnet_modified.BasicBlock(self.input_channels_resnet, self.input_channels_resnet),
+                resnet_modified.BasicBlock(inplanes=self.input_channels_resnet, planes=self.input_channels_resnet),
+                resnet_modified.BasicBlock(inplanes=self.input_channels_resnet, planes=self.input_channels_resnet),
             )
 
         self.resnet = resnet_modified.ResNetModified(block=resnet_modified.BasicBlock,
@@ -206,11 +200,8 @@ class PolicyValueNet(nn.Module):
 
         print_model_size(self)
 
-        self.ped_start = min(global_config.channel_map)
-        self.ped_end = max(global_config.channel_map) + 1
-        self.vin_end = max(self.ped_end, global_config.channel_goal + 1, global_config.channel_lane + 1)
-        self.hist_start = min(global_config.channel_hist)
-        self.hist_end = max(global_config.channel_hist) + 1
+        self.ped_start, self.ped_end, self.gppn_end, self.hist_start, self.hist_end \
+            = get_input_slicing()
 
     def freeze_parameters(self):
         for module in self.freezed_modules:
@@ -237,12 +228,12 @@ class PolicyValueNet(nn.Module):
         self.check_grad_state()
 
         batch_size = X.size(0)
-        car_input = X[:, :, :, :, :].contiguous()
+        car_input = X.contiguous()
 
-        reshape_car_input = car_input.view(batch_size, global_config.num_channels, config.imsize,
+        reshape_car_input = car_input.view(batch_size, global_config.total_num_channels, config.imsize,
                                            config.imsize).contiguous()
 
-        car_vin_input = reshape_car_input[:, 0:self.vin_end, :, :]  # with 4 ped
+        car_gppn_input = reshape_car_input[:, 0:self.gppn_end, :, :]  # with 4 ped
         # maps, lane, and goal channel
 
         car_hist_data = None
@@ -254,12 +245,9 @@ class PolicyValueNet(nn.Module):
         # adding 1 extra dummy dimension because VIN produces single channel output
 
         if global_config.vanilla_resnet:
-            car_values = car_vin_input
+            car_values = car_gppn_input
         else:
-            car_values = self.car_gppn(car_vin_input)
-
-        if not global_config.vanilla_resnet and self.car_hist_VIN:
-            car_hist_data = self.car_hist_VIN(car_hist_data, config)
+            car_values = self.car_gppn(car_gppn_input)
 
         if global_config.use_hist_channels:
             car_features = torch.cat((car_values, car_hist_data), 1).contiguous()  # stack the channels
@@ -279,10 +267,6 @@ class PolicyValueNet(nn.Module):
 
         if global_config.do_dropout and global_config.head_mode == 'categorical':
             res_images = self.drop_o_2d(res_images)
-
-        # except Exception as e:
-        #     print("Exception in forward~!!!!!!!")
-        #     error_handler(e)
 
         if global_config.head_mode == "mdn":
             value, acc_pi, acc_sigma, acc_mu, ang_pi, ang_mu, ang_sigma = None, None, None, None, None, None, None
@@ -334,10 +318,10 @@ def print_model_size(model):
 
     gppn_size = 0
 
-    if model.car_VIN:
-        gppn_size += get_module_size(model.car_VIN)
-    if model.car_hist_VIN:
-        gppn_size += get_module_size(model.car_hist_VIN)
+    if model.car_gppn:
+        gppn_size += get_module_size(model.car_gppn)
+    if model.car_hist_gppn:
+        gppn_size += get_module_size(model.car_hist_gppn)
 
     head_size = 0
     if model.ang_head:
@@ -388,19 +372,19 @@ if __name__ == '__main__':
                         help='start epoch for training')
     parser.add_argument('--k',
                         type=int,
-                        default=global_config.num_iterations,  # 10
+                        default=global_config.num_gppn_iterations,  # 10
                         help='Number of Value Iterations')
     parser.add_argument('--f',
                         type=int,
-                        default=global_config.GPPN_kernelsize,
+                        default=global_config.gppn_kernelsize,
                         help='Number of Value Iterations')
     parser.add_argument('--l_i',
                         type=int,
-                        default=global_config.default_li,
+                        default=global_config.num_gppn_inputs,
                         help='Number of channels in input layer')
     parser.add_argument('--l_h',
                         type=int,
-                        default=global_config.default_lh,  # 150
+                        default=global_config.num_gppn_hidden_channels,  # 150
                         help='Number of channels in first hidden layer')
     parser.add_argument('--l_q',
                         type=int,
@@ -410,14 +394,6 @@ if __name__ == '__main__':
                         type=int,
                         default=64,
                         help='Batch size')
-    parser.add_argument('--no_ped',
-                        type=int,
-                        default=0,  # global_0,
-                        help='Number of pedistrians')
-    parser.add_argument('--no_car',
-                        type=int,
-                        default=1,
-                        help='Number of cars')
     parser.add_argument('--no_action',
                         type=int,
                         default=4,
@@ -441,13 +417,13 @@ if __name__ == '__main__':
 
     config = parser.parse_args()
 
-    global_0 = config.no_ped
+    global_0 = 0
     global_config.vanilla_resnet = config.no_vin
 
     debug_net = PolicyValueNet(config)
 
     print_model_size(debug_net)
 
-    X = Variable(torch.randn([config.batch_size, config.no_ped +
-                              config.no_car, 9, config.imsize, config.imsize]))
+    X = Variable(torch.randn([config.batch_size, 0 +
+                              1, 9, config.imsize, config.imsize]))
     val, steer, ang, vel, car_values, res_image = debug_net.forward(X, config)

@@ -38,8 +38,8 @@ map_type = 'gray'  # 'hot'
 title_loc = 'center'
 
 
-def visualize_VIN(Z, flag, step):
-    print("[visualize_VIN] ")
+def visualize_gppn(Z, flag, step):
+    print("[visualize_gppn] ")
 
     Z = Z.detach().cpu().numpy()
 
@@ -52,7 +52,7 @@ def visualize_VIN(Z, flag, step):
         for i in range(0, x_dim):
             for j in range(0, y_dim):
                 k = i * y_dim + j
-                if k < config.vin_out_channels:
+                if k < config.gppn_out_channels:
                     axarr[i, j].imshow(Z[k],
                                        cmap=map_type, interpolation='nearest')
                 axarr[i, j].axis('off')
@@ -473,14 +473,14 @@ def save_figure(fig, image_subfolder, root, step):
         print(e)
 
 
-def visualize_input_output(X, ped_vin_out, car_vin_out, res_out, res_image, step, image_flag):
+def visualize_input_output(X, ped_gppn_out, car_gppn_out, res_out, res_image, step, image_flag):
     if config.visualize_inter_data:
         flag = image_flag + str(step)
         visualize(X.cpu()[0], flag)
-        if ped_vin_out.size(0) > 0:
-            visualize_VIN(ped_vin_out, 'ped', flag)
-        if car_vin_out.size(0) > 0:
-            visualize_VIN(car_vin_out, 'car', flag)
+        if ped_gppn_out.size(0) > 0:
+            visualize_gppn(ped_gppn_out, 'ped', flag)
+        if car_gppn_out.size(0) > 0:
+            visualize_gppn(car_gppn_out, 'car', flag)
         if res_image.size(0) > 0:
             visualize_resimage(res_image, flag)
 

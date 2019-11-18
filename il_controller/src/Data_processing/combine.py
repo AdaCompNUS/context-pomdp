@@ -132,7 +132,7 @@ def save_dataset_to_h5(acc_labels_array, ang_labels_array, counter, data_array, 
                        v_labels_array, vel_labels_array, traj_num, points_num):
     try:
         print("data shape: {}".format(data_array[0].shape))
-        f.create_dataset('data', maxshape=(None, num_agents, config.num_channels, imsize, imsize),
+        f.create_dataset('data', maxshape=(None, num_agents, config.total_num_channels, imsize, imsize),
                          data=data_array[0:counter], dtype='f4')
 
         print("Saving cart data...")
@@ -203,7 +203,7 @@ def put_images_in_dataset(acc, acc_labels_array, ang, ang_labels_array, counter,
 
 def allocate_containters():
 
-    data_array = np.zeros((LARGE_NO, num_agents, config.num_channels, imsize, imsize), dtype=np.float32)
+    data_array = np.zeros((LARGE_NO, num_agents, config.total_num_channels, imsize, imsize), dtype=np.float32)
     cart_data_array = np.zeros((LARGE_NO, 2*(1 + config.num_agents_in_map) * config.num_hist_channels), dtype=np.float32)
 
     v_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)

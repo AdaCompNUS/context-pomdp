@@ -40,7 +40,7 @@ class PopulateImages(object):
         imsize = config.imsize
         num_agents = 1 + 0
         output_arr = np.zeros(
-            (num_agents, config.num_channels, imsize, imsize), dtype=np.float32)
+            (num_agents, config.total_num_channels, imsize, imsize), dtype=np.float32)
         for i in range(num_agents):
             self.copy_maps(i, output_arr, sample) # Exo history.
             self.populate_lane(i, output_arr, sample) # Lanes.
@@ -51,7 +51,7 @@ class PopulateImages(object):
                 error_handler(e)
                 pdb.set_trace()
 
-        # output_arr: dim (num_agents, congig.num_channels, imsize, imsize)
+        # output_arr: dim (num_agents, congig.total_num_channels, imsize, imsize)
         acc_labels, ang_labels, v_labels, vel_labels = self.get_labels(sample)
         cart_dat_arr = self.get_cart_data(sample)
 
@@ -432,11 +432,11 @@ class Fliplr(object):
         pass
 
     def __call__(self, input, steer):
-        # input: dim (num_agents, congig.num_channels, imsize, imsize)
+        # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         #
         output = np.zeros_like(input, dtype=np.float32)
         for i in range(1 + 0):
-            for j in range(config.num_channels):
+            for j in range(config.total_num_channels):
                 output[i, j] = np.fliplr(input[i, j])
 
         return output, -steer  # flip the steering
@@ -450,11 +450,11 @@ class Flipud(object):
         pass
 
     def __call__(self, input, steer):
-        # input: dim (num_agents, congig.num_channels, imsize, imsize)
+        # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         #
         output = np.zeros_like(input, dtype=np.float32)
         for i in range(1 + 0):
-            for j in range(config.num_channels):
+            for j in range(config.total_num_channels):
                 output[i, j] = np.flipud(input[i, j])
         return output, -steer  # flip the steering
 
@@ -467,10 +467,10 @@ class Rot(object):
         self.amount = amount
 
     def __call__(self, input, steer):
-        # input: dim (num_agents, congig.num_channels, imsize, imsize)
+        # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         output = np.zeros_like(input, dtype=np.float32)
         for i in range(1 + 0):
-            for j in range(config.num_channels):
+            for j in range(config.total_num_channels):
                 output[i, j] = np.rot90(input[i, j], self.amount)
 
         return output, steer
@@ -484,10 +484,10 @@ class FlipRot(object):
         self.amount = amount
 
     def __call__(self, input, steer):
-        # input: dim (num_agents, congig.num_channels, imsize, imsize)
+        # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         output = np.zeros_like(input, dtype=np.float32)
         for i in range(1 + 0):
-            for j in range(config.num_channels):
+            for j in range(config.total_num_channels):
                 output[i, j] = np.rot90(np.flipud(input[i, j]), self.amount)
 
         return output, -steer
@@ -514,7 +514,7 @@ class Normalize(object):
     def __call__(self, input):
         num_agents = 1 + 0
         for i in range(num_agents):
-            for c in range(config.num_channels):
+            for c in range(config.total_num_channels):
                 maxval = np.max(input[i, c])
                 if maxval != 0:
                     input[i, c] = input[i, c] / maxval

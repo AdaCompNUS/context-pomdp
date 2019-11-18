@@ -170,16 +170,16 @@ class DriveNetModiRes(nn.Module):
         self.num_vel_bins = global_config.num_vel_bins
         self.num_acc_bins = global_config.num_acc_bins
 
-        self.car_VIN = None
+        self.car_gppn = None
         if not global_config.vanilla_resnet:
-            self.car_VIN = GPPN.GPPN(config)
-            self.output_channels_VIN = self.car_VIN.output_channels + global_config.num_hist_channels
+            self.car_gppn = GPPN.GPPN(config)
+            self.output_channels_gppn = self.car_gppn.output_channels + global_config.num_hist_channels
         else:
-            self.output_channels_VIN = global_config.channel_hist1 + global_config.num_hist_channels
-            global_config.vin_out_channels = global_config.channel_hist1
+            self.output_channels_gppn = global_config.channel_hist1 + global_config.num_hist_channels
+            global_config.gppn_out_channels = global_config.channel_hist1
 
         # 3 channels include the Value image and the 2 hist layers (idx 0 is value image)
-        self.no_input_resnet = self.output_channels_VIN * (config.no_ped + config.no_car)
+        self.no_input_resnet = self.output_channels_gppn * (0 + 1)
 
         self.resnet = resnet_modified.ResNetModified(block=resnet_modified.BasicBlock,
                                                      layers=global_config.resblock_in_layers,
@@ -190,8 +190,8 @@ class DriveNetModiRes(nn.Module):
         self.car_resnet = None
         if not global_config.vanilla_resnet:
             self.car_resnet = nn.Sequential(
-                resnet_modified.BasicBlock(self.output_channels_VIN, self.output_channels_VIN),
-                resnet_modified.BasicBlock(self.output_channels_VIN, self.output_channels_VIN),
+                resnet_modified.BasicBlock(self.output_channels_gppn, self.output_channels_gppn),
+                resnet_modified.BasicBlock(self.output_channels_gppn, self.output_channels_gppn),
             )
 
         self.drop_o = nn.Dropout()
@@ -229,7 +229,7 @@ class DriveNetModiRes(nn.Module):
         self.resnet_size = get_module_size(self.resnet)
 
         if not global_config.vanilla_resnet:
-            self.gppn_size = get_module_size(self.car_VIN)
+            self.gppn_size = get_module_size(self.car_gppn)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -266,13 +266,13 @@ class DriveNetModiRes(nn.Module):
         # switches batch and agent dim in order to iterate over the agent dim
         # reshape_X = X.permute(1, 0, 2, 3, 4)
         batch_size = X.size(0)
-        num_agents = config.no_ped + config.no_car
-        car_input = X[:, config.no_ped:num_agents, :, :, :].contiguous()
+        num_agents = 0 + 1
+        car_input = X[:, 0:num_agents, :, :, :].contiguous()
 
-        reshape_car_input = car_input.view(batch_size * config.no_car, global_config.num_channels, config.imsize,
+        reshape_car_input = car_input.view(batch_size * 1, global_config.total_num_channels, config.imsize,
                                            config.imsize).contiguous()
 
-        car_vin_input = reshape_car_input[:, 0:global_config.channel_hist1, :, :]  # with 4 ped maps and goal channel
+        car_gppn_input = reshape_car_input[:, 0:global_config.channel_hist1, :, :]  # with 4 ped maps and goal channel
 
         car_hist_data = reshape_car_input[:, global_config.channel_hist1:, :, :]  # with 4 hist channels
 
@@ -281,9 +281,9 @@ class DriveNetModiRes(nn.Module):
         # adding 1 extra dummy dimension because VIN produces single channel output
 
         if global_config.vanilla_resnet:
-            car_values = car_vin_input
+            car_values = car_gppn_input
         else:
-            car_values = self.car_VIN(car_vin_input, config)
+            car_values = self.car_gppn(car_gppn_input, config)
 
         car_features = torch.cat((car_values, car_hist_data), 1).contiguous()  # stack the channels
 
@@ -292,15 +292,15 @@ class DriveNetModiRes(nn.Module):
         else:
             car_res_features = self.car_resnet(car_features)
 
-        car_res_features_recover = car_res_features.view(batch_size, config.no_car, self.output_channels_VIN,
+        car_res_features_recover = car_res_features.view(batch_size, 1, self.output_channels_gppn,
                                                          config.imsize, config.imsize).contiguous()
 
         res_features = car_res_features_recover.contiguous()
 
-        res_features_reshape = res_features.view(batch_size, num_agents * self.output_channels_VIN, config.imsize,
+        res_features_reshape = res_features.view(batch_size, num_agents * self.output_channels_gppn, config.imsize,
                                                  config.imsize).contiguous()
 
-        if global_config.do_dropout and num_agents * self.output_channels_VIN > 100 \
+        if global_config.do_dropout and num_agents * self.output_channels_gppn > 100 \
                 and global_config.head_mode == 'categorical':
             res_features_reshape = self.drop_o_2d(res_features_reshape)
 
@@ -437,8 +437,8 @@ if __name__ == '__main__':
 
         from torch.autograd import Variable
 
-        X = Variable(torch.randn([128, cmd_args.no_ped +
-                          cmd_args.no_car, 9, cmd_args.imsize, cmd_args.imsize]))
+        X = Variable(torch.randn([128, 0 +
+                          1, 9, cmd_args.imsize, cmd_args.imsize]))
         value, acc_pi, acc_mu, acc_sigma, \
         ang, _, _, _,_,_  = net.forward(X, cmd_args)
 

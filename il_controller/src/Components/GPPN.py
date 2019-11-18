@@ -12,10 +12,10 @@ class GPPN(nn.Module):
     """
     Implementation of the Gated Path Planning Network.
     """
-    def __init__(self, args, l_i=None):
+    def __init__(self, args, l_i=None, out_planes=config.gppn_out_channels):
         super(GPPN, self).__init__()
 
-        self.output_channels = config.vin_out_channels  # 1
+        self.output_channels = out_planes  # 1
 
         if l_i is not None:
             self.l_i = l_i

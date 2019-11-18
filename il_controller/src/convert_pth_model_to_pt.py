@@ -67,13 +67,12 @@ if __name__ == '__main__':
     set_fit_mode_bools(cmd_args)
     torchscript_models.set_globals()
 
-    print("=> 0 ", global_0)
     print("=> vanilla_resnet ", global_config.vanilla_resnet)
-    print("=> default_li ", global_config.default_li)
-    print("=> default_lh ", global_config.default_lh)
-    print("=> GPPN_kernelsize ", global_config.GPPN_kernelsize)
+    print("=> num_gppn_inputs ", global_config.num_gppn_inputs)
+    print("=> num_gppn_hidden_channels ", global_config.num_gppn_hidden_channels)
+    print("=> gppn_kernelsize ", global_config.gppn_kernelsize)
     print("=> resnet_width ", global_config.resnet_width)
-    print("=> vin_out_channels ", global_config.vin_out_channels)
+    print("=> gppn_out_channels ", global_config.gppn_out_channels)
     print("=> Num_resnet_layers ", global_config.Num_resnet_layers)
     print("=> fit ", cmd_args.fit)
 
@@ -95,7 +94,7 @@ if __name__ == '__main__':
                 raise Exception('network parameters are not matching!')
 
     test_input = torch.randn(
-        [cmd_args.batch_size, cmd_args.no_ped + cmd_args.no_car, 9, cmd_args.imsize, cmd_args.imsize]).to(device)
+        [cmd_args.batch_size, 0 + 1, 9, cmd_args.imsize, cmd_args.imsize]).to(device)
 
     test_input.cpu()
 

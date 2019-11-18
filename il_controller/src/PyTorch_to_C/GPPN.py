@@ -26,8 +26,8 @@ class GPPN(torch.jit.ScriptModule):
         if config.vanilla_resnet: # In this case VIN will be disabled.
             self.output_channels = l_i 
         else:    
-            self.output_channels = config.vin_out_channels # 14
-            # print(config.vin_out_channels)
+            self.output_channels = config.gppn_out_channels # 14
+            # print(config.gppn_out_channels)
         
         self.maze_size = imsize_eg_input
 

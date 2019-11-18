@@ -12,18 +12,16 @@ from Components import *
 from argparse import Namespace
 ''' Input Tensor is of the form ==> BatchSize * Ped * map/goal/hist * Width * height
 '''
-# config = Namespace(batch_size=10, datafile='dataset/gridworld_8x8.npz',
-#                    epochs=30, imsize=32, k=10, l_h=150, l_i=2, l_q=10, lr=0.005, no_ped=5, no_car=1, no_action=4)
 
 
 class drive_net(nn.Module):
 
     def __init__(self, config):
         super(drive_net, self).__init__()
-        self.ped_VIN = VIN(config)
-        self.car_VIN = VIN(config)
-        #using config.no_ped and config.no_car instead of global config variables
-        self.no_input_resnet = 3 * (config.no_ped + config.no_car)
+        self.ped_gppn = VIN(config)
+        self.car_gppn = VIN(config)
+        #using 0 and 1 instead of global config variables
+        self.no_input_resnet = 3 * (0 + 1)
         #imsize should come from globalconfig, this is coming from cmdline config
         self.resnet = ResNet(BasicBlock, [1, 1, 1, 1], fnsize=config.imsize / 32,
                              ip_channels=self.no_input_resnet)
@@ -54,18 +52,18 @@ class drive_net(nn.Module):
         hist_data = reshape_X[:, :, 2:, :, :]
         # Container for the ouput value images
         #  find a way to avoid ugly indexing!
-        outputs = X.new_empty(config.no_ped + config.no_car,
+        outputs = X.new_empty(0 + 1,
                               X.shape[0], 3, 1, config.imsize, config.imsize).fill_(0)
         # 3 is the Value image and the 2 hist layers (idx 0 is value image) #adding 1 extra dimension because VIN produces single channel output
         outputs[:, :, 1:, 0, :, :] = hist_data
-        for idx in range(config.no_ped + config.no_car):
-            if idx < config.no_ped:
-                outputs[idx, :, 0, :, :, :] = self.ped_VIN(
+        for idx in range(0 + 1):
+            if idx < 0:
+                outputs[idx, :, 0, :, :, :] = self.ped_gppn(
                     value_data[idx], config)
                 outputs[idx, :, :, 0, :, :] = self.ped_resnet(
                     outputs[idx, :, :, 0, :, :].clone())
             else:
-                outputs[idx, :, 0, :, :, :] = self.car_VIN(
+                outputs[idx, :, 0, :, :, :] = self.car_gppn(
                     value_data[idx], config)
                 outputs[idx, :, :, 0, :, :] = self.car_resnet(
                     outputs[idx, :, :, 0, :, :].clone())
@@ -79,7 +77,7 @@ class drive_net(nn.Module):
 
 
 # dummy_net = drive_net(config)
-# X = Variable(torch.randn([config.batch_size, config.no_ped +
-#                           config.no_car, 4, config.imsize, config.imsize]))
+# X = Variable(torch.randn([config.batch_size, 0 +
+#                           1, 4, config.imsize, config.imsize]))
 # val, pol = dummy_net.forward(X, config)
 # pdb.set_trace()

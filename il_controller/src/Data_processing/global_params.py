@@ -74,11 +74,10 @@ config.channel_hist = []
 for i in range(config.num_hist_channels):
     config.channel_hist.append(i + config.channel_goal + 1)
 # total number of channels
-config.num_vin_inputs = 2 + config.num_hist_channels
 if config.use_hist_channels:
-    config.num_channels = 2 + 2 * config.num_hist_channels
+    config.total_num_channels = 2 + 2 * config.num_hist_channels
 else:
-    config.num_channels = 2 + config.num_hist_channels
+    config.total_num_channels = 2 + config.num_hist_channels
 ''' Channel codes '''
 
 
@@ -115,13 +114,13 @@ config.fit_all = True
 config.imsize = 32
 config.lstm_mode = 'gppn'  # 'gppn' or 'convlstm'
 config.vanilla_resnet = False
-# VIN params
-config.default_li = config.channel_hist[0]
-config.default_lh = 50  # 16
-config.num_iterations = 5  # 10
-config.GPPN_kernelsize = 7  # 9
-config.num_acc_bins_in_GPPN = 1  # this is a latent number
-config.vin_out_channels = config.num_steering_bins * config.num_acc_bins_in_GPPN
+# GPPN params
+config.num_gppn_inputs = config.channel_hist[0]
+config.num_gppn_hidden_channels = 50  # 16
+config.num_gppn_iterations = 5  # 10
+config.gppn_kernelsize = 7  # 9
+config.num_acc_bins_in_gppn = 1  # this is a latent number
+config.gppn_out_channels = config.num_steering_bins * config.num_acc_bins_in_gppn
 # resnet params
 config.Num_resnet_layers = 3
 config.num_resnet_output = 256 * 4

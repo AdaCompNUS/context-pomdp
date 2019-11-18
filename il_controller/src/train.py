@@ -502,11 +502,11 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
         drive_net = net
     if cmd_config == None:
         cmd_config = cmd_args
-    ped_vin_out, car_vin_out, res_out, res_image = \
+    ped_gppn_out, car_gppn_out, res_out, res_image = \
         torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0)
     if global_config.head_mode == "mdn":
         value, acc_pi, acc_mu, acc_sigma, \
-        ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, car_vin_out, res_image = drive_net.forward(X,
+        ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, car_gppn_out, res_image = drive_net.forward(X,
                                                                                                              cmd_config)
         if global_config.print_preds:
             print("predicted angle:")
@@ -516,14 +516,14 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
 
         if print_time:
             print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(X, ped_vin_out, car_vin_out, res_out, res_image, step, image_flag)
+            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_out, res_image, step, image_flag)
 
         return acc_pi, acc_mu, acc_sigma, \
                ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, value
 
     elif global_config.head_mode == "hybrid":
         value, acc_pi, acc_mu, acc_sigma, \
-        ang, vel_pi, vel_mu, vel_sigma, car_vin_out, res_image = drive_net.forward(X, cmd_config)
+        ang, vel_pi, vel_mu, vel_sigma, car_gppn_out, res_image = drive_net.forward(X, cmd_config)
 
         if global_config.print_preds:
             print("predicted angle:")
@@ -536,13 +536,13 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
 
         if print_time and config.visualize_inter_data:
             print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(X, ped_vin_out, car_vin_out, res_out, res_image, step, image_flag)
+            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_out, res_image, step, image_flag)
 
         return acc_pi, acc_mu, acc_sigma, \
                ang, vel_pi, vel_mu, vel_sigma, value
 
     else:
-        value, acc, ang, vel, car_vin_out, res_image = drive_net.forward(X, cmd_config)
+        value, acc, ang, vel, car_gppn_out, res_image = drive_net.forward(X, cmd_config)
         if global_config.print_preds:
             print("predicted angle:")
             print(ang)
@@ -550,7 +550,7 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
         elapsed_time = time.time() - start_time
         if print_time:
             print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(X, ped_vin_out, car_vin_out, res_out, res_image, step, image_flag)
+            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_out, res_image, step, image_flag)
 
         return acc, ang, value, vel
 
@@ -564,12 +564,12 @@ def forward_pass_jit(X, step=0, drive_net=None, cmd_config=None, print_time=Fals
         drive_net = net
     if cmd_config == None:
         cmd_config = cmd_args
-    ped_vin_out, car_vin_out, res_out, res_image = \
+    ped_gppn_out, car_gppn_out, res_out, res_image = \
         torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0)
 
     if global_config.head_mode == "hybrid":
         value, acc_pi, acc_mu, acc_sigma, \
-        ang, car_vin_out, res_image = drive_net.forward(X.squeeze(0))
+        ang, car_gppn_out, res_image = drive_net.forward(X.squeeze(0))
 
         if global_config.print_preds:
             print("predicted angle:")
@@ -581,7 +581,7 @@ def forward_pass_jit(X, step=0, drive_net=None, cmd_config=None, print_time=Fals
         
         if print_time and config.visualize_inter_data:
             print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(X, ped_vin_out, car_vin_out, res_out, res_image, step, image_flag)
+            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_out, res_image, step, image_flag)
 
         return acc_pi, acc_mu, acc_sigma, \
                ang, vel_pi, vel_mu, vel_sigma, value
@@ -878,19 +878,19 @@ def parse_cmd_args():
                         help='start epoch for training')
     parser.add_argument('--k',
                         type=int,
-                        default=config.num_iterations,  # 10
+                        default=config.num_gppn_iterations,  # 10
                         help='Number of Value Iterations')
     parser.add_argument('--f',
                         type=int,
-                        default=config.GPPN_kernelsize,
+                        default=config.gppn_kernelsize,
                         help='Number of Value Iterations')
     parser.add_argument('--l_i',
                         type=int,
-                        default=config.default_li,
+                        default=config.num_gppn_inputs,
                         help='Number of channels in input layer')
     parser.add_argument('--l_h',
                         type=int,
-                        default=config.default_lh,  # 150
+                        default=config.num_gppn_hidden_channels,  # 150
                         help='Number of channels in first hidden layer')
     parser.add_argument('--l_q',
                         type=int,
@@ -904,14 +904,6 @@ def parse_cmd_args():
                         type=float,
                         default=global_config.l2_reg_weight,
                         help='Weight decay')
-    parser.add_argument('--no_ped',
-                        type=int,
-                        default=0,
-                        help='Number of pedistrians')
-    parser.add_argument('--no_car',
-                        type=int,
-                        default=1,
-                        help='Number of cars')
     parser.add_argument('--no_action',
                         type=int,
                         default=4,
@@ -942,7 +934,7 @@ def parse_cmd_args():
                         help='ResNet Width')
     parser.add_argument('--vinout',
                         type=int,
-                        default=config.vin_out_channels,
+                        default=config.gppn_out_channels,
                         help='ResNet Width')
     parser.add_argument('--nres',
                         type=int,
@@ -1003,15 +995,15 @@ def update_global_config(cmd_args):
     print("=========================== Command line arguments ==========================\n")
 
     # Update the global configurations according to command line
-    0 = cmd_args.no_ped
+    0 = 0
     config.l2_reg_weight = cmd_args.l2
     config.vanilla_resnet = bool(cmd_args.no_vin)
-    config.default_li = cmd_args.l_i
-    config.default_lh = cmd_args.l_h
-    config.GPPN_kernelsize = cmd_args.f
-    config.num_iterations = cmd_args.k
+    config.num_gppn_inputs = cmd_args.l_i
+    config.num_gppn_hidden_channels = cmd_args.l_h
+    config.gppn_kernelsize = cmd_args.f
+    config.num_gppn_iterations = cmd_args.k
     config.resnet_width = cmd_args.w
-    config.vin_out_channels = cmd_args.vinout
+    config.gppn_out_channels = cmd_args.vinout
     config.sigma_smoothing = cmd_args.ssm
     print("Sigma smoothing " + str(cmd_args.ssm))
     config.train_set_path = cmd_args.trainpath
@@ -1108,8 +1100,8 @@ def set_file_names():
                          '_vanilla_' + str(global_config.vanilla_resnet) + \
                          '_k_' + str(cmd_args.k) + \
                          '_lh_' + str(cmd_args.l_h) + \
-                         '_nped_' + str(cmd_args.no_ped) + \
-                         '_vin_o_' + str(global_config.vin_out_channels) + \
+                         '_nped_' + str(0) + \
+                         '_gppn_o_' + str(global_config.gppn_out_channels) + \
                          '_nres_' + str(global_config.Num_resnet_layers) + \
                          '_w_' + str(global_config.resnet_width) + \
                          '_bn_' + str(not global_config.disable_bn_in_resnet) + \
@@ -1182,9 +1174,9 @@ def load_settings_from_model(checkpoint, config, cmd_args):
     try:
         # config.head_mode = checkpoint['head_mode']
         config.vanilla_resnet = checkpoint['novin']
-        config.default_lh = checkpoint['l_h']
+        config.num_gppn_hidden_channels = checkpoint['l_h']
         cmd_args.l_h = checkpoint['l_h']
-        config.vin_out_channels = checkpoint['vinout']
+        config.gppn_out_channels = checkpoint['vinout']
         config.resnet_width = checkpoint['w']
         config.resblock_in_layers = checkpoint['layers']
         # config.fit_ang = checkpoint['fit_ang']
@@ -1209,9 +1201,9 @@ def load_settings_from_model(checkpoint, config, cmd_args):
         print("=> vanilla resnet {}"
               .format(global_config.vanilla_resnet))
         print("=> width of vin {}"
-              .format(global_config.default_lh))
+              .format(global_config.num_gppn_hidden_channels))
         print("=> out channels of vin {}"
-              .format(global_config.vin_out_channels))
+              .format(global_config.gppn_out_channels))
         print("=> resnet width {}"
               .format(global_config.resnet_width))
         print("=> res layers {}"
@@ -1239,8 +1231,8 @@ def make_checkpoint_dict(epoch, best_val_loss, config, cmd_args):
     return {
         'epoch': epoch,
         'novin': config.vanilla_resnet,
-        'l_h': config.default_lh,
-        'vinout': config.vin_out_channels,
+        'l_h': config.num_gppn_hidden_channels,
+        'vinout': config.gppn_out_channels,
         'w': config.resnet_width,
         'layers': config.resblock_in_layers,
         'head_mode': config.head_mode,
