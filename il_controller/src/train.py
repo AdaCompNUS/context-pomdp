@@ -995,7 +995,6 @@ def update_global_config(cmd_args):
     print("=========================== Command line arguments ==========================\n")
 
     # Update the global configurations according to command line
-    0 = 0
     config.l2_reg_weight = cmd_args.l2
     config.vanilla_resnet = bool(cmd_args.no_vin)
     config.num_gppn_inputs = cmd_args.l_i

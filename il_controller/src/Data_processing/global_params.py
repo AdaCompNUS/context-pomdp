@@ -9,6 +9,7 @@ config.pycharm_mode = False
 ''' Hardware settings '''
 num_gpus = torch.cuda.device_count()
 print("=> num of gpus = {}".format(num_gpus))
+config.GPU_devices = None
 if num_gpus == 1:
     config.GPU_devices = [0]
 elif num_gpus == 2:

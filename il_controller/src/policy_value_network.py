@@ -121,7 +121,7 @@ class PolicyValueNet(nn.Module):
         self.num_acc_bins = global_config.num_acc_bins
 
         self.car_gppn, self.car_lstm, self.map_lstm = None, None, None
-        if not global_config.vanilla_resnet:
+        if global_config.vanilla_resnet:
             self.input_channels_resnet = global_config.total_num_channels
         else:
             self.car_gppn = GPPN.GPPN(config, l_i=global_config.num_gppn_inputs,
@@ -320,8 +320,6 @@ def print_model_size(model):
 
     if model.car_gppn:
         gppn_size += get_module_size(model.car_gppn)
-    if model.car_hist_gppn:
-        gppn_size += get_module_size(model.car_hist_gppn)
 
     head_size = 0
     if model.ang_head:
