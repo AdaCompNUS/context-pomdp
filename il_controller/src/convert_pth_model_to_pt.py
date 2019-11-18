@@ -41,9 +41,11 @@ def init_ts_module(model_checkpoint):
     TorchScript_module = None
     if cmd_args.fit == 'all':
         if global_config.head_mode is "hybrid":
-            TorchScript_module = torchscript_models.PolicyValueNet()
+            TorchScript_module = torchscript_models.PolicyValueNetHybrid()
         elif global_config.head_mode is "mdn":
             TorchScript_module = torchscript_models.PolicyValueNetMdn()
+        else:
+            TorchScript_module = torchscript_models.PolicyValueNet()
 
     if cmd_args.fit == 'val':
         TorchScript_module = torchscript_models.ValueNet(cmd_args.batch_size)
@@ -94,7 +96,7 @@ if __name__ == '__main__':
                 raise Exception('network parameters are not matching!')
 
     test_input = torch.randn(
-        [cmd_args.batch_size, 0 + 1, 9, cmd_args.imsize, cmd_args.imsize]).to(device)
+        [cmd_args.batch_size, 0 + 1, 6, cmd_args.imsize, cmd_args.imsize]).to(device)
 
     test_input.cpu()
 

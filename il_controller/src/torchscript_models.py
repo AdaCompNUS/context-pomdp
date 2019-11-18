@@ -23,13 +23,13 @@ head_mode = head_mode_dict[global_config.head_mode]
 gppn_l_i, gppn_l_h, gppn_k, gppn_f, input_channels_resnet, vanilla_resnet, resnet_width = \
     None, None, None, None, None, None, None
 
-resblock_in_layers, disable_bn_in_resnet, num_steering_bins, imsize = \
-    None, None, None, None
+resblock_in_layers, disable_bn_in_resnet, num_steering_bins, num_acc_bins, imsize = \
+    None, None, None, None, None
 
 
 def set_globals():
     global gppn_l_i, gppn_l_h, gppn_k, gppn_f, input_channels_resnet, vanilla_resnet, resnet_width
-    global resblock_in_layers, disable_bn_in_resnet, num_steering_bins, imsize
+    global resblock_in_layers, disable_bn_in_resnet, num_steering_bins, num_acc_bins, imsize
     gppn_l_i = global_config.num_gppn_inputs
     gppn_l_h = global_config.num_gppn_hidden_channels
     gppn_k = global_config.num_gppn_iterations
@@ -48,6 +48,7 @@ def set_globals():
     resblock_in_layers = global_config.resblock_in_layers  # [2, 2, 2, 2]
     disable_bn_in_resnet = global_config.disable_bn_in_resnet  # False
     num_steering_bins = global_config.num_steering_bins  # 14
+    num_acc_bins = global_config.num_acc_bins  # 3
     imsize = 32  # default
 
 
@@ -147,6 +148,68 @@ class PolicyValueNet(torch.jit.ScriptModule):
 
     def __init__(self):
         super(PolicyValueNet, self).__init__()
+
+        self.car_gppn = GPPN.GPPN(l_i=gppn_l_i, l_h=gppn_l_h, k=gppn_k, f=gppn_f)
+
+        # 3 channels include the Value image and the 2 hist layers (idx 0 is value image)
+
+        self.resnet = resnet_modified.ResNetModified(layers=resblock_in_layers,
+                                                     ip_channels=input_channels_resnet,
+                                                     resnet_width_local=resnet_width)
+
+        self.pre_resnet = torch.jit.trace(nn.Sequential(
+            resnet_modified.BasicBlock(input_channels_resnet, input_channels_resnet),
+            resnet_modified.BasicBlock(input_channels_resnet, input_channels_resnet)),
+            torch.randn(1, input_channels_resnet, input_imsize, input_imsize))
+
+        self.value_head = ValueHead(inplanes=resnet_width)
+        self.acc_head = ActionHead(inplanes=resnet_width,
+                                   num_classes=num_acc_bins)
+        self.ang_head = ActionHead(inplanes=resnet_width,
+                                   num_classes=num_steering_bins)
+
+        self.ped_start, self.ped_end, self.gppn_end, self.hist_start, self.hist_end \
+            = get_input_slicing()
+
+    @torch.jit.script_method
+    def forward(self, X):
+        # def forward(self, X, batch_size = X.size(0), config):
+        # Input Tensor is of the form ==> batch_size * Agent * map/goal/hist * Width * height
+        # switches batch and agent dim in order to iterate over the agent dim
+
+        car_input = X.contiguous()
+
+        reshape_car_input = car_input
+
+        car_gppn_input = reshape_car_input[:, 0:self.gppn_end, :, :]  # with 4 ped maps and goal channel
+
+        # car_hist_data = reshape_car_input[:, self.hist_start:self.hist_end, :, :]  # with 4 hist channels
+
+        car_values = self.car_gppn(X=car_gppn_input)
+
+        # car_features = torch.cat((car_values, car_hist_data), 1).contiguous()  # stack the channels
+        car_features = car_values
+
+        car_res_features = self.pre_resnet(car_features)
+
+        res_image = self.resnet(car_res_features)
+
+        value = self.value_head(res_image)
+        acc = self.acc_head(res_image)
+        ang = self.ang_head(res_image)
+        return value, acc, ang, \
+               car_values[0], res_image[0]
+
+
+class PolicyValueNetHybrid(torch.jit.ScriptModule):
+    __constants__ = ['num_steering_bins', 'num_vel_bins',
+                     'num_acc_bins', 'output_channels_gppn', 'no_input_resnet',
+                     'num_resnet_out_features', 'imsize',
+                     'total_num_channels', 'num_hist_channels', 'gppn_end',
+                     'resblock_in_layers']
+
+    def __init__(self):
+        super(PolicyValueNetHybrid, self).__init__()
 
         self.car_gppn = GPPN.GPPN(l_i=gppn_l_i, l_h=gppn_l_h, k=gppn_k, f=gppn_f)
 

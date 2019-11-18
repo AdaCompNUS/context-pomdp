@@ -28,7 +28,7 @@ config.steering_resolution = 1.0/7.0  # no unit
 config.max_steering = 1.0  # no unit
 config.num_steering_bins = 2 * int(round(config.max_steering / config.steering_resolution))
 
-config.num_acc_bins = 14
+config.num_acc_bins = 3
 config.acc_resolution = 2.0 / config.num_acc_bins
 config.max_acc = 1.5  # in degrees
 
@@ -128,7 +128,7 @@ config.num_resnet_output = 256 * 4
 config.resblock_in_layers = [1, 1, 1, 2]
 config.resnet_width = 32
 # heads params
-config.head_mode = "hybrid"  # "categorical", "hybrid", "mdn"
+config.head_mode = "categorical"  # "categorical", "hybrid", "mdn"
 config.use_vel_head = False
 config.sigma_smoothing = 0.03
 config.num_guassians_in_heads = 5
