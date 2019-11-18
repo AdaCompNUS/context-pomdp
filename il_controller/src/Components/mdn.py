@@ -53,81 +53,18 @@ def validate_pi(pi):
 
 
 def validate_prob(prob, pi, mu, sigma):
-
-    if False:
-        print (prob.shape)
-        prob_sum = torch.sum(prob, dim=1, keepdim=True)
-        print (prob_sum.shape)
-
-        prob_sum = prob_sum.expand_as(pi)
-        print(prob_sum.shape)
-
-        print(mu.shape)
-        print(sigma.shape)
-        poses = np.where(prob_sum > 1)
-
-        if np.any(prob > 1):
-            entry = prob[poses]
-            print(entry)
-            entries = pi[poses]
-            print(entries)
-
-            prob_sum = prob_sum.unsqueeze(2)
-            prob_sum = prob_sum.expand_as(mu)
-            poses = np.where(prob_sum > 1)
-
-            entries_mu = mu[poses]
-            print(entries_mu)
-            entries_sigma = sigma[poses]
-            print(entries_sigma)
-
-        if np.any(prob <= 0):
-            entry = prob[np.where(prob <=0)][0]
-            print(entry)
+    if hasinf(prob) or hasnan(prob):
+        error_handler("inf or nan in prob")
+    if hasinf(pi) or hasnan(pi):
+        error_handler("inf or nan in pi")
+    if hasinf(mu) or hasnan(mu):
+        error_handler("inf or nan in mu")
+    if hasinf(sigma) or hasnan(sigma):
+        error_handler("inf or nan in sigma")
 
 
 def validate_prob1(prob, data, mu, sigma):
-
-    if False:
-        print(prob.shape)
-        print(mu.shape)
-        print(sigma.shape)
-
-        poses = np.where(prob > 1)
-
-        print(poses)
-
-        if np.any(prob > 1):
-            entry = prob[poses]
-            print(entry)
-
-            prob = prob.unsqueeze(2)
-            prob = prob.expand_as(mu)
-            poses = np.where(prob > 1)
-
-            entries_mu = mu[poses]
-            print(entries_mu)
-            entries_sigma = sigma[poses]
-            print(entries_sigma)
-            entries_data = data[poses]
-            print(entries_data)
-
-            entry_mu = entries_mu[0]
-            entry_sigma = entries_sigma[0]
-            entry_data = entries_data[0]
-
-            ret = -0.5 * ((entry_data - entry_mu) / entry_sigma) ** 2
-
-            ret1 = ONEOVERSQRT2PI * torch.exp(ret)
-            ret2 = ret1 / entry_sigma
-            entry_prob = ret2 # torch.prod(ret2, 2)
-
-            print(entry_prob, entry[0])
-
-
-        if np.any(prob <= 0):
-            entry = prob[np.where(prob <= 0)][0]
-            print(entry)
+    validate_prob(prob, data, mu, sigma)
 
 
 class MDN(nn.Module):
@@ -183,7 +120,8 @@ class MDN(nn.Module):
         # sigma = sigma + scalar
         sigma = torch.add(sigma, global_config.sigma_smoothing)
 
-        validate_sigma(sigma)
+        if hasnan(sigma) or hasinf(sigma):
+            error_handler("isnan in mdn forward")
 
         sigma = sigma.view(-1, self.num_gaussians, self.out_features)
 
@@ -308,10 +246,10 @@ def gaussian_probability_np(sigma, mu, data):
     probs = ret * 2
 
     return probs
-
-
-def isnan(x):
-    return x != x
+#
+#
+# def isnan(x):
+#     return x != x
 
 
 def mdn_loss(pi, sigma, mu, target):
@@ -330,6 +268,9 @@ def mdn_loss(pi, sigma, mu, target):
     safe_sum = torch.sum(prob, dim=1)
 
     safe_sum = safe_prob(safe_sum)
+
+    if hasinf(safe_sum) or hasnan(safe_sum):
+        error_handler("inf or nan in safe_sum")
 
     nll = -torch.log(safe_sum)
     # print(" mdn loss nll: ", nll)
