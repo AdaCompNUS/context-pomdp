@@ -17,7 +17,7 @@ res_output_imsize = 16  # example input
 head_mode_dict = {}
 head_mode_dict['mdn'] = 0
 head_mode_dict['hybrid'] = 1
-head_mode_dict['catergorical'] = 2
+head_mode_dict['categorical'] = 2
 head_mode = head_mode_dict[global_config.head_mode]
 
 gppn_l_i, gppn_l_h, gppn_k, gppn_f, input_channels_resnet, vanilla_resnet, resnet_width = \
@@ -153,14 +153,14 @@ class PolicyValueNet(torch.jit.ScriptModule):
 
         # 3 channels include the Value image and the 2 hist layers (idx 0 is value image)
 
-        self.resnet = resnet_modified.ResNetModified(layers=resblock_in_layers,
-                                                     ip_channels=input_channels_resnet,
-                                                     resnet_width_local=resnet_width)
-
         self.pre_resnet = torch.jit.trace(nn.Sequential(
             resnet_modified.BasicBlock(input_channels_resnet, input_channels_resnet),
             resnet_modified.BasicBlock(input_channels_resnet, input_channels_resnet)),
             torch.randn(1, input_channels_resnet, input_imsize, input_imsize))
+
+        self.resnet = resnet_modified.ResNetModified(layers=resblock_in_layers,
+                                                     ip_channels=input_channels_resnet,
+                                                     resnet_width_local=resnet_width)
 
         self.value_head = ValueHead(inplanes=resnet_width)
         self.acc_head = ActionHead(inplanes=resnet_width,
@@ -215,14 +215,14 @@ class PolicyValueNetHybrid(torch.jit.ScriptModule):
 
         # 3 channels include the Value image and the 2 hist layers (idx 0 is value image)
 
-        self.resnet = resnet_modified.ResNetModified(layers=resblock_in_layers,
-                                                     ip_channels=input_channels_resnet,
-                                                     resnet_width_local=resnet_width)
-
         self.pre_resnet = torch.jit.trace(nn.Sequential(
             resnet_modified.BasicBlock(input_channels_resnet, input_channels_resnet),
             resnet_modified.BasicBlock(input_channels_resnet, input_channels_resnet)),
             torch.randn(1, input_channels_resnet, input_imsize, input_imsize))
+
+        self.resnet = resnet_modified.ResNetModified(layers=resblock_in_layers,
+                                                     ip_channels=input_channels_resnet,
+                                                     resnet_width_local=resnet_width)
 
         self.value_head = ValueHead(inplanes=resnet_width)
         self.acc_head = ActionMdnHead(inplanes=resnet_width)

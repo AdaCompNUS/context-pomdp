@@ -119,6 +119,8 @@ def visualize_distribution(p, true_p, step, flag):
         if flag == "steering":
             num_bins = config.num_steering_bins
         elif flag == "acc":
+            min_val = -config.max_acc
+            max_val = config.max_acc
             num_bins = config.num_acc_bins
         elif flag == "vel":
             print("plotting velocity...")

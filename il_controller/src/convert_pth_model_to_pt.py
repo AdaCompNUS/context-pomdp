@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-compare_with_pytorch_version = False
+compare_with_pytorch_version = True
 
 from Components import GPPN, resnet_modified, mdn
 import torchscript_models
@@ -19,16 +19,21 @@ from policy_value_network import PolicyValueNet
 
 
 def compare_model_size():
-    pytorch_size = iter(PyTorch_module.state_dict())
-    ts_size = iter(TorchScript_module.state_dict())
-    checkpoint_size = iter(checkpoint['state_dict'])
-    print('\nOriginal Net Layers\nTorchScript Net Layers\nLoaded Net Layers\n')
-    for param_tensor in PyTorch_module.state_dict():
-        print(next(pytorch_size) + '\n' + next(ts_size) + '\n' + next(checkpoint_size))
-        print(PyTorch_module.state_dict()[param_tensor].size())
-        print(TorchScript_module.state_dict()[param_tensor].size())
-        print(checkpoint['state_dict']['module.' + param_tensor].size())
+    pytorch_dict = iter(PyTorch_module.state_dict())
+    ts_dict = iter(TorchScript_module.state_dict())
+    checkpoint_dict = iter(checkpoint['state_dict'])
+    print('Comparing: Original Net Layers / TorchScript Net Layers / Loaded Net Layers')
+    for param_tensor in TorchScript_module.state_dict():
+        py_size = PyTorch_module.state_dict()['module.' + param_tensor].size()
+        ts_size = TorchScript_module.state_dict()[param_tensor].size()
+        cp_size = checkpoint['state_dict']['module.' + param_tensor].size()
+        if py_size != ts_size or ts_size != cp_size:
+            print("param_tensor: {}".format(param_tensor))
+            print("py {}={}, ts {}={}, cp {}={}".format(
+                next(pytorch_dict), py_size, next(ts_dict), ts_size, next(checkpoint_dict), cp_size))
 
+        # print(checkpoint['state_dict'][param_tensor].size())
+    print("Comparison done")
 
 def init_pytorch_module(model_checkpoint):
     module = PolicyValueNet(cmd_args)
@@ -91,9 +96,14 @@ if __name__ == '__main__':
     print("parameters loaded")
 
     if compare_with_pytorch_version:
-        for p1, p2 in zip(PyTorch_module.parameters(), TorchScript_module.parameters()):
-            if p1.data.ne(p2.data).sum() > 0:
-                raise Exception('network parameters are not matching!')
+        print("Comparing parameter values in Pytorch and Torchscript modules...")
+        for (p1_name, p1), (p2_name, p2) in zip(PyTorch_module.named_parameters(), TorchScript_module.named_parameters()):
+            if p1.data.shape == p2.data.shape:
+                if p1.data.ne(p2.data).sum() > 0:
+                    raise Exception('network parameters are not matching!')
+            else:
+                print("Shape mismatch for param {} and {}".format(p1_name, p2_name))
+        print("Done.")
 
     test_input = torch.randn(
         [cmd_args.batch_size, 0 + 1, 6, cmd_args.imsize, cmd_args.imsize]).to(device)
