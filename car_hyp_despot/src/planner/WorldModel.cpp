@@ -1724,13 +1724,13 @@ void WorldStateTracker::tracIntention(Agent& des, const Agent& src, bool doPrint
 }
 
 void WorldStateTracker::trackVel(Agent& des, const Agent& src, bool& no_move, bool doPrint){
-    double duration =  src.time_stamp - des.time_stamp;
+    double duration =  src.ros_time_stamp - des.ros_time_stamp;
 
     if (duration < 0.001 / Globals::config.time_scale){
         no_move = false;
 
         DEBUG(string_sprintf("Update duration too short for agent %d: %f, (%f-%f)", 
-            src.id, duration, src.time_stamp, des.time_stamp));
+            src.id, duration, src.ros_time_stamp, des.ros_time_stamp));
         return;
     }
 
@@ -1738,8 +1738,8 @@ void WorldStateTracker::trackVel(Agent& des, const Agent& src, bool& no_move, bo
     des.vel.y = (src.h - des.h) / duration;
 
     if (Globals::config.use_prior) 
-        if (des.vel.Length()>3.0){
-            ERR(string_sprintf("WARNING: Unusual src for ped %d, speed: %f", src.id, des.vel.Length()));
+        if (des.vel.Length()>10.0){
+            ERR(string_sprintf("WARNING: Unusual velocity for ped %d, speed: %f, duration %f ", src.id, des.vel.Length(), duration));
         }
 
    if (des.vel.Length()>1e-4){
@@ -2118,9 +2118,10 @@ void WorldBeliefTracker::update() {
     // DEBUG("Update agent_beliefs");
     auto sorted_agents = stateTracker.getSortedAgents();
 
-    // DEBUG("");
-
-    // stateTracker.text(sorted_agents);
+    if (logging::level()>=4){
+    	logi << "belief update start" << endl;
+    	stateTracker.text(sorted_agents);
+    }
 
     map<int, const Agent*> newagents;
     for(WorldStateTracker::AgentDistPair& dp: sorted_agents) {
@@ -2158,8 +2159,10 @@ void WorldBeliefTracker::update() {
         }
     }    
 
-
-    // text(agent_beliefs);
+    if (logging::level()>=4){
+		text(agent_beliefs);
+	}
+    //
 
     // DEBUG("Run ORCA for all possible hidden variable combinations");
     model.PrepareAttentiveAgentMeanDirs(agent_beliefs, car);
@@ -2188,6 +2191,7 @@ void WorldBeliefTracker::update() {
     for(const auto& kv: newagents) {
 		auto& p = *kv.second;
         if (agent_beliefs.find(p.id) == agent_beliefs.end()) {
+        	logi << "Init belief entry for new agent " << p.id << endl;
             agent_beliefs[p.id] = model.initPedBelief(p);
         }
     }
@@ -2201,6 +2205,10 @@ void WorldBeliefTracker::update() {
 	}
 
 	cur_time_stamp = SolverPrior::get_timestamp();
+
+	if (logging::level()>=4){
+		logi << "belief update end" << endl;
+	}
 
     return;
 }
@@ -2309,6 +2317,7 @@ int AgentBelief::maxlikely_intention() const {
 
 void WorldBeliefTracker::printBelief() const {
     //return;
+	logi << sorted_beliefs.size() << " entries in sorted_beliefs:" << endl;
 	int num = 0;
     for(int i=0; i < sorted_beliefs.size() && i < ModelParams::N_PED_IN; i++) {
 		auto& p = *sorted_beliefs[i];
@@ -2806,7 +2815,7 @@ void WorldModel::add_veh_agent(AgentBelief& veh){
 void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents, CarStruct& car){
 	int num_agents = agents.size();
 
-	logi << "num_agents in belief tracker: " << num_agents << endl;
+	logi << "[PrepareAttentiveAgentMeanDirs] num_agents in belief tracker: " << num_agents << endl;
 
     if (num_agents == 0)
         return;

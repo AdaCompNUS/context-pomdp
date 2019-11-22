@@ -995,6 +995,7 @@ def create_dict_entry(idx, output_dict):
         'car': {
             'goal': None,
             'hist': None,
+            'car_state': None,
         },
         'cart_agents': None,
         'vel_steer': None,
@@ -1228,7 +1229,7 @@ def construct_path_data(path, origin, resolution, dim, down_sample_ratio):
 
 
 def construct_car_data(origin, resolution, dim, down_sample_ratio, hist_cars, path_data=None):
-    car_output_dict = {'goal': list([]), 'hist': []}
+    car_output_dict = {'goal': list([]), 'hist': [], 'car_state': []}
     try:
         # 'goal' contains the rescaled path in pixel points
         car_output_dict['goal'] = path_data['path']
@@ -1241,6 +1242,10 @@ def construct_car_data(origin, resolution, dim, down_sample_ratio, hist_cars, pa
 
                 car_points = get_car_points(hist_cars[i], origin, dim, down_sample_ratio, resolution, draw)
                 car_output_dict['hist'].append(car_points)
+        else:
+            for i in range(len(hist_cars)):
+                car_points = get_car_state_points(hist_cars[i], origin, dim, down_sample_ratio, resolution)
+                car_output_dict['car_state'].append(car_points)
 
     except Exception as e:
         error_handler(e)
@@ -1280,6 +1285,22 @@ def get_car_points(car, origin, dim_high_res, down_sample_ratio, resolution, dra
 
     return car_points
 
+
+def get_car_state_points(car, origin, dim_high_res, down_sample_ratio, resolution):
+    # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
+    car_state_points = None
+
+    if car is not None:
+        image_space_car_state = get_image_space_car_state(car, origin, resolution)
+        # construct the image
+        car_state_edge_pixels = fill_polygon_edges(image_space_car_state)
+        try:
+            car_state_points = get_pyramid_image_points(car_state_edge_pixels, dim_high_res, down_sample_ratio
+                                                  , draw_flag='car_state')
+        except Exception as e:
+            error_handler(e)
+
+    return car_state_points
 
 def get_image_points_local_pyramid(car_edge_points, dim_high_res, down_sample_ratio, print_time, start_time):
     # allocate high-res and low-res images
@@ -1328,6 +1349,18 @@ def get_image_space_car(car, origin, resolution):
 
     return np.asarray(X)
 
+def get_image_space_car_state(car, origin, resolution):
+    X = []
+
+    car_dir = (car.car_speed * math.cos(car.car_yaw), car.car_speed * math.sin(car.car_yaw))
+
+    x = (car.car_pos.x - origin[0]) / resolution
+    y = (car.car_pos.y - origin[1]) / resolution
+    X.append([x, y, 1])
+    x = (car.car_pos.x + car_dir[0] - origin[0]) / resolution
+    y = (car.car_pos.y + car_dir[1] - origin[1]) / resolution
+    X.append([x, y, 1])
+    return np.asarray(X)
 
 def get_image_space_obstacle(obs, origin, resolution):
     X = []

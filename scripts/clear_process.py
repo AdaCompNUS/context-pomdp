@@ -26,8 +26,8 @@ def clear_process(clear_outter=False, port=2000):
     print("[INFO] clear_process")
 
     clear_nodes(port)    
-    # subprocess.call('pkill -9 CarlaUE4-Linux-', shell=True)
-    # time.sleep(1)
+    subprocess.call('pkill -9 CarlaUE4-Linux-', shell=True)
+    time.sleep(1)
     subprocess.call('pkill -9 record', shell=True)
 
     # time.sleep(2)

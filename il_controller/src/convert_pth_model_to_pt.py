@@ -123,7 +123,7 @@ if __name__ == '__main__':
             for i in range(0, 10):
                 start = time.time()
                 test_input = torch.randn(
-                    [cmd_args.batch_size, 9, cmd_args.imsize, cmd_args.imsize]).to(
+                    [cmd_args.batch_size, 6, cmd_args.imsize, cmd_args.imsize]).to(
                     device)
 
                 if cmd_args.fit == 'all':

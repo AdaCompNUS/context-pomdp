@@ -201,8 +201,8 @@ struct hash<History> {
 	size_t operator()(const History& h) const {
 		size_t seed = 0;
 		for (int i = 0; i < h.Size(); i++) {
-			hash_combine(seed, h.Action(i));
-			hash_combine(seed, h.Observation(i));
+			hypdespot_hash_combine(seed, h.Action(i));
+			hypdespot_hash_combine(seed, h.Observation(i));
 		}
 		return seed;
 	}

@@ -7,11 +7,12 @@ port=$4
 launch_sim=$5
 record_bags=$6
 # maploc=beijing
-maploc=random
-# maploc=meskel_square
+# maploc=random
+maploc=meskel_square
 # mode=rollout
 mode=joint_pomdp
 # mode=gamma
+# mode=lets-drive
 rands=-1
 eps_len=60.0
 

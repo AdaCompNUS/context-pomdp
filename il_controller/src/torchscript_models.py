@@ -328,11 +328,18 @@ class ValueNet(torch.jit.ScriptModule):
     def __init__(self, batchsize):
         super(ValueNet, self).__init__()
 
-        self.resnet = resnet_modified.ResNet_2L(layers=resblock_in_layers,
-                                                ip_channels=input_channels_resnet,
-                                                resnet_width_local=resnet_width)
+        # self.resnet = resnet_modified.ResNet_2L(layers=resblock_in_layers,
+        #                                         ip_channels=input_channels_resnet,
+        #                                         resnet_width_local=resnet_width)
+        self.resnet = resnet_modified.ResNetModified(layers=resblock_in_layers,
+                                                     ip_channels=input_channels_resnet,
+                                                     resnet_width_local=resnet_width)
 
         self.value_head = ValueHead(inplanes=resnet_width)
+        self.acc_head = ActionHead(inplanes=resnet_width,
+                                   num_classes=num_acc_bins)
+        self.ang_head = ActionHead(inplanes=resnet_width,
+                                   num_classes=num_steering_bins)
 
         self.ped_start, self.ped_end, self.gppn_end, self.hist_start, self.hist_end \
             = get_input_slicing()

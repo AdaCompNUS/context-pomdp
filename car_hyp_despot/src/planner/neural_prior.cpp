@@ -2,7 +2,9 @@
 #define ONEOVERSQRT2PI 1.0 / sqrt(2.0 * M_PI)
 
 #include <errno.h>
+#include <sys/types.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 #include "ped_pomdp.h"
 #include "neural_prior.h"
@@ -12,6 +14,7 @@
 if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
 else despot::logging::stream(lv)
 #include <despot/util/logging.h>
+#include <cmath>
 
 double value_normalizer = 10.0;
 const char* window_name = "images";
@@ -23,6 +26,8 @@ bool do_print = false;
 
 int init_hist_len = 0;
 int max_retry_count = 3;
+
+int export_image_level = 3;
 
 ros::ServiceClient PedNeuralSolverPrior::nn_client_;
 ros::ServiceClient PedNeuralSolverPrior::nn_client_val_;
@@ -38,7 +43,6 @@ bool delectNAN(double v){
 
 	return false;
 }
-
 
 double SolverPrior::get_timestamp(){
 	return Globals::ElapsedTime(init_time_);
@@ -70,8 +74,9 @@ float radians(float degrees){
 }
 
 
-void fill_car_edges(Mat& image, vector<COORD>& points){
+void fill_polygon_edges(Mat& image, vector<COORD>& points){
 	float default_intensity = 1.0;
+//	int thickness = 1; // for debugging
 
 	logd << "image size "<< image.size[0]<<","<<image.size[0] << endl;
 
@@ -94,9 +99,8 @@ void fill_car_edges(Mat& image, vector<COORD>& points){
 	}
 }
 
-
 int img_counter = 0;
-std::string img_folder="/home/panpan/Unity/DESPOT-Unity/visualize";
+std::string img_folder="";
 
 void mkdir_safe(std::string dir){
 	if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
@@ -105,34 +109,74 @@ void mkdir_safe(std::string dir){
 	       // alredy exists
 	    } else {
 	       // something else
-	        std::cout << "cannot create sessionnamefolder error:" << strerror(errno) << std::endl;
-	        throw std::runtime_error( strerror(errno) );
+	        std::cout << "cannot create folder " << dir << " error:" << strerror(errno) << std::endl;
+	        ERR("");
 	    }
 	}
 }
 
-void export_image(Mat& image, string flag){
+bool dir_exist(string pathname){
+	struct stat info;
+
+	if( stat( pathname.c_str(), &info ) != 0 ) {
+	    printf( "cannot access %s\n", pathname );
+	    return false;
+	}
+	else if( info.st_mode & S_IFDIR ) {  // S_ISDIR() doesn't exist on my windows
+//	    printf( "%s is a directory\n", pathname );
+	    return true;
+	}
+	else {
+	    printf( "%s is no directory\n", pathname );
+	    return false;
+	}
+}
+
+void rm_files_in_folder(string folder) {
+    // These are data types defined in the "dirent" header
+    DIR *theFolder = opendir(folder.c_str());
+    struct dirent *next_file;
+    char filepath[256];
+
+    while ( (next_file = readdir(theFolder)) != NULL ) {
+        // build the path for each file in the folder
+        sprintf(filepath, "%s/%s", folder.c_str(), next_file->d_name);
+        cout << "Removing file " << filepath << endl;
+        remove(filepath);
+    }
+    closedir(theFolder);
+}
+
+void clear_image_folder() {
+	std::string homedir = getenv("HOME");
+	img_folder = homedir + "/catkin_ws/visualize";
 	mkdir_safe(img_folder);
+	rm_files_in_folder(img_folder);
+}
+
+void export_image(Mat& image, string flag){
+	logi << "[export_image] start" << endl;
 	std::ostringstream stringStream;
 	stringStream << img_folder << "/" << img_counter << "_" << flag << ".jpg";
 	std::string img_name = stringStream.str();
 
-//	double image_min, image_max;
-//	cv::minMaxLoc(image, &image_min, &image_max);
-//	logd << "saving image " << img_name << " with min-max values: "
-//			<< image_min <<", "<< image_max << endl;
+    Mat tmp = image.clone();
 
-//	cv::Mat for_save;
-//
-//	image.convertTo(for_save, CV_8UC3, 255.0);
-//
-//	imwrite( img_name , for_save);
+	double image_min, image_max;
+	cv::minMaxLoc(tmp, &image_min, &image_max);
+	logi << "saving image " << img_name << " with min-max values: "
+			<< image_min <<", "<< image_max << endl;
+
+	cv::Mat for_save;
+	tmp.convertTo(for_save, CV_8UC3, 255.0);
+	imwrite( img_name , for_save);
 
 //	imshow( img_name, image );
 //
 //	char c = (char)waitKey(0);
 //
 //	cvDestroyWindow((img_name).c_str());
+	logi << "[export_image] end" << endl;
 }
 
 void inc_counter(){
@@ -304,21 +348,21 @@ void PedNeuralSolverPrior::Init(){
 
     cerr << "DEBUG: Initializing Map image" << endl;
 
-    map_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
-
-    int index = 0;
-    for (std::vector<int8_t>::const_reverse_iterator iterator = raw_map_.data.rbegin();
-        iterator != raw_map_.data.rend(); ++iterator) {
-      int x = (map_prop_.dim - 1) - (size_t)(index / map_prop_.dim);
-      int y = (map_prop_.dim - 1) - (size_t)(index % map_prop_.dim);
-      assert(*iterator != -1);
-      map_image_.at<float>(x,y) = (float)(*iterator);
-      index++;
-    }
-
-    double minVal, maxVal;
-    minMaxLoc(map_image_, &minVal, &maxVal);
-    map_prop_.map_intensity = maxVal;
+    map_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1, cv::Scalar(0.0));
+    map_prop_.map_intensity = 1.0;
+//    int index = 0;
+//    for (std::vector<int8_t>::const_reverse_iterator iterator = raw_map_.data.rbegin();
+//        iterator != raw_map_.data.rend(); ++iterator) {
+//      int x = (map_prop_.dim - 1) - (size_t)(index / map_prop_.dim);
+//      int y = (map_prop_.dim - 1) - (size_t)(index % map_prop_.dim);
+//      assert(*iterator != -1);
+//      map_image_.at<float>(x,y) = (float)(*iterator);
+//      index++;
+//    }
+//
+//    double minVal, maxVal;
+//    minMaxLoc(map_image_, &minVal, &maxVal);
+//    map_prop_.map_intensity = maxVal;
 
     logd << "Map properties: " << endl;
     logd << "-dim " << map_prop_.dim << endl;
@@ -330,32 +374,36 @@ void PedNeuralSolverPrior::Init(){
 
     cerr << "DEBUG: Scaling map" << endl;
 
-    rescaled_map_ = rescale_image(map_image_);
-    normalize(rescaled_map_);
+    rescaled_map_ = cv::Mat(32, 32, CV_32FC1, cv::Scalar(0.0));
+
+//    rescaled_map_ = rescale_image(map_image_);
+//    normalize(rescaled_map_);
 
     cerr << "DEBUG: Initializing other images" << endl;
 
-    goal_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
+    path_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
+    lane_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
 
     for( int i=0;i<num_hist_channels;i++){
       map_hist_images_.push_back(cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1));
-      car_hist_images_.push_back(cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1));
+//      car_hist_images_.push_back(cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1));
     }
 
     map_hist_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
-    car_hist_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
+//    car_hist_image_ = cv::Mat(map_prop_.dim, map_prop_.dim, CV_32FC1);
 
     cerr << "DEBUG: Initializing tensors" << endl;
 
     empty_map_tensor_ = at::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
     map_tensor_ = at::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
-    goal_tensor = torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
+    path_tensor = torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
+    lane_tensor = torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat);
 
     logd << "[PedNeuralSolverPrior::Init] create tensors of size " <<map_prop_.new_dim<< ","<<map_prop_.new_dim<< endl;
     for( int i=0;i<num_hist_channels;i++){
 
       map_hist_tensor_.push_back(torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat));
-      car_hist_tensor_.push_back(torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat));
+//      car_hist_tensor_.push_back(torch::zeros({map_prop_.new_dim, map_prop_.new_dim}, at::kFloat));
 
       map_hist_links.push_back(NULL);
       car_hist_links.push_back(NULL);
@@ -363,7 +411,9 @@ void PedNeuralSolverPrior::Init(){
     }
 
     goal_link = NULL;
+    lane_link = NULL;
 
+    clear_image_folder();
     logd << "[PedNeuralSolverPrior::Init] end " << endl;
   }
 }
@@ -401,14 +451,7 @@ PedNeuralSolverPrior::PedNeuralSolverPrior(const DSPOMDP* model,
 	map_received = false;
 	drive_net = NULL;
 
-  if (Globals::config.use_prior){
 
-    logd << "[" << __FUNCTION__<< "] Testing model start" << endl;
-
-    Test_model("");
-
-    logd << "[" << __FUNCTION__<< "] Testing model end" << endl;
-  }
 }
 
 void PedNeuralSolverPrior::Load_model(std::string path){
@@ -433,7 +476,7 @@ void PedNeuralSolverPrior::Load_model(std::string path){
 	drive_net = std::make_shared<torch::jit::script::Module>(torch::jit::load(model_file));
 
 	if(drive_net == NULL)
-		raise(SIGABRT);
+		ERR("");
 
 	if (use_gpu_for_nn)
 		drive_net->to(at::kCUDA);
@@ -465,7 +508,7 @@ void PedNeuralSolverPrior::Load_value_model(std::string path){
 	drive_net_value = std::make_shared<torch::jit::script::Module>(torch::jit::load(value_model_file));
 
 	if(drive_net_value == NULL)
-		raise(SIGABRT);
+		ERR("");
 
 	if (use_gpu_for_nn)
 		drive_net_value->to(at::kCUDA);
@@ -473,6 +516,14 @@ void PedNeuralSolverPrior::Load_value_model(std::string path){
 	cerr << "DEBUG: Loaded model "<< value_model_file << endl;
 
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
+
+	if (Globals::config.use_prior){
+		logd << "[" << __FUNCTION__<< "] Testing model start" << endl;
+
+		Test_model("");
+
+		logd << "[" << __FUNCTION__<< "] Testing model end" << endl;
+	}
 }
 
 COORD PedNeuralSolverPrior::point_to_indices(COORD pos, COORD origin, double resolution, int dim) const{
@@ -482,6 +533,15 @@ COORD PedNeuralSolverPrior::point_to_indices(COORD pos, COORD origin, double res
     if (indices.x < 0 || indices.y < 0 ||
     		indices.x > (dim - 1) || indices.y > (dim - 1))
         return COORD(-1, -1);
+    return indices;
+}
+
+COORD PedNeuralSolverPrior::point_to_indices_unbounded(COORD pos, COORD origin, double resolution) const{
+//	logd << "[point_to_indices] " << endl;
+
+	COORD indices = COORD((pos.x - origin.x) / resolution,
+			(pos.y - origin.y) / resolution);
+
     return indices;
 }
 
@@ -498,48 +558,88 @@ void PedNeuralSolverPrior::add_in_map(cv::Mat map_image, COORD indices, double m
 
 }
 
-
-
-std::vector<COORD> PedNeuralSolverPrior::get_transformed_car(const CarStruct car, COORD origin, double resolution){
+std::vector<COORD> PedNeuralSolverPrior::get_image_space_agent(const AgentStruct agent,
+		COORD origin, double resolution, double dim){
 	auto start = Time::now();
 
-    float theta = car.heading_dir; // TODO: validate that python code is using [0, 2pi] as the range
-    float x = car.pos.x - origin.x;
-    float y = car.pos.y - origin.x;
+    float theta = agent.heading_dir;
+    float x = agent.pos.x;
+    float y = agent.pos.y;
 
-    logd << "======================theta: " << theta << endl;
-    logd << "======================x: " << x << endl;
-    logd << "======================y: " << y << endl;
+//    agent.text(logd);
+//    logd << "=========== transforming agent " << agent.id << "theta: " << theta << " x: " << x << " y: " << y << endl;
 
-    logd << "original: \n";
+    if (agent.bb_extent_y == 0){
+    	agent.text(cerr);
+    	ERR("agent.bb_extent_y == 0");
+    }
+
+    logd << "raw agent shape: \n";
+    vector<COORD> agent_shape({COORD(agent.bb_extent_y, agent.bb_extent_x),
+    							COORD(-agent.bb_extent_y, agent.bb_extent_x),
+    							COORD(-agent.bb_extent_y, -agent.bb_extent_x),
+    							COORD(agent.bb_extent_y, -agent.bb_extent_x)});
+	for (int i=0; i < agent_shape.size(); i++){
+	  logd << agent_shape[i].x << " " << agent_shape[i].y << endl;
+	}
+    // rotate and scale the agent
+
+	bool out_of_map = false;
+    vector<COORD> image_space_polygon;
+    for (auto &coord:agent_shape){
+    	vector<Point3f> original, rotated;
+    	original.push_back(Point3f(coord.x, coord.y, 1.0));
+    	rotated.resize(1);
+    	// rotate w.r.t its local coordinate system and transform to (x, y)
+    	cv::transform(original, rotated,
+    			cv::Matx33f(cos(theta), -sin(theta), x, sin(theta), cos(theta), y, 0, 0, 1));
+
+    	COORD image_space_indices = point_to_indices(COORD(rotated[0].x, rotated[0].y), origin, resolution, dim);
+    	image_space_polygon.push_back(image_space_indices);
+    	if (image_space_indices.x == -1 or image_space_indices.y == -1)
+    		out_of_map = true;
+    }
+
+	logd << "transformed: \n";
+	for (int i=0; i < image_space_polygon.size(); i++){
+		logd << image_space_polygon[i].x << " " << image_space_polygon[i].y << endl;
+	}
+
+	logd << "image origin " << origin.x << " " << origin.y << endl;
+
+	if (out_of_map) // agent out side of map should not be considered
+		image_space_polygon.resize(0);
+
+	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
+
+    return image_space_polygon;
+}
+
+std::vector<COORD> PedNeuralSolverPrior::get_image_space_car(const CarStruct car, COORD origin, double resolution){
+	auto start = Time::now();
+
+    logd << "car bb: \n";
 	for (int i=0; i < car_shape.size(); i++){
 	  logd << car_shape[i].x << " " << car_shape[i].y << endl;
 	}
     // rotate and scale the car
     vector<COORD> car_polygon;
-    for (int i=0; i < car_shape.size(); i++){
-//    	Point3f& original = car_shape[i];
-//    	Point3f rotated;
-    	vector<Point3f> original, rotated;
-    	original.push_back(car_shape[i]);
-    	rotated.resize(1);
-    	cv::transform(original, rotated,
-    			cv::Matx33f(cos(theta), -sin(theta), x, sin(theta), cos(theta), y, 0, 0, 1));
-    	car_polygon.push_back(COORD(rotated[0].x / resolution, rotated[0].y / resolution));
+    for (auto& point: car_shape){
+    	COORD indices = point_to_indices_unbounded(COORD(point.x, point.y),origin, resolution);
+    	car_polygon.push_back(indices);
     }
 
-	logd << "transformed: \n";
+	logd << "image space bb: \n";
 	for (int i=0; i < car_polygon.size(); i++){
 		logd << car_polygon[i].x << " " << car_polygon[i].y << endl;
 	}
-    // TODO: validate the transformation in test_opencv
 
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 
     return car_polygon;
 }
 
-void PedNeuralSolverPrior::Process_map(cv::Mat& src_image, at::Tensor& des_tensor, string flag){
+void PedNeuralSolverPrior::Process_image_to_tensor(cv::Mat& src_image, at::Tensor& des_tensor, string flag){
 	auto start = Time::now();
 
 	logd << "original "<< src_image.size[0] << src_image.size[1] << endl;
@@ -563,7 +663,7 @@ void PedNeuralSolverPrior::Process_map(cv::Mat& src_image, at::Tensor& des_tenso
 	logd << __FUNCTION__<<" copy " << Globals::ElapsedTime(start) << " s" << endl;
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 
-	if(logging::level()>=4){
+	if(logging::level()>=export_image_level + 1){
 		logd << "[Process_maps] des_tensor address "<< &des_tensor << endl;
 		export_image(rescaled_image, "Process_"+flag);
 		inc_counter();
@@ -586,7 +686,7 @@ void PedNeuralSolverPrior::Reuse_history(int new_channel, int start_channel, int
 //		}
 
 		map_hist_tensor_[new_channel] = map_hist_tensor_[old_channel];
-		car_hist_tensor_[new_channel] = car_hist_tensor_[old_channel];
+//		car_hist_tensor_[new_channel] = car_hist_tensor_[old_channel];
 
 		map_hist_links[new_channel] = map_hist_links[old_channel];
 		car_hist_links[new_channel] = car_hist_links[old_channel];
@@ -595,6 +695,72 @@ void PedNeuralSolverPrior::Reuse_history(int new_channel, int start_channel, int
 	}
 	else{
 		logd << "skipped" << endl;
+	}
+}
+
+void PedNeuralSolverPrior::Process_ego_car_images(
+		const vector<PomdpState*>& hist_states, const vector<int>& hist_ids) {
+	// DONE: Allocate num_history history images, each for a frame of car state
+	//		 Refer to python codes: bag_2_hdf5.get_transformed_car, fill_car_edges, fill_image_with_points
+	// DONE: get_transformed_car apply the current transformation to the car bounding box
+	//	     fill_car_edges fill edges of the car shape with dense points
+	//		 fill_image_with_points fills the corresponding entries in the images (with some intensity value)
+	for (int i = 0; i < hist_states.size(); i++) {
+		int hist_channel = hist_ids[i];
+		car_hist_images_[hist_channel].setTo(0.0);
+
+		logd << "[Process_states] reseting image for car hist " << hist_channel
+				<< endl;
+
+		if (hist_states[i]) {
+			logd << "[Process_states] processing car for hist " << hist_channel
+					<< endl;
+
+			CarStruct& car = hist_states[i]->car;
+
+			vector<COORD> transformed_car = get_image_space_car(car,
+					map_prop_.origin, map_prop_.resolution);
+			fill_polygon_edges(car_hist_images_[hist_channel], transformed_car);
+		}
+	}
+}
+
+void PedNeuralSolverPrior::Process_exo_agent_images(
+		const vector<PomdpState*>& hist_states, const vector<int>& hist_ids) {
+	for (int i = 0; i < hist_states.size(); i++) {
+
+		int hist_channel = hist_ids[i];
+
+		logd << "[Process_exo_agent_images] reseting image for map hist " << hist_channel
+				<< endl;
+
+		// clear data in the dynamic map
+		map_hist_images_[hist_channel].setTo(0.0);
+
+		// get the array of pedestrians (of length ModelParams::N_PED_IN)
+		if (hist_states[i]) {
+			logd << "[Process_exo_agent_images] start processing peds for "
+					<< hist_states[i] << endl;
+			//			pomdp_model->PrintState(*hist_states[i]);
+			auto& agent_list = hist_states[i]->agents;
+
+			logd << "[Process_exo_agent_images] iterating peds in agent_list="
+					<< &agent_list << endl;
+
+			for (int agent_id = 0; agent_id < ModelParams::N_PED_IN; agent_id++) {
+				// Process each pedestrian
+				AgentStruct agent = agent_list[agent_id];
+
+				if (agent.id != -1) {
+					// get position of the ped
+					auto image_space_coords = get_image_space_agent(agent,
+							map_prop_.origin, map_prop_.resolution, map_prop_.dim);
+
+					// put the point in the dynamic map
+					fill_polygon_edges(map_hist_images_[hist_channel], image_space_coords);
+				}
+			}
+		}
 	}
 }
 
@@ -611,155 +777,59 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 		return;
 	}
 	auto start_total = Time::now();
-
 	auto start = Time::now();
 
 	const PedPomdp* pomdp_model = static_cast<const PedPomdp*>(model_);
 	logd << "Processing states, len=" << hist_states.size() << endl;
 
-	for (int i = 0; i < hist_states.size(); i++) {
+	update_map_origin(hist_states[0]);
 
-		int hist_channel = hist_ids[i];
-
-		logd << "[Process_states] reseting image for map hist " << hist_channel << endl;
-
-		// clear data in the dynamic map
-		map_hist_images_[hist_channel].setTo(0.0);
-
-		// get the array of pedestrians (of length ModelParams::N_PED_IN)
-		if (hist_states[i]){
-			logd << "[Process_states] start processing peds for " << hist_states[i] << endl;
-//			pomdp_model->PrintState(*hist_states[i]);
-			auto& agent_list = hist_states[i]->agents;
-			int num_valid_ped = 0;
-
-			logd << "[Process_states] iterating peds in agent_list=" << &agent_list << endl;
-
-			for (int ped_id = 0; ped_id < ModelParams::N_PED_IN; ped_id++) {
-				// Process each pedestrian
-				AgentStruct ped = agent_list[ped_id];
-				// get position of the ped
-				COORD ped_indices = point_to_indices(ped.pos, map_prop_.origin, map_prop_.resolution, map_prop_.dim);
-				if (ped_indices.x == -1 or ped_indices.y == -1) // ped out of map
-					continue;
-				// put the point in the dynamic map
-				map_hist_images_[hist_channel].at<float>((int)round(ped_indices.y), (int)round(ped_indices.x))
-						= map_prop_.map_intensity * map_prop_.map_intensity_scale;
-			}
-		}
-	}
+	Process_exo_agent_images(hist_states, hist_ids);
 
 	logd << __FUNCTION__<<" Process ped images: " << Globals::ElapsedTime(start) << " s" << endl;
 	start = Time::now();
 
-	// DONE: Allocate 1 goal image (a tensor)
-	// DONE: Get path and fill into the goal image
-	//       Refer to python codes: bag_2_hdf5.construct_path_data, bag_2_hdf5.fill_image_with_points
-	//	     construct_path_data only calculates the pixel indices
-	//       fill_image_with_points fills the entries in the images (with some intensity value)
 	if (hist_states.size()==1 || hist_states.size()==4) { // only for current node states
-
-		goal_image_.setTo(0.0);
-
-		// get distance between cur car pos and car pos at root node
-		auto& cur_car_pos = hist_states[0]->car.pos;
-		float trav_dist_since_root = (cur_car_pos - root_car_pos_).Length();
-
-		logd << "[Process_states] processing path of size "<< world_model.path.size() << endl;
-
-		// remove points in path according to the car moving distance
-		Path path = world_model.path.copy_without_travelled_points(trav_dist_since_root);
-
-		// use the trimmed path for the goal image
-		logd << "[Process_states] after processing: path size "<< path.size() << endl;
-
-		for (int i = 0; i < path.size(); i++) {
-			COORD point = path[i];
-			// process each point
-			COORD indices = point_to_indices(point, map_prop_.origin, map_prop_.resolution, map_prop_.dim);
-			if (indices.x == -1 or indices.y == -1) // path point out of map
-				continue;
-			// put the point in the goal map
-			goal_image_.at<float>((int)round(indices.y), (int)round(indices.x)) = 1.0 * 1.0;
-		}
+		Process_path_image(hist_states[0]);
+		Process_lane_image(hist_states[0]);
 	}
 
 	logd << __FUNCTION__<<" Process Goal Image: " << Globals::ElapsedTime(start) << " s" << endl;
+
+//	start = Time::now();
+//	Process_ego_car_images(hist_states, hist_ids);
+//	logd << __FUNCTION__<<" Process Car Images: " << Globals::ElapsedTime(start) << " s" << endl;
+
 	start = Time::now();
-
-	// DONE: Allocate num_history history images, each for a frame of car state
-	//		 Refer to python codes: bag_2_hdf5.get_transformed_car, fill_car_edges, fill_image_with_points
-	// DONE: get_transformed_car apply the current transformation to the car bounding box
-	//	     fill_car_edges fill edges of the car shape with dense points
-	//		 fill_image_with_points fills the corresponding entries in the images (with some intensity value)
-	for (int i = 0; i < hist_states.size(); i++) {
-		int hist_channel = hist_ids[i];
-		car_hist_images_[hist_channel].setTo(0.0);
-
-		logd << "[Process_states] reseting image for car hist " << hist_channel << endl;
-
-		if (hist_states[i]){
-			logd << "[Process_states] processing car for hist " << hist_channel << endl;
-
-			CarStruct& car = hist_states[i]->car;
-			//     car vertices in its local frame
-			//      (-0.8, 0.95)---(3.6, 0.95)
-			//      |                       |
-			//      |                       |
-			//      |                       |
-			//      (-0.8, -0.95)--(3.6, 0.95)
-			// ...
-			vector<COORD> transformed_car = get_transformed_car(car, map_prop_.origin, map_prop_.resolution);
-			fill_car_edges(car_hist_images_[hist_channel],transformed_car);
-		}
-	}
-
-	logd << __FUNCTION__<<" Process Car Images: " << Globals::ElapsedTime(start) << " s" << endl;
-	start = Time::now();
-
-	// DONE: Now we have all the high definition images, scale them down to 32x32
-	//		 Refer to python codes bag_2_hdf5.rescale_image
-	//		 Dependency: OpenCV
-
 	logd << "[Process_states] re-scaling images to tensor " << endl;
 
 	if (hist_states.size()==1 || hist_states.size()==4){  // only for current node states
-		Process_map(goal_image_, goal_tensor, "path");
-		goal_link = nodes[0];
+		Process_image_to_tensor(path_image_, path_tensor, "path");
+		Process_image_to_tensor(lane_image_, lane_tensor, "lanes");
 
-//		logi << "[Process_states]  goal_tensor, address " << &goal_tensor<< endl;
-//		print_full( goal_tensor , "process_states_goal");
+		goal_link = nodes[0];
+		lane_link = nodes[0];
 	}
 	for (int i = 0; i < hist_states.size(); i++) {
 		int hist_channel = hist_ids[i];
 
 		logd << "[Process_states] create new data for channel " << hist_channel <<" by node "<< nodes[i]<< endl;
 
-		Process_map(map_hist_images_[hist_channel], map_hist_tensor_[hist_channel], "map_"+std::to_string(hist_channel));
-
-//		logi << "[Process_states]  map_hist_tensor_["<<hist_channel<<"], address " << &map_hist_tensor_[hist_channel]<< endl;
-//		print_full( map_hist_tensor_[hist_channel], "process_states_map_" + std::to_string(hist_channel));
-
-		Process_map(car_hist_images_[hist_channel], car_hist_tensor_[hist_channel], "car_"+std::to_string(hist_channel));
-
-//		logi << "[Process_states]  car_hist_tensor_["<<hist_channel<<"], address " << &car_hist_tensor_[hist_channel]<< endl;
-//		print_full( car_hist_tensor_[hist_channel], "process_states_car_" + std::to_string(hist_channel));
+		Process_image_to_tensor(map_hist_images_[hist_channel], map_hist_tensor_[hist_channel], "map_"+std::to_string(hist_channel));
+//		Process_image_to_tensor(car_hist_images_[hist_channel], car_hist_tensor_[hist_channel], "car_"+std::to_string(hist_channel));
 
 		map_hist_links[hist_channel] = nodes[i];
 		car_hist_links[hist_channel] = nodes[i];
 		hist_time_stamps[hist_channel] = hist_states[i]->time_stamp;
 
 		if (history_mode == "track"){
-			static_cast<Shared_VNode*>(nodes[i])->car_tensor = car_hist_tensor_[hist_channel];
+//			static_cast<Shared_VNode*>(nodes[i])->car_tensor = car_hist_tensor_[hist_channel];
 			static_cast<Shared_VNode*>(nodes[i])->map_tensor = map_hist_tensor_[hist_channel];
 		}
 //		if (nodes[i]->depth()==0 && hist_ids[i] > 0){
 //			Debug_state(hist_states[i], "Process states", model_);
 //		}
 	}
-
-//	logd << "[Process_states]  map_hist_tensor_["<<0<<"], address " << &map_hist_tensor_[0]<< endl;
-//	print_full( map_hist_tensor_[0]);
 
 	logd << __FUNCTION__<<" Scale Images: " << Globals::ElapsedTime(start) << " s" << endl;
 
@@ -769,7 +839,28 @@ void PedNeuralSolverPrior::Process_states(std::vector<despot::VNode*> nodes, con
 
 }
 
-at::Tensor PedNeuralSolverPrior::Process_state_to_map_tensor(const State* s){
+at::Tensor PedNeuralSolverPrior::Process_tracked_state_to_car_tensor(const State* s){
+	const PomdpState* agent_state = static_cast<const PomdpState*>(s);
+
+	car_hist_image_.setTo(0.0);
+
+	if (agent_state){
+		logd << "[Process_states] processing car for state " << s << endl;
+
+		const CarStruct& car = agent_state->car;
+
+		vector<COORD> transformed_car = get_image_space_car(car,
+							map_prop_.origin, map_prop_.resolution);
+		fill_polygon_edges(car_hist_image_, transformed_car);
+	}
+
+	at::Tensor car_tensor;
+	Process_image_to_tensor(car_hist_image_, car_tensor, "car_state_"+std::to_string(long(s)));
+
+	return car_tensor;
+}
+
+at::Tensor PedNeuralSolverPrior::Process_track_state_to_map_tensor(const State* s){
 	const PomdpState* agent_state = static_cast<const PomdpState*>(s);
 
 	map_hist_image_.setTo(0.0);
@@ -782,56 +873,84 @@ at::Tensor PedNeuralSolverPrior::Process_state_to_map_tensor(const State* s){
 
 		logd << "[Process_states] iterating peds in agent_list=" << &agent_list << endl;
 
-		for (int ped_id = 0; ped_id < ModelParams::N_PED_IN; ped_id++) {
+		for (int agent_id = 0; agent_id < ModelParams::N_PED_IN; agent_id++) {
 			// Process each pedestrian
-			AgentStruct ped = agent_list[ped_id];
-			// get position of the ped
-			COORD ped_indices = point_to_indices(ped.pos, map_prop_.origin, map_prop_.resolution, map_prop_.dim);
-			if (ped_indices.x == -1 or ped_indices.y == -1) // ped out of map
-				continue;
-			// put the point in the dynamic map
-			map_hist_image_.at<float>((int)round(ped_indices.y), (int)round(ped_indices.x))
-					= map_prop_.map_intensity * map_prop_.map_intensity_scale;
+			AgentStruct agent = agent_list[agent_id];
+
+			if (agent.id != -1) {
+				auto image_space_coords = get_image_space_agent(agent,
+						map_prop_.origin, map_prop_.resolution, map_prop_.dim);
+
+				// put the point in the dynamic map
+				fill_polygon_edges(map_hist_image_, image_space_coords);
+			}
 		}
 	}
 
 	at::Tensor map_tensor;
-	Process_map(map_hist_image_, map_tensor, "map_state_"+std::to_string(long(s)));
+	Process_image_to_tensor(map_hist_image_, map_tensor, "map_state_"+std::to_string(long(s)));
 
+	if(logging::level() >= export_image_level+1) {
+		export_image(map_hist_image_, "tracked_map");
+		inc_counter();
+	}
 	return map_tensor;
 }
 
-at::Tensor PedNeuralSolverPrior::Process_state_to_car_tensor(const State* s){
+at::Tensor PedNeuralSolverPrior::Process_tracked_state_to_lane_tensor(const State* s){
 	const PomdpState* agent_state = static_cast<const PomdpState*>(s);
 
-	car_hist_image_.setTo(0.0);
+	map_hist_image_.setTo(0.0);
 
+	// get the array of pedestrians (of length ModelParams::N_PED_IN)
 	if (agent_state){
-		logd << "[Process_states] processing car for state " << s << endl;
-
-		const CarStruct& car = agent_state->car;
-		//     car vertices in its local frame
-		//      (-0.8, 0.95)---(3.6, 0.95)
-		//      |                       |
-		//      |                       |
-		//      |                       |
-		//      (-0.8, -0.95)--(3.6, 0.95)
-		// ...
-		vector<COORD> transformed_car = get_transformed_car(car, map_prop_.origin, map_prop_.resolution);
-		fill_car_edges(car_hist_image_,transformed_car);
+		Process_lane_image(agent_state);
 	}
 
-	at::Tensor car_tensor;
-	Process_map(car_hist_image_, car_tensor, "car_state_"+std::to_string(long(s)));
+	at::Tensor lane_tensor;
+	Process_image_to_tensor(lane_image_, lane_tensor, "lanes_state_"+ std::to_string(long(s)));
 
-	return car_tensor;
+	if(logging::level() >= export_image_level + 1) {
+		export_image(lane_image_, "tracked_lanes");
+	}
+
+	return lane_tensor;
 }
 
-at::Tensor PedNeuralSolverPrior::Process_path_tensor(const State* s){
+void PedNeuralSolverPrior::Process_lane_image(const PomdpState* agent_state){
+	lane_image_.setTo(0.0);
 
+	auto& cur_car_pos = agent_state->car.pos;
+
+	logd << "[Process_lane_image] processing lane list of size "<< world_model.local_lane_segments_.size() << endl;
+
+	auto& lanes = world_model.local_lane_segments_;
+	for (auto& lane_seg: lanes) {
+		COORD image_space_start = point_to_indices_unbounded(
+				COORD(lane_seg.start.x, lane_seg.start.y), map_prop_.origin, map_prop_.resolution);
+		COORD image_space_end = point_to_indices_unbounded(
+				COORD(lane_seg.end.x, lane_seg.end.y), map_prop_.origin, map_prop_.resolution);
+
+		vector<COORD> tmp_polygon({image_space_start, image_space_end});
+
+		//TODO: check whether out-of-bound indices cause unexpected errors!!!!
+
+		fill_polygon_edges(lane_image_, tmp_polygon);
+	}
+}
+
+at::Tensor PedNeuralSolverPrior::Process_lane_tensor(const State* s){
 	const PomdpState* agent_state = static_cast<const PomdpState*>(s);
 
-	goal_image_.setTo(0.0);
+	Process_lane_image(agent_state);
+
+	Process_image_to_tensor(lane_image_, lane_tensor, "lanes_state_"+ std::to_string(long(s)));
+
+	return lane_tensor;
+}
+
+void PedNeuralSolverPrior::Process_path_image(const PomdpState* agent_state){
+	path_image_.setTo(0.0);
 
 	// get distance between cur car pos and car pos at root node
 	auto& cur_car_pos = agent_state->car.pos;
@@ -852,30 +971,39 @@ at::Tensor PedNeuralSolverPrior::Process_path_tensor(const State* s){
 		if (indices.x == -1 or indices.y == -1) // path point out of map
 			continue;
 		// put the point in the goal map
-		goal_image_.at<float>((int)round(indices.y), (int)round(indices.x)) = 1.0 * 1.0;
+		path_image_.at<float>((int)round(indices.y), (int)round(indices.x)) = 1.0 * 1.0;
 	}
+}
+
+
+at::Tensor PedNeuralSolverPrior::Process_path_tensor(const State* s){
+
+	const PomdpState* agent_state = static_cast<const PomdpState*>(s);
+
+	Process_path_image(agent_state);
 
 //	at::Tensor path_tensor;
-	Process_map(goal_image_, goal_tensor, "path_state_"+ std::to_string(long(s)));
+	Process_image_to_tensor(path_image_, path_tensor, "path_state_"+ std::to_string(long(s)));
 
-	return goal_tensor;
+	return path_tensor;
 }
 
 void PedNeuralSolverPrior::Add_tensor_hist(const State* s){
-	car_hist_.push_back(Process_state_to_car_tensor(s));
-	map_hist_.push_back(Process_state_to_map_tensor(s));
+	update_map_origin(static_cast<const PomdpState*>(s));
+//	car_hist_.push_back(Process_state_to_car_tensor(s));
+	map_hist_.push_back(Process_track_state_to_map_tensor(s));
+	Process_tracked_state_to_lane_tensor(s); //Just for debugging
 }
 
 void PedNeuralSolverPrior::Trunc_tensor_hist(int size){
-	car_hist_.resize(size);
+//	car_hist_.resize(size);
 	map_hist_.resize(size);
 }
 
 int PedNeuralSolverPrior::Tensor_hist_size(){
-	if (car_hist_.size() != map_hist_.size())
-		raise(SIGABRT);
-
-	return car_hist_.size();
+//	if (car_hist_.size() != map_hist_.size())
+//		ERR("");
+	return map_hist_.size();
 }
 
 std::vector<torch::Tensor> PedNeuralSolverPrior::Process_nodes_input(
@@ -942,7 +1070,7 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(despot::VNode* cur_node){
 //					", get depth "<< car_hist_links[i]->depth()<< endl;
 //
 //			if(car_hist_links[i] != parent && car_hist_links[i] != cur_node){
-//				raise(SIGABRT);
+//				ERR("");
 //			}
 //
 //			parent = (parent->parent()==NULL)?
@@ -950,7 +1078,7 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(despot::VNode* cur_node){
 //		}
 //	}catch (Exception e) {
 //		logd << " [error] !!!!!!!!!!!!!!!!"  << e.what() << endl;
-//		raise(SIGABRT);
+//		ERR("");
 //	}
 //
 //	logd << "[Compute] validating history, node level " << cur_node->depth() << endl;
@@ -960,40 +1088,46 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(despot::VNode* cur_node){
 //	cout << "[Combine] map channel 0 "<< endl;
 //	print_full(map_hist_tensor_[0], "map 0");
 //	print_full(map_hist_tensor_[1], "map 1");
-//	print_full(goal_tensor, "goal");
+//	print_full(path_tensor, "goal");
 //	print_full(car_hist_tensor_[0], "car 0");
 //	print_full(car_hist_tensor_[1], "car 1");
 
 	torch::Tensor result;
 
-	if (!goal_tensor.defined()){
+	if (!path_tensor.defined()){
 		cerr << "Empty path tensor" << endl;
-		raise(SIGABRT);
+		ERR("");
+	}
+
+	if (!lane_tensor.defined()){
+		cerr << "Empty lane tensor" << endl;
+		ERR("");
 	}
 
 	int i = 0;
 	for (at::Tensor& t: map_hist_tensor_){
 		if (!t.defined()){
 			cerr << "Empty map tensor channel " << i << endl;
-			raise(SIGABRT);
+			ERR("");
 		}
 		i++;
 	}
 
-	i = 0;
-	for (at::Tensor& t: car_hist_tensor_){
-		if (!t.defined()){
-			cerr << "Empty car tensor channel " << i << endl;
-			raise(SIGABRT);
-		}
-		i++;
-	}
+//	i = 0;
+//	for (at::Tensor& t: car_hist_tensor_){
+//		if (!t.defined()){
+//			cerr << "Empty car tensor channel " << i << endl;
+//			ERR("");
+//		}
+//		i++;
+//	}
 
 	try{
 
 		auto combined = map_hist_tensor_;
-		combined.push_back(goal_tensor);
-		combined.insert(combined.end(), car_hist_tensor_.begin(), car_hist_tensor_.end());
+		combined.push_back(lane_tensor);
+		combined.push_back(path_tensor);
+//		combined.insert(combined.end(), car_hist_tensor_.begin(), car_hist_tensor_.end());
 
 		result = torch::stack(combined, 0);
 	} catch (exception &e) {
@@ -1001,11 +1135,12 @@ torch::Tensor PedNeuralSolverPrior::Combine_images(despot::VNode* cur_node){
 
 		for (int i =0; i< map_hist_tensor_.size(); i++){
 			cerr << "Combine info: map_hist_tensor_["<< i << "] dims=" << map_hist_tensor_[i].sizes() << endl;
-			cerr << "Combine info: car_hist_tensor_["<< i << "] dims=" << car_hist_tensor_[i].sizes() << endl;
+//			cerr << "Combine info: car_hist_tensor_["<< i << "] dims=" << car_hist_tensor_[i].sizes() << endl;
 		}
-		cerr << "Combine info: goal_tensor dims=" << goal_tensor.sizes() << endl;
+		cerr << "Combine info: lane_tensor dims=" << lane_tensor.sizes() << endl;
+		cerr << "Combine info: path_tensor dims=" << path_tensor.sizes() << endl;
 
-		raise(SIGABRT);
+		ERR("");
 	}
 
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
@@ -1060,38 +1195,211 @@ void PedNeuralSolverPrior::Compute(vector<torch::Tensor>& input_batch, vector<de
 
 #include "GPU_Car_Drive/GPU_Init.h"
 
+void PedNeuralSolverPrior::Compute_val(torch::Tensor input_tensor,
+		const PedPomdp* ped_model, vector<despot::VNode*>& vnodes) {
+
+	auto start1 = Time::now();
+	std::vector<torch::jit::IValue> inputs;
+	inputs.push_back(input_tensor.to(at::kCUDA));
+
+	auto drive_net_output = drive_net_value->forward(inputs);
+	logd << "[Compute] Refracting value outputs " << endl;
+	auto value_batch = drive_net_output.toTensor().cpu();
+	value_batch = value_batch.squeeze(1);
+
+	logd << "[Compute] Refracting value outputs " << endl;
+
+	auto value_double = value_batch.accessor<float, 1>();
+
+	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+
+	logd << "Get value output " << value_batch << endl;
+
+	int node_id = -1;
+	for (std::vector<despot::VNode* >::iterator it = vnodes.begin();
+				it != vnodes.end(); it++) {
+		despot::VNode* vnode = *it;
+		node_id ++;
+
+		double prior_value = value_transform_inverse(value_double[node_id]) + ModelParams::GOAL_REWARD;
+		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
+		vnode->prior_value(prior_value);
+	}
+}
+
+void PedNeuralSolverPrior::Compute_pref(torch::Tensor input_tensor,
+		const PedPomdp* ped_model, vector<despot::VNode*>& vnodes) {
+
+	auto start1 = Time::now();
+	at::Tensor value_batch_dummy, acc_batch, ang_batch;
+	bool succeed = false;
+	int retry_count = 0;
+	while (!succeed) {
+		succeed = query_srv(vnodes.size(), input_tensor, value_batch_dummy,
+				acc_batch, ang_batch);
+		retry_count++;
+		if (!succeed) {
+			logi << "Action model query failed for nodes at level " <<
+					vnodes[0]->depth() << "!!!" << endl;
+			logi << "retry_count = " << retry_count << ", max_retry="
+					<< max_retry_count << endl;
+		}
+		if (retry_count == max_retry_count)
+			break;
+	}
+	if (!succeed) {
+		ERR("ERROR: NN query failure !!!!!");
+	}
+
+	logi << "Action model query succeeded for nodes at level " << vnodes[0]->depth() << endl;
+	logd << "[Compute] Updating prior with nn outputs " << endl;
+	int node_id = -1;
+	for (std::vector<despot::VNode*>::iterator it = vnodes.begin();
+			it != vnodes.end(); it++) {
+		despot::VNode* vnode = *it;
+		node_id++;
+
+		auto acc = acc_batch[node_id];
+		auto ang = ang_batch[node_id];
+		auto acc_float = acc.accessor<float, 1>();
+
+		if (logging::level() >= 3) {
+			cout << "large net raw acc output:" << endl;
+			for (int bin_idx = 0; bin_idx < acc.size(0); bin_idx++) {
+				if(delectNAN(acc_float[bin_idx])){
+					cout << "input_tensor: \n" << input_tensor << endl;
+					ERR("NAN detected in acc_float");
+				}
+				cout << "acc[" << bin_idx << "]=" << acc_float[bin_idx] << endl;
+			}
+		}
+
+		// TODO: Send nn_input_images_ to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
+
+		int num_accs = 2 * ModelParams::NumAcc + 1;
+		at::Tensor acc_logits_tensor = torch::ones( {num_accs}, at::kFloat);
+		for (int acc_id = 0; acc_id < num_accs; acc_id++) {
+			float query_acc = ped_model->GetAccelerationNoramlized(acc_id);
+			float onehot_resolution = 2.0 / float(num_accs);
+			int bin_idx = (int)(std::floor((query_acc + 1.0f) / onehot_resolution));
+			bin_idx = min(bin_idx, num_accs-1);
+			bin_idx = max(bin_idx, 0);
+			acc_logits_tensor[acc_id] = acc_float[bin_idx];
+			cout << "adding query acc: acc_logits_tensor_" << acc_id << "=acc_float_" << bin_idx
+					<< "=" << query_acc << endl;
+		}
+
+		auto acc_probs_tensor = at::_softmax(acc_logits_tensor, 0, false);
+		auto steer_probs_Tensor = at::_softmax(ang, 0, false);
+
+		Update_prior_probs(acc_probs_tensor, steer_probs_Tensor, vnode);
+	}
+}
+
+void PedNeuralSolverPrior::Compute_pref_hybrid(torch::Tensor input_tensor,
+		const PedPomdp* ped_model, vector<despot::VNode*>& vnodes) {
+
+	auto start1 = Time::now();
+	at::Tensor value_batch_dummy, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch;
+	bool succeed = false;
+	int retry_count = 0;
+	while (!succeed) {
+		succeed = query_srv_hybrid(vnodes.size(), input_tensor, value_batch_dummy,
+				acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
+		retry_count++;
+		if (!succeed) {
+			logi << "Root node action model query failed !!!" << endl;
+			logi << "retry_count = " << retry_count << ", max_retry="
+					<< max_retry_count << endl;
+		}
+		if (retry_count == max_retry_count)
+			break;
+	}
+	if (!succeed) {
+		cerr << "ERROR: NN query failure !!!!!" << endl;
+		raise (SIGABRT);
+	}
+	logi << "Root node action model query succeeded" << endl;
+	logd << "[Compute] Updating prior with nn outputs " << endl;
+	int node_id = -1;
+	for (std::vector<despot::VNode*>::iterator it = vnodes.begin();
+			it != vnodes.end(); it++) {
+		despot::VNode* vnode = *it;
+		node_id++;
+
+		auto acc_pi = acc_pi_batch[node_id];
+		auto acc_mu = acc_mu_batch[node_id];
+		auto acc_sigma = acc_sigma_batch[node_id];
+		auto ang = ang_batch[node_id];
+
+		if (logging::level() >= 3) {
+			logd << "large net raw acc output:" << endl;
+			auto acc_pi_float = acc_pi.accessor<float, 1>();
+			auto acc_mu_float = acc_mu.accessor<float, 2>();
+
+			for (int mode = 0; mode < acc_pi.size(0); mode++) {
+				logd << "mu[" << mode << "]=" << acc_mu_float[mode][0] << endl;
+			}
+			for (int mode = 0; mode < acc_pi.size(0); mode++) {
+				logd << "pi[" << mode << "]=" << acc_pi_float[mode] << endl;
+			}
+		}
+
+		// TODO: Send nn_input_images_ to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
+
+		int num_accs = 2 * ModelParams::NumAcc + 1;
+		at::Tensor acc_candiates = torch::ones( { num_accs, 1 }, at::kFloat);
+		for (int acc_id = 0; acc_id < num_accs; acc_id++) {
+			double query_acc = ped_model->GetAccelerationNoramlized(acc_id);
+			acc_candiates[acc_id][0] = query_acc;
+			logd << "adding query acc: " << acc_id << "=" << query_acc << endl;
+		}
+
+		int num_modes = acc_pi.size(0);
+
+		auto acc_pi_actions = acc_pi.unsqueeze(0).expand(
+				{ num_accs, num_modes });
+		auto acc_mu_actions = acc_mu.unsqueeze(0).expand( { num_accs, num_modes,
+				1 });
+		auto acc_sigma_actions = acc_sigma.unsqueeze(0).expand( { num_accs,
+				num_modes, 1 });
+
+		auto acc_probs_Tensor = gm_pdf(acc_pi_actions, acc_sigma_actions,
+				acc_mu_actions, acc_candiates);
+		auto steer_probs_Tensor = at::_softmax(ang, 0, false);
+
+		Update_prior_probs(acc_probs_Tensor, steer_probs_Tensor, vnode);
+	}
+}
+
 void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
 
 	auto start = Time::now();
 
 	torch::NoGradGuard no_grad;
-//	drive_net->eval();
 
-	// DONE: Send nn_input_images_ to drive_net, and get the policy and value output
 	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
-
 	logd << "[Compute] node depth " << vnodes[0]->depth() << endl;
 
-	if(logging::level()>=4){
+	if(logging::level()>=export_image_level+1) {
 		logd << "[Combine_images] vnodes[0]=" << vnodes[0]->depth() << endl;
 		string level = std::to_string(vnodes[0]->depth());
 		logd << "[Combine_images] exporting images" << endl;
 
-		export_image(goal_image_, "level" + level + "path");
+		export_image(path_image_, "level" + level + "path");
+		export_image(lane_image_, "level" + level + "lanes");
 		for (int i = 0; i < num_hist_channels; i++) {
 			int hist_channel = i;
 			export_image(map_hist_images_[hist_channel],
 					"level" + level + "_map_c" + std::to_string(hist_channel));
-			export_image(car_hist_images_[hist_channel],
-					"level" + level + "_car_c" + std::to_string(hist_channel));
+//			export_image(car_hist_images_[hist_channel],
+//					"level" + level + "_car_c" + std::to_string(hist_channel));
 		}
 		inc_counter();
 	}
 
 	logd << "[Compute] num_nodes = "
 						<< input_batch.size()<< endl;
-
-	std::vector<torch::jit::IValue> inputs;
 
 	torch::Tensor input_tensor;
 
@@ -1102,8 +1410,6 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 	input_tensor= input_tensor.contiguous();
 
-	inputs.push_back(input_tensor.to(at::kCUDA));
-
 	logd << "[Compute] contiguous cuda tensor \n" <<
 			input_tensor<< endl;
 
@@ -1113,116 +1419,13 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 	sync_cuda();
 
-	auto start1 = Time::now();
+	Compute_pref(input_tensor, ped_model, vnodes);
 
-//	auto drive_net_output = drive_net->forward(inputs).toTuple()->elements();
-//
-//	auto value_batch = drive_net_output[VALUE].toTensor().cpu();
-//	auto acc_pi_batch = drive_net_output[ACC_PI].toTensor().cpu();
-//	auto acc_mu_batch = drive_net_output[ACC_MU].toTensor().cpu();
-//	auto acc_sigma_batch = drive_net_output[ACC_SIGMA].toTensor().cpu();
-//	auto ang_batch = drive_net_output[ANG].toTensor().cpu();
-//
-//	value_batch = value_batch.squeeze(1);
+	Compute_val(input_tensor, ped_model, vnodes);
 
-	at::Tensor value_batch_dummy, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch;
-
-	bool succeed = false; int retry_count = 0;
-	while(!succeed) {
-		succeed = query_srv(vnodes.size(), input_tensor, value_batch_dummy, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
-		retry_count++;
-		if (!succeed){
-			logi << "Root node action model query failed !!!" << endl;
-			logi << "retry_count = " << retry_count
-					<< ", max_retry=" << max_retry_count << endl;
-		}
-		if(retry_count == max_retry_count)
-			break;
-	}
-
-	if (!succeed){
-		cerr << "ERROR: NN query failure !!!!!" << endl;
-		raise(SIGABRT);
-	}
-
-	logi << "Root node action model query succeeded" << endl;
-	///VALUE START/////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	auto drive_net_output = drive_net_value->forward(inputs);
-
-	logd << "[Compute] Refracting value outputs " << endl;
-	auto value_batch = drive_net_output.toTensor().cpu();
-
-	value_batch = value_batch.squeeze(1);
-
-	///VALUE END////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	logd << "[Compute] Refracting outputs " << endl;
-
-    auto value_double = value_batch.accessor<float, 1>();
-
-	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
-
-	logd << "Get value output " << value_batch << endl;
-
-    logd << "[Compute] Updating prior with nn outputs " << endl;
-
-	int node_id = -1;
 	for (std::vector<despot::VNode* >::iterator it = vnodes.begin();
-		        it != vnodes.end(); it++) {
+					it != vnodes.end(); it++) {
 		despot::VNode* vnode = *it;
-		node_id ++;
-
-		auto acc_pi = acc_pi_batch[node_id];
-		auto acc_mu = acc_mu_batch[node_id];
-		auto acc_sigma = acc_sigma_batch[node_id];
-		auto ang = ang_batch[node_id];
-
-		if (logging::level()>=3){
-			logd << "large net raw acc output:" << endl;
-			auto acc_pi_float = acc_pi.accessor<float, 1>();
-			auto acc_mu_float = acc_mu.accessor<float, 2>();
-
-			for (int mode = 0; mode < acc_pi.size(0); mode ++){
-				logd << "mu[" << mode <<"]=" << acc_mu_float[mode][0] << endl;
-			}
-			for (int mode = 0; mode < acc_pi.size(0); mode ++){
-				logd << "pi[" << mode <<"]=" << acc_pi_float[mode] << endl;
-			}
-		}
-
-		// TODO: Send nn_input_images_ to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
-
-		int num_accs = 2*ModelParams::NumAcc+1;
-		at::Tensor acc_candiates = torch::ones({num_accs, 1}, at::kFloat);
-		for (int acc_id = 0;  acc_id < num_accs; acc_id ++){
-			double query_acc = ped_model->GetAccelerationNoramlized(acc_id);
-			acc_candiates[acc_id][0] = query_acc;
-			logd << "adding query acc: "<< acc_id <<"="<< query_acc << endl;
-		}
-
-		int num_modes = acc_pi.size(0);
-
-		auto acc_pi_actions = acc_pi.unsqueeze(0).expand({num_accs, num_modes});
-		auto acc_mu_actions = acc_mu.unsqueeze(0).expand({num_accs, num_modes, 1});
-		auto acc_sigma_actions = acc_sigma.unsqueeze(0).expand({num_accs, num_modes, 1});
-
-		auto acc_probs_Tensor = gm_pdf(acc_pi_actions, acc_sigma_actions, acc_mu_actions, acc_candiates);
-
-        auto steer_probs_Tensor = at::_softmax(ang, 0, false);
-
-        Update_prior_probs(acc_probs_Tensor, steer_probs_Tensor, vnode);
-
-		// This is a patch !!!
-		// 0.3 is the confidence bound for the val net fitting error.
-		// Goal reward was not considered during val net training
-		// Thus adding it here
-		double prior_value = value_transform_inverse(value_double[node_id]) + ModelParams::GOAL_REWARD;
-
-		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
-
-		vnode->prior_value(prior_value);
-
 		vnode->prior_initialized(true);
 	}
 
@@ -1231,15 +1434,23 @@ void PedNeuralSolverPrior::ComputeMiniBatch(vector<torch::Tensor>& input_batch, 
 
 void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::Tensor& steer_probs_Tensor, despot::VNode* vnode){
 	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
+	cout << "acc probs = " << acc_probs_Tensor << endl;
 
 	logd << "normalizing acc probs" << endl;
 
     auto acc_sum = acc_probs_Tensor.sum();
     float acc_total_prob = acc_sum.data<float>()[0];
+
+    if(acc_total_prob < 0.01){
+    	ERR("acc_total_prob < 0.01");
+    }
+    if( delectNAN(acc_total_prob)){
+		ERR("NAN in acc_total_prob");
+	}
     acc_probs_Tensor = acc_probs_Tensor / acc_total_prob;
 
     if(2*ModelParams::NumSteerAngle != steer_probs_Tensor.size(0))
-    	raise(SIGABRT);
+    	ERR("");
 
     if (vnode->depth()==0) {
     	logd << "acc probs = " << acc_probs_Tensor << endl;
@@ -1272,6 +1483,11 @@ void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::
 		}
 	}
 
+	if(act_prob_total  < 0.01){
+		cerr << "act_prob_total=" << act_prob_total << endl;
+		ERR("act_prob_total unusual");
+	}
+
 	logd << "storing steer probs" << endl;
 
 	for (int steerID = 0; steerID < 2*ModelParams::NumSteerAngle + 1; steerID++){
@@ -1302,8 +1518,12 @@ void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::
 
 		float joint_prob = acc_prob * steer_prob;
 
+		if(delectNAN(acc_prob)){
+			cout << "act_prob_total=" << act_prob_total << " acc_prob=" << acc_probs_double[acc_ID] << endl;
+			ERR("NAN found in acc_prob");
+		}
 		if(delectNAN(joint_prob)){
-			raise(SIGABRT);
+			ERR("NAN found in joint_prob");
 		}
 
 		logd << "joint prob " << joint_prob << endl;
@@ -1339,7 +1559,7 @@ void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::
 		logd << action_probs_.size() << endl;
 
 		if(delectNAN(vnode->prior_action_probs(action)))
-			raise(SIGABRT);
+			ERR("");
 
 		if (vnode->depth() == 0)
 			action_probs_[action] = vnode->prior_action_probs(action); // store the root action priors
@@ -1375,7 +1595,7 @@ void PedNeuralSolverPrior::ComputePreference(vector<torch::Tensor>& input_batch,
 	else
 		ComputeMiniBatchPref(input_batch, vnodes);
 
-	logd << __FUNCTION__<< " " << vnodes.size() << " nodes "  << Globals::ElapsedTime(start) << " s" << endl;
+	logi << __FUNCTION__<< " " << vnodes.size() << " nodes "  << Globals::ElapsedTime(start) << " s" << endl;
 }
 
 void PedNeuralSolverPrior::ComputeMiniBatchPref(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
@@ -1389,122 +1609,49 @@ void PedNeuralSolverPrior::ComputeMiniBatchPref(vector<torch::Tensor>& input_bat
 	const PedPomdp* ped_model = static_cast<const PedPomdp*>(model_);
 
 	logd << "[ComputeMiniBatchPref] node depth " << vnodes[0]->depth() << endl;
-
-	if(logging::level()>=4){
-		logd << "[ComputeMiniBatchPref] vnodes[0]=" << vnodes[0]->depth() << endl;
-		string level = std::to_string(vnodes[0]->depth());
-		logd << "[ComputeMiniBatchPref] exporting images" << endl;
-
-		export_image(goal_image_, "level" + level + "path");
-		for (int i = 0; i < num_hist_channels; i++) {
-			int hist_channel = i;
-			export_image(map_hist_images_[hist_channel],
-					"level" + level + "_map_c" + std::to_string(hist_channel));
-			export_image(car_hist_images_[hist_channel],
-					"level" + level + "_car_c" + std::to_string(hist_channel));
-		}
-		inc_counter();
-	}
-
 	logd << "[ComputeMiniBatchPref] num_nodes = "
 						<< input_batch.size()<< endl;
 
-	std::vector<torch::jit::IValue> inputs;
-
 	torch::Tensor input_tensor;
-
 	input_tensor = torch::stack(input_batch, 0);
-
 	logd << "[ComputeMiniBatchPref] input_tensor dim = \n"
 							<< input_tensor.sizes()<< endl;
-
 	input_tensor= input_tensor.contiguous();
-
-	inputs.push_back(input_tensor.to(at::kCUDA));
-
 	logd << "[ComputeMiniBatchPref] contiguous cuda tensor \n" <<
 			input_tensor<< endl;
-
 	logd << __FUNCTION__<<" prepare data " << Globals::ElapsedTime(start) << " s" << endl;
-
 	logd << __FUNCTION__<<" query for "<< input_tensor.sizes() << " data " << endl;
 
 	sync_cuda();
 
 	auto start1 = Time::now();
 
-//	auto drive_net_output = drive_net->forward(inputs).toTuple()->elements();
-//
-////	auto value_batch = drive_net_output[VALUE].toTensor().cpu();
-//	auto acc_pi_batch = drive_net_output[ACC_PI].toTensor().cpu();
-//	auto acc_mu_batch = drive_net_output[ACC_MU].toTensor().cpu();
-//	auto acc_sigma_batch = drive_net_output[ACC_SIGMA].toTensor().cpu();
-//	auto ang_batch = drive_net_output[ANG].toTensor().cpu();
-//
-////	value_batch = value_batch.squeeze(1);
-////    auto value_double = value_batch.accessor<float, 1>();
+	Compute_pref(input_tensor, ped_model, vnodes);
 
-	at::Tensor value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch;
+	if(logging::level()>=export_image_level){
+		if (/*vnodes[0]->depth()==1*/true){
+			logd << "[ComputeMiniBatchPref] vnodes[0]=" << vnodes[0]->depth() << endl;
+			string level = std::to_string(vnodes[0]->depth());
+			logd << "[ComputeMiniBatchPref] exporting images" << endl;
 
-	bool succeed = false; int retry_count = 0;
-	while(!succeed) {
-		succeed = query_srv(vnodes.size(), input_tensor, value_batch, acc_pi_batch, acc_mu_batch, acc_sigma_batch, ang_batch);
-		retry_count++;
-		if (!succeed) {
-			logi << "Action model query failed !!!" << endl;
-			logi << "retry_count = " << retry_count
-								<< ", max_retry=" << max_retry_count << endl;
+//			export_image(path_image_, "level" + level + "path");
+			export_image(lane_image_, "level" + level + "lanes");
+
+//			if (num_hist_channels>0)
+//				export_image(map_hist_images_[0], "level" + level + "_map_c" + std::to_string(0));
+
+//			for (int i = 0; i < num_hist_channels; i++) {
+//				int hist_channel = i;
+//				export_image(map_hist_images_[hist_channel],
+//						"level" + level + "_map_c" + std::to_string(hist_channel));
+////				export_image(car_hist_images_[hist_channel],
+////						"level" + level + "_car_c" + std::to_string(hist_channel));
+//			}
+			inc_counter();
 		}
-		if(retry_count == max_retry_count)
-			break;
 	}
 
-	if (!succeed){
-		cerr << "ERROR: NN query failure !!!!!" << endl;
-		raise(SIGABRT);
-	}
-
-	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
-
-	logd << "[ComputeMiniBatchPref] Refracting outputs " << endl;
-
-//	logd << "Get value output " << value_batch << endl;
-
-    logd << "[ComputeMiniBatchPref] Updating prior with nn outputs " << endl;
-
-	int node_id = -1;
-	for (std::vector<despot::VNode* >::iterator it = vnodes.begin();
-		        it != vnodes.end(); it++) {
-		despot::VNode* vnode = *it;
-		node_id ++;
-
-		auto acc_pi = acc_pi_batch[node_id];
-		auto acc_mu = acc_mu_batch[node_id];
-		auto acc_sigma = acc_sigma_batch[node_id];
-		auto ang = ang_batch[node_id];
-
-		// TODO: Send nn_input_images_ to drive_net, and get the acc distribution (a guassian mixture (pi, sigma, mu))
-
-		int num_accs = 2*ModelParams::NumAcc+1;
-		at::Tensor acc_candiates = torch::ones({num_accs, 1}, at::kFloat);
-		for (int acc_id = 0;  acc_id < num_accs; acc_id ++){
-			acc_candiates[acc_id][0] = ped_model->GetAccelerationNoramlized(acc_id);
-		}
-
-		int num_modes = acc_pi.size(0);
-
-		auto acc_pi_actions = acc_pi.unsqueeze(0).expand({num_accs, num_modes});
-		auto acc_mu_actions = acc_mu.unsqueeze(0).expand({num_accs, num_modes, 1});
-		auto acc_sigma_actions = acc_sigma.unsqueeze(0).expand({num_accs, num_modes, 1});
-
-		auto acc_probs_Tensor = gm_pdf(acc_pi_actions, acc_sigma_actions, acc_mu_actions, acc_candiates);
-
-        auto steer_probs_Tensor = at::_softmax(ang, 0, false);
-
-        Update_prior_probs(acc_probs_Tensor, steer_probs_Tensor, vnode);
-	}
-
-	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
+	logi << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 }
 
 void PedNeuralSolverPrior::ComputeValue(vector<torch::Tensor>& input_batch, vector<despot::VNode*>& vnodes){
@@ -1544,26 +1691,25 @@ void PedNeuralSolverPrior::ComputeMiniBatchValue(vector<torch::Tensor>& input_ba
 
 	logd << "[ComputeValue] node depth " << vnodes[0]->depth() << endl;
 
-	if(logging::level()>=4){
+	if(logging::level()>=export_image_level + 1){
 		logd << "[Combine_images] vnodes[0]=" << vnodes[0]->depth() << endl;
 		string level = std::to_string(vnodes[0]->depth());
 		logd << "[Combine_images] exporting images" << endl;
 
-		export_image(goal_image_, "level" + level + "path");
+		export_image(path_image_, "level" + level + "path");
+		export_image(lane_image_, "level" + level + "lanes");
 		for (int i = 0; i < num_hist_channels; i++) {
 			int hist_channel = i;
 			export_image(map_hist_images_[hist_channel],
 					"level" + level + "_map_c" + std::to_string(hist_channel));
-			export_image(car_hist_images_[hist_channel],
-					"level" + level + "_car_c" + std::to_string(hist_channel));
+//			export_image(car_hist_images_[hist_channel],
+//					"level" + level + "_car_c" + std::to_string(hist_channel));
 		}
 		inc_counter();
 	}
 
 	logd << "[ComputeValue] num_nodes = "
 						<< input_batch.size()<< endl;
-
-	std::vector<torch::jit::IValue> inputs;
 
 	torch::Tensor input_tensor;
 
@@ -1574,50 +1720,15 @@ void PedNeuralSolverPrior::ComputeMiniBatchValue(vector<torch::Tensor>& input_ba
 
 	input_tensor= input_tensor.contiguous();
 
-	inputs.push_back(input_tensor.to(at::kCUDA));
-
 	logd << "[ComputeValue] contiguous cuda tensor \n" <<
 			input_tensor<< endl;
 
 	sync_cuda();
 
 	logd << __FUNCTION__<<" prepare data " << Globals::ElapsedTime(start) << " s" << endl;
-
-
 	logd << __FUNCTION__<<" query for "<< input_tensor.sizes() << " data " << endl;
 
-	auto start1 = Time::now();
-
-	auto drive_net_output = drive_net_value->forward(inputs);
-
-	logd << "[ComputeValue] Refracting outputs " << endl;
-	auto value_batch = drive_net_output.toTensor().cpu();
-
-	value_batch = value_batch.squeeze(1);
-    auto value_double = value_batch.accessor<float, 1>();
-
-	logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
-
-	logd << "Get value output " << value_batch << endl;
-
-    logd << "[ComputeValue] Updating prior with nn outputs " << endl;
-
-	int node_id = -1;
-	for (std::vector<despot::VNode* >::iterator it = vnodes.begin();
-		        it != vnodes.end(); it++) {
-		despot::VNode* vnode = *it;
-		node_id ++;
-
-		double prior_value = value_transform_inverse(value_double[node_id]);
-
-		logd << "assigning vnode " << vnode << " value " << prior_value << endl;
-
-		// this is a patch !!!
-		// goal reward was not counted during val net training
-		// so add it here
-		vnode->prior_value(prior_value + ModelParams::GOAL_REWARD);
-	}
-
+	Compute_val(input_tensor, ped_model, vnodes);
 	logd << __FUNCTION__<<" " << Globals::ElapsedTime(start) << " s" << endl;
 }
 
@@ -1700,7 +1811,7 @@ void PedNeuralSolverPrior::get_history_tensors(int mode, despot::VNode* cur_node
 
 	despot::VNode* parent = cur_node;
 
-	int t = car_hist_.size()-1; // latest pos in tensor history
+	int t = map_hist_.size()-1; // latest pos in tensor history
 
 	if (do_print){
 		Globals::lock_process();
@@ -1711,39 +1822,39 @@ void PedNeuralSolverPrior::get_history_tensors(int mode, despot::VNode* cur_node
 	for (int i = start_channel ; i< start_channel + num_history ; i++){
 		if (parent->parent()==NULL){ // root
 
-			if (!car_hist_[t].defined()){
-				cerr << "Empty car tensor hist, slot "<< t << endl;
-				raise(SIGABRT);
-			}
+//			if (!car_hist_[t].defined()){
+//				cerr << "Empty car tensor hist, slot "<< t << endl;
+//				ERR("");
+//			}
 
 			if (!map_hist_[t].defined()){
 				cerr << "Empty map tensor hist, slot "<< t << endl;
-				raise(SIGABRT);
+				ERR("");
 			}
 
-			car_hist_tensor_[i] = car_hist_[t];
+//			car_hist_tensor_[i] = car_hist_[t];
 			map_hist_tensor_[i] = map_hist_[t];
 
 			if (do_print){
 				Globals::lock_process();
-				logi << "Using tensor hist " << t << " of len " << car_hist_.size() << " as channel " << i << endl;
+				logi << "Using tensor hist " << t << " of len " << map_hist_.size() << " as channel " << i << endl;
 				Globals::unlock_process();
 			}
 
 			t--;
 		}else{
 
-			if (!static_cast<Shared_VNode*>(parent)->car_tensor.defined()){
-				cerr << "Empty car tensor hist, node "<< parent << endl;
-				raise(SIGABRT);
-			}
+//			if (!static_cast<Shared_VNode*>(parent)->car_tensor.defined()){
+//				cerr << "Empty car tensor hist, node "<< parent << endl;
+//				ERR("");
+//			}
 
 			if (!static_cast<Shared_VNode*>(parent)->map_tensor.defined()){
 				cerr << "Empty map tensor hist, node "<< parent << endl;
-				raise(SIGABRT);
+				ERR("");
 			}
 
-			car_hist_tensor_[i] = static_cast<Shared_VNode*>(parent)->car_tensor;
+//			car_hist_tensor_[i] = static_cast<Shared_VNode*>(parent)->car_tensor;
 			map_hist_tensor_[i] = static_cast<Shared_VNode*>(parent)->map_tensor;
 
 			if (do_print){
@@ -1757,14 +1868,14 @@ void PedNeuralSolverPrior::get_history_tensors(int mode, despot::VNode* cur_node
 	}
 
 	for (int i = start_channel ; i< start_channel + num_history ; i++){
-		if (!car_hist_tensor_[i].defined()){
-			cerr << "Empty car tensor, channel "<< i << endl;
-			raise(SIGABRT);
-		}
+//		if (!car_hist_tensor_[i].defined()){
+//			cerr << "Empty car tensor, channel "<< i << endl;
+//			ERR("");
+//		}
 
 		if (!map_hist_tensor_[i].defined()){
 			cerr << "Empty map tensor, channel "<< i << endl;
-			raise(SIGABRT);
+			ERR("");
 		}
 	}
 
@@ -1773,7 +1884,7 @@ void PedNeuralSolverPrior::get_history_tensors(int mode, despot::VNode* cur_node
 //			print_full(car_hist_tensor_[i], "get_history_tensor_car_" + std::to_string(i));
 //			print_full(map_hist_tensor_[i], "get_history_tensor_map_" + std::to_string(i));
 //		}
-//		print_full(goal_tensor, "get_history_tensor_goal");
+//		print_full(path_tensor, "get_history_tensor_goal");
 //	}
 }
 
@@ -1837,7 +1948,6 @@ void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::v
 		parents_to_fix_images.push_back(parent);
 	}
 
-
 	for (int i = reuse_ids.size()-1 ; i>=0 ; i--){
 		Reuse_history(reuse_ids[i], start_channel, mode);
 	}
@@ -1869,7 +1979,7 @@ void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::v
 //						<<  latest << ", " << hist_ids[i] << endl;
 //
 //				logd.flush();
-//				raise(SIGABRT);
+//				ERR("");
 //			}
 //		}
 
@@ -1917,7 +2027,7 @@ void PedNeuralSolverPrior::get_history(int mode, despot::VNode* cur_node, std::v
 		}
 	}catch (Exception e) {
 		logd << " [error] !!!!!!!!!!!!!!!!"  << e.what() << endl;
-		raise(SIGABRT);
+		ERR("");
 	}
 
 //	}
@@ -1964,39 +2074,6 @@ std::vector<torch::Tensor> PedNeuralSolverPrior::Process_history_input(despot::V
 
 	logd << "[Process_history_input], len=" << num_hist_channels << endl;
 
-//	int num_history = num_hist_channels;
-//
-//	// TODO: get the 4 latest history states
-//	vector<PomdpState*> hist_states;
-//	int latest=as_history_in_search_.Size()-1;
-//	for (int t = latest; t > latest - num_history && t>=0 ; t--){// process in reserved time order
-//		PomdpState* car_peds_state = static_cast<PomdpState*>(as_history_in_search_.state(t));
-//		hist_states.push_back(car_peds_state);
-//	}
-//
-//	logd << hist_states.size() <<" history states found" << endl;
-//
-//	// fill older history with empty states
-//	while (hist_states.size() < num_history){
-//		hist_states.push_back(NULL);
-//	}
-//
-//	vector<int> hist_ids;
-//	for (int i = 0 ; i<num_history ; i++)
-//		hist_ids.push_back(i);
-//
-//	for (int i = 0 ; i<num_history ; i++){
-//		logd << "hist state " << hist_states[i] << " hist_id " << hist_ids[i]<< endl;
-//	}
-//
-//	std::vector<despot::VNode*> cur_nodes_dup;
-//
-//	int count = 0;
-//	while(count < hist_ids.size()){
-//		cur_nodes_dup.push_back(cur_node);
-//		count++;
-//	}
-
 	if (history_mode == "track"){
 
 		if (do_print){
@@ -2042,7 +2119,66 @@ std::vector<torch::Tensor> PedNeuralSolverPrior::Process_history_input(despot::V
 //
 //}
 
-bool PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tensor& t_value, at::Tensor& t_acc_pi,
+bool PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tensor& t_value,
+		at::Tensor& t_acc, at::Tensor& t_ang){
+	int num_acc_bins = 2*ModelParams::NumAcc + 1;
+	int num_steer_bins = 2*ModelParams::NumSteerAngle;
+
+	t_value=torch::zeros({batchsize});
+	t_acc=torch::zeros({batchsize, num_acc_bins});
+	t_ang=torch::zeros({batchsize, num_steer_bins});
+
+	msg_builder::TensorData message;
+
+	message.request.tensor = std::vector<float>(images.data<float>(), images.data<float>() + images.numel());
+	message.request.batchsize = batchsize;
+	message.request.mode = "all";
+
+	logd << "calling service query" << endl;
+
+	if (nn_client_.call(message))
+	{
+		vector<float> value = message.response.value;
+		vector<float> acc = message.response.acc;
+		vector<float> ang = message.response.ang;
+
+		logd << "acc" << endl;
+		for (int id = 0 ; id< acc.size(); id++){
+			if (delectNAN(acc[id]))
+				return false;
+
+			int data_id = id / num_acc_bins;
+			int mode_id = id % num_acc_bins;
+			logd << acc[id] << " ";
+			if (mode_id == num_acc_bins -1){
+				logd << endl;
+			}
+
+			t_acc[data_id][mode_id]= acc[id];
+		}
+
+		logd << "ang" << endl;
+		for (int id = 0 ; id< ang.size(); id++){
+			if (delectNAN(ang[id]))
+				return false;
+
+			int data_id = id / num_steer_bins;
+			int bin_id = id % num_steer_bins;
+			logd << ang[id] << " ";
+			if (bin_id == num_steer_bins -1){
+				logd << endl;
+			}
+
+			t_ang[data_id][bin_id] = ang[id];
+		}
+
+		return true;
+	} else {
+		return false;
+	}
+}
+
+bool PedNeuralSolverPrior::query_srv_hybrid(int batchsize, at::Tensor images, at::Tensor& t_value, at::Tensor& t_acc_pi,
 		at::Tensor& t_acc_mu, at::Tensor& t_acc_sigma, at::Tensor& t_ang){
 	int num_guassian_modes = 5;
 	int num_steer_bins = 2*ModelParams::NumSteerAngle;
@@ -2053,7 +2189,7 @@ bool PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 	t_acc_sigma=torch::zeros({batchsize, num_guassian_modes, 1});
 	t_ang=torch::zeros({batchsize, num_steer_bins});
 
-	msg_builder::TensorData message;
+	msg_builder::TensorDataHybrid message;
 
 	message.request.tensor = std::vector<float>(images.data<float>(), images.data<float>() + images.numel());
 
@@ -2144,12 +2280,12 @@ bool PedNeuralSolverPrior::query_srv(int batchsize, at::Tensor images, at::Tenso
 	}
 }
 
-void PedNeuralSolverPrior::Test_all_srv(int batchsize, int num_guassian_modes, int num_steer_bins){
+void PedNeuralSolverPrior::Test_all_srv_hybrid(int batchsize, int num_guassian_modes, int num_steer_bins){
 	cerr << "Testing all model using ROS service, bs = " << batchsize << "..." << endl;
 
 	ros::NodeHandle n("~");
 
-	nn_client_ = n.serviceClient<msg_builder::TensorData>("/query");
+	nn_client_ = n.serviceClient<msg_builder::TensorDataHybrid>("/query");
 
 	logd << "waiting for /query service to be ready" << endl;
 
@@ -2159,11 +2295,11 @@ void PedNeuralSolverPrior::Test_all_srv(int batchsize, int num_guassian_modes, i
 
 		std::vector<torch::jit::IValue> inputs;
 
-		auto images = torch::ones({batchsize, 9, 32, 32});
+		auto images = torch::ones({batchsize, 6, 32, 32});
 
 		auto start1 = Time::now();
 
-		msg_builder::TensorData message;
+		msg_builder::TensorDataHybrid message;
 
 		message.request.tensor = std::vector<float>(images.data<float>(), images.data<float>() + images.numel());
 
@@ -2224,7 +2360,80 @@ void PedNeuralSolverPrior::Test_all_srv(int batchsize, int num_guassian_modes, i
 		else
 		{
 			ROS_ERROR("Failed to call service query");
-			raise(SIGABRT);
+			ERR("");
+		}
+
+		logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
+	}
+	cerr << "NN ROS servie test done." << endl;
+}
+
+void PedNeuralSolverPrior::Test_all_srv(int batchsize, int num_acc_bins, int num_steer_bins){
+	cerr << "Testing all model using ROS service, bs = " << batchsize << "..." << endl;
+
+	ros::NodeHandle n("~");
+
+	nn_client_ = n.serviceClient<msg_builder::TensorData>("/query");
+
+	logd << "waiting for /query service to be ready" << endl;
+
+	nn_client_.waitForExistence(ros::DURATION_MAX);
+
+	for (int i =0 ;i< 2 ; i++){
+
+		std::vector<torch::jit::IValue> inputs;
+
+		auto images = torch::ones({batchsize, 6, 32, 32});
+
+		auto start1 = Time::now();
+
+		msg_builder::TensorData message;
+
+		message.request.tensor = std::vector<float>(images.data<float>(), images.data<float>() + images.numel());
+		message.request.batchsize = batchsize;
+		message.request.mode = "all";
+
+		logd << "calling service query" << endl;
+
+		if (nn_client_.call(message))
+		{
+			vector<float> value = message.response.value;
+			vector<float> acc = message.response.acc;
+			vector<float> ang = message.response.ang;
+
+			logd << "value" << endl;
+			for (int i = 0 ; i< value.size(); i++){
+				logd << value[i] << " ";
+			}
+			logd << endl;
+
+			logd << "acc" << endl;
+			for (int id = 0 ; id< acc.size(); id++){
+				int data_id = id / num_acc_bins;
+				int mode_id = id % num_acc_bins;
+				logd << acc[id] << " ";
+				if (mode_id == num_acc_bins -1){
+					logd << endl;
+				}
+			}
+
+			logd << "ang" << endl;
+			for (int id = 0 ; id< ang.size(); id++){
+				int data_id = id / num_steer_bins;
+				int bin_id = id % num_steer_bins;
+				logd << ang[id] << " ";
+				if (bin_id == num_steer_bins -1){
+					logd << endl;
+				}
+			}
+			logd << endl;
+
+//			ROS_INFO("value: %f", (long int)message.response.value[0]);
+		}
+		else
+		{
+			ROS_ERROR("Failed to call service query");
+			ERR("");
 		}
 
 		logd << "nn query in " << Globals::ElapsedTime(start1) << " s" << endl;
@@ -2249,7 +2458,7 @@ void PedNeuralSolverPrior::Test_val_srv(int batchsize, int num_guassian_modes, i
 
 		std::vector<torch::jit::IValue> inputs;
 
-		auto images = torch::ones({batchsize, 9, 32, 32});
+		auto images = torch::ones({batchsize, 6, 32, 32});
 
 		auto start1 = Time::now();
 
@@ -2277,7 +2486,7 @@ void PedNeuralSolverPrior::Test_val_srv(int batchsize, int num_guassian_modes, i
 		}
 		else{
 			ROS_ERROR("Failed to call service /query_val");
-			raise(SIGABRT);
+			ERR("");
 		}
 	}
 }
@@ -2304,7 +2513,7 @@ void PedNeuralSolverPrior::Test_all_libtorch(int batchsize, int num_guassian_mod
 
 		std::vector<torch::jit::IValue> inputs;
 
-		auto images = torch::ones({batchsize, 9, 32, 32});
+		auto images = torch::ones({batchsize, 6, 32, 32});
 
 		auto start1 = Time::now();
 
@@ -2370,24 +2579,19 @@ void PedNeuralSolverPrior::Test_all_libtorch(int batchsize, int num_guassian_mod
 }
 
 void PedNeuralSolverPrior::Test_val_libtorch(int batchsize, int num_guassian_modes, int num_steer_bins){
-	batchsize = 128;
-	cerr << "Testing value model via libtorch, bs = " << batchsize << endl;
-	string path = "/home/yuanfu/Unity/DESPOT-Unity/jit_val.pt";
-	if( !is_file_exist(path)){
-		path = "/home/panpan/Unity/DESPOT-Unity/jit_val.pt";
-	}
 
-	logd << "[Test_model] Loading value model "<< path << endl;
-	auto val_net = std::make_shared<torch::jit::script::Module>(torch::jit::load(path));
-	val_net->to(at::kCUDA);
-	assert(val_net);
+	logi << "Testing libtorch value model" << endl;
+//	logd << "[Test_model] Loading value model "<< path << endl;
+//	auto drive_net_value = std::make_shared<torch::jit::script::Module>(torch::jit::load(path));
+	drive_net_value->to(at::kCUDA);
+	assert(drive_net_value);
 
 	Globals::lock_process();
 	for (int i =0 ;i< 1 ; i++){
 
 		std::vector<torch::jit::IValue> inputs;
 
-		auto images = torch::ones({batchsize, 9, 32, 32});
+		auto images = torch::ones({batchsize, 6, 32, 32});
 
 		auto start1 = Time::now();
 
@@ -2395,7 +2599,7 @@ void PedNeuralSolverPrior::Test_val_libtorch(int batchsize, int num_guassian_mod
 
 		logd << "[Test_model] Query nn for "<< inputs.size() << " tensors of dim" << inputs[0].toTensor().sizes() << endl;
 
-		auto drive_net_output = val_net->forward(inputs);
+		auto drive_net_output = drive_net_value->forward(inputs);
 
 		auto value_batch = drive_net_output.toTensor().cpu();
 		auto value_batch_double = value_batch.accessor<float,2>();
@@ -2414,19 +2618,6 @@ void PedNeuralSolverPrior::Test_val_libtorch(int batchsize, int num_guassian_mod
 
 void PedNeuralSolverPrior::Test_model(string path){
 
-//	sio::client query_client;
-//	query_client.connect("http://127.0.0.1:8080");
-
-
-//	if (drive_net){
-//		logd << "[Test_model] Testing drive_net loaded in prior " << endl;
-//		net = drive_net;
-//	}
-//	else{
-//		logd << "[Test_model]  drive net not ready yet!!!!!!!!!!!!!!!" << endl;
-//		exit(1);
-//	}
-
 	logd << "[Test_model] Query " << endl;
 
 	torch::NoGradGuard no_grad;
@@ -2434,11 +2625,12 @@ void PedNeuralSolverPrior::Test_model(string path){
 	int batchsize = 1;
 
 	int num_guassian_modes = 5;
+	int num_acc_bins = 2*ModelParams::NumAcc + 1;
 	int num_steer_bins = 2*ModelParams::NumSteerAngle;
 
-	Test_all_srv(batchsize, num_guassian_modes, num_steer_bins);
+	Test_all_srv(batchsize, num_acc_bins, num_steer_bins);
 
-//	Test_val_srv(batchsize, num_guassian_modes, num_steer_bins);
+//	Test_val_srv_hybrid(batchsize, num_guassian_modes, num_steer_bins);
 
 //	Test_all_libtorch(batchsize, num_guassian_modes, num_steer_bins);
 
@@ -2468,7 +2660,7 @@ void Debug_state(State* state, string msg, const DSPOMDP* model){
 		DESPOT::Debug_mode = mode;
 
 		cerr << "=================== " << msg << " breakpoint ==================="<< endl;
-		raise(SIGABRT);
+		ERR("");
 	}
 }
 
@@ -2515,7 +2707,7 @@ void PedNeuralSolverPrior::compare_history_with_recorded(){
 
 	if (as_history_in_search_.Size() != as_history_in_search_recorded.Size()){
 		cerr << "ERROR: history length changed after search!!!" << endl;
-		raise(SIGABRT);
+		ERR("");
 	}
 	for (int i = 0 ;i<as_history_in_search_recorded.Size(); i++){
 		PomdpState* recorded_hist_state =  static_cast<PomdpState*>(as_history_in_search_recorded.state(i));
@@ -2528,7 +2720,7 @@ void PedNeuralSolverPrior::compare_history_with_recorded(){
 			static_cast<const PedPomdp*>(model_)->PrintState(*recorded_hist_state, "Recorded hist state");
 			static_cast<const PedPomdp*>(model_)->PrintState(*hist_state, "Hist state");
 
-			raise(SIGABRT);
+			ERR("");
 		}
 	}
 }
@@ -2573,7 +2765,7 @@ void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt
 			// all steering colliding, use default steering
 			opt_steer_id = static_cast<const PedPomdp*>(model_)->GetSteeringID(
 				vnode->default_move().action);
-			// raise(SIGABRT);
+			// ERR("");
 		}
 
 		// if(prior_id_ == 0)
@@ -2605,7 +2797,7 @@ void PedNeuralSolverPrior::Get_force_steer_action(despot::VNode* vnode, int& opt
 		// cout << "returning" << endl;
 	}catch(std::exception e){
 		cerr << "Error: " << e.what() << endl;
-		raise(SIGABRT);
+		ERR("");
 	}
 }
 
@@ -2652,7 +2844,7 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 
 	if (dir_diff > 2* M_PI){
 		cerr << "[update_cmds_naive] Angle error" << endl;
-		raise(SIGABRT);
+		ERR("");
 	} else if (dir_diff > M_PI){
 		dir_diff = 2 * M_PI - dir_diff;
 	}
@@ -2702,3 +2894,18 @@ void PedNeuralSolverPrior::Check_force_steer(double car_heading, double path_hea
 		}
 	}
 }
+
+void PedNeuralSolverPrior::update_ego_car_shape(vector<geometry_msgs::Point32> points) {
+	car_shape.resize(0);
+	for (auto &point: points){
+		car_shape.push_back(cv::Point3f(point.x, point.y, 1.0));
+	}
+}
+
+void PedNeuralSolverPrior::update_map_origin(const PomdpState* agent_state){
+	map_prop_.origin = agent_state->car.pos - COORD(20.0, 20.0);
+
+	logd << "Resetting image origin to car position: " << map_prop_.origin.x << " " <<
+			map_prop_.origin.y << endl;
+}
+

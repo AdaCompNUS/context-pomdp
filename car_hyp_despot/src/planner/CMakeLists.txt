@@ -49,6 +49,7 @@ include_directories(
    ../../HypDespot/include/
    ./
    GPU_Car_Drive/
+   ../crowd_pomdp_planner/src/carla/
 )
 message("@@@@@@@@@@@@@@ before add lib @@@@@@@@@@@@@@")
 

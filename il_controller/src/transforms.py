@@ -90,6 +90,12 @@ class PopulateImages(object):
                     for point in src_entry['hist'][ts]:
                         output_arr[i, config.channel_hist[ts], int(
                             point[0]), int(point[1])] = point[2]
+            else:
+                for ts in range(config.num_hist_channels):
+                    for point in src_entry['car_state'][ts]:
+                        output_arr[i, config.channel_map[ts], int(
+                            point[0]), int(point[1])] = point[2]
+
         except Exception as e:
             print(e)
 

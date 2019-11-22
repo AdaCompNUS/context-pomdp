@@ -45,7 +45,7 @@ double DESPOT::Initial_root_gap;
 bool DESPOT::Debug_mode = false;
 bool DESPOT::Print_nodes = false;
 
-int max_trial = 100000;
+int max_trial = 1; // debugging
 
 int stop_count=0;
 
@@ -551,10 +551,10 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 		print_queue.send(root);
 
 //		if (DESPOT::Debug_mode || FIX_SCENARIO == 1)
-			if (num_trials == max_trial){
-				cout << "Reaching max trials, stopping search" << endl;
-				break;
-			}
+		if (num_trials == max_trial){
+			cout << "Reaching max trials, stopping search" << endl;
+			break;
+		}
 	} while (used_time /** (num_trials + 1.0) / num_trials*/ < timeout
 	         && !Globals::Timeout(Globals::config.time_per_move)
 	         && (((VNode*) root)->upper_bound() - ((VNode*) root)->lower_bound())

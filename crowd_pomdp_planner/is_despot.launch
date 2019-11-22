@@ -14,6 +14,7 @@
         <param name = "gpu_id" value="$(arg gpu_id)" />
 	    <param name = "obstacle_file_name" value="$(arg obstacle_file_name)" />
 	    <param name = "goal_file_name" value="$(arg goal_file_name)" />
+	    <param name = "map_location" value="$(arg map_location)" />
 		<remap from="pomdp_path_repub" to="new_global_plan"/>
 		<remap from="navgoal" to="/move_base_simple/goal"/>
         <!-- <remap from="odom" to="odom"/> -->
@@ -22,7 +23,7 @@
         <param name = "time_scale" value="$(arg time_scale)" />
         <param name = "model" value="$(arg model_file_name)" />
         <param name = "val_model" value="$(arg val_model_name)" />
-        
+        <param name = "carla_port" value="$(arg carla_port)" />    
 	 </node>
 
 	 <node name="ped_momdp_local_transform" pkg="crowd_pomdp_planner" type="local_frame"  >

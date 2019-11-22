@@ -153,8 +153,8 @@ public:
 
 	virtual void root_car_pos(double x, double y) = 0;
 
-	virtual at::Tensor Process_state_to_map_tensor(const State* s) = 0;
-	virtual at::Tensor Process_state_to_car_tensor(const State* s) = 0;
+	virtual at::Tensor Process_track_state_to_map_tensor(const State* s) = 0;
+	virtual at::Tensor Process_tracked_state_to_car_tensor(const State* s) = 0;
 
 	virtual at::Tensor last_car_tensor() = 0;
 	virtual void add_car_tensor(at::Tensor) = 0;

@@ -68,15 +68,22 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 
     n.param("use_drivenet", Controller::b_use_drive_net_, 0);
     n.param("gpu_id", Controller::gpu_id_, 0);
+    n.param<int>("carla_port", Controller::carla_port_, 0);
     n.param<std::string>("model", Controller::model_file_, "");
     n.param<std::string>("val_model", Controller::value_model_file_, "");
 
     n.param<float>("time_scale", Controller::time_scale_, 1.0);
 
+    // Carla related params
+    n.param<std::string>("map_location", Controller::map_location_, "");
+
+
     cerr << "DEBUG: Params list: " << endl;
     cerr << "-use_drivenet " << Controller::b_use_drive_net_ << endl;
     cerr << "-model " << Controller::model_file_ << endl;
     cerr << "-time_scale " << Controller::time_scale_ << endl;
+    cerr << "-carla_port " << Controller::carla_port_ << endl;
+    cerr << "-map_location " << Controller::map_location_ << endl;
 
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
 	controller = new Controller(nh, fixed_path, pruning_constant, pathplan_ahead, obstacle_file_name);

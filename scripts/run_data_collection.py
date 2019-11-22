@@ -9,6 +9,7 @@ import time
 import signal
 from os.path import expanduser
 from clear_process import clear_process, clear_nodes
+import copy
 
 sim_mode = "carla"  # "unity"
 
@@ -47,6 +48,8 @@ pomdp_proc = None
 monitor_worker = None
 
 Timeout_inner_monitor_pid, Timeout_monitor_pid = None, None
+
+search_log_name = None 
 
 NO_NET = 0
 IMITATION = 1
@@ -171,7 +174,7 @@ def parse_cmd_args():
                         help='Drive net model name')
     parser.add_argument('--val_model',
                         type=str,
-                        default='model_val.pth',
+                        default=os.path.join(home, nn_folder) + '/trained_models/test_model_val.pt',
                         help='Drive net value model name')
     parser.add_argument('--t_scale',
                         type=float,
@@ -1296,11 +1299,11 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
     run_query_val_srvs = False
 
     query_proc, query_out, query_val_proc, query_val_out = None, None, None, None
-    if run_query_srvs:
 
-        shell_cmd = 'python3 query.py --batch_size 128 --lr 0.0001 --no_vin 0 --l_h 100 --vinout 28 --w 64 --fit all ' \
+    if run_query_srvs:
+        shell_cmd = config.ros_pref + 'python3 query.py --batch_size 128 --lr 0.0001 --no_vin 0 --l_h 2 --fit all ' \
                     '--ssm 0.03 --goalx ' + str(goal_x) + ' --goaly ' + str(goal_y) + \
-                    ' --modelfile ' + 'trained_models/hybrid_unicorn.pth'
+                    ' --modelfile ' + 'trained_models/test_model.pth'
 
         query_out = open(get_debug_file_name('query_server_',round, run, case), 'w')
 
@@ -1308,19 +1311,22 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
             print(shell_cmd)
             print(get_debug_file_name('query_server_',round, run, case))
 
-        query_proc = subprocess.Popen(shell_cmd.split(),
+        query_proc = subprocess.Popen(shell_cmd, shell=True,
                                       stdout=query_out, stderr=query_out,
                                       cwd=catkin_ws_path + 'src/query_nn/src')
+
+        global_proc_queue.append((query_proc, "query_proc", query_out))
+
     if run_query_val_srvs:
 
-        shell_cmd = "python3 query_val.py"
+        shell_cmd = config.ros_pref + "python3 query_val.py"
         query_val_out = open(get_debug_file_name('query_val_server_', round, run, case), 'w')
 
         if config.verbosity > 0:
             print(shell_cmd)
             print(get_debug_file_name('query_val_server_', round, run, case))
 
-        query_val_proc = subprocess.Popen(shell_cmd.split(),
+        query_val_proc = subprocess.Popen(shell_cmd, shell=True,
                                       stdout=query_val_out, stderr=query_val_out,
                                       cwd=catkin_ws_path + 'src/query_nn/src')
 
@@ -1329,15 +1335,19 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
                 ' obstacle_file_name:=' + obstacle_file + ' goal_file_name:=' + goal_file + \
                 ' gpu_id:=' + str(config.gpu_id) + \
                 ' net:=' + str(config.use_drive_net_mode) + \
+                ' carla_port:=' + str(config.port) + \
                 ' time_scale:=' + str.format("%.2f" % config.time_scale) + \
                 ' model_file_name:=' + config.model + \
-                ' val_model_name:=' + config.val_model
+                ' val_model_name:=' + config.val_model + \
+                ' map_location:=' + config.summit_maploc
 
     # net: 2 for lets_drive, 1 for imitation learning
 
     pomdp_out = open(get_txt_file_name(round, run, case), 'w')
 
-    print("Search log %s" % pomdp_out.name)
+    global search_log_name
+    search_log_name = copy.copy(pomdp_out.name)
+    print("Search log %s" % search_log_name)
 
     if config.verbosity > 0:
         print(shell_cmd)
@@ -1391,12 +1401,12 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
         if run_query_srvs:
             print('[INFO] Terminating the nn query server')
             if check_process(query_proc, "terminate"):
-                shell_cmd = "rosnode kill /nn_query_node"
+                shell_cmd = config.ros_pref + "rosnode kill /nn_query_node"
                 subprocess.call(shell_cmd, shell=True)
                 query_out.close()
         if run_query_val_srvs:
             if check_process(query_val_proc, "terminate"):
-                shell_cmd = "rosnode kill /val_nn_query_node"
+                shell_cmd = config.ros_pref + "rosnode kill /val_nn_query_node"
                 subprocess.call(shell_cmd, shell=True)
                 query_val_out.close()
 
@@ -1559,8 +1569,12 @@ def exit_handler():
     print('My application is ending! Clearing process...')
     kill_inner_timer(Timeout_inner_monitor_pid)
     kill_outter_timer(Timeout_monitor_pid)
+    
     clear_process(clear_outter=True, port = config.port)
-    # subprocess.call(root_path + '/clear_process.sh', shell=True)
+
+    if search_log_name is not None:
+        print("======== Opening search log")
+        subprocess.call(('vim ' + search_log_name).split())
 
 
 atexit.register(exit_handler)
@@ -1660,3 +1674,4 @@ if __name__ == '__main__':
     kill_outter_timer(Timeout_monitor_pid)
 
     clear_process(port=config.port)
+

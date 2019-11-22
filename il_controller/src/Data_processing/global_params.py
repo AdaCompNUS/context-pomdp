@@ -125,7 +125,7 @@ config.gppn_out_channels = config.num_steering_bins * config.num_acc_bins_in_gpp
 # resnet params
 config.Num_resnet_layers = 3
 config.num_resnet_output = 256 * 4
-config.resblock_in_layers = [1, 1, 1, 2]
+config.resblock_in_layers = [2, 2, 1, 2]
 config.resnet_width = 32
 # heads params
 config.head_mode = "categorical"  # "categorical", "hybrid", "mdn"

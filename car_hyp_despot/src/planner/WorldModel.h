@@ -4,6 +4,9 @@
 #include <RVO.h>
 #include "debug_util.h"
 #include <unordered_map>
+#include <msg_builder/LaneSeg.h>
+#include <geometry_msgs/Polygon.h>
+#include "despot/core/prior.h"
 
 using namespace despot;
 
@@ -139,6 +142,12 @@ public:
     std::unordered_map<int, int> id_map_num_paths;
     std::unordered_map<int, std::vector<Path>> id_map_paths;
 
+public:
+
+	vector<msg_builder::LaneSeg> local_lane_segments_;
+	vector<geometry_msgs::Polygon> local_obs_contours_;
+
+
     int NumPaths(int agent_id){ 
         auto it = id_map_num_paths.find(agent_id);
         if (it == id_map_num_paths.end()){
@@ -260,6 +269,7 @@ public:
     	car_heading_dir = 0;
     	carvel = 0;
         car_odom_heading = -10;
+        detect_time = false;
     }
 
     void updatePed(const Pedestrian& ped, bool doPrint = false);
@@ -285,46 +295,52 @@ public:
 
     void removeAgents();
 
-    double timestamp() {
-        static double starttime=get_time_second();
-        return get_time_second()-starttime;
-    }
+//    double timestamp() {
+//        static double starttime=get_time_second();
+//        return get_time_second()-starttime;
+//    }
 
     template<typename T>
     bool AgentIsAlive(T& agent, vector<T>& agent_list_new) {
-        bool insert=true;
-        double w1,h1;
-        w1 = agent.w;
-        h1 = agent.h;
-        for(const auto& p: agent_list_new) {
-            double w2,h2;
-            w2=p.w;
-            h2=p.h;
-            if (abs(w1-w2)<=0.1&&abs(h1-h2)<=0.1) {
-                insert=false;
-                break;
-            }
-        }
-        if (latest_time_stamp - agent.time_stamp > 0.2){ // agent disappeared for 1 second
-            cout << "agent "<< agent.id << " disappeared for too long (>0.2s)." << endl;
-            insert=false;
-        }
-        else
-            ; // fprintf(stderr, "agent %d alive, latest_time_stamp = %f, agent time_stamp = %f \n", 
-                // agent.id, latest_time_stamp, agent.time_stamp);
-            
-        return insert;
+		bool insert=true;
+		if (detect_time) {
+			double w1,h1;
+			w1 = agent.w;
+			h1 = agent.h;
+			for(const auto& p: agent_list_new) {
+				double w2,h2;
+				w2=p.w;
+				h2=p.h;
+				if (abs(w1-w2)<=0.1&&abs(h1-h2)<=0.1) {
+					insert=false;
+					break;
+				}
+			}
+			if (latest_time_stamp - agent.time_stamp > 1.0){ // agent disappeared for 1 second
+				DEBUG(string_sprintf("agent %d disappeared for too long (>1.0s).", agent.id));
+				insert=false;
+			}
+			else
+				; // fprintf(stderr, "agent %d alive, latest_time_stamp = %f, agent time_stamp = %f \n",
+					// agent.id, latest_time_stamp, agent.time_stamp);
+    	}
+
+		return insert;
     }
 
     template<typename T>
-        bool AgentIsUp2Date(T& agent) {
-            if (timestamp() - agent.time_stamp > 3.0){ // agent disappeared for 1 second
-                cout << "agent "<< agent.id << " disappeared for too long (>1.0s)." << endl;
-                return false;
-            }
-            else
-                return true;
-        }
+	bool AgentIsUp2Date(T& agent) {
+    	if (detect_time){
+			if (SolverPrior::get_timestamp() - agent.time_stamp > 1.0){ // agent disappeared for 1 second
+				DEBUG(string_sprintf("agent %d disappeared for too long (>1.0s).", agent.id));
+				return false;
+			}
+			else
+				return true;
+    	}
+    	else
+    		return true;
+	}
 
     void ValidateCar(const char* func);
 
@@ -356,6 +372,7 @@ public:
 
     double latest_time_stamp;
     double latest_path_time_stamp;
+    bool detect_time;
 
     WorldModel& model;
 };

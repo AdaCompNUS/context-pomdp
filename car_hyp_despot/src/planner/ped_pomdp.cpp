@@ -1294,10 +1294,10 @@ bool PedPomdp::validate_state(const PomdpState &state, const char *msg) const
     for (int i = 0; i < state.num; i++)
     {
         auto &agent = state.agents[i];
-        if (agent.intention == -1)
-        {
-            ERR("non-initialized intention in state");
-        }
+//        if (agent.intention == -1)
+//        {
+//            ERR("non-initialized intention in state");
+//        }
 
         if (agent.type >= AgentType::num_values)
         {
