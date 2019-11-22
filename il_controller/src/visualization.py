@@ -296,7 +296,7 @@ def visualize(X, step, root=""):
     last_ped = 0
     car_channel = 0
 
-    x_dim = 3
+    x_dim = 2
     y_dim = 4  # config.num_hist_channels
     stride = config.num_hist_channels // 4
 
@@ -322,10 +322,10 @@ def visualize(X, step, root=""):
                                            cmap='gist_yarg', interpolation='nearest')
                         axarr[i, j].axis('off')
                         continue
+                # elif i == 1:
+                #     axarr[i, j].imshow(X[last_ped, config.channel_hist[0] + j * stride],
+                #                        cmap=map_type, interpolation='nearest')
                 elif i == 1:
-                    axarr[i, j].imshow(X[last_ped, config.channel_hist[0] + j * stride],
-                                       cmap=map_type, interpolation='nearest')
-                elif i == 2:
                     axarr[i, j].imshow(X[car_channel, config.channel_map[0] + j * stride],
                                        cmap=map_type, interpolation='nearest')
 

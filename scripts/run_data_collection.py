@@ -1572,9 +1572,9 @@ def exit_handler():
     
     clear_process(clear_outter=True, port = config.port)
 
-    if search_log_name is not None:
-        print("======== Opening search log")
-        subprocess.call(('vim ' + search_log_name).split())
+    # if search_log_name is not None:
+        # print("======== Opening search log")
+        # subprocess.call(('vim ' + search_log_name).split())
 
 
 atexit.register(exit_handler)

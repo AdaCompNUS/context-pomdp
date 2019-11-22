@@ -45,7 +45,7 @@ double DESPOT::Initial_root_gap;
 bool DESPOT::Debug_mode = false;
 bool DESPOT::Print_nodes = false;
 
-int max_trial = 1; // debugging
+int max_trial = 10000000; // debugging
 
 int stop_count=0;
 

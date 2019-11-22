@@ -583,7 +583,11 @@ def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, dim, down_s
         # parse car data
         start_time = time.time()
 
-        output_dict_entry['car'] = construct_car_data(origin, resolution, dim, down_sample_ratio,
+        origins = []
+        for i in range(config.num_hist_channels):
+            origins.append(select_null_map_origin(hist_cars, i))
+
+        output_dict_entry['car'] = construct_car_data(origins, resolution, dim, down_sample_ratio,
                                                       hist_cars, path_data=path_data)
 
         # print('----------------------------------------')
@@ -1228,7 +1232,7 @@ def construct_path_data(path, origin, resolution, dim, down_sample_ratio):
     return path_output_dict
 
 
-def construct_car_data(origin, resolution, dim, down_sample_ratio, hist_cars, path_data=None):
+def construct_car_data(origins, resolution, dim, down_sample_ratio, hist_cars, path_data=None):
     car_output_dict = {'goal': list([]), 'hist': [], 'car_state': []}
     try:
         # 'goal' contains the rescaled path in pixel points
@@ -1240,11 +1244,11 @@ def construct_car_data(origin, resolution, dim, down_sample_ratio, hist_cars, pa
                 if i == 0:
                     draw = True
 
-                car_points = get_car_points(hist_cars[i], origin, dim, down_sample_ratio, resolution, draw)
+                car_points = get_car_points(hist_cars[i], origins[i], dim, down_sample_ratio, resolution, draw)
                 car_output_dict['hist'].append(car_points)
         else:
             for i in range(len(hist_cars)):
-                car_points = get_car_state_points(hist_cars[i], origin, dim, down_sample_ratio, resolution)
+                car_points = get_car_state_points(hist_cars[i], origins[i], dim, down_sample_ratio, resolution)
                 car_output_dict['car_state'].append(car_points)
 
     except Exception as e:
@@ -1286,6 +1290,13 @@ def get_car_points(car, origin, dim_high_res, down_sample_ratio, resolution, dra
     return car_points
 
 
+def normalize_intensity(points, target_intensity):
+    intensities = points[:,2]
+    max_intensity = np.max(intensities)
+    intensities = intensities / max_intensity * target_intensity
+    points[:, 2] = intensities
+
+
 def get_car_state_points(car, origin, dim_high_res, down_sample_ratio, resolution):
     # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
     car_state_points = None
@@ -1294,13 +1305,17 @@ def get_car_state_points(car, origin, dim_high_res, down_sample_ratio, resolutio
         image_space_car_state = get_image_space_car_state(car, origin, resolution)
         # construct the image
         car_state_edge_pixels = fill_polygon_edges(image_space_car_state)
+        # print("[bag2hdf] num points in car_state_edge_pixels: {}".format(len(car_state_edge_pixels)))
         try:
-            car_state_points = get_pyramid_image_points(car_state_edge_pixels, dim_high_res, down_sample_ratio
-                                                  , draw_flag='car_state')
+            car_state_points = get_pyramid_image_points(car_state_edge_pixels, dim_high_res, down_sample_ratio,
+                                                  draw_flag='car_state')
+            # print("[bag2hdf] num points in car_state_points: {}".format(len(car_state_points)))
+            normalize_intensity(car_state_points, 2.0)
         except Exception as e:
             error_handler(e)
 
     return car_state_points
+
 
 def get_image_points_local_pyramid(car_edge_points, dim_high_res, down_sample_ratio, print_time, start_time):
     # allocate high-res and low-res images

@@ -7,6 +7,28 @@ config = global_params.config
 import random
 import sys, traceback
 
+import matplotlib.pyplot as plt
+
+
+counter = 0
+def show_array(tensor):
+    global counter
+    try:
+        # tensor = tensor.detach().cpu().numpy()
+        fig, axarr = plt.subplots(1, 1)
+        fig.set_figheight(6)
+        fig.set_figwidth(6)
+        axarr.imshow(tensor,
+                     cmap='gray', interpolation='nearest')
+        plt.tight_layout()
+        fig.savefig("map_{}.png".format(counter), bbox_inches='tight', transparent=False)
+        plt.close(fig)
+        counter += 1
+
+    except Exception as e:
+        error_handler(e)
+        exit(-1)
+        # pdb.set_trace()
 
 def error_handler(e):
     print(
@@ -92,9 +114,13 @@ class PopulateImages(object):
                             point[0]), int(point[1])] = point[2]
             else:
                 for ts in range(config.num_hist_channels):
+                    # print("[transform] num points in src_entry['car_state'][ts]: {}".format(
+                        # len(src_entry['car_state'][ts])))
                     for point in src_entry['car_state'][ts]:
+                        # print("point {} {} intensity {}".format(point[0], point[1], point[2]))
                         output_arr[i, config.channel_map[ts], int(
                             point[0]), int(point[1])] = point[2]
+                    # show_array(output_arr[i, config.channel_map[ts]])
 
         except Exception as e:
             print(e)
