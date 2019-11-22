@@ -55,6 +55,8 @@ config.test_split = 0.00  # 0.05
 
 ''' Data label settings '''
 config.value_normalizer = 10.0
+config.label_linear = 0
+config.label_angular = 1
 config.label_cmdvel = 2
 ''' Data label settings '''
 
