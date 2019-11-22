@@ -61,6 +61,37 @@ class ActionHead(nn.Module):
         return out
 
 
+class LargeActionHead(nn.Module):
+
+    def __init__(self, inplanes=64, imsize=16, num_classes=global_config.num_steering_bins):
+        super(LargeActionHead, self).__init__()
+        outplanes = 4
+
+        self.drop_o_2d = nn.Dropout2d(p=global_config.do_prob)
+        self.conv = conv1x1(inplanes, outplanes, stride=1)
+        if not global_config.disable_bn_in_resnet:
+            self.bn = nn.BatchNorm2d(outplanes, track_running_stats=global_config.track_running_stats)
+        self.relu = nn.ReLU(inplace=True)
+        self.fc = nn.Linear(in_features=imsize * imsize * outplanes,
+                            out_features=1024,
+                            bias=True)
+        self.fc1 = nn.Linear(in_features=1024,
+                            out_features=num_classes,
+                            bias=True)
+
+    def forward(self, x):
+        if global_config.do_dropout:
+            x = self.drop_o_2d(x)
+        out = self.conv(x)
+        if not global_config.disable_bn_in_resnet:
+            out = self.bn(out)
+        out = self.relu(out)
+        out = out.view(out.size(0), -1)
+        out = self.fc(out)
+        out = self.fc1(out)
+        return out
+
+
 class ActionMdnHead(nn.Module):
 
     def __init__(self, inplanes=64, imsize=16, num_modes=global_config.num_guassians_in_heads):
@@ -165,7 +196,7 @@ class PolicyValueNet(nn.Module):
             self.ang_head = ActionHead(inplanes=self.resnet.num_out_features,
                                        num_classes=self.num_steering_bins)
         else:
-            self.acc_head = ActionHead(inplanes=self.resnet.num_out_features,
+            self.acc_head = LargeActionHead(inplanes=self.resnet.num_out_features,
                                        num_classes=self.num_acc_bins)
             self.ang_head = ActionHead(inplanes=self.resnet.num_out_features,
                                        num_classes=self.num_steering_bins)
