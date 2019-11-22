@@ -516,7 +516,7 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
 
         if print_time:
             print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_out, res_image, step, image_flag)
+            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
         return acc_pi, acc_mu, acc_sigma, \
                ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, value
@@ -536,7 +536,7 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
 
         if print_time and config.visualize_inter_data:
             print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_out, res_image, step, image_flag)
+            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
         return acc_pi, acc_mu, acc_sigma, \
                ang, vel_pi, vel_mu, vel_sigma, value
@@ -550,7 +550,7 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
         elapsed_time = time.time() - start_time
         if print_time:
             print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_out, res_image, step, image_flag)
+            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
         return acc, ang, value, vel
 
@@ -581,7 +581,7 @@ def forward_pass_jit(X, step=0, drive_net=None, cmd_config=None, print_time=Fals
         
         if print_time and config.visualize_inter_data:
             print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_out, res_image, step, image_flag)
+            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
         return acc_pi, acc_mu, acc_sigma, \
                ang, vel_pi, vel_mu, vel_sigma, value

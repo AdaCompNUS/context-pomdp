@@ -149,7 +149,7 @@ config.ang_scale = 2.0  # 10.0
 # toggle data visualization
 config.visualize_train_data = True
 config.visualize_val_data = False
-config.visualize_inter_data = False
+config.visualize_inter_data = True
 config.visualize_raw_data = False
 # toggle debug printing
 config.print_preds = False

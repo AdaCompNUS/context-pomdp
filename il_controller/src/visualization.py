@@ -476,7 +476,7 @@ def save_figure(fig, image_subfolder, root, step):
         print(e)
 
 
-def visualize_input_output(X, ped_gppn_out, car_gppn_out, res_out, res_image, step, image_flag):
+def visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag):
     if config.visualize_inter_data:
         flag = image_flag + str(step)
         visualize(X.cpu()[0], flag)
