@@ -98,7 +98,6 @@ if __name__ == "__main__":
 
     bagspath = parser.parse_args().bagspath
     peds_goal_path = parser.parse_args().peds_goal_path
-    0 = parser.parse_args().nped
     config.num_samples_per_traj = parser.parse_args().nsample
 
     folders = list([])
@@ -130,7 +129,7 @@ if __name__ == "__main__":
         i += 1
 
     # Put the tasks into the queue as a tuple
-    chunk = 100
+    chunk = 50
     for i in range(0, file_count//chunk + 1):
         for folder in folders:
             queue.put((folder, i * chunk, (i + 1) * chunk))
