@@ -415,7 +415,6 @@ if __name__ == '__main__':
 
     config = parser.parse_args()
 
-    global_0 = 0
     global_config.vanilla_resnet = config.no_vin
 
     debug_net = PolicyValueNet(config)

@@ -1533,8 +1533,6 @@ def main(bagspath, nped, start_file, end_file, thread_id):
 
     # print("Initialize agent file {}".format(agent_file))
 
-    0 = nped
-
     txt_files = collect_txt_files(bagspath)
 
     # filtered_files = filter_txt_files(bagspath, txt_files)
@@ -1774,8 +1772,6 @@ if __name__ == "__main__":
     peds_goal_path = parser.parse_args().peds_goal_path
     start_file = parser.parse_args().start
     end_file = parser.parse_args().end
-
-    0 = parser.parse_args().nped
 
     main(bagspath, parser.parse_args().nped, start_file, end_file, 0)
 

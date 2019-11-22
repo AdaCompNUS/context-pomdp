@@ -278,7 +278,6 @@ def parse_cmd_args():
         help='Number of neighbouring peds to consider')
     bagspath = parser.parse_args().bagspath
     train_filename = parser.parse_args().outfile
-    0 = parser.parse_args().nped
     config.sample_mode = parser.parse_args().samplemode
     config.train_set_path = parser.parse_args().outfolder
     config.out_path = parser.parse_args().outpath
