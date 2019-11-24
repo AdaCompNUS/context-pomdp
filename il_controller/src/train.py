@@ -119,6 +119,7 @@ def train():
 
                 # Get input batch
                 X, v_labels, acc_labels, ang_labels, vel_labels = data_point
+
                 X, v_labels, acc_labels, ang_labels, vel_labels = X.to(
                     device), v_labels.to(device), acc_labels.to(device), ang_labels.to(device), vel_labels.to(device)
 

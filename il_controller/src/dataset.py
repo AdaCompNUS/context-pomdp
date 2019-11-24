@@ -97,7 +97,6 @@ class IdxLooper:
         # TODO: sample from active list only
         return self.active_indices[self.iter_pos]
 
-
     def get_count(self):
         return sum(self.visit_count)
 

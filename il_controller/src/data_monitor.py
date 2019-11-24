@@ -45,7 +45,6 @@ import threading
 
 # plt.ioff()
 
-topic_mode = "combined"
 valid_threshold = 1000
 
 import rospy
@@ -62,15 +61,6 @@ import copy
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 writer = SummaryWriter()
 ped_goal_list = None
-
-
-def set_topic_mode(mode_str):
-    global topic_mode, valid_threshold
-    topic_mode = mode_str
-    if topic_mode == "combined":
-        valid_threshold = 2
-    elif topic_mode == "seperate":
-        valid_threshold = 4
 
 
 class DataMonitor(data.Dataset):
@@ -95,8 +85,6 @@ class DataMonitor(data.Dataset):
         # wait for data for 10 check_alive calls, if no data, exit program
         self.data_patience_clock = 0
         self.data_patience = 10
-
-
         self.num_agents = 1 + 0
         imsize = config.imsize
         # container to be updated directly by subscribers
@@ -127,20 +115,13 @@ class DataMonitor(data.Dataset):
                 (1, self.num_agents, config.total_num_channels, imsize, imsize), dtype=np.float32)
         }
 
-        set_topic_mode("combined")
-
         # register callback functions
         rospy.Subscriber('/map', OccupancyGrid, self.receive_map_callback)
 
-        if topic_mode == "seperate":
-            rospy.Subscriber('/plan', Path, self.receive_path_callback)
-            rospy.Subscriber('/peds_believes', peds_believes, self.receive_peds_believes_callback)
-            rospy.Subscriber('/peds_car_info', peds_car_info, self.receive_peds_car_info_callback, queue_size=1)
-        elif topic_mode == "combined":
-            rospy.Subscriber('/il_data', imitation_data, self.receive_il_data_callback, queue_size=1)
-            rospy.Subscriber('/IL_steer_cmd', Float32, self.receive_il_steer_callback, queue_size=1)
-            self.steering_topic_alive = True
-            self.steering_is_triggered = False
+        rospy.Subscriber('/il_data', imitation_data, self.receive_il_data_callback, queue_size=1)
+        rospy.Subscriber('/IL_steer_cmd', Float32, self.receive_il_steer_callback, queue_size=1)
+        self.steering_topic_alive = True
+        self.steering_is_triggered = False
 
         self.raw_map_array = None
         self.ped_map_array = []
@@ -202,7 +183,6 @@ class DataMonitor(data.Dataset):
         start_time = time.time()
         self.update_data = False
         print("Receive data")
-        set_topic_mode("combined")
         if self.has_data:
             self.valid_count -= 1  # disable inference when updating data
         try:
@@ -289,97 +269,6 @@ class DataMonitor(data.Dataset):
         except Exception as e:
             error_handler(e)
             pdb.set_trace()
-
-    def receive_peds_car_info_callback(self, data):
-        self.hist_ts = time.time()
-        set_topic_mode("seperate")
-        self.lock.acquire()
-        print("Receive hist")
-        if self.has_hist:
-            self.valid_count -= 1  # disable inference when updating data
-        try:
-            if self.combined_dict['hist']['cur'] == None:
-                self.combined_dict['hist']['cur'] = data  # first data recorded, hist not complete yet
-            else:
-                self.combined_dict['hist']['past'] = self.combined_dict['hist']['cur']
-                self.combined_dict['hist']['cur'] = data
-
-                if self.convert_to_nn_input("hist"):
-                    self.valid_count += 1
-                    if self.has_hist == False:
-                        self.has_hist = True
-                else:
-                    self.has_hist = False
-        except Exception as e:
-            print("Exception", e)
-            self.has_hist = False
-        finally:
-            if self.has_hist:
-                pass  # print("Hist updated")
-            else:
-                print("Hist skipped")
-            if self.lock.locked():
-                self.lock.release()  # release self.lock, no matter what
-
-    def receive_path_callback(self, data):
-        self.path_ts = time.time()
-        set_topic_mode("seperate")
-        self.lock.acquire()
-        print("Receive path")
-        if self.has_plan:
-            self.valid_count -= 1  # disable inference when updating data
-        try:
-            self.combined_dict['plan'] = {}
-            self.combined_dict['plan'] = data
-
-            if self.convert_to_nn_input("plan"):
-                self.valid_count += 1
-                if self.has_plan == False:
-                    self.has_plan = True
-            else:
-                self.has_plan = False
-        except Exception as e:
-            print("Exception", e)
-            self.has_plan = False
-        finally:
-            if self.has_plan:
-                pass  # print("Path updated")
-            else:
-                print("Path skipped")
-            if self.lock.locked():
-                self.lock.release()  # release self.lock, no matter what
-
-    def receive_peds_believes_callback(self, data):
-        self.belief_ts = time.time()
-        set_topic_mode("seperate")
-        self.lock.acquire()
-        print("Receive belief")
-        if self.has_beliefs:
-            self.valid_count -= 1  # disable inference when updating data
-        try:
-            self.combined_dict['beliefs'] = data
-
-            try:
-                status = self.convert_to_nn_input("beliefs")
-
-                if status == True:
-                    self.valid_count += 1
-                    if self.has_beliefs == False:
-                        self.has_beliefs = True
-                else:
-                    self.has_beliefs = False
-            except Exception as e:
-                print("Exception", e)
-                self.has_beliefs = False
-                # print(self.combined_dict['beliefs'])
-
-        finally:
-            if self.has_beliefs:
-                pass  # print("Belief updated")
-            else:
-                print("Belief skipped")
-            if self.lock.locked():
-                self.lock.release()  # release self.lock, no matter what
 
     def test_terminal(self):
         terminal = False

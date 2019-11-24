@@ -351,11 +351,13 @@ class AccEncoder(object):
         # pdb.set_trace()
         # convert acc_id to one-hot vector
 
+        # print("raw acc: {}".format(acc))
         acc = acc_transform(acc)
+        # print("transformed acc: {}".format(acc))
+        encoding = float_to_onehot(v=acc, v_min=-1.0, v_max=1.0, num_bins=self.num_acc_bins)
+        # print("encoding: {}".format(encoding))
 
-        encodeing = float_to_onehot(v=acc, v_min=-1.0, v_max=1.0, num_bins=self.num_acc_bins)
-
-        return encodeing, acc
+        return encoding, acc
 
 
 class VelEncoder(object):

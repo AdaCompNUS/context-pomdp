@@ -73,9 +73,10 @@ class LargeActionHead(nn.Module):
             self.bn = nn.BatchNorm2d(outplanes, track_running_stats=global_config.track_running_stats)
         self.relu = nn.ReLU(inplace=True)
         self.fc = nn.Linear(in_features=imsize * imsize * outplanes,
-                            out_features=1024,
+                            out_features=128,
                             bias=True)
-        self.fc1 = nn.Linear(in_features=1024,
+        self.relu1 = nn.ReLU(inplace=True)
+        self.fc1 = nn.Linear(in_features=128,
                             out_features=num_classes,
                             bias=True)
 
@@ -88,6 +89,7 @@ class LargeActionHead(nn.Module):
         out = self.relu(out)
         out = out.view(out.size(0), -1)
         out = self.fc(out)
+        out = self.relu1(out)
         out = self.fc1(out)
         return out
 

@@ -15,7 +15,6 @@ from train import forward_pass, forward_pass_jit, load_settings_from_model
 from dataset import set_encoders
 from Components.mdn import sample_mdn, sample_mdn_ml
 from policy_value_network import PolicyValueNet
-from model_drive_net_0_ped import DriveNetZeroPed
 
 
 def set_decoders():
@@ -48,16 +47,10 @@ class DriveController(nn.Module):
         self.data_monitor = DataMonitor()
         self.drive_net = net
         self.cmd_pub = rospy.Publisher('cmd_vel_drive_net', Twist, queue_size=1)
-        # rospy.Subscriber("cmd_vel_to_unity", Twist, self.vel_call_back)
 
         rospy.Subscriber("odom", Odometry, self.odom_call_back)
 
-        self.drive_timer = None
-        global topic_mode
-        if topic_mode == "seperate":
-            rospy.Subscriber("pomdp_action_plot", Twist, self.control_loop)
-        if topic_mode == "combined":
-            self.drive_timer = rospy.Timer(rospy.Duration(1.0 / config.control_freq), self.control_loop)
+        self.drive_timer = rospy.Timer(rospy.Duration(1.0 / config.control_freq), self.control_loop)
 
         self.cur_vel = None
         self.sm = nn.Softmax(dim=1)
@@ -82,15 +75,9 @@ class DriveController(nn.Module):
         self.output_record = OrderedDict()
 
     def vel_call_back(self, data):
-        global topic_mode
         self.label_ts = time.time()
         self.cur_vel = data.linear.y
         print('Update current vel %f' % self.cur_vel)
-
-        if topic_mode == "seperate":
-            if self.update_steering:
-                self.true_steering = data.angular.x
-                print('Update steering label %f' % np.degrees(self.true_steering))
 
     def odom_call_back(self, odo):
         self.cur_vel = odo.twist.twist.linear.x
@@ -126,11 +113,6 @@ class DriveController(nn.Module):
         steering_label = None
         acc_label = None
         vel_label = None
-        global topic_mode
-
-        if topic_mode == "seperate":
-            steering_label = self.get_labels_seperate(steering_label)
-        # print("**************** Enter controlloop, disable steering update ***************")
 
         self.data_monitor.lock.acquire()
 
@@ -149,16 +131,9 @@ class DriveController(nn.Module):
                 print('Goal reached, skipping inference')
                 return True
 
-            if topic_mode == "combined":
-                acc_label, steering_label, vel_label = self.get_labels_combined()
+            acc_label, steering_label, vel_label = self.get_labels_combined()
 
             print("start inference: counter: " + str(self.count))
-
-            # # !!!!!! debugging !!!!!!
-            # acceleration = 0.5
-            # steering = 0.0
-            # self.publish_actions(acceleration, steering, 0.0, steering_label, 0.0, 0.0)
-            # # !!!!!! debugging !!!!!!
 
             # query the drive_net using current data
             if global_config.head_mode == "mdn":
@@ -267,42 +242,35 @@ class DriveController(nn.Module):
     def publish_actions(self, acceleration, steering, velocity, steering_label, true_acc, true_vel):
         try:
             cmd = Twist()
+            # cmd.linear.x: target_speed
+            # cmd.linear.y: real_speed
+            # cmd.linear.z: accelaration
+            # cmd.angular.z: steering
 
-            # request_help = math.fabs(steering -np.degrees(steering_label)) > 20
-            request_help = False
-            if request_help:
+            publish_true_steering = False
+            if publish_true_steering:
                 print('Publishing ground-truth angle')
                 cmd.angular.z = float(steering_label)
-                request_help = math.fabs(steering - np.degrees(steering_label)) > 20
-                if (config.fit_ang or config.fit_action or config.fit_all) and request_help:
-                    print("==================== angle_mismatch!!!!!!! ===================")
-                    print("output angle in degrees: %f" % float(steering))
-                    print("ground-truth angle: " + str(np.degrees(steering_label)))
-                    print("==================== angle_mismatch!!!!!!! ===================")
-
+                publish_true_steering = math.fabs(steering - np.degrees(steering_label)) > 20
             else:
                 print('Publishing predicted angle')
-                cmd.angular.z = float(steering) * 3.1415926 / 180.0
+                cmd.angular.z = np.radians(steering)
 
-            if config.use_vel_head:
-                pass
-            else:
-                velocity = self.cur_vel + acceleration / config.control_freq
-
+            velocity = self.cur_vel + acceleration / config.control_freq
             cmd.linear.x = max(min(velocity, config.vel_max), 0.0)  # target_speed_
+            cmd.linear.y = self.cur_vel  # real_speed
+            cmd.linear.z = acceleration  # _
 
-            cmd.linear.y = self.cur_vel  # real_speed_
-            if (config.fit_ang or config.fit_action or config.fit_all) and not request_help:
+            if config.fit_ang or config.fit_action or config.fit_all:
                 print("output angle in degrees: %f" % float(steering))
                 print("ground-truth angle: " + str(np.degrees(steering_label)))
             if config.fit_acc or config.fit_action or config.fit_all:
-                pass
                 print("output acc: %f" % float(acceleration))
-                # print("ground-truth acc: " + str(true_acc * config.max_acc))
-            if config.fit_vel or config.fit_action or config.fit_all:
-                if config.use_vel_head:
-                    print("output vel: %f" % float(velocity))
-                    # print("ground-truth vel: " + str(true_vel * config.vel_max))
+                print("ground-truth acc: " + str(true_acc))
+            if (config.fit_vel or config.fit_action or config.fit_all) and config.use_vel_head:
+                print("output vel: %f" % float(velocity))
+                print("ground-truth angle: " + str(true_vel))
+
             # publish action and acc commands
             self.cmd_pub.publish(cmd)
         except Exception as e:
