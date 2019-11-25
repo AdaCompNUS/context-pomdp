@@ -15,6 +15,10 @@ from train import forward_pass, forward_pass_jit, load_settings_from_model
 from dataset import set_encoders
 from Components.mdn import sample_mdn, sample_mdn_ml
 from policy_value_network import PolicyValueNet
+import numpy as np
+
+from std_msgs.msg import Float32
+from msg_builder.msg import car_info as CarInfo  # panpan
 
 
 def set_decoders():
@@ -46,13 +50,16 @@ class DriveController(nn.Module):
         clear_png_files('./visualize/', remove_flag='test_')
         self.data_monitor = DataMonitor()
         self.drive_net = net
-        self.cmd_pub = rospy.Publisher('cmd_vel_drive_net', Twist, queue_size=1)
+        # self.cmd_pub = rospy.Publisher('cmd_vel_drive_net', Twist, queue_size=1)
+        self.cmd_acc_pub = rospy.Publisher('imitation_cmd_acc', Float32, queue_size=1)
+        self.cmd_steer_pub = rospy.Publisher('imitation_cmd_steer', Float32, queue_size=1)
 
         rospy.Subscriber("odom", Odometry, self.odom_call_back)
 
         self.drive_timer = rospy.Timer(rospy.Duration(1.0 / config.control_freq), self.control_loop)
 
         self.cur_vel = None
+        self.car_info = None
         self.sm = nn.Softmax(dim=1)
         self.encode_input = InputEncoder()
 
@@ -83,7 +90,13 @@ class DriveController(nn.Module):
         self.cur_vel = odo.twist.twist.linear.x
         # print('Update current vel %f from odometry' % self.cur_vel)
 
+    def cb_car_info(self, car_info):
+        self.car_info = car_info
+
     def control_loop(self, time_step):
+        if self.car_info is None:
+            print("ego_car not exist yet...")
+            return
 
         data_monitor_alive = self.data_monitor.check_alive()
 
@@ -239,27 +252,36 @@ class DriveController(nn.Module):
         self.data_monitor.update_steering = True
         self.data_monitor.update_data = True
 
+    def cal_pub_acc(self, acceleration):
+        target_vel = self.cur_vel + acceleration / config.control_freq
+        target_vel = max(min(target_vel, config.vel_max), 0.0)  # target_speed_
+
+        throttle = (target_vel - self.cur_vel + 0.05) * 1.0
+        throttle = min(0.5, throttle)
+        throttle = max(-0.01, throttle)
+
+        if self.cur_vel <= 0.05 and throttle < 0:
+            throttle = 0.0
+        return throttle
+
+    def cal_pub_steer(self, steering):
+        return steering / np.deg2rad(self.car_info.max_steer_angle)
+
     def publish_actions(self, acceleration, steering, velocity, steering_label, true_acc, true_vel):
         try:
-            cmd = Twist()
-            # cmd.linear.x: target_speed
-            # cmd.linear.y: real_speed
-            # cmd.linear.z: accelaration
-            # cmd.angular.z: steering
+            cmd_acc = Float32()
+            cmd_steer = Float32()
 
             publish_true_steering = False
             if publish_true_steering:
                 print('Publishing ground-truth angle')
-                cmd.angular.z = float(steering_label)
-                publish_true_steering = math.fabs(steering - np.degrees(steering_label)) > 20
+                cmd_steer.data = self.cal_pub_steer(float(steering_label))
+                publish_true_steering = bool(math.fabs(steering - np.degrees(steering_label)) > 20)
             else:
                 print('Publishing predicted angle')
-                cmd.angular.z = np.radians(steering)
+                cmd_steer.data = self.cal_pub_steer(np.radians(steering))
 
-            velocity = self.cur_vel + acceleration / config.control_freq
-            cmd.linear.x = max(min(velocity, config.vel_max), 0.0)  # target_speed_
-            cmd.linear.y = self.cur_vel  # real_speed
-            cmd.linear.z = acceleration  # _
+            cmd_acc.data = self.cal_pub_acc(acceleration)  # _
 
             if config.fit_ang or config.fit_action or config.fit_all:
                 print("output angle in degrees: %f" % float(steering))
@@ -272,7 +294,8 @@ class DriveController(nn.Module):
                 print("ground-truth angle: " + str(true_vel))
 
             # publish action and acc commands
-            self.cmd_pub.publish(cmd)
+            self.cmd_acc_pub.publish(cmd_acc)
+            self.cmd_steer_pub.publish(cmd_steer)
         except Exception as e:
             print("Exception when publishing commands: %s", e)
             error_handler(e)

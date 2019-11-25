@@ -33,17 +33,31 @@ class EgoVehicle(Drunc):
         # Initialize fields.
         self.gamma_cmd_accel = 0
         self.gamma_cmd_steer = 0
-        self.cmd_accel = 0
-        self.cmd_steer = 0
+        self.imitation_cmd_accel = 0
+        self.imitation_cmd_steer = 0
+        self.pp_cmd_steer = 0
+        self.pomdp_cmd_accel = 0
+        self.pomdp_cmd_steer = 0
         
         # ROS stuff.
         self.control_mode = rospy.get_param('~control_mode', 'gamma')
 
-        self.cmd_accel_sub = rospy.Subscriber('/cmd_accel', Float32, self.cmd_accel_callback, queue_size=1)
-        self.cmd_steer_sub = rospy.Subscriber('/cmd_steer', Float32, self.cmd_steer_callback, queue_size=1)
-        self.gamma_cmd_accel_sub = rospy.Subscriber('/gamma_cmd_accel', Float32, self.gamma_cmd_accel_callback, queue_size=1)
-        self.gamma_cmd_steer_sub = rospy.Subscriber('/gamma_cmd_steer', Float32, self.gamma_cmd_steer_callback, queue_size=1)
+        self.pomdp_cmd_accel_sub = rospy.Subscriber('/pomdp_cmd_accel', Float32,
+                self.pomdp_cmd_accel_callback, queue_size=1)
+        self.pomdp_cmd_steer_sub = rospy.Subscriber('/pomdp_cmd_steer', Float32,
+                self.pomdp_cmd_steer_callback, queue_size=1)
+        self.gamma_cmd_accel_sub = rospy.Subscriber('/gamma_cmd_accel', Float32, 
+                self.gamma_cmd_accel_callback, queue_size=1)
+        self.gamma_cmd_steer_sub = rospy.Subscriber('/gamma_cmd_steer', Float32, 
+                self.gamma_cmd_steer_callback, queue_size=1)
+        self.imitation_cmd_accel_sub = rospy.Subscriber('/imitation_cmd_accel',
+                Float32, self.imitation_cmd_accel_callback, queue_size=1)
+        self.imitation_cmd_steer_sub = rospy.Subscriber('/imitation_cmd_steer',
+                Float32, self.imitation_cmd_steer_callback, queue_size=1)
 
+        self.pp_cmd_accel_sub = rospy.Subscriber('/purepursuit_cmd_steer',
+                Float32, self.pp_cmd_steer_callback, queue_size=1)
+ 
         self.odom_broadcaster = tf.TransformBroadcaster()
         self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=1)
         self.car_info_pub = rospy.Publisher('/ego_state', CarInfo, queue_size=1)
@@ -306,17 +320,26 @@ class EgoVehicle(Drunc):
         
         self.plan_pub.publish(gui_path)
 
-    def cmd_accel_callback(self, accel):
-        self.cmd_accel = accel.data
+    def pomdp_cmd_accel_callback(self, accel):
+        self.pomdp_cmd_accel = accel.data
 
-    def cmd_steer_callback(self, steer):
-        self.cmd_steer = steer.data
-    
+    def pomdp_cmd_steer_callback(self, steer):
+        self.pomdp_cmd_steer = steer.data
+
     def gamma_cmd_accel_callback(self, accel):
         self.gamma_cmd_accel = accel.data
     
     def gamma_cmd_steer_callback(self, steer):
         self.gamma_cmd_steer = steer.data
+ 
+    def imitation_cmd_accel_callback(self, accel):
+        self.imitation_cmd_accel = accel.data
+    
+    def imitation_cmd_steer_callback(self, steer):
+        self.imitation_cmd_steer = steer.data
+
+    def pp_cmd_steer_callback(self, steer):
+        self.pp_cmd_steer = steer.data
 
     def draw_path(self, path):
         color_i = 255
@@ -337,9 +360,15 @@ class EgoVehicle(Drunc):
         if self.control_mode == 'gamma':
             cmd_accel = self.gamma_cmd_accel
             cmd_steer = self.gamma_cmd_steer
+        elif self.control_mode == 'imitation':
+            cmd_accel = self.imitation_cmd_accel
+            cmd_steer = self.imitation_cmd_steer
+        elif self.control_mode == 'joint_pomdp':
+            cmd_accel = self.pomdp_cmd_accel
+            cmd_steer = self.pomdp_cmd_steer
         elif self.control_mode == 'other':
-            cmd_accel = self.cmd_accel
-            cmd_steer = self.cmd_steer
+            cmd_accel = self.pomdp_cmd_accel
+            cmd_steer = self.pp_cmd_steer
 
         control.steer = cmd_steer
         if cmd_accel > 0:

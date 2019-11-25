@@ -106,7 +106,7 @@ class Pursuit(object):
         self.car_info = None
         self.tm = rospy.Timer(rospy.Duration(0.1), self.cb_pose_timer)  ##0.2 for golfcart; 0.05
         rospy.Subscriber("ego_state", CarInfo, self.cb_car_info, queue_size=1)
-        self.cmd_steer_pub = rospy.Publisher("/cmd_steer", Float32, queue_size=1)
+        self.cmd_steer_pub = rospy.Publisher("/purepursuit_cmd_steer", Float32, queue_size=1)
 
     def cb_car_info(self, car_info):
         self.car_info = car_info

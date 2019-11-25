@@ -29,38 +29,22 @@ from tensorboardX import SummaryWriter
 import matplotlib
 
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import matplotlib.cm as cm
 from Data_processing import bag_to_hdf5
-from tqdm import tqdm
-import random
-import scipy.ndimage
-import datetime
-
-from transforms import *
 from visualization import *
 
 import threading
 
-# plt.ioff()
-
 valid_threshold = 1000
 
 import rospy
-
-
-from nav_msgs.msg import Path, Odometry
-from nav_msgs.msg import OccupancyGrid
-from il_controller.msg import peds_believes, peds_car_info, imitation_data
-from geometry_msgs.msg import Twist
+from nav_msgs.msg import Path, Odometry, OccupancyGrid
+from msg_builder.msg import peds_believes, peds_car_info, imitation_data, Lanes
 from std_msgs.msg import Float32
 import copy
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 writer = SummaryWriter()
-ped_goal_list = None
 
 
 class DataMonitor(data.Dataset):
@@ -72,7 +56,7 @@ class DataMonitor(data.Dataset):
         self.has_map = False
         self.has_hist = False
         self.has_plan = False
-        self.has_beliefs = False
+        self.has_lane = False
         self.has_data = False
         self.origin = None
         self.resolution = None
@@ -85,7 +69,6 @@ class DataMonitor(data.Dataset):
         # wait for data for 10 check_alive calls, if no data, exit program
         self.data_patience_clock = 0
         self.data_patience = 10
-        self.num_agents = 1 + 0
         imsize = config.imsize
         # container to be updated directly by subscribers
         self.combined_dict = {
@@ -97,6 +80,7 @@ class DataMonitor(data.Dataset):
         self.output_dict = {
             'maps': None,
             'ped': [dict({}) for x in range(0)],
+            'lane': None,
             'car': {
                 'goal': None,
                 'hist': None
@@ -112,14 +96,14 @@ class DataMonitor(data.Dataset):
             'true_acc': None,
             'true_vel': None,
             'nn_input': np.zeros(
-                (1, self.num_agents, config.total_num_channels, imsize, imsize), dtype=np.float32)
+                (1, 1, config.total_num_channels, imsize, imsize), dtype=np.float32)
         }
 
         # register callback functions
         rospy.Subscriber('/map', OccupancyGrid, self.receive_map_callback)
-
         rospy.Subscriber('/il_data', imitation_data, self.receive_il_data_callback, queue_size=1)
-        rospy.Subscriber('/IL_steer_cmd', Float32, self.receive_il_steer_callback, queue_size=1)
+        rospy.Subscriber('/local_lanes', Lanes, self.receive_lane_data_callback, queue_size=1)
+        rospy.Subscriber('/cmd_steer', Float32, self.receive_cmd_steer_callback, queue_size=1)
         self.steering_topic_alive = True
         self.steering_is_triggered = False
 
@@ -127,11 +111,6 @@ class DataMonitor(data.Dataset):
         self.ped_map_array = []
         for i in range(0, config.num_hist_channels):
             self.ped_map_array.append(None)
-
-        # self.agent_data = peds_car_info()
-        # self.past_agent_data = peds_car_info()
-        # self.past_agent_data2 = peds_car_info()
-        # self.past_agent_data3 = peds_car_info()
 
         self.hist_agents = []
         for i in range(0, config.num_hist_channels):
@@ -142,13 +121,14 @@ class DataMonitor(data.Dataset):
         self.true_vel = None
 
         self.update_steering = True
-
         self.update_data = True
-
         self.data_idx = 0
 
     # parse data from ros topics
     def receive_map_callback(self, data):
+        self.has_map = False
+        return
+
         self.lock.acquire()
         print("Receive map")
         if self.has_map:
@@ -209,7 +189,33 @@ class DataMonitor(data.Dataset):
                 self.lock.release()  # release self.lock, no matter what
             self.update_data = True
 
-    def receive_il_steer_callback(self, data):
+    def receive_lane_callback(self, data):
+        self.lock.acquire()
+        print("Receive lane")
+        if self.has_lane:
+            self.valid_count -= 1  # disable inference when updating data
+        try:
+            self.combined_dict['lanes'] = data
+
+            status = self.convert_to_nn_input("lanes")
+            if status:
+                self.valid_count += 1
+                if not self.has_lane:
+                    self.has_lane = True
+            else:
+                self.has_lane = False
+        except Exception as e:
+            print("Exception", e)
+            self.has_lane = False
+        finally:
+            if self.has_lane:
+                pass
+            else:
+                print("Lane skipped")
+            if self.lock.locked():
+                self.lock.release()  # release self.lock, no matter what
+
+    def receive_cmd_steer_callback(self, data):
         if self.update_steering:
             # print("steering data call_back~~~~~~~~~~~~~~~~~~~~:", np.degrees(float(data.data)))
             self.true_steering = float(data.data)
@@ -224,7 +230,6 @@ class DataMonitor(data.Dataset):
 
         self.parse_history(data)
         self.parse_plan(data)
-        # self.parse_belief(data)
         self.parse_actions(data)
 
         elapsed_time = time.time() - start_time
@@ -238,11 +243,11 @@ class DataMonitor(data.Dataset):
 
         # print("*******************************`Get action reward from data:", data.action_reward)
 
-    def parse_belief(self, data):
-        self.combined_dict['beliefs'] = data.believes
-
     def parse_plan(self, data):
         self.combined_dict['plan'] = data.plan
+
+    def parse_lanes(self, data):
+        self.combined_dict['lanes'] = data.lane_segments
 
     def parse_history(self, data):
         try:
@@ -261,10 +266,6 @@ class DataMonitor(data.Dataset):
             self.hist_agents[0].car = data.cur_car
             self.hist_agents[0].peds = data.cur_peds.peds
             self.combined_dict['hist'][0] = copy.deepcopy(self.hist_agents[0])
-
-            # for i in reversed(range(0, config.num_hist_channels)):
-            #     if self.hist_agents[i]:
-            #         print('=> hist car {}: {}'.format(i, self.hist_agents[i].car))
 
         except Exception as e:
             error_handler(e)
@@ -306,49 +307,38 @@ class DataMonitor(data.Dataset):
         else:
             return True
 
-    def convert_to_nn_input(self, flag=None, downsample_ratio=0.03125):
+    def convert_to_nn_input(self, flag=None, down_sample_ratio=0.03125):
         print("Converting " + flag + " info...")
         try:
             if flag == "map":
-                self.dim, self.map_intensity, self.map_intensity_scale, self.new_dim, self.origin, self.raw_map_array, \
-                self.resolution = bag_to_hdf5.parse_map_data_from_dict(downsample_ratio, self.combined_dict['map'])
-
-            if flag == "hist" or flag == "beliefs" or flag == "plan" or flag == "data":
-
-                if flag == "hist":
-                    if not self.has_beliefs or not self.has_plan:
-                        return False
-                if flag == "plan":
-                    if not self.has_beliefs:
-                        return False
-                if flag == "beliefs":
-                    pass
-
+                if self.has_map:
+                    self.dim, self.map_intensity, self.map_intensity_scale, self.new_dim, self.origin, \
+                        self.raw_map_array, self.resolution = \
+                        bag_to_hdf5.parse_map_data_from_dict(down_sample_ratio, self.combined_dict['map'])
+                else:
+                    self.raw_map_array = None
+                    self.origin = None
+                    self.dim, self.map_intensity, self.map_intensity_scale, self.new_dim, self.resolution = \
+                        bag_to_hdf5.create_null_map_data(down_sample_ratio)
+            elif flag == "data":
                 # reset patience clock
                 self.data_is_alive = True
                 self.is_triggered = True
                 self.data_patience_clock = 0
 
-                # start_time = time.time()
                 map_array, self.ped_map_array = \
                     bag_to_hdf5.create_maps_inner(self.combined_dict['map'], self.raw_map_array)
 
-                # elapsed_time = time.time() - start_time
-                # print("Map allocation time: " + str(elapsed_time) + " s")
-
                 hist_cars, hist_peds = \
                     bag_to_hdf5.get_bounded_history(self.combined_dict, 'hist')
-
-                # for i in reversed(range(0, config.num_hist_channels)):
-                #     if hist_cars[i]:
-                #         print('==> combined_dict hist car {}: {}'.format(i, hist_cars[i]))
 
                 self.data_idx += 1
 
                 self.check_history_completeness(hist_cars)
 
                 # start_time = time.time()
-                peds_are_valid = bag_to_hdf5.process_exo_agents(hist_cars=hist_cars, hist_exo_agents=hist_peds,
+                self.origin = None
+                agents_are_valid = bag_to_hdf5.process_exo_agents(hist_cars=hist_cars, hist_exo_agents=hist_peds,
                                                                 hist_env_maps=self.ped_map_array, dim=self.dim,
                                                                 resolution=self.resolution,
                                                                 map_intensity=self.map_intensity,
@@ -358,20 +348,28 @@ class DataMonitor(data.Dataset):
                 # elapsed_time = time.time() - start_time
                 # print("Peds processing time: " + str(elapsed_time) + " s")
 
-                if not peds_are_valid:
+                if not agents_are_valid:
                     return False  # report invalid peds
 
+                self.origin = bag_to_hdf5.select_null_map_origin(hist_cars, 0)
+
                 # start_time = time.time()
-                bag_to_hdf5.process_maps_inner(downsample_ratio, map_array, self.output_dict,
+                bag_to_hdf5.process_maps_inner(down_sample_ratio, map_array, self.output_dict,
                                                self.ped_map_array)
                 # elapsed_time = time.time() - start_time
                 # print("Map processing time: " + str(elapsed_time) + " s")
 
                 # start_time = time.time()
                 bag_to_hdf5.process_car_inner(self.output_dict, self.combined_dict, hist_cars,
-                                              self.dim, downsample_ratio, self.origin, self.resolution)
+                                              self.dim, down_sample_ratio, self.origin, self.resolution)
                 # elapsed_time = time.time() - start_time
                 # print("Car processing time: " + str(elapsed_time) + " s")
+            elif flag == 'lanes':
+                hist_cars, hist_peds = \
+                    bag_to_hdf5.get_bounded_history(self.combined_dict, 'hist')
+                self.origin = bag_to_hdf5.select_null_map_origin(hist_cars, 0)
+                bag_to_hdf5.process_lanes_inner(self.output_dict, self.combined_dict,
+                                                self.dim, down_sample_ratio, self.origin, self.resolution)
 
             # put all info into images
             # start_time = time.time()
@@ -401,51 +399,42 @@ class DataMonitor(data.Dataset):
 
     def data_to_images(self, flag):
         try:
-            for i in range(self.num_agents):
+            if self.output_dict['maps'] is not None:
+                for c in range(0, config.num_hist_channels):
+                    self.cur_data['nn_input'][0, 1, config.channel_map[c]] = self.output_dict['maps'][c]
+            else:
+                for c in range(0, config.num_hist_channels):
+                    self.cur_data['nn_input'][0, 1, config.channel_map[c], ...] = 0
 
-                if flag == "map" or flag == "data":
+            if flag == "data":
+                if self.output_dict['car']['goal'] is None or self.output_dict['lane'] is None:
+                    return
 
-                    if self.output_dict['maps'] is not None:
-                        for c in range(0, config.num_hist_channels):
-                            self.cur_data['nn_input'][0, i, config.channel_map[c]] = self.output_dict['maps'][c]
-                    else:
-                        for c in range(0, config.num_hist_channels):
-                            self.cur_data['nn_input'][0, i, config.channel_map[c], ...] = 0
+                self.cur_data['nn_input'][0, i, config.channel_goal, ...] = 0
+                self.cur_data['nn_input'][0, i, config.channel_lane, ...] = 0
 
-                if i >= 0:  # pedestrians
-                    agent_flag = 'car'
+                for point in self.output_dict['lane']:
+                    self.cur_data['nn_input'][0, i, config.channel_lane, int(
+                        point[0]), int(point[1])] = point[2]
 
-                    if self.output_dict[agent_flag]['goal'] is None: ##########################
-                        return
+                agent_flag = 'car'
+                for point in self.output_dict[agent_flag]['goal']:
+                    self.cur_data['nn_input'][0, i, config.channel_goal, int(
+                        point[0]), int(point[1])] = point[2]
 
-                    # if self.output_dict[agent_flag] is not None:
-                    if flag == "hist" or flag == "data":
-                        self.cur_data['nn_input'][0, i, config.channel_goal, ...] = 0
-                        # print("==> goal channel to fill: {}, {} points".format(config.channel_goal,
-                        #                                                        len(self.output_dict[agent_flag]['goal'])))
-                        for point in self.output_dict[agent_flag]['goal']:
-                            self.cur_data['nn_input'][0, i, config.channel_goal, int(
-                                point[0]), int(point[1])] = point[2]
-
-                        for c in range(0, config.num_hist_channels):
-
-                            self.cur_data['nn_input'][0, i, config.channel_hist[c], ...] = 0
-
-                            if self.output_dict[agent_flag]['hist'][c] is not None:
-                                # if len(self.output_dict[agent_flag]['hist'][c]) == 0:
-                                #     print("====> fill image: hist {} car points empty ".format(c))
-
-                                for point in self.output_dict[agent_flag]['hist'][c]:
-                                    self.cur_data['nn_input'][0, i, config.channel_hist[c], int(
-                                        point[0]), int(point[1])] = point[2]
-                            else:
-                                pass
-                                # print("====> fill image: hist {} car points None ".format(c))
+                if config.use_hist_channels:
+                    for c in range(0, config.num_hist_channels):
+                        self.cur_data['nn_input'][0, i, config.channel_hist[c], ...] = 0
+                        if self.output_dict[agent_flag]['hist'][c] is not None:
+                            for point in self.output_dict[agent_flag]['hist'][c]:
+                                self.cur_data['nn_input'][0, i, config.channel_hist[c], int(
+                                    point[0]), int(point[1])] = point[2]
+                        else:
+                            pass
 
         except Exception as e:
             error_handler(e)
             return
-
 
     def check_alive(self):
         if self.is_triggered:
@@ -458,28 +447,8 @@ class DataMonitor(data.Dataset):
             if self.data_patience_clock >= self.data_patience:
                 self.data_is_alive = False
 
-            # if not self.steering_topic_alive:
-            #     print("steering topic broken!!!!!!!!!!!!!!!!!!!!")
-            #     return False
-
             return self.data_is_alive
         else:
             # still waiting for first data
             print('Waiting for triggering')
             return True
-
-
-def load_goals(ped_goal_file):
-    global ped_goal_list
-    if ped_goal_file is None:
-        print("no goal file found")
-        assert False
-        pass
-    with open(ped_goal_file, 'r') as f:
-        ped_goal_list = f.read().split('\n')
-        ped_goal_list = [
-            list(map(float,
-                     x.strip().split(' '))) for x in ped_goal_list
-        ]
-
-    print("load_goals: ped_goal_list", ped_goal_list)

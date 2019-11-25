@@ -13,6 +13,8 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
+#include "msg_builder/car_info.h"
+
 int tick = 0;
 double pub_freq = 12; //10;
 float time_scale = 1.0;
@@ -79,13 +81,14 @@ public:
 					&VelPublisher::actionCallBack, this);
 
 		speedSub = nh.subscribe("odom", 1, &VelPublisher::odomCallback, this);
+		ego_sub = nh.subscribe("ego_state",1, &VelPublisher::egostateCallback, this);
 
 		ros::Timer timer = nh.createTimer(
 				ros::Duration(1 / pub_freq / time_scale),
 				&VelPublisher::publishSpeed, this);
 		cmd_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-
-		cmd_accel_pub = nh.advertise<std_msgs::Float32>("cmd_accel", 1);
+		cmd_steer_pub = nh.advertise<std_msgs::Float32>("pomdp_cmd_steer", 1);
+		cmd_accel_pub = nh.advertise<std_msgs::Float32>("pomdp_cmd_accel", 1);
 		ros::spin();
 	}
 
@@ -99,17 +102,9 @@ public:
 
 	virtual void odomCallback(nav_msgs::Odometry odo) = 0;
 
+	virtual void egostateCallback(msg_builder::car_info car) = 0;
+
 	double cal_pub_acc() {
-		// double pub_acc = emergency_break? -1: target_acc/1.875 ;
-		// if (real_vel >= ModelParams::VEL_MAX)
-		//     pub_acc = min(0.0, pub_acc);
-		// if(real_vel <= 0)
-		//     pub_acc = max(0.0, pub_acc);
-
-		// if (pub_acc == 0){
-		//     pub_acc = 0.5;
-		// }
-
 		if (emergency_break)
 			return -1;
 
@@ -122,16 +117,10 @@ public:
 			throttle = 0.0;
 
 		return throttle;
-		// double small_gap = 0.5;
-		// if(target_vel > real_vel + small_gap)
-		//     return 0.7;
-		// else if (target_vel > real_vel) // need minor acc
-		//     return 0.4;
-		// else if (target_vel > real_vel - small_gap) // need minor dec
-		//     return 0.2;
-		// else
-		//     return 0.0;
+	}
 
+	double cal_pub_steer(){
+		 return steering / (car_state_.max_steer_angle/180.0*M_PI);
 	}
 
 	void _publishSpeed() {
@@ -139,9 +128,7 @@ public:
 
 		cmd.angular.z = steering; //0;
 		cmd.linear.x = emergency_break ? 0 : curr_vel;
-
 		double pub_acc = cal_pub_acc();
-
 		cmd.linear.y = pub_acc; // target_acc;
 		cmd_pub.publish(cmd);
 
@@ -149,18 +136,21 @@ public:
 		acc_topic.data = pub_acc; // debugging
 		cmd_accel_pub.publish(acc_topic);
 
-		// std::cout<<" ~~~~~~ vel publisher real_vel="<< real_vel << ", target_vel="<< target_vel << ", pub_acc=" << acc_topic.data << std::endl;
-		// std::cout<<" ~~~~~~ vel publisher cmd steer="<< cmd.angular.z << ", acc="<< cmd.linear.y << std::endl;
+		std_msgs::Float32 steer_topic;
+		steer_topic.data = cal_pub_steer(); // debugging
+		cmd_steer_pub.publish(steer_topic);
 	}
 
 	bool input_data_ready;
 	double curr_vel, real_vel, target_vel, init_curr_vel, steering;
 	double target_acc;
 	int b_use_drive_net_;
-	std::string drive_net_mode;
-	ros::Subscriber vel_sub, steer_sub, action_sub, odom_sub, speedSub;
-	ros::Publisher cmd_pub, cmd_accel_pub;
 
+	std::string drive_net_mode;
+	ros::Subscriber vel_sub, steer_sub, action_sub, odom_sub, speedSub, ego_sub;
+	ros::Publisher cmd_pub, cmd_accel_pub, cmd_steer_pub;
+
+	msg_builder::car_info car_state_;
 };
 
 /*class VelPublisher1 : public VelPublisher {
@@ -241,6 +231,10 @@ class VelPublisher2: public VelPublisher {
 					<< " ModelParams::VEL_MAX=" << ModelParams::VEL_MAX << endl;
 			// raise(SIGABRT);
 		}
+	}
+
+	void egostateCallback(msg_builder::car_info car){
+		car_state_ = car;
 	}
 
 	void publishSpeed(const ros::TimerEvent& event) {

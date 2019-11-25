@@ -1079,6 +1079,9 @@ def launch_carla_simulator(round, run, case):
     if "gamma" in cmd_args.baseline:
     	print("launching connector with GAMMA controller...")
     	shell_cmd = shell_cmd + ' ego_control_mode:=gamma'
+    elif "imitation" in cmd_args.baseline:
+    	print("launching connector with imitation controller...")
+    	shell_cmd = shell_cmd + ' ego_control_mode:=imitation'
     else:
     	shell_cmd = shell_cmd + ' ego_control_mode:=other'
 

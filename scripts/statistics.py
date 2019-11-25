@@ -40,7 +40,7 @@ def filter_txt_files(root_path, txt_files):
             if no_aa:
                 pass # print("no aa file: ", txtfile)
             else:
-                print("unused file: ", txtfile)
+                pass # print("unused file: ", txtfile)
     print("NO agent array in {} files".format(no_aa_count))
 
     filtered_files.sort()
@@ -90,7 +90,7 @@ def get_statistics(root_path, filtered_files):
                     if speed< last_speed:
                         dec_count += 1
                     last_speed = speed
-                elif "pomdp" in folder and 'action **=' in line:
+                elif ("pomdp" in folder or "rollout" in folder) and 'action **=' in line:
                     acc = int(line.split(' ')[2]) % 3
                     if acc == 2:
                         dec_count += 1
@@ -98,7 +98,7 @@ def get_statistics(root_path, filtered_files):
                         acc_count += 1
                     elif acc == 0:
                         mat_count += 1
-                elif "pomdp" in folder and "car pos / heading / vel" in line: 
+                elif ("pomdp" in folder or "gamma" in folder or "rollout" in folder) and "car pos / heading / vel" in line: 
                     # = (149.52, 171.55) / 1.3881 / 0.50245
                     speed = float(line.split(' ')[12])
                     pos_x = float(line.split(' ')[7].replace('(', '').replace(',', ''))
@@ -110,6 +110,10 @@ def get_statistics(root_path, filtered_files):
                     if last_pos:
                         dist += math.sqrt((pos[0]-last_pos[0])**2 + (pos[1]-last_pos[1])**2)
                     last_pos = pos
+                    if "gamma" in folder:
+                        if speed< last_speed:
+                            dec_count += 1
+                        last_speed = speed
 
                 elif "imitation" in folder and 'car pos / dist_trav / vel' in line:
                     speed = line.split(' ')[12]
