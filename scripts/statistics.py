@@ -111,7 +111,7 @@ def get_statistics(root_path, filtered_files):
                         dist += math.sqrt((pos[0]-last_pos[0])**2 + (pos[1]-last_pos[1])**2)
                     last_pos = pos
                     if "gamma" in folder:
-                        if speed< last_speed:
+                        if speed< last_speed - 0.2:
                             dec_count += 1
                         last_speed = speed
 
