@@ -1,7 +1,6 @@
 import sys
 
 sys.path.append('./Data_processing/')
-# sys.path.append('./drive_topics/')
 
 from Data_processing import global_params
 config = global_params.config
@@ -95,6 +94,7 @@ class DataMonitor(data.Dataset):
             'true_steer': None,
             'true_acc': None,
             'true_vel': None,
+            'true_lane': None,
             'nn_input': np.zeros(
                 (1, 1, config.total_num_channels, imsize, imsize), dtype=np.float32)
         }
@@ -103,7 +103,7 @@ class DataMonitor(data.Dataset):
         rospy.Subscriber('/map', OccupancyGrid, self.receive_map_callback)
         rospy.Subscriber('/il_data', imitation_data, self.receive_il_data_callback, queue_size=1)
         rospy.Subscriber('/local_lanes', Lanes, self.receive_lane_data_callback, queue_size=1)
-        rospy.Subscriber('/cmd_steer', Float32, self.receive_cmd_steer_callback, queue_size=1)
+        rospy.Subscriber('/purepursuit_cmd_steer', Float32, self.receive_cmd_steer_callback, queue_size=1)
         self.steering_topic_alive = True
         self.steering_is_triggered = False
 
@@ -116,9 +116,10 @@ class DataMonitor(data.Dataset):
         for i in range(0, config.num_hist_channels):
             self.hist_agents.append(peds_car_info())
 
-        self.true_steering = None
+        self.true_steering_norm = None
         self.true_acc = None
         self.true_vel = None
+        self.true_lane = None
 
         self.update_steering = True
         self.update_data = True
@@ -218,8 +219,8 @@ class DataMonitor(data.Dataset):
     def receive_cmd_steer_callback(self, data):
         if self.update_steering:
             # print("steering data call_back~~~~~~~~~~~~~~~~~~~~:", np.degrees(float(data.data)))
-            self.true_steering = float(data.data)
-            self.cur_data['true_steer'] = self.true_steering
+            self.true_steering_norm = float(data.data)
+            self.cur_data['true_steer'] = self.true_steering_norm
             self.steering_topic_alive = True
             self.steering_is_triggered = True
         else:
@@ -236,11 +237,11 @@ class DataMonitor(data.Dataset):
         print("Topic parsing time: " + str(elapsed_time) + " s")
 
     def parse_actions(self, data):
-        print('Parsing angle from il_data:', data.action_reward.angular.x)
-        # self.true_steering = data.action_reward.angular.x
-        self.true_acc = data.action_reward.linear.x
-        self.true_vel = data.action_reward.linear.z
-
+        print('Parsing angle from il_data:', data.action_reward.steering_normalized)
+        # self.true_steering = data.action_reward.steering_normalized
+        self.true_acc = data.action_reward.acceleration_id
+        self.true_vel = data.action_reward.target_speed
+        self.true_lane = data.action_reward.lane_change
         # print("*******************************`Get action reward from data:", data.action_reward)
 
     def parse_plan(self, data):
@@ -393,9 +394,10 @@ class DataMonitor(data.Dataset):
         return history_is_complete
 
     def record_labels(self):
-        self.cur_data['true_steer'] = self.true_steering
+        self.cur_data['true_steer'] = self.true_steering_norm
         self.cur_data['true_acc'] = self.true_acc
         self.cur_data['true_vel'] = self.true_vel
+        self.cur_data['true_lane'] = self.true_lane
 
     def data_to_images(self, flag):
         try:

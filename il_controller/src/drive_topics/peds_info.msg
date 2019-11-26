@@ -1,1 +1,0 @@
-ped_info[] peds

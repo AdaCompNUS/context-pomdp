@@ -62,7 +62,7 @@ class Path(object):
         self.path = path
 
     def nearest(self, p):
-        return min(enumerate(self.path), key=lambda (_, a): dist(a, p))
+        return min(enumerate(self.path), key=lambda point: dist(point[1], p))
 
     def ahead(self, i, d):
         pi = self.path[i]

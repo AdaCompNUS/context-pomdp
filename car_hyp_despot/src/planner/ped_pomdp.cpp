@@ -355,7 +355,7 @@ bool PedPomdp::Step(State &state_, double rNum, int action, double &reward, uint
     {
         reward = ModelParams::GOAL_REWARD;
 
-        logd << "assigning goal reward " << reward << endl;
+        logv << "assigning goal reward " << reward << endl;
         return true;
     }
 
@@ -365,7 +365,7 @@ bool PedPomdp::Step(State &state_, double rNum, int action, double &reward, uint
     {
         reward = CrashPenalty(state);
 
-        logd << "assigning collision reward " << reward << endl;
+        logv << "assigning collision reward " << reward << endl;
         return true;
     }
 
@@ -391,7 +391,7 @@ bool PedPomdp::Step(State &state_, double rNum, int action, double &reward, uint
     else
         QuickRandom::SetSeed(INIT_QUICKRANDSEED, 0);
 
-    logd << "[PedPomdp::" << __FUNCTION__ << "] Refract action" << endl;
+    logv << "[PedPomdp::" << __FUNCTION__ << "] Refract action" << endl;
     double acc = GetAcceleration(action);
 
     //	cout << "car freq " << world_model->freq << endl;
@@ -490,7 +490,7 @@ bool PedPomdp::Step(PomdpStateWorld &state, double rNum, int action, double &rew
 
     // State transition
     Random random(rNum);
-    logd << "[PedPomdp::" << __FUNCTION__ << "] Refract action" << endl;
+    logv << "[PedPomdp::" << __FUNCTION__ << "] Refract action" << endl;
     double acc = GetAcceleration(action);
 
     world_model->RobStep(state.car, steering, random);
@@ -826,7 +826,7 @@ PomdpState PedPomdp::PredictAgents(const PomdpState &ped_state) const
     //             world_model->AgentStepPath(p, 1, noise, false);
 
     //         if(p.pos_along_path == old_path_pos)
-    //             logd << "[PredictAgents] agent " << p.id << " no move with " << world_model->PathCandidates(p.id).size()
+    //             logv << "[PredictAgents] agent " << p.id << " no move with " << world_model->PathCandidates(p.id).size()
     //                  << " path_candidates, pos_along_path " << p.pos_along_path << " " << endl;
     //     }
     // }
@@ -1028,15 +1028,15 @@ void PedPomdp::PrintParticles(const vector<State *> particles, ostream &out) con
         cout << endl;
     }
 
-    logd << "<><><> q:" << endl;
+    logv << "<><><> q:" << endl;
     for (int j = 0; j < 6; j ++)
     {
-        logd << "Ped " << pomdp_state->agents[j].id << " Belief is ";
+        logv << "Ped " << pomdp_state->agents[j].id << " Belief is ";
         for (int i = 0; i < world_model->GetNumIntentions(pomdp_state->agents[j]); i ++)
         {
-            logd << (q_goal_count[j][i] + 0.0) << " ";
+            logv << (q_goal_count[j][i] + 0.0) << " ";
         }
-        logd << endl;
+        logv << endl;
     }
 
     cout << "******** end of scenario belief********" << endl;
@@ -1358,11 +1358,11 @@ SolverPrior *PedPomdp::CreateSolverPrior(World *world, std::string name, bool up
         prior = new PedNeuralSolverPrior(this, *world_model);
     }
 
-    logd << "DEBUG: Getting initial state " << endl;
+    logv << "DEBUG: Getting initial state " << endl;
 
     const State *init_state = world->GetCurrentState();
 
-    logd << "DEBUG: Adding initial state " << endl;
+    logv << "DEBUG: Adding initial state " << endl;
 
     if (init_state != NULL && update_prior)
     {
@@ -1442,6 +1442,12 @@ double PedPomdp::GetSteering(ACT_TYPE action, bool debug) const
         cout << "[GetSteering] (steer_ID, normalized_steer, shifted_steer)="
              << "(" << steer_ID << "," << normalized_steer << "," << shifted_steer << ")" << endl;
     return shifted_steer * ModelParams::MaxSteerAngle;
+}
+
+double PedPomdp::GetSteeringNoramlized(ACT_TYPE action, bool debug) const
+{
+    double steer_ID = FloorIntRobust(action / (2 * ModelParams::NumAcc + 1));
+    return steer_ID / ModelParams::NumSteerAngle - 1;
 }
 
 ACT_TYPE PedPomdp::GetActionID(double steering, double acc, bool debug)

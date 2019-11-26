@@ -25,8 +25,8 @@ config.num_data_loaders = num_gpus*4
 
 ''' Action model settings '''
 config.steering_resolution = 1.0/7.0  # no unit
-config.max_steering = 1.0  # no unit
-config.num_steering_bins = 2 * int(round(config.max_steering / config.steering_resolution))
+config.max_steering_degree = 35.0 
+config.num_steering_bins = 2 * int(round(config.max_steering_degree / config.steering_resolution))
 
 config.num_acc_bins = 3
 config.acc_resolution = 2.0 / config.num_acc_bins
@@ -34,6 +34,8 @@ config.max_acc = 1.5  # in degrees
 
 config.num_vel_bins = 6
 config.vel_max = 1.5
+
+config.num_lane_bins = 3
 ''' Action model settings '''
 
 
@@ -56,8 +58,8 @@ config.test_split = 0.00  # 0.05
 ''' Data label settings '''
 config.value_normalizer = 10.0
 config.label_linear = 0
-config.label_angular = 1
-config.label_cmdvel = 2
+# config.label_angular = 1
+config.label_cmdvel = 1
 ''' Data label settings '''
 
 
@@ -141,7 +143,10 @@ config.num_guassians_in_heads = 5
 config.reward_mode = 'func'
 config.gamma = 1.0
 config.val_scale = 1.0  # 10.0
-config.ang_scale = 2.0  # 10.0
+config.ang_scale = 1.0  # 10.0
+config.acc_scale = 1.0
+config.vel_scale = 1.0
+config.lane_scale = 1.0
 ''' Loss settings '''
 
 

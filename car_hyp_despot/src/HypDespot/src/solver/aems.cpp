@@ -174,24 +174,24 @@ void AEMS::Update(QNode* qnode) {
 
 void AEMS::Backup(VNode* vnode) {
 	int iter = 0;
-	logd << "- Backup " << vnode << " at depth " << vnode->depth() << endl;
+	logv << "- Backup " << vnode << " at depth " << vnode->depth() << endl;
 	while (true) {
-		logd << " Iter " << (iter++) << " " << vnode << endl;
+		logv << " Iter " << (iter++) << " " << vnode << endl;
 
 		Update(vnode);
-		logd << " Updated vnode " << vnode << endl;
+		logv << " Updated vnode " << vnode << endl;
 
 		QNode* parentq = vnode->parent();
 		if (parentq == NULL)
 			break;
 
 		Update(parentq);
-		logd << " Updated Q-node to (" << parentq->lower_bound() << ", "
+		logv << " Updated Q-node to (" << parentq->lower_bound() << ", "
 			<< parentq->upper_bound() << ")" << endl;
 
 		vnode = parentq->parent();
 	}
-	logd << "* Backup complete!" << endl;
+	logv << "* Backup complete!" << endl;
 }
 
 void AEMS::InitLowerBound(VNode* vnode, BeliefLowerBound* lower_bound,
@@ -209,15 +209,15 @@ void AEMS::InitUpperBound(VNode* vnode, BeliefUpperBound* upper_bound,
 void AEMS::Expand(VNode* vnode, BeliefLowerBound* lower_bound,
 	BeliefUpperBound* upper_bound, const BeliefMDP* model, History& history) {
 	vector<QNode*>& children = vnode->children();
-	logd << "- Expanding vnode " << vnode << endl;
+	logv << "- Expanding vnode " << vnode << endl;
 	for (int action = 0; action < model->NumActions(); action++) {
-		logd << " Action " << action << endl;
+		logv << " Action " << action << endl;
 		QNode* qnode = new QNode(vnode, action);
 		children.push_back(qnode);
 
 		Expand(qnode, lower_bound, upper_bound, model, history);
 	}
-	logd << "* Expansion complete!" << endl;
+	logv << "* Expansion complete!" << endl;
 }
 
 void AEMS::Expand(QNode* qnode, BeliefLowerBound* lb, BeliefUpperBound* ub,
@@ -241,12 +241,12 @@ void AEMS::Expand(QNode* qnode, BeliefLowerBound* lb, BeliefUpperBound* ub,
 	for (map<OBS_TYPE, double>::iterator it = obss.begin(); it != obss.end(); it++) {
 		OBS_TYPE obs = it->first;
 		double weight = it->second;
-		logd << "[AEMS::Expand] Creating node for obs " << obs
+		logv << "[AEMS::Expand] Creating node for obs " << obs
 			<< " with weight " << weight << endl;
 		VNode* vnode = new VNode(model->Tau(belief, action, obs),
 			parent->depth() + 1, qnode, obs);
 		vnode->likelihood = weight;
-		logd << " New node created!" << endl;
+		logv << " New node created!" << endl;
 		children[obs] = vnode;
 
 		InitLowerBound(vnode, lb, history);

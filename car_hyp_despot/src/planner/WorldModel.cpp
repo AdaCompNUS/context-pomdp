@@ -212,7 +212,7 @@ double CalculateGoalDir(const CarStruct& car, const COORD& goal){
 }
 
 ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
-	logd << __FUNCTION__ << "] Get state info"<< endl;
+	logv << __FUNCTION__ << "] Get state info"<< endl;
 	const PomdpState *state=static_cast<const PomdpState*>(_state);
 	double mindist_along = numeric_limits<double>::infinity();
 	double mindist_tang = numeric_limits<double>::infinity();
@@ -220,11 +220,11 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
     double carheading = state->car.heading_dir;
 	double carvel = state->car.vel;
 
-	logd << __FUNCTION__ <<"] Calculate steering"<< endl;
+	logv << __FUNCTION__ <<"] Calculate steering"<< endl;
 
 	double steering = GetSteerToPath(static_cast<const PomdpState*>(state)[0]);
 
-	logd << __FUNCTION__ << "] Calculate acceleration"<< endl;
+	logv << __FUNCTION__ << "] Calculate acceleration"<< endl;
 
 	double acceleration;
 	// Closest pedestrian in front
@@ -254,7 +254,7 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
 	}
 
 	// TODO set as a param
-	logd << __FUNCTION__ <<"] Calculate min dist"<< endl;
+	logv << __FUNCTION__ <<"] Calculate min dist"<< endl;
 	if (mindist_along < 2/*3.5*/ || mindist_tang < 1.0) {
 		acceleration= (carvel <= 0.01) ? 0 : -ModelParams::AccSpeed;
 	}
@@ -268,7 +268,7 @@ ACT_TYPE WorldModel::defaultStatePolicy(const State* _state) const{
 
     // acceleration = ModelParams::AccSpeed; // debugging
 
-	logd << __FUNCTION__ <<"] Calculate action ID"<< endl;
+	logv << __FUNCTION__ <<"] Calculate action ID"<< endl;
 	return PedPomdp::GetActionID(steering, acceleration);
 }
 
@@ -381,7 +381,7 @@ bool WorldModel::inRealCollision(const PomdpStateWorld& state, int &id, double i
         }
 
         if (id != -1){
-            logd << "[WorldModel::inRealCollision] car_pos: ("<< car_pos.x <<","<< car_pos.y<<"), heading: ("
+            logv << "[WorldModel::inRealCollision] car_pos: ("<< car_pos.x <<","<< car_pos.y<<"), heading: ("
                 << std::cos(state.car.heading_dir) <<","<< std::sin(state.car.heading_dir)<<"), agent_pos: ("
                 << agent.pos.x <<","<< agent.pos.y<<")\n";
             return true;
@@ -426,7 +426,7 @@ bool WorldModel::inRealCollision(const PomdpStateWorld& state, double infront_an
         }
 
         if (id != -1){
-            logd << "[WorldModel::inRealCollision] car_pos: ("<< car_pos.x <<","<< car_pos.y<<"), heading: ("
+            logv << "[WorldModel::inRealCollision] car_pos: ("<< car_pos.x <<","<< car_pos.y<<"), heading: ("
                 << std::cos(state.car.heading_dir) <<","<< std::sin(state.car.heading_dir)<<"), agent_pos: ("
                 << agent.pos.x <<","<< agent.pos.y<<")\n";
             return true;
@@ -546,7 +546,7 @@ bool WorldModel::inCollision(const PomdpStateWorld& state, int &id) {
         }
 
         if (id != -1)
-            logd << "[WorldModel::inRealCollision] car_pos: ("<< car_pos.x <<","<< car_pos.y<<"), heading: ("
+            logv << "[WorldModel::inRealCollision] car_pos: ("<< car_pos.x <<","<< car_pos.y<<"), heading: ("
                 << std::cos(state.car.heading_dir) <<","<< std::sin(state.car.heading_dir)<<"), agent_pos: ("
                 << agent.pos.x <<","<< agent.pos.y<<")\n";
     }
@@ -1213,7 +1213,7 @@ void WorldModel::PedStepPath(AgentStruct& agent, int step, double noise, bool do
         agent.vel = (new_pos - agent.pos) * freq;
 
         if(doPrint && agent.pos_along_path == old_path_pos)
-            logd << "[PedStepPath]: agent " << agent.id << " no move: path length " 
+            logv << "[PedStepPath]: agent " << agent.id << " no move: path length " 
                 << path.size() << " speed " << agent.speed  << " forward distance " << agent.speed * (float(step)/freq) << endl;   
     }
 }
@@ -1245,7 +1245,7 @@ void WorldModel::VehStepPath(AgentStruct& agent, int step, double noise, bool do
         agent.vel = (agent.pos - old_pos)*freq;
 
         if(doPrint && agent.pos_along_path == old_path_pos)
-            logd << "[PedStepPath]: agent " << agent.id << " no move: path length " 
+            logv << "[PedStepPath]: agent " << agent.id << " no move: path length " 
                 << path.size() << " speed " << agent.speed  << " forward distance " << agent.speed * (float(step)/freq) << endl;   
     }
     else{ // stop intention
@@ -1324,7 +1324,7 @@ double WorldModel::agentMoveProb(COORD prev, const Agent& agent, int intention_i
 	// CHECK: beneficial to add back noise?
 	if(debug) cout<<"intention id "<<intention_id<<endl;
 	if (intention_id == GetNumIntentions(agent.id)-1) {  //stop intention
-		logd <<"stop intention" << endl;
+		logv <<"stop intention" << endl;
 
 		return (move_dist < sensor_noise) ? 0.4 : 0;
 	} else {
@@ -1337,7 +1337,7 @@ double WorldModel::agentMoveProb(COORD prev, const Agent& agent, int intention_i
 			angle = acos(cosa);
 		}
 		else
-			logd <<"goal_dist=" << goal_dist << " move_dist " << move_dist << endl;
+			logv <<"goal_dist=" << goal_dist << " move_dist " << move_dist << endl;
 //		cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 		double angle_prob = gaussian_prob(angle, ModelParams::NOISE_GOAL_ANGLE) + K;
@@ -1347,15 +1347,15 @@ double WorldModel::agentMoveProb(COORD prev, const Agent& agent, int intention_i
 			double mean_vel = ped_mean_dirs[agent_id][intention_id].Length();
 			vel_error = move_dist - mean_vel;
 
-			logd <<"ATT angle error=" << angle << endl;
-			logd <<"ATT vel_error=" << vel_error << endl;
+			logv <<"ATT angle error=" << angle << endl;
+			logv <<"ATT vel_error=" << vel_error << endl;
 
 		}
 		else{
 			vel_error = move_dist - ModelParams::PED_SPEED/freq;
 
-			logd <<"DIS angle error=" << angle << endl;
-			logd <<"DIS vel_error=" << vel_error << endl;
+			logv <<"DIS angle error=" << angle << endl;
+			logv <<"DIS vel_error=" << vel_error << endl;
 
 		}
 //		cout << __FUNCTION__ << "@" << __LINE__ << endl;
@@ -1538,7 +1538,7 @@ void WorldModel::updatePedBelief(AgentBelief& b, const Agent& curr_agent) {
         for(int i=0; i<GetNumIntentions(curr_agent); i++) {
 
             // Attentive mode
-            logd << "TEST ATT" << endl;
+            logv << "TEST ATT" << endl;
             double prob = agentMoveProb(b.pos, curr_agent, i, AGENT_ATT);
             if(debug) cout << "attentive likelihood " << i << ": " << prob << endl;
             b.prob_modes_goals[AGENT_ATT][i] *=  prob;
@@ -1546,7 +1546,7 @@ void WorldModel::updatePedBelief(AgentBelief& b, const Agent& curr_agent) {
             b.prob_modes_goals[AGENT_ATT][i] += SMOOTHING / GetNumIntentions(curr_agent)/2.0; // CHECK: decrease or increase noise
 
             // Detracted mode
-            logd << "TEST DIS" << endl;
+            logv << "TEST DIS" << endl;
             prob = agentMoveProb(b.pos, curr_agent, i, AGENT_DIS);
             if(debug) cout << "Detracted likelihood " << i << ": " << prob << endl;
             b.prob_modes_goals[AGENT_DIS][i] *=  prob;
@@ -1757,7 +1757,7 @@ void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
     bool no_move = true;
     for(;i<veh_list.size();i++) {
         if (veh_list[i].id==veh.id) {
-            logd <<"[updateVel] updating agent " << veh.id << endl;
+            logv <<"[updateVel] updating agent " << veh.id << endl;
 
             trackVel(veh_list[i], veh, no_move, doPrint);
             tracPos(veh_list[i], veh, doPrint);
@@ -1773,7 +1773,7 @@ void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
     }
 
     if (i==veh_list.size()) {
-        logd << "[updateVel] updating new agent " << veh.id << endl;
+        logv << "[updateVel] updating new agent " << veh.id << endl;
 
         no_move = false;
 
@@ -1798,7 +1798,7 @@ void WorldStateTracker::updateVehState(const Vehicle& veh, bool doPrint){
     bool no_move = true;
     for(;i<veh_list.size();i++) {
         if (veh_list[i].id==veh.id) {
-            logd <<"[updateVel] updating agent " << veh.id << endl;
+            logv <<"[updateVel] updating agent " << veh.id << endl;
 
             trackVel(veh_list[i], veh, no_move, doPrint);
             tracPos(veh_list[i], veh, doPrint);
@@ -1812,7 +1812,7 @@ void WorldStateTracker::updateVehState(const Vehicle& veh, bool doPrint){
     }
 
     if (i==veh_list.size()) {
-        logd << "[updateVel] updating new agent " << veh.id << endl;
+        logv << "[updateVel] updating new agent " << veh.id << endl;
 
         no_move = false;
 
@@ -1834,7 +1834,7 @@ void WorldStateTracker::updateVehPaths(const Vehicle& veh, bool doPrint){
     bool no_move = true;
     for(;i<veh_list.size();i++) {
         if (veh_list[i].id==veh.id) {
-            logd <<"[updateVel] updating agent path " << veh.id << endl;
+            logv <<"[updateVel] updating agent path " << veh.id << endl;
             tracIntention(veh_list[i], veh, doPrint);
             break;
         }
@@ -1848,7 +1848,7 @@ void WorldStateTracker::updatePed(const Pedestrian& agent, bool doPrint){
     bool no_move = true;
     for(;i<ped_list.size();i++) {
         if (ped_list[i].id==agent.id) {
-            logd <<"[updatePed] updating agent " << agent.id << endl;
+            logv <<"[updatePed] updating agent " << agent.id << endl;
     
             trackVel(ped_list[i], agent, no_move, doPrint);
             tracPos(ped_list[i], agent, doPrint);
@@ -1865,7 +1865,7 @@ void WorldStateTracker::updatePed(const Pedestrian& agent, bool doPrint){
     if (i==ped_list.size()) {
     	no_move = false;
         //not found, new agent
-   	    logd << "[updatePed] updating new agent " << agent.id << endl;
+   	    logv << "[updatePed] updating new agent " << agent.id << endl;
 
         ped_list.push_back(agent);
 
@@ -1888,7 +1888,7 @@ void WorldStateTracker::updatePedState(const Pedestrian& agent, bool doPrint){
     bool no_move = true;
     for(;i<ped_list.size();i++) {
         if (ped_list[i].id==agent.id) {
-            logd <<"[updatePed] updating agent " << agent.id << endl;
+            logv <<"[updatePed] updating agent " << agent.id << endl;
 
             trackVel(ped_list[i], agent, no_move, doPrint);
             tracPos(ped_list[i], agent, doPrint);
@@ -1902,7 +1902,7 @@ void WorldStateTracker::updatePedState(const Pedestrian& agent, bool doPrint){
     if (i==ped_list.size()) {
     	no_move = false;
         //not found, new agent
-   	    logd << "[updatePed] updating new agent " << agent.id << endl;
+   	    logv << "[updatePed] updating new agent " << agent.id << endl;
 
         ped_list.push_back(agent);
         ped_list.back().vel.x = 0.01; // to avoid subsequent runtime error
@@ -1919,7 +1919,7 @@ void WorldStateTracker::updatePedState(const Pedestrian& agent, bool doPrint){
 void WorldStateTracker::updatePedPaths(const Pedestrian& agent, bool doPrint){
     for(int i=0;i<ped_list.size();i++) {
         if (ped_list[i].id==agent.id) {
-            logd <<"[updatePed] updating agent paths" << agent.id << endl;
+            logv <<"[updatePed] updating agent paths" << agent.id << endl;
 
             tracIntention(ped_list[i], agent, doPrint);
             tracCrossDirs(ped_list[i], agent, doPrint);
@@ -2236,7 +2236,7 @@ int AgentBelief::sample_goal() const {
 }
 
 void AgentBelief::sample_goal_mode(int& goal, int& mode, bool use_att_mode) const {
-//	logd << "[AgentBelief::sample_goal_mode] " << endl;
+//	logv << "[AgentBelief::sample_goal_mode] " << endl;
 
     double r = Random::RANDOM.NextDouble();
 
@@ -2273,7 +2273,7 @@ void AgentBelief::sample_goal_mode(int& goal, int& mode, bool use_att_mode) cons
         }
 
         if(r > 0) {
-            logd << "[WARNING]: [AgentBelief::sample_goal_mode] execess probability " << r << endl;
+            logv << "[WARNING]: [AgentBelief::sample_goal_mode] execess probability " << r << endl;
             goal = 0;
             mode = 0;
         } 
@@ -2416,7 +2416,7 @@ PomdpState WorldBeliefTracker::sample(bool predict, bool use_att_mode) {
 
     s.time_stamp  = cur_time_stamp;
 
-//	logd << "[WorldBeliefTracker::sample] done" << endl;
+//	logv << "[WorldBeliefTracker::sample] done" << endl;
     if (predict){
     	PomdpState predicted_s = predictPedsCurVel(&s, cur_acc, cur_steering);
     	return predicted_s;
@@ -2431,7 +2431,7 @@ vector<PomdpState> WorldBeliefTracker::sample(int num, bool predict, bool use_at
 		Random::RANDOM.seed(0);
 
     vector<PomdpState> particles;
-	logd << "[WorldBeliefTracker::sample] Sampling" << endl;
+	logv << "[WorldBeliefTracker::sample] Sampling" << endl;
 
     for(int i=0; i<num; i++) {
         particles.push_back(sample(predict, use_att_mode));
@@ -2849,7 +2849,7 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents
         agent_ids[i] = agent.id;
         // TODO: need to assign bounding boxes to vehicles
         
-        logd << "agent " << i << " id "<< agent_ids[i] << endl;
+        logv << "agent " << i << " id "<< agent_ids[i] << endl;
         i++;
     }
 
@@ -2902,10 +2902,10 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents
 			dir.x = traffic_agent_sim_[threadID]->getAgentPosition(i).x() - agents[id].pos.x;
 			dir.y = traffic_agent_sim_[threadID]->getAgentPosition(i).y() - agents[id].pos.y;
 
-			logd << "[PrepareAttentiveAgentMeanDirs] ped_mean_dirs len=" << ped_mean_dirs.size()
+			logv << "[PrepareAttentiveAgentMeanDirs] ped_mean_dirs len=" << ped_mean_dirs.size()
 					<< " intention_list len=" << ped_mean_dirs[id].size() << "\n";
 
-			logd << "[PrepareAttentiveAgentMeanDirs] i=" << i << " intention_id=" << intention_id << "\n";
+			logv << "[PrepareAttentiveAgentMeanDirs] i=" << i << " intention_id=" << intention_id << "\n";
 
             // DEBUG(string_sprintf("set mean, i=%d, intention_id=%d, ped_mean_dirs.size()=%d \n",
             //     i, intention_id, ped_mean_dirs.size()));
@@ -2958,7 +2958,7 @@ void WorldModel::PrintMeanDirs(std::map<int, AgentBelief> old_agents,
 
     		cout << "Att probs: " << endl;
     	    for(int intention_id=0; intention_id<GetNumIntentions(cur_agent.id); intention_id++) {
-    	    	logd <<"agent, goal, ped_mean_dirs.size() =" << cur_agent.id << " "
+    	    	logv <<"agent, goal, ped_mean_dirs.size() =" << cur_agent.id << " "
     	    					<< intention_id <<" "<< ped_mean_dirs.size() << endl;
     			double prob = agentMoveProb(old_agent.pos, cur_agent, intention_id, AGENT_ATT);
 

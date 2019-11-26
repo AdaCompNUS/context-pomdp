@@ -181,6 +181,8 @@ public:
 	double GetSteeringID(ACT_TYPE action, bool debug=false) const;
 
 	double GetSteering(ACT_TYPE action, bool debug=false) const;
+	double GetSteeringNoramlized(ACT_TYPE action, bool debug=false) const;
+
 	static ACT_TYPE GetActionID(double steering, double acc, bool debug=false);
 	static ACT_TYPE GetActionID(int steering, int acc);
 

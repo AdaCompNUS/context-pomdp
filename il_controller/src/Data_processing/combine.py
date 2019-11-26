@@ -2,6 +2,7 @@ from global_params import config
 
 if config.pycharm_mode:
     import pyros_setup
+
     pyros_setup.configurable_import().configure('mysetup.cfg').activate()
 
 import sys
@@ -72,7 +73,8 @@ def save(files, filename, flag=-1):
 
     with h5py.File(filename, 'a') as f:
         # open extendible dataset
-        acc_labels_array, ang_labels_array, data_array, cart_data_array, v_labels_array, vel_labels_array = \
+        acc_id_labels_array, ang_normed_labels_array, data_array, cart_data_array, \
+        v_labels_array, vel_labels_array, lane_labels_array = \
             allocate_containters()
         # dont discretize angular labels
         print("total files %d" % len(files))
@@ -93,10 +95,10 @@ def save(files, filename, flag=-1):
                 points_num.append(len(d.keys()))
                 step_in_file = 0
                 for key in d.keys():  # key is the original index in separate h5 files
-                    data, cart_data, value, acc, ang, vel = populate_images(d[key], False)
-                    put_images_in_dataset(acc, acc_labels_array, ang, ang_labels_array, counter,
+                    data, cart_data, value, acc_id, ang_normalized, vel, lane = populate_images(d[key], False)
+                    put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_normed_labels_array, counter,
                                           data_array, data, cart_data, cart_data_array,
-                                          v_labels_array, value, vel, vel_labels_array)
+                                          v_labels_array, value, vel, vel_labels_array, lane, lane_labels_array)
 
                     file_base_name = os.path.basename(file)
                     file_base_name = os.path.splitext(file_base_name)[0][29:]
@@ -112,24 +114,24 @@ def save(files, filename, flag=-1):
                 else:
                     print("counter unchanged: num_keys=%d" % len(d.keys()))
                     # pdb.set_trace()
-                    continue #return
+                    continue  # return
 
         print("Saving data...")
         time.sleep(3)
 
-        save_dataset_to_h5(acc_labels_array, ang_labels_array, counter, data_array, cart_data_array, f,
-                           v_labels_array, vel_labels_array, traj_num, points_num)
-
+        save_dataset_to_h5(acc_id_labels_array, ang_normed_labels_array, counter, data_array, cart_data_array, f,
+                           v_labels_array, vel_labels_array, lane_labels_array, traj_num, points_num)
 
     print("Collection memory garbages")
-    del data_array, cart_data_array, acc_labels_array, vel_labels_array, ang_labels_array, v_labels_array
+    del data_array, cart_data_array, acc_id_labels_array, vel_labels_array, ang_normed_labels_array, \
+        v_labels_array, lane_labels_array
     gc.collect()
 
     print("%s saved with %d data points" % (filename, counter))
 
 
-def save_dataset_to_h5(acc_labels_array, ang_labels_array, counter, data_array, cart_data_array, f,
-                       v_labels_array, vel_labels_array, traj_num, points_num):
+def save_dataset_to_h5(acc_id_labels_array, ang_normalized_labels_array, counter, data_array, cart_data_array, f,
+                       v_labels_array, vel_labels_array, lane_labels_array, traj_num, points_num):
     try:
         print("data shape: {}".format(data_array[0].shape))
         f.create_dataset('data', maxshape=(None, num_agents, config.total_num_channels, imsize, imsize),
@@ -142,11 +144,13 @@ def save_dataset_to_h5(acc_labels_array, ang_labels_array, counter, data_array, 
 
         print("Saving labels...")
         f.create_dataset('v_labels', maxshape=(None, 1), data=v_labels_array[0:counter], dtype='f4')
-        f.create_dataset('acc_labels', maxshape=(None, 1), data=acc_labels_array[0:counter],
+        f.create_dataset('acc_id_labels', maxshape=(None, 1), data=acc_id_labels_array[0:counter],
                          dtype='f4')
-        f.create_dataset('ang_labels', maxshape=(None, 1), data=ang_labels_array[0:counter],
+        f.create_dataset('ang_normalized_labels', maxshape=(None, 1), data=ang_normalized_labels_array[0:counter],
                          dtype='f4')
         f.create_dataset('vel_labels', maxshape=(None, 1), data=vel_labels_array[0:counter],
+                         dtype='f4')
+        f.create_dataset('lane_labels', maxshape=(None, 1), data=lane_labels_array[0:counter],
                          dtype='f4')
 
         if config.sample_mode == 'hierarchical':
@@ -175,7 +179,8 @@ def visualize_images(counter, data, visualization_done, file_flag=''):
 
 def visualize_cart_images(counter, cart_data, data, visualization_done, file_flag=''):
     if not visualization_done:
-        visualize_both_agent_inputs(cart_data, data, 'combine/' + file_flag + '_cart_' + str(counter), root="Data_processing/")
+        visualize_both_agent_inputs(cart_data, data, 'combine/' + file_flag + '_cart_' + str(counter),
+                                    root="Data_processing/")
 
         if file_flag not in new_file_flags:
             new_file_flags.append(file_flag)
@@ -184,16 +189,17 @@ def visualize_cart_images(counter, cart_data, data, visualization_done, file_fla
     return visualization_done
 
 
-def put_images_in_dataset(acc, acc_labels_array, ang, ang_labels_array, counter, data_array, data,
-                          cart_data, cart_data_array,  v_labels_array,
-                          value, vel, vel_labels_array):
+def put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_normed_labels_array, counter, data_array,
+                          data, cart_data, cart_data_array, v_labels_array,
+                          value, vel, vel_labels_array, lane, lane_labels_array):
     try:
         data_array[counter] = data
-        #cart_data_array[counter] = cart_data
+        # cart_data_array[counter] = cart_data
         v_labels_array[counter][0] = value
-        acc_labels_array[counter][0] = acc
-        ang_labels_array[counter][0] = ang
+        acc_id_labels_array[counter][0] = acc_id
+        ang_normed_labels_array[counter][0] = ang_normalized
         vel_labels_array[counter][0] = vel
+        lane_labels_array[counter][0] = lane
 
     except Exception as e:
         print("Investigate file")
@@ -202,15 +208,18 @@ def put_images_in_dataset(acc, acc_labels_array, ang, ang_labels_array, counter,
 
 
 def allocate_containters():
-
     data_array = np.zeros((LARGE_NO, num_agents, config.total_num_channels, imsize, imsize), dtype=np.float32)
-    cart_data_array = np.zeros((LARGE_NO, 2*(1 + config.num_agents_in_map) * config.num_hist_channels), dtype=np.float32)
+    cart_data_array = np.zeros((LARGE_NO, 2 * (1 + config.num_agents_in_map) * config.num_hist_channels),
+                               dtype=np.float32)
 
     v_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
-    acc_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
-    ang_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
+    acc_id_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
+    ang_normalized_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
     vel_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
-    return acc_labels_array, ang_labels_array, data_array, cart_data_array, v_labels_array, vel_labels_array
+    lane_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
+
+    return acc_id_labels_array, ang_normalized_labels_array, data_array, cart_data_array, \
+           v_labels_array, vel_labels_array, lane_labels_array
 
 
 def load_file(file):
@@ -456,7 +465,7 @@ def combine_files_into_datasets_serial(train_files, test_files, val_files):
         save(test_files, test_filename)
 
     print("All data sets saved")
-    
+
 
 if __name__ == "__main__":
     bagspath, train_filename = parse_cmd_args()

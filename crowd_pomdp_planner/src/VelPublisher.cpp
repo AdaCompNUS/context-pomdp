@@ -81,7 +81,8 @@ public:
 					&VelPublisher::actionCallBack, this);
 
 		speedSub = nh.subscribe("odom", 1, &VelPublisher::odomCallback, this);
-		ego_sub = nh.subscribe("ego_state",1, &VelPublisher::egostateCallback, this);
+		ego_sub = nh.subscribe("ego_state", 1, &VelPublisher::egostateCallback,
+				this);
 
 		ros::Timer timer = nh.createTimer(
 				ros::Duration(1 / pub_freq / time_scale),
@@ -105,22 +106,28 @@ public:
 	virtual void egostateCallback(msg_builder::car_info car) = 0;
 
 	double cal_pub_acc() {
-		if (emergency_break)
-			return -1;
+	if (emergency_break)
+            return -1;
 
-		double throttle = (target_vel - real_vel + 0.05) * 1.0;
+        double throttle = 0.0;
 
-		throttle = min(0.5, throttle);
-		throttle = max(-0.01, throttle);
+        if (target_vel < real_vel + 0.02 && target_vel > real_vel - 0.02 ){
+            throttle = 0.025; // maintain cur vel
+        } else if(target_vel >= real_vel + 0.02){
+            throttle = (target_vel - real_vel - 0.02) * 1.0;
+            throttle = max(min(0.55, throttle),0.025);
+        } else if(target_vel < real_vel - 0.05){
+            throttle = 0.0;
+        } else {
+            throttle = (target_vel - real_vel) * 3.0;
+            throttle = max(-1.0, throttle);
+        }
 
-		if (real_vel <= 0.05 && throttle < 0)
-			throttle = 0.0;
-
-		return throttle;
+        return throttle;
 	}
 
-	double cal_pub_steer(){
-		 return steering / (car_state_.max_steer_angle/180.0*M_PI);
+	double cal_pub_steer() {
+		return steering / (car_state_.max_steer_angle / 180.0 * M_PI);
 	}
 
 	void _publishSpeed() {
@@ -233,7 +240,7 @@ class VelPublisher2: public VelPublisher {
 		}
 	}
 
-	void egostateCallback(msg_builder::car_info car){
+	void egostateCallback(msg_builder::car_info car) {
 		car_state_ = car;
 	}
 

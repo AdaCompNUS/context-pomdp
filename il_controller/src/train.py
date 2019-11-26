@@ -1,8 +1,11 @@
 import time
 import os
 import argparse
-from dataset import *
-from policy_value_network import *
+
+import torch as torch
+
+from dataset import DrivingData
+from policy_value_network import PolicyValueNet
 import torch.optim as optim
 
 from tensorboardX import SummaryWriter
@@ -21,27 +24,19 @@ cur_val_loss = None
 lr_factor = 0.3
 last_train_loss = 0.0
 first_val_loss = 0.0
-acc_pi, acc_mu, acc_sigma, \
-ang_pi, ang_mu, ang_sigma, \
-vel_pi, vel_mu, vel_sigma = None, None, None, None, None, None, None, None, None
-
-acc_pi_train, acc_mu_train, acc_sigma_train, \
-ang_pi_train, ang_mu_train, ang_sigma_train, \
-vel_pi_train, vel_mu_train, vel_sigma_train = None, None, None, None, None, None, None, None, None
-
-ang_train = None
 
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
 
-    def __init__(self):
+    def __init__(self, flag):
         self.reset()
         self.val = 0
         self.avg = 0
         self.sum = 0
         self.count = 0
         self.last = 0
+        self.flag = flag
 
     def reset(self):
         self.val = 0
@@ -89,159 +84,152 @@ def train():
     print("Enter training")
     global best_val_loss
     global cur_val_loss
-    global acc_pi, acc_mu, acc_sigma, \
-        ang_pi, ang_mu, ang_sigma, \
-        vel_pi, vel_mu, vel_sigma
-
-    global acc_pi_train, acc_mu_train, acc_sigma_train
-    global ang_pi_train, ang_mu_train, ang_sigma_train
-    global vel_pi_train, vel_mu_train, vel_sigma_train
 
     for epoch in range(cmd_args.start_epoch, cmd_args.epochs):  # Loop over dataset multiple times
         # setting seed for random generator
         current_time = int(round(time.time() * 1000))
         torch.cuda.manual_seed_all(current_time)
 
-        epoch_accuracy, epoch_loss = alloc_recorders()
+        accuracy_recorders, loss_recorders = alloc_recorders()
 
         net.train()
 
         last_data = None
         last_loss = 0.0
 
-        with tqdm(total=len(train_loader.dataset), ncols=100) as pbar:
-            for i, data_point in enumerate(train_loader):  # Loop over batches of data
+        with tqdm(total=len(train_loader_vis.dataset), ncols=100) as pbar:
+            for i, data_mini_batch in enumerate(train_loader_vis):  # Loop over batches of data
 
-                visualize_results = False
+                visualize_data = False
                 if i <= 0:  # 0 -> 20
-                    visualize_results = True
-                    # print('step:', i)
+                    visualize_data = True
 
                 # Get input batch
-                X, v_labels, acc_labels, ang_labels, vel_labels = data_point
-
-                X, v_labels, acc_labels, ang_labels, vel_labels = X.to(
-                    device), v_labels.to(device), acc_labels.to(device), ang_labels.to(device), vel_labels.to(device)
+                input_images, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = data_mini_batch
+                input_images, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = input_images.to(
+                    device), value_labels.to(device), acc_labels.to(device), ang_labels.to(
+                    device), velocity_labels.to(device), lane_labels.to(device)
 
                 # Zero the parameter gradients
                 optimizer.zero_grad()
 
                 if global_config.head_mode == "mdn":
                     # Forward pass
-                    acc_pi, acc_mu, acc_sigma, \
-                    ang_pi, ang_mu, ang_sigma, \
-                    vel_pi, vel_mu, vel_sigma, value = forward_pass(X, print_time=visualize_results,
-                                                                    image_flag=train_flag, step=epoch)
+                    acc_pi, acc_mu, acc_sigma, ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, lane_logits, value = \
+                        forward_pass(input_images, print_time=visualize_data, image_flag=train_flag, step=epoch)
 
-                    visualize_mdn_predictions(epoch, acc_labels, acc_mu, acc_pi, acc_sigma, ang_labels, ang_mu, ang_pi,
-                                              ang_sigma, vel_labels, vel_mu, vel_pi, vel_sigma, visualize_results,
-                                              train_flag)
+                    visualize_mdn_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_mu, ang_pi, ang_sigma,
+                                              ang_labels, vel_mu, vel_pi, vel_sigma, velocity_labels, lane_logits,
+                                              lane_labels, visualize_data, train_flag, )
 
                     # Loss
-                    acc_loss, ang_loss, v_loss, vel_loss = \
+                    acc_loss, ang_loss, vel_loss, lane_loss, v_loss = \
                         calculate_mdn_loss(acc_pi, acc_mu, acc_sigma, acc_labels,
                                            ang_pi, ang_mu, ang_sigma, ang_labels,
-                                           vel_pi, vel_mu, vel_sigma, vel_labels,
-                                           value, v_labels)
+                                           vel_pi, vel_mu, vel_sigma, velocity_labels,
+                                           lane_logits, lane_labels,
+                                           value, value_labels)
 
-                    loss = choose_loss(acc_loss, ang_loss, vel_loss, v_loss, global_config)
+                    loss_dict = choose_loss(acc_loss, ang_loss, vel_loss, lane_loss, v_loss, global_config)
 
                     # accuracy
-                    ang_accuracy, acc_accuracy, vel_accuracy = \
+                    ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy = \
                         calculate_mdn_accuracy(acc_pi, acc_mu, acc_sigma, acc_labels,
                                                ang_pi, ang_mu, ang_sigma, ang_labels,
-                                               vel_pi, vel_mu, vel_sigma, vel_labels)
+                                               vel_pi, vel_mu, vel_sigma, velocity_labels,
+                                               lane_logits, lane_labels)
 
-                    accuracy = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, global_config)
+                    accuracy_dict = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, lane_accuracy,
+                                                    global_config)
 
-                    record_loss_and_accuracy(X, loss, accuracy, epoch_loss, epoch_accuracy)
+                    record_loss_and_accuracy(input_images, loss_dict, accuracy_dict, loss_recorders, accuracy_recorders)
 
                 elif global_config.head_mode == "hybrid":
                     # Forward pass
                     acc_pi, acc_mu, acc_sigma, \
-                    ang, \
-                    vel_pi, vel_mu, vel_sigma, value = forward_pass(X, print_time=visualize_results,
-                                                                    image_flag=train_flag, step=epoch)  # epoch
+                    ang_logits, \
+                    vel_pi, vel_mu, vel_sigma, lane_logits, value = forward_pass(input_images,
+                                                                                 print_time=visualize_data,
+                                                                                 image_flag=train_flag,
+                                                                                 step=epoch)  # epoch
 
                     # epoch -> i
-                    visualize_hybrid_predictions(epoch, acc_labels, acc_mu, acc_pi, acc_sigma, ang, ang_labels,
-                                                 vel_labels, value, v_labels,
-                                                 visualize_results, sm, train_flag)
+                    visualize_hybrid_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_logits, ang_labels,
+                                                 velocity_labels, lane_logits, lane_labels, value, value_labels,
+                                                 visualize_data, sm, train_flag)
 
                     # Loss
-                    acc_loss, ang_loss, v_loss, vel_loss = \
+                    acc_loss, ang_loss, vel_loss, lane_loss, v_loss = \
                         calculate_hybrid_loss(acc_pi, acc_mu, acc_sigma, acc_labels,
-                                              ang, ang_labels,
-                                              vel_pi, vel_mu, vel_sigma, vel_labels,
-                                              value, v_labels)
+                                              ang_logits, ang_labels,
+                                              vel_pi, vel_mu, vel_sigma, velocity_labels,
+                                              lane_logits, lane_labels,
+                                              value, value_labels)
 
-                    loss = choose_loss(acc_loss, ang_loss, vel_loss, v_loss, global_config)
+                    loss_dict = choose_loss(acc_loss, ang_loss, vel_loss, lane_loss, v_loss, global_config)
 
                     # accuracy
-                    ang_accuracy, acc_accuracy, vel_accuracy = \
+                    ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy = \
                         calculate_hybrid_accuracy(acc_pi, acc_mu, acc_sigma, acc_labels,
-                                                  ang, ang_labels,
-                                                  vel_pi, vel_mu, vel_sigma, vel_labels)
+                                                  ang_logits, ang_labels,
+                                                  vel_pi, vel_mu, vel_sigma, velocity_labels,
+                                                  lane_logits, lane_labels)
 
-                    accuracy = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, global_config)
+                    accuracy_dict = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, lane_accuracy,
+                                                    global_config)
 
-                    record_loss_and_accuracy(X, loss, accuracy, epoch_loss, epoch_accuracy)
+                    record_loss_and_accuracy(input_images, loss_dict, accuracy_dict, loss_recorders, accuracy_recorders)
 
                 else:
                     # Forward pass
-                    acc, ang, value, vel = forward_pass(X, print_time=visualize_results, image_flag=train_flag,
-                                                        step=epoch)
+                    acc_logits, ang_logits, vel_logits, lane_logits, value = forward_pass(input_images,
+                                                                                          print_time=visualize_data,
+                                                                                          image_flag=train_flag,
+                                                                                          step=epoch)
 
-                    visualize_predictions(acc, acc_labels, ang, ang_labels, epoch, vel, vel_labels, visualize_results,
-                                          sm, train_flag)
+                    visualize_predictions(epoch, acc_logits, acc_labels, ang_logits, ang_labels, vel_logits,
+                                          velocity_labels, lane_logits, lane_labels, visualize_data, sm, train_flag)
 
                     # Loss
-                    acc_loss, ang_loss, v_loss, vel_loss = \
-                        calculate_loss(acc, acc_labels, ang, ang_labels, vel, vel_labels, value, v_labels)
+                    acc_loss, ang_loss, vel_loss, lane_loss, v_loss = \
+                        calculate_loss(acc_logits, acc_labels, ang_logits, ang_labels, vel_logits, velocity_labels,
+                                       lane_logits, lane_labels, value, value_labels)
 
-                    loss = choose_loss(acc_loss, ang_loss, vel_loss, v_loss, global_config)
+                    loss_dict = choose_loss(acc_loss, ang_loss, vel_loss, lane_loss, v_loss, global_config)
 
                     # accuracy
 
-                    ang_accuracy, acc_accuracy, vel_accuracy = \
-                        calculate_accuracy(acc, acc_labels, ang, ang_labels, vel, vel_labels)
+                    ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy = \
+                        calculate_accuracy(acc_logits, acc_labels, ang_logits, ang_labels,
+                                           lane_logits, lane_labels, vel_logits, velocity_labels)
 
-                    accuracy = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, global_config)
+                    accuracy_dict = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, lane_accuracy,
+                                                    global_config)
 
-                    record_loss_and_accuracy(X, loss, accuracy, epoch_loss, epoch_accuracy)
+                    record_loss_and_accuracy(input_images, loss_dict, accuracy_dict, loss_recorders, accuracy_recorders)
 
-                last_loss = loss[0]
+                last_loss = loss_dict[0]
 
                 # Backward pass
-                loss[0].backward()
+                loss_dict[0].backward()
 
                 optimizer.step()
-                pbar.update(X.size(0))
+                pbar.update(input_images.size(0))
 
-                last_data = X
-
-        # record data for debugging
-        if config.head_mode == 'hybrid':
-            acc_pi_train, acc_mu_train, acc_sigma_train, \
-            ang_train, \
-            vel_pi_train, vel_mu_train, vel_sigma_train, _ = forward_pass(last_data)
-        elif config.head_mode == 'mdn':
-            acc_pi_train, acc_mu_train, acc_sigma_train, \
-            ang_pi_train, ang_mu_train, ang_sigma_train, \
-            vel_pi_train, vel_mu_train, vel_sigma_train, _ = forward_pass(last_data)
-        # print("Last mdn accuracy (train): %f" % epoch_accuracy.last)
+                last_data = input_images
 
         # Evaluation
-        validation_loss, validation_accuracy = evaluate(last_loss, epoch)
+        validation_loss_recorders, validation_accuracy_recorders = evaluate(last_loss, epoch)
 
         # Schedule learning rate
         if global_config.enable_scheduler:
-            scheduler.step(validation_loss[0].avg)
+            scheduler.step(validation_loss_recorders['combined'].avg)
 
-        # record the data for visualization in tensorboard
-        record_tb_data_list(epoch, epoch_accuracy, epoch_loss, validation_accuracy, validation_loss)
+        # record the data for visualization in Tensorboard
+        record_tensor_board_log(epoch, accuracy_recorders, loss_recorders, validation_accuracy_recorders,
+                                validation_loss_recorders)
 
-        cur_val_loss = validation_loss[0].avg
+        cur_val_loss = validation_loss_recorders['combined'].avg
 
         save_model(epoch)
 
@@ -256,152 +244,158 @@ def evaluate(last_train_loss, epoch):
 
     sm = nn.Softmax(dim=1)
 
-    epoch_accuracy_val, epoch_loss_val = alloc_recorders()
-
-    global acc_pi, acc_mu, acc_sigma, \
-        ang_pi, ang_mu, ang_sigma, \
-        vel_pi, vel_mu, vel_sigma
-
-    global acc_pi_train, acc_mu_train, acc_sigma_train
-    global ang_pi_train, ang_mu_train, ang_sigma_train
-    global vel_pi_train, vel_mu_train, vel_sigma_train
+    accuracy_recorders_val, loss_recorders_val = alloc_recorders()
 
     net.eval()
-    # print("Evaluation")
 
     first_loss = None
 
-    for i, data_point in enumerate(val_loader):
+    for i, mini_batch in enumerate(val_loader):
 
-        visualize_results = False
+        visualize_data = False
         if i <= 0:
-            visualize_results = True
+            visualize_data = True
 
         with torch.no_grad():
             # Get input batch
-            X, v_labels, acc_labels, ang_labels, vel_labels = data_point
+            input_images, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = mini_batch
             if global_config.visualize_val_data:
-                debug_data(X[1])
-            X, v_labels, acc_labels, ang_labels, vel_labels = X.to(device), v_labels.to(
-                device), acc_labels.to(device), ang_labels.to(device), vel_labels.to(device)
+                debug_data(input_images[1])
+            input_images, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = input_images.to(
+                device), value_labels.to(
+                device), acc_labels.to(device), ang_labels.to(device), \
+                                                                                               velocity_labels.to(
+                                                                                                   device), lane_labels.to(
+                device)
 
             if global_config.head_mode == "mdn":
                 # Forward pass
                 acc_pi, acc_mu, acc_sigma, \
                 ang_pi, ang_mu, ang_sigma, \
                 vel_pi, vel_mu, vel_sigma, \
-                value = forward_pass(X, print_time=visualize_results, image_flag=val_flag, step=epoch)
+                lane_logits, value = forward_pass(input_images, print_time=visualize_data, image_flag=val_flag,
+                                                  step=epoch)
 
-                visualize_mdn_predictions(epoch, acc_labels, acc_mu, acc_pi, acc_sigma, ang_labels, ang_mu, ang_pi,
-                                          ang_sigma, vel_labels, vel_mu, vel_pi, vel_sigma, visualize_results, val_flag)
+                visualize_mdn_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_mu, ang_pi, ang_sigma,
+                                          ang_labels, vel_mu, vel_pi, vel_sigma, velocity_labels, lane_labels,
+                                          lane_logits, visualize_data, sm, val_flag)
 
                 # Loss
-                acc_loss, ang_loss, v_loss, vel_loss = \
+                acc_loss, ang_loss, vel_loss, lane_loss, v_loss = \
                     calculate_mdn_loss(acc_pi, acc_mu, acc_sigma, acc_labels,
                                        ang_pi, ang_mu, ang_sigma, ang_labels,
-                                       vel_pi, vel_mu, vel_sigma, vel_labels,
-                                       value, v_labels)
-
-                loss = choose_loss(acc_loss, ang_loss, vel_loss, v_loss, global_config)
+                                       vel_pi, vel_mu, vel_sigma, velocity_labels,
+                                       lane_logits, lane_labels,
+                                       value, value_labels)
+                loss_dict = choose_loss(acc_loss, ang_loss, vel_loss, lane_loss, v_loss, global_config)
 
                 # Accuracy
-                ang_accuracy, acc_accuracy, vel_accuracy = \
+                ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy = \
                     calculate_mdn_accuracy(acc_pi, acc_mu, acc_sigma, acc_labels,
                                            ang_pi, ang_mu, ang_sigma, ang_labels,
-                                           vel_pi, vel_mu, vel_sigma, vel_labels)
-
-                accuracy = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, global_config)
+                                           vel_pi, vel_mu, vel_sigma, velocity_labels,
+                                           lane_logits, lane_labels)
+                accuracy_dict = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, lane_accuracy, global_config)
 
                 # Statistics
-                record_loss_and_accuracy(X, loss, accuracy, epoch_loss_val, epoch_accuracy_val)
+                record_loss_and_accuracy(input_images, loss_dict, accuracy_dict, loss_recorders_val,
+                                         accuracy_recorders_val)
 
             elif global_config.head_mode == "hybrid":
 
-                start = time.time()
                 # Forward pass
                 acc_pi, acc_mu, acc_sigma, \
-                ang, \
-                vel_pi, vel_mu, vel_sigma, value = forward_pass(X, print_time=visualize_results, image_flag=val_flag,
-                                                                step=epoch)
+                ang_logits, \
+                vel_pi, vel_mu, vel_sigma, lane_logits, value = \
+                    forward_pass(input_images, print_time=visualize_data, image_flag=val_flag,
+                                 step=epoch)
 
-                # if value:
-                #     value.cpu()
-
-                end = time.time()
-
-                # print("Evaluate mode forward time for batchsize " + str(cmd_args.batch_size) + ": " + str(end - start) + ' s')
-
-                visualize_hybrid_predictions(epoch, acc_labels, acc_mu, acc_pi, acc_sigma, ang, ang_labels, vel_labels,
-                                             value, v_labels,
-                                             visualize_results, sm, val_flag)
+                visualize_hybrid_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_logits, ang_labels,
+                                             velocity_labels, lane_logits, lane_labels, value, value_labels,
+                                             visualize_data, sm, val_flag)
 
                 # Loss
-                acc_loss, ang_loss, v_loss, vel_loss = \
+                acc_loss, ang_loss, vel_loss, lane_loss, v_loss = \
                     calculate_hybrid_loss(acc_pi, acc_mu, acc_sigma, acc_labels,
-                                          ang, ang_labels,
-                                          vel_pi, vel_mu, vel_sigma, vel_labels,
-                                          value, v_labels)
+                                          ang_logits, ang_labels,
+                                          vel_pi, vel_mu, vel_sigma, velocity_labels, lane_logits, lane_labels,
+                                          value, value_labels)
 
-                loss = choose_loss(acc_loss, ang_loss, vel_loss, v_loss, global_config)
+                loss_dict = choose_loss(acc_loss, ang_loss, vel_loss, lane_loss, v_loss, global_config)
 
                 # Accuracy
-                ang_accuracy, acc_accuracy, vel_accuracy = \
+                ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy = \
                     calculate_hybrid_accuracy(acc_pi, acc_mu, acc_sigma, acc_labels,
-                                              ang, ang_labels,
-                                              vel_pi, vel_mu, vel_sigma, vel_labels)
+                                              ang_logits, ang_labels,
+                                              vel_pi, vel_mu, vel_sigma, velocity_labels,
+                                              lane_logits, lane_labels)
 
-                accuracy = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, global_config)
+                accuracy_dict = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, lane_accuracy, global_config)
 
-                record_loss_and_accuracy(X, loss, accuracy, epoch_loss_val, epoch_accuracy_val)
+                record_loss_and_accuracy(input_images, loss_dict, accuracy_dict, loss_recorders_val,
+                                         accuracy_recorders_val)
 
             else:
                 # Forward pass
-                acc, ang, value, vel = forward_pass(X, print_time=visualize_results, image_flag=val_flag, step=epoch)
+                acc_logits, ang_logits, vel_logits, lane_logits, value = forward_pass(input_images,
+                                                                                      print_time=visualize_data,
+                                                                                      image_flag=val_flag, step=epoch)
 
-                visualize_predictions(acc, acc_labels, ang, ang_labels, epoch, vel, vel_labels, visualize_results, sm,
-                                      val_flag)
+                visualize_predictions(epoch, acc_logits, acc_labels, ang_logits, ang_labels, vel_logits,
+                                      velocity_labels, lane_logits, lane_labels, visualize_data, sm, val_flag)
 
                 # Loss
-                acc_loss, ang_loss, v_loss, vel_loss = calculate_loss(acc, acc_labels, ang, ang_labels,
-                                                                      vel, vel_labels, value, v_labels)
+                acc_loss, ang_loss, vel_loss, lane_loss, v_loss = calculate_loss(acc_logits, acc_labels, ang_logits,
+                                                                                 ang_labels,
+                                                                                 vel_logits, velocity_labels,
+                                                                                 lane_logits,
+                                                                                 lane_labels, value, value_labels)
 
-                loss = choose_loss(acc_loss, ang_loss, vel_loss, v_loss, global_config)
+                loss_dict = choose_loss(acc_loss, ang_loss, vel_loss, lane_loss, v_loss, global_config)
 
                 # Accuracy
-                ang_accuracy, acc_accuracy, vel_accuracy = calculate_accuracy(acc, acc_labels, ang, ang_labels,
-                                                                              vel, vel_labels)
+                ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy = calculate_accuracy(acc_logits, acc_labels,
+                                                                                             ang_logits, ang_labels,
+                                                                                             vel_logits,
+                                                                                             velocity_labels,
+                                                                                             lane_logits, lane_labels)
 
-                accuracy = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, global_config)
+                accuracy_dict = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, lane_accuracy, global_config)
 
                 # Statistics
-                record_loss_and_accuracy(X, loss, accuracy, epoch_loss_val, epoch_accuracy_val)
+                record_loss_and_accuracy(input_images, loss_dict, accuracy_dict, loss_recorders_val,
+                                         accuracy_recorders_val)
 
             if i == 0:
-                first_loss = loss[0]
+                first_loss = loss_dict[0]
 
     if abs(first_loss - last_train_loss) >= 4:
-        print("Last mdn accuracy (val): %f" % epoch_accuracy_val[0].last)
+        print("Last mdn accuracy (val): %f" % accuracy_recorders_val['combined'].last)
 
     inference_time = time.time() - start_time
 
     print("Evaluation time %fs" % inference_time)
 
-    return epoch_loss_val, epoch_accuracy_val
+    return loss_recorders_val, accuracy_recorders_val
 
 
-def visualize_mdn_predictions(epoch, acc_labels, acc_mu, acc_pi, acc_sigma, ang_labels, ang_mu, ang_pi, ang_sigma,
-                              vel_labels, vel_mu, vel_pi, vel_sigma, visualize_results, flag):
-    if visualize_results:
+def visualize_mdn_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_mu, ang_pi, ang_sigma, ang_labels,
+                              vel_mu, vel_pi, vel_sigma, velocity_labels, lane, lane_labels, visualize_data, sm, flag):
+    if visualize_data:
         try:
+            lane_probs = sm(lane)
+
             if config.use_vel_head:
                 visualize_mdn_output_with_labels(flag + str(epoch), acc_mu[0].detach(), acc_pi[0].detach(),
                                                  acc_sigma[0].detach(), ang_mu[0].detach(),
                                                  ang_pi[0].detach(), ang_sigma[0].detach(), vel_mu[0].detach(),
-                                                 vel_pi[0].detach(), vel_sigma[0].detach(), acc_labels[0].detach(),
+                                                 vel_pi[0].detach(), vel_sigma[0].detach(),
+                                                 lane_probs[0].detach(),
+                                                 acc_labels[0].detach(),
                                                  ang_labels[0].detach(),
-                                                 vel_labels[0].detach())
+                                                 velocity_labels[0].detach(),
+                                                 lane_labels[0].detach())
             else:
-
                 if acc_pi is None:
                     acc_pi = torch.zeros(1, global_config.num_guassians_in_heads)
                     acc_mu = torch.zeros(1, global_config.num_guassians_in_heads, 1)
@@ -413,19 +407,20 @@ def visualize_mdn_predictions(epoch, acc_labels, acc_mu, acc_pi, acc_sigma, ang_
 
                 visualize_mdn_output_with_labels(flag + str(epoch), acc_mu[0].detach(), acc_pi[0].detach(),
                                                  acc_sigma[0].detach(), ang_mu[0].detach(),
-                                                 ang_pi[0].detach(), ang_sigma[0].detach(), None,
-                                                 None, None, acc_labels[0].detach(),
+                                                 ang_pi[0].detach(), ang_sigma[0].detach(),
+                                                 None, None, None, lane_probs[0].detach(),
+                                                 acc_labels[0].detach(),
                                                  ang_labels[0].detach(),
-                                                 vel_labels[0].detach())
+                                                 velocity_labels[0].detach(),
+                                                 lane_labels[0].detach())
         except Exception as e:
             print(e)
             exit(1)
 
 
-def visualize_hybrid_predictions(epoch, acc_labels, acc_mu, acc_pi, acc_sigma, ang, ang_labels, vel_labels,
-                                 value, v_labels,
-                                 visualize_results, sm, flag):
-    if visualize_results:
+def visualize_hybrid_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang, ang_labels, velocity_labels, lane,
+                                 lane_labels, value, value_labels, visualize_data, sm, flag):
+    if visualize_data:
 
         if acc_pi is None:
             acc_pi = torch.zeros(1, global_config.num_guassians_in_heads)
@@ -435,6 +430,7 @@ def visualize_hybrid_predictions(epoch, acc_labels, acc_mu, acc_pi, acc_sigma, a
             ang = torch.zeros(1, global_config.num_steering_bins)
 
         ang_probs = sm(ang)
+        lane_probs = sm(lane)
 
         for i in range(0, min(10, cmd_args.batch_size)):
             if value is None:
@@ -443,72 +439,74 @@ def visualize_hybrid_predictions(epoch, acc_labels, acc_mu, acc_pi, acc_sigma, a
                 value_vis = value[i].detach()
 
             visualize_hybrid_output_with_labels(flag + str(epoch) + '_' + str(i),
-                                            acc_mu[i].detach(), acc_pi[i].detach(), acc_sigma[i].detach(),
-                                            ang_probs[i].detach(),
-                                            None, None, None,
-                                            value_vis, 
-                                            acc_labels[i].detach(), ang_labels[i].detach(),vel_labels[i].detach(),
-                                            v_labels[i])
+                                                acc_mu[i].detach(), acc_pi[i].detach(), acc_sigma[i].detach(),
+                                                ang_probs[i].detach(),
+                                                None, None, None,
+                                                lane_probs[i].detach(),
+                                                value_vis,
+                                                acc_labels[i].detach(), ang_labels[i].detach(),
+                                                velocity_labels[i].detach(),
+                                                lane_labels[i].detach(),
+                                                value_labels[i])
 
 
-def visualize_predictions(acc, acc_labels, ang, ang_labels, epoch, vel, vel_labels, visualize_results, sm, flag):
-    if visualize_results:
+def visualize_predictions(epoch, acc, acc_labels, ang, ang_labels, vel, velocity_labels, lane, lane_labels,
+                          visualize_data, sm, flag):
+    if visualize_data:
         acc_probs = sm(acc)
         ang_probs = sm(ang)
+        lane_probs = sm(lane)
         if config.use_vel_head:
             vel_probs = sm(vel)
-            visualize_output_with_labels(flag + str(epoch), acc_probs[0].detach(), ang_probs[0].detach(),
-                                     vel_probs[0].detach(),
-                                     acc_labels[0].detach(),
-                                     ang_labels[0].detach(), vel_labels[0].detach())
+            visualize_output_with_labels(flag + str(epoch),
+                                         acc_probs[0].detach(), ang_probs[0].detach(),
+                                         vel_probs[0].detach(), lane_probs[0].detach(),
+                                         acc_labels[0].detach(), ang_labels[0].detach(),
+                                         velocity_labels[0].detach(), lane_labels[0].detach())
         else:
 
             visualize_output_with_labels(flag + str(epoch), acc_probs[0].detach(), ang_probs[0].detach(),
-                                         None,
+                                         None, lane_probs[0].detach(),
                                          acc_labels[0].detach(),
-                                         ang_labels[0].detach(), None)
+                                         ang_labels[0].detach(), None, lane_labels[0].detach())
 
 
 def alloc_recorders():
+    loss_recorders = {}
+    accuracy_recorders = {}
+    flags = ['combined']
     if global_config.fit_all:
         if config.use_vel_head:
-            # one combined,
-            # the other four for steer, acc, vel, and val
-            epoch_loss = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]
-            epoch_accuracy = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]
+            flags = flags + ['steer', 'acc', 'vel', 'lane', 'val']
         else:
-            # one combined,
-            # the other four for steer, acc, and val
-            epoch_loss = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]  # one combined,
-            epoch_accuracy = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]
+            flags = flags + ['steer', 'acc', 'lane', 'val']
     elif global_config.fit_action:
         if config.use_vel_head:
-            epoch_loss = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]  # one combined,
-            # the other three for steer, acc, and vel
-            epoch_accuracy = [AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()]
+            flags = flags + ['steer', 'acc', 'vel', 'lane']
         else:
-            epoch_loss = [AverageMeter(), AverageMeter(), AverageMeter()]  # one combined,
-            # the other two for steer and acc
-            epoch_accuracy = [AverageMeter(), AverageMeter(), AverageMeter()]
-    else:
-        epoch_loss = [AverageMeter()]
-        epoch_accuracy = [AverageMeter()]
-    return epoch_accuracy, epoch_loss
+            flags = flags + ['steer', 'acc', 'lane']
+
+    for flag in flags:
+        loss_recorders[flag] = AverageMeter(flag)
+        accuracy_recorders[flag] = AverageMeter(flag)
+
+    return accuracy_recorders, loss_recorders
 
 
 def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, image_flag=''):
     start_time = time.time()
 
-    if drive_net == None:
+    if drive_net is None:
         drive_net = net
-    if cmd_config == None:
+    if cmd_config is None:
         cmd_config = cmd_args
+
     ped_gppn_out, car_gppn_out, res_out, res_image = \
         torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0)
     if global_config.head_mode == "mdn":
         value, acc_pi, acc_mu, acc_sigma, \
-        ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, car_gppn_out, res_image = drive_net.forward(X,
-                                                                                                             cmd_config)
+        ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, lane_logits, \
+        car_gppn_out, res_image = drive_net.forward(X, cmd_config)
         if global_config.print_preds:
             print("predicted angle:")
             print(ang_pi, ang_mu, ang_sigma)
@@ -519,82 +517,78 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
             print("Inference time: " + str(elapsed_time) + " s")
             visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
-        return acc_pi, acc_mu, acc_sigma, \
-               ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, value
+        return acc_pi, acc_mu, acc_sigma, ang_pi, ang_mu, ang_sigma, \
+               vel_pi, vel_mu, vel_sigma, lane_logits, value
 
     elif global_config.head_mode == "hybrid":
         value, acc_pi, acc_mu, acc_sigma, \
-        ang, vel_pi, vel_mu, vel_sigma, car_gppn_out, res_image = drive_net.forward(X, cmd_config)
+        ang_logits, vel_pi, vel_mu, vel_sigma, lane_logits, car_gppn_out, res_image = \
+            drive_net.forward(X, cmd_config)
 
         if global_config.print_preds:
-            print("predicted angle:")
-            print(ang)
-
-        # if value:
-        #     value.cpu()
+            print("predicted angle logits:")
+            print(ang_logits)
 
         elapsed_time = time.time() - start_time
-
         if print_time and config.visualize_inter_data:
             print("Inference time: " + str(elapsed_time) + " s")
             visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
         return acc_pi, acc_mu, acc_sigma, \
-               ang, vel_pi, vel_mu, vel_sigma, value
+               ang_logits, vel_pi, vel_mu, vel_sigma, lane_logits, value
 
     else:
-        value, acc, ang, vel, car_gppn_out, res_image = drive_net.forward(X, cmd_config)
+        value, acc_logits, ang_logits, vel_logits, lane_logits, \
+        car_gppn_out, res_image = drive_net.forward(X, cmd_config)
         if global_config.print_preds:
             print("predicted angle:")
-            print(ang)
+            print(ang_logits)
 
         elapsed_time = time.time() - start_time
         if print_time:
             print("Inference time: " + str(elapsed_time) + " s")
             visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
-        return acc, ang, value, vel
+        return acc_logits, ang_logits, vel_logits, lane_logits, value
 
 
 def forward_pass_jit(X, step=0, drive_net=None, cmd_config=None, print_time=False, image_flag=''):
     start_time = time.time()
 
-    # print("forward_pass_jit input:", X.squeeze(0))
-
-    if drive_net == None:
+    if drive_net is None:
         drive_net = net
-    if cmd_config == None:
+    if cmd_config is None:
         cmd_config = cmd_args
     ped_gppn_out, car_gppn_out, res_out, res_image = \
         torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0)
 
     if global_config.head_mode == "hybrid":
         value, acc_pi, acc_mu, acc_sigma, \
-        ang, car_gppn_out, res_image = drive_net.forward(X.squeeze(0))
+        ang_logits, lane_logits, car_gppn_out, res_image = drive_net.forward(X.squeeze(0))
 
         if global_config.print_preds:
             print("predicted angle:")
-            print(ang)
+            print(ang_logits)
 
         # if value:
         #     value.cpu()
         elapsed_time = time.time() - start_time
-        
+
         if print_time and config.visualize_inter_data:
             print("Inference time: " + str(elapsed_time) + " s")
             visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
         return acc_pi, acc_mu, acc_sigma, \
-               ang, vel_pi, vel_mu, vel_sigma, value
+               ang_logits, None, None, None, lane_logits, value
 
     else:
         print("jit model only supports hybird head mode")
         exit(1)
 
 
-def calculate_loss(acc, acc_labels, ang, ang_labels, vel, vel_labels, value, v_labels):
-    v_loss = criterion(value, v_labels)
-    vel_loss, acc_loss, ang_loss = None, None, None
+def calculate_loss(acc, acc_labels, ang, ang_labels, vel, velocity_labels, lane, lane_labels, value, value_labels):
+    v_loss = criterion(value, value_labels)
+    vel_loss, acc_loss, ang_loss, lane_loss = None, None, None, None
 
     if config.fit_acc or config.fit_action or config.fit_all:
         acc_loss = cel_criterion(acc, acc_labels)
@@ -602,14 +596,16 @@ def calculate_loss(acc, acc_labels, ang, ang_labels, vel, vel_labels, value, v_l
         ang_loss = cel_criterion(ang, ang_labels)
     if config.fit_vel or config.fit_action or config.fit_all:
         if config.use_vel_head:
-            vel_loss = cel_criterion(vel, vel_labels)
-    return acc_loss, ang_loss, v_loss, vel_loss
+            vel_loss = cel_criterion(vel, velocity_labels)
+    if config.fit_lane or config.fit_action or config.fit_all:
+        lane_loss = cel_criterion(lane, lane_labels)
+    return acc_loss, ang_loss, vel_loss, lane_loss, v_loss
 
 
 def calculate_mdn_loss(acc_pi, acc_mu, acc_sigma, acc_labels, ang_pi, ang_mu, ang_sigma, ang_labels,
-                       vel_pi, vel_mu, vel_sigma, vel_labels, value, v_labels):
-    v_loss = criterion(value, v_labels)
-    vel_loss, acc_loss, ang_loss = None, None, None
+                       vel_pi, vel_mu, vel_sigma, velocity_labels, lane, lane_labels, value, value_labels):
+    v_loss = criterion(value, value_labels)
+    vel_loss, acc_loss, ang_loss, lane_loss = None, None, None, None
 
     if config.fit_acc or config.fit_action or config.fit_all:
         acc_loss = calculate_mdn_loss_action(acc_pi, acc_mu, acc_sigma, acc_labels)
@@ -617,26 +613,28 @@ def calculate_mdn_loss(acc_pi, acc_mu, acc_sigma, acc_labels, ang_pi, ang_mu, an
         ang_loss = calculate_mdn_loss_action(ang_pi, ang_mu, ang_sigma, ang_labels)
     if config.fit_vel or config.fit_action or config.fit_all:
         if config.use_vel_head:
-            vel_loss = calculate_mdn_loss_action(vel_pi, vel_mu, vel_sigma, vel_labels)
-    return acc_loss, ang_loss, v_loss, vel_loss
+            vel_loss = calculate_mdn_loss_action(vel_pi, vel_mu, vel_sigma, velocity_labels)
+    if config.fit_lane or config.fit_action or config.fit_all:
+        lane_loss = cel_criterion(lane, lane_labels)
+    return acc_loss, ang_loss, vel_loss, lane_loss, v_loss
 
 
 def calculate_hybrid_loss(acc_pi, acc_mu, acc_sigma, acc_labels, ang, ang_labels,
-                          vel_pi, vel_mu, vel_sigma, vel_labels, value, v_labels):
-
-    v_loss, vel_loss, acc_loss, ang_loss = None, None, None, None
+                          vel_pi, vel_mu, vel_sigma, velocity_labels, lane, lane_labels, value, value_labels):
+    v_loss, vel_loss, acc_loss, ang_loss, lane_loss = None, None, None, None, None
 
     if config.fit_val or config.fit_all:
-        v_loss = criterion(value, v_labels)
+        v_loss = criterion(value, value_labels)
     if config.fit_acc or config.fit_action or config.fit_all:
         acc_loss = calculate_mdn_loss_action(acc_pi, acc_mu, acc_sigma, acc_labels)
     if config.fit_vel or config.fit_action or config.fit_all:
         if config.use_vel_head:
-            vel_loss = calculate_mdn_loss_action(vel_pi, vel_mu, vel_sigma, vel_labels)
+            vel_loss = calculate_mdn_loss_action(vel_pi, vel_mu, vel_sigma, velocity_labels)
     if config.fit_ang or config.fit_action or config.fit_all:
         ang_loss = cel_criterion(ang, ang_labels)
-
-    return acc_loss, ang_loss, v_loss, vel_loss
+    if config.fit_lane or config.fit_action or config.fit_all:
+        lane_loss = cel_criterion(lane, lane_labels)
+    return acc_loss, ang_loss, vel_loss, lane_loss, v_loss
 
 
 def calculate_mdn_loss_action(pi, mu, sigma, labels):
@@ -668,43 +666,36 @@ def save_model(epoch):
         save_checkpoint(make_checkpoint_dict(epoch, best_val_loss, global_config, cmd_args), True, model_file)
 
 
-def record_tb_data_list(epoch, epoch_accuracy_list, epoch_loss_list, validation_accuracy_list, validation_loss_list):
-    for i, validation_loss in enumerate(validation_loss_list):
-        if epoch_accuracy_list:
-            epoch_accuracy = epoch_accuracy_list[i]
-        else:
-            epoch_accuracy = None
-        if epoch_loss_list:
-            epoch_loss = epoch_loss_list[i]
-        else:
-            epoch_loss = None
-        validation_accuracy = validation_accuracy_list[i]
-        flag = ''
-        if i == 0:
-            flag = ''
-        elif i == 1:
-            flag = '_Steer'
-        elif i == 2:
-            flag = '_Acc'
-        elif i == 3:
-            if config.use_vel_head:
-                flag = '_Vel'
-            else:
-                flag = '_Val'
-        elif i == 4:
-            flag = '_Val'
+def record_tensor_board_log(epoch, accuracy_recorders, loss_recorders, val_accuracy_recorders, val_loss_recorders):
+    flag_mapping = {'combined': '',
+                    'steer': '_Steer',
+                    'acc': '_Acc',
+                    'vel': '_Vel',
+                    'lane': '_Lane',
+                    'val': '_Val',
+                    }
 
-        record_tb_data(epoch, epoch_accuracy, epoch_loss, validation_accuracy, validation_loss, flag)
+    for key in loss_recorders.keys():
+        flag = flag_mapping[key]
+        train_accuracy = None
+        if key in accuracy_recorders.keys():
+            train_accuracy = accuracy_recorders[key][0]
+        train_loss = loss_recorders[key][0]
+        val_accuracy = None
+        if key in val_accuracy_recorders.keys():
+            val_accuracy = val_accuracy_recorders[key][0]
+        val_loss = val_loss_recorders[key][0]
+        record_tensor_board_data(epoch, train_accuracy, train_loss, val_accuracy, val_loss, flag)
 
     current_lr = 0.0
     writer.add_scalars('data/lr', {'lr': current_lr, '0': 0.0}, epoch + 1)
 
 
-def record_tb_data(epoch, epoch_accuracy, epoch_loss, validation_accuracy, validation_loss, flag):
+def record_tensor_board_data(epoch, epoch_accuracy, epoch_loss, validation_accuracy, validation_loss, flag):
     if epoch_loss:
         writer.add_scalars('data/loss_group', {'Train_Loss' + flag: epoch_loss.avg,
-                                           'Validation_Loss' + flag: validation_loss.avg,
-                                           '0': 0.0}, epoch + 1)
+                                               'Validation_Loss' + flag: validation_loss.avg,
+                                               '0': 0.0}, epoch + 1)
     if 'Val' in flag:
         if epoch_loss:
             print("Epoch %d value loss(train) %f | loss(eval) %f" % (epoch, epoch_loss.avg, validation_loss.avg))
@@ -713,8 +704,8 @@ def record_tb_data(epoch, epoch_accuracy, epoch_loss, validation_accuracy, valid
     else:
         if epoch_accuracy:
             writer.add_scalars('data/accuracy_group', {'Train_Accuracy' + flag: epoch_accuracy.avg,
-                                                   'Validation_Accuracy' + flag: validation_accuracy.avg,
-                                                   '0': 0.0}, epoch + 1)
+                                                       'Validation_Accuracy' + flag: validation_accuracy.avg,
+                                                       '0': 0.0}, epoch + 1)
         else:
             pass
 
@@ -727,96 +718,112 @@ def record_tb_data(epoch, epoch_accuracy, epoch_loss, validation_accuracy, valid
                 epoch, flag.replace('_', ''), validation_accuracy.avg, validation_loss.avg))
 
 
-def calculate_accuracy(acc, acc_labels, ang, ang_labels, vel, vel_labels):
+def calculate_accuracy(acc, acc_labels, ang, ang_labels, vel, velocity_labels, lane, lane_labels):
     vel_accuracy = None
     ang_accuracy = get_accuracy(ang, ang_labels, topk=(1, 2))[1]
     acc_accuracy = get_accuracy(acc, acc_labels, topk=(1,))[0]
     if global_config.use_vel_head:
-        vel_accuracy = get_accuracy(vel, vel_labels, topk=(1, 2))[1]
-    return ang_accuracy, acc_accuracy, vel_accuracy
+        vel_accuracy = get_accuracy(vel, velocity_labels, topk=(1, 2))[1]
+    lane_accuracy = get_accuracy(lane, lane_labels, topk=(1,))[0]
+
+    return ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy
 
 
 def calculate_mdn_accuracy(acc_pi, acc_mu, acc_sigma, acc_labels,
                            ang_pi, ang_mu, ang_sigma, ang_labels,
-                           vel_pi, vel_mu, vel_sigma, vel_labels):
-    vel_accuracy,ang_accuracy, acc_accuracy = None, None, None
+                           vel_pi, vel_mu, vel_sigma, velocity_labels,
+                           lane, lane_labels):
+    vel_accuracy, ang_accuracy, acc_accuracy = None, None, None
     if ang_pi is not None:
         ang_accuracy = mdn.mdn_accuracy(ang_pi, ang_sigma, ang_mu, ang_labels)
     if acc_pi is not None:
         acc_accuracy = mdn.mdn_accuracy(acc_pi, acc_sigma, acc_mu, acc_labels)
     if global_config.use_vel_head:
-        vel_accuracy = mdn.mdn_accuracy(vel_pi, vel_sigma, vel_mu, vel_labels)
-    return ang_accuracy, acc_accuracy, vel_accuracy
+        vel_accuracy = mdn.mdn_accuracy(vel_pi, vel_sigma, vel_mu, velocity_labels)
+    lane_accuracy = get_accuracy(lane, lane_labels, topk=(1,))[0]
+
+    return ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy
 
 
 def calculate_hybrid_accuracy(acc_pi, acc_mu, acc_sigma, acc_labels,
                               ang, ang_labels,
-                              vel_pi, vel_mu, vel_sigma, vel_labels):
+                              vel_pi, vel_mu, vel_sigma, velocity_labels,
+                              lane, lane_labels):
     vel_accuracy, ang_accuracy, acc_accuracy = None, None, None
     if ang is not None:
         ang_accuracy = get_accuracy(ang, ang_labels, topk=(1, 2))[1]
     if acc_pi is not None:
         acc_accuracy = mdn.mdn_accuracy(acc_pi, acc_sigma, acc_mu, acc_labels)
     if global_config.use_vel_head:
-        vel_accuracy = mdn.mdn_accuracy(vel_pi, vel_sigma, vel_mu, vel_labels)
-    return ang_accuracy, acc_accuracy, vel_accuracy
+        vel_accuracy = mdn.mdn_accuracy(vel_pi, vel_sigma, vel_mu, velocity_labels)
+    lane_accuracy = get_accuracy(lane, lane_labels, topk=(1,))[0]
+
+    return ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy
 
 
-def choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, config):
-    if config.fit_ang:
-        accuracy = [ang_accuracy]
-    elif config.fit_acc:
-        accuracy = [acc_accuracy]
-    elif config.fit_vel:
-        accuracy = [vel_accuracy]
-    elif config.fit_action or config.fit_all:
-        if config.use_vel_head:
-            accuracy = [(ang_accuracy + acc_accuracy + vel_accuracy) / 3.0, ang_accuracy, acc_accuracy, vel_accuracy]
-        else:
-            accuracy = [(ang_accuracy + acc_accuracy) / 2.0, ang_accuracy, acc_accuracy]
-    else:  # no accuracy for value
-        accuracy = None
-
-    return accuracy
+def record_loss_and_accuracy(batch_data, loss_dict, accuracy_dict,
+                             loss_recorders, accuracy_recorders):
+    for flag, loss_item in enumerate(loss_dict.items()):
+        loss_recorders[flag].update(float(loss_item[0]), batch_data.size(0))
+    for flag, accuracy_item in enumerate(accuracy_dict.items()):
+        accuracy_recorders[flag].update(float(accuracy_item[0]), batch_data.size(0))
 
 
-def record_loss_and_accuracy(batch_data, loss_list, accuracy_list,
-                             epoch_loss_list, epoch_accuracy_list):
-    for i, loss in enumerate(loss_list):
-        if accuracy_list and epoch_accuracy_list:
-            if i < len(accuracy_list):
-                accuracy = accuracy_list[i]
-                epoch_accuracy = epoch_accuracy_list[i]
-                epoch_accuracy.update(float(accuracy), batch_data.size(0))
+def choose_loss(acc_loss, ang_loss, vel_loss, lane_loss, v_loss, config):
+    loss_dict = {
+        'combined': None,
+        'steer': (0.0, 0.0),
+        'acc': (0.0, 0.0),
+        'vel': (0.0, 0.0),
+        'lane': (0.0, 0.0),
+        'val': (0.0, 0.0),
+    }
+    if config.fit_ang or config.fit_action or config.fit_all:
+        loss_dict['steer'] = (ang_loss, config.ang_scale)
+    if config.fit_acc or config.fit_action or config.fit_all:
+        loss_dict['acc'] = (acc_loss, config.acc_scale)
+    if config.use_vel_head and (config.fit_vel or config.fit_action or config.fit_all):
+        loss_dict['vel'] = (vel_loss, config.vel_scale)
+    if config.fit_lane or config.fit_action or config.fit_all:
+        loss_dict['lane'] = (lane_loss, config.lane_scale)
+    if config.fit_val or config.fit_all:
+        loss_dict['val'] = (v_loss, config.val_scale)
 
-        epoch_loss = epoch_loss_list[i]
+    total_loss = 0.0
+    total_weight = 0.0
+    for flag, loss_item in loss_dict.items():
+        total_loss += loss_item[0]
+        total_weight += loss_item[1]
 
-        epoch_loss.update(float(loss), batch_data.size(0))
+    loss_dict['combined'] = total_loss / total_weight
+    return loss_dict
 
 
-def choose_loss(acc_loss, ang_loss, vel_loss, v_loss, config):
-    if config.fit_ang:
-        loss = [ang_loss]
-    elif config.fit_acc:
-        loss = [acc_loss]
-    elif config.fit_vel:
-        loss = [vel_loss]
-    elif config.fit_action:
-        if config.use_vel_head:
-            loss = [(ang_loss + acc_loss + vel_loss) / 3.0, ang_loss, acc_loss, vel_loss]
-        else:
-            loss = [(ang_loss + acc_loss) / 2.0, ang_loss, acc_loss]
-    elif config.fit_val:
-        loss = [v_loss]
-    elif config.fit_all:
-        if config.use_vel_head:
-            loss = [(ang_loss + acc_loss + vel_loss + config.val_scale * v_loss) / (config.val_scale + 3.0), ang_loss, acc_loss, vel_loss, v_loss]
-        else:
-            loss = [(config.ang_scale * ang_loss + acc_loss + config.val_scale * v_loss) / (config.ang_scale + config.val_scale + 1.0), ang_loss, acc_loss, v_loss]
-    else:
-        loss = None
+def choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, lane_accuracy, config):
+    accuracy_dict = {
+        'combined': None,
+        'steer': (0.0, 0.0),
+        'acc': (0.0, 0.0),
+        'vel': (0.0, 0.0),
+        'lane': (0.0, 0.0),
+    }
+    if config.fit_ang or config.fit_action or config.fit_all:
+        accuracy_dict['steer'] = (ang_accuracy, config.ang_scale)
+    if config.fit_acc or config.fit_action or config.fit_all:
+        accuracy_dict['acc'] = (acc_accuracy, config.acc_scale)
+    if config.use_vel_head and (config.fit_vel or config.fit_action or config.fit_all):
+        accuracy_dict['vel'] = (vel_accuracy, config.vel_scale)
+    if config.fit_lane or config.fit_action or config.fit_all:
+        accuracy_dict['lane'] = (lane_accuracy, config.lane_scale)
 
-    return loss
+    total_accuracy = 0.0
+    total_weight = 0.0
+    for flag, loss_item in accuracy_dict.items():
+        total_accuracy += loss_item[0]
+        total_weight += loss_item[1]
+
+    accuracy_dict['combined'] = total_accuracy / total_weight
+    return accuracy_dict
 
 
 def debug_data(data_point):
@@ -1041,6 +1048,7 @@ def set_fit_mode_bools(cmd_args):
         config.fit_acc = False
         config.fit_ang = False
         config.fit_val = False
+        config.fit_lane = False
         config.fit_all = False
     elif cmd_args.fit == 'acc':
         config.fit_action = False
@@ -1048,6 +1056,7 @@ def set_fit_mode_bools(cmd_args):
         config.fit_acc = True
         config.fit_ang = False
         config.fit_val = False
+        config.fit_lane = False
         config.fit_all = False
     elif cmd_args.fit == 'steer':
         config.fit_action = False
@@ -1055,6 +1064,7 @@ def set_fit_mode_bools(cmd_args):
         config.fit_acc = False
         config.fit_ang = True
         config.fit_val = False
+        config.fit_lane = False
         config.fit_all = False
     elif cmd_args.fit == 'vel':
         config.fit_action = False
@@ -1062,6 +1072,15 @@ def set_fit_mode_bools(cmd_args):
         config.fit_acc = False
         config.fit_ang = False
         config.fit_val = False
+        config.fit_lane = False
+        config.fit_all = False
+    elif cmd_args.fit == 'lane':
+        config.fit_action = False
+        config.fit_vel = False
+        config.fit_acc = False
+        config.fit_ang = False
+        config.fit_val = False
+        config.fit_lane = True
         config.fit_all = False
     elif cmd_args.fit == 'val':
         config.fit_action = False
@@ -1069,6 +1088,7 @@ def set_fit_mode_bools(cmd_args):
         config.fit_acc = False
         config.fit_ang = False
         config.fit_val = True
+        config.fit_lane = False
         config.fit_all = False
     elif cmd_args.fit == 'all':
         config.fit_action = False
@@ -1076,6 +1096,7 @@ def set_fit_mode_bools(cmd_args):
         config.fit_acc = False
         config.fit_ang = False
         config.fit_val = False
+        config.fit_lane = False
         config.fit_all = True
 
 
@@ -1094,30 +1115,30 @@ def set_file_names():
         cmd_args.modelfile = model_dir + cmd_args.modelfile
     else:
         cmd_args.modelfile = model_dir + cmd_args.modelfile + '_' + \
-                         time.strftime("%Y_%m_%d_%I_%M_%S") + \
-                         '_t_' + train_file_name + \
-                         '_v_' + val_file_name + \
-                         '_vanilla_' + str(global_config.vanilla_resnet) + \
-                         '_k_' + str(cmd_args.k) + \
-                         '_lh_' + str(cmd_args.l_h) + \
-                         '_nped_' + str(0) + \
-                         '_gppn_o_' + str(global_config.gppn_out_channels) + \
-                         '_nres_' + str(global_config.Num_resnet_layers) + \
-                         '_w_' + str(global_config.resnet_width) + \
-                         '_bn_' + str(not global_config.disable_bn_in_resnet) + \
-                         '_layers_' + str(global_config.resblock_in_layers[0]) + \
-                         str(global_config.resblock_in_layers[1]) + \
-                         str(global_config.resblock_in_layers[2]) + \
-                         str(global_config.resblock_in_layers[3]) + \
-                         "_lr_" + str(cmd_args.lr) + \
-                         "_ada_" + str(global_config.enable_scheduler) + \
-                         "_l2_" + str(global_config.l2_reg_weight) + \
-                         "_bs_" + str(cmd_args.batch_size) + \
-                         "_aug_" + str(global_config.augment_data) + \
-                         "_do_" + str(global_config.do_dropout) + \
-                         "_bn_stat_" + str(global_config.track_running_stats) + \
-                         "_sm_labels_" + str(global_config.label_smoothing) + \
-                         ".pth"
+                             time.strftime("%Y_%m_%d_%I_%M_%S") + \
+                             '_t_' + train_file_name + \
+                             '_v_' + val_file_name + \
+                             '_vanilla_' + str(global_config.vanilla_resnet) + \
+                             '_k_' + str(cmd_args.k) + \
+                             '_lh_' + str(cmd_args.l_h) + \
+                             '_nped_' + str(0) + \
+                             '_gppn_o_' + str(global_config.gppn_out_channels) + \
+                             '_nres_' + str(global_config.Num_resnet_layers) + \
+                             '_w_' + str(global_config.resnet_width) + \
+                             '_bn_' + str(not global_config.disable_bn_in_resnet) + \
+                             '_layers_' + str(global_config.resblock_in_layers[0]) + \
+                             str(global_config.resblock_in_layers[1]) + \
+                             str(global_config.resblock_in_layers[2]) + \
+                             str(global_config.resblock_in_layers[3]) + \
+                             "_lr_" + str(cmd_args.lr) + \
+                             "_ada_" + str(global_config.enable_scheduler) + \
+                             "_l2_" + str(global_config.l2_reg_weight) + \
+                             "_bs_" + str(cmd_args.batch_size) + \
+                             "_aug_" + str(global_config.augment_data) + \
+                             "_do_" + str(global_config.do_dropout) + \
+                             "_bn_stat_" + str(global_config.track_running_stats) + \
+                             "_sm_labels_" + str(global_config.label_smoothing) + \
+                             ".pth"
     print("using model file name: " + cmd_args.modelfile)
 
     return train_file_name, val_file_name
@@ -1146,23 +1167,15 @@ def resume_model():
 
         best_val_loss = checkpoint['best_prec1']
         load_settings_from_model(checkpoint, global_config, cmd_args)
-
-        # net.load_state_dict(checkpoint['state_dict'])
         resume_partial_model(checkpoint['state_dict'], net)
-
-        # optimizer.load_state_dict(checkpoint['optimizer'])
-        #
-        # for g in optimizer.param_groups:
-        #     g['lr'] = cmd_args.lr
-
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cmd_args.lr, weight_decay=config.l2_reg_weight)
+        optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cmd_args.lr,
+                               weight_decay=config.l2_reg_weight)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, threshold=1e-2, factor=lr_factor,
-                                                     verbose=True)
+                                                         verbose=True)
 
         print("=> loaded checkpoint '{}' (epoch {})"
               .format(cmd_args.resume, checkpoint['epoch']))
         print("=> using learning rate {}".format(cmd_args.lr))
-        # cmd_args.modelfile = cmd_args.resume
 
         return optimizer, scheduler
     else:
@@ -1182,6 +1195,7 @@ def load_settings_from_model(checkpoint, config, cmd_args):
         # config.fit_ang = checkpoint['fit_ang']
         # config.fit_acc = checkpoint['fit_acc']
         # config.fit_vel = checkpoint['fit_vel']
+        # config.fit_lane = checkpoint['fit_lane']
         # config.fit_val = checkpoint['fit_val']
         # config.fit_action = checkpoint['fit_action']
         # config.fit_all = checkpoint['fit_all']
@@ -1241,6 +1255,7 @@ def make_checkpoint_dict(epoch, best_val_loss, config, cmd_args):
         'fit_acc': config.fit_acc,
         'fit_vel': config.fit_vel,
         'fit_val': config.fit_val,
+        'fit_lane': config.fit_lane,
         'fit_action': config.fit_action,
         'fit_all': config.fit_all,
         'ssm': config.sigma_smoothing,
@@ -1273,7 +1288,8 @@ if __name__ == '__main__':
     else:
         cel_criterion = nn.CrossEntropyLoss().to(device)
     # Optimizer: weight_decay is the scaling factor for L2 regularization
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cmd_args.lr, weight_decay=config.l2_reg_weight)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cmd_args.lr,
+                           weight_decay=config.l2_reg_weight)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=2, threshold=1e-2, factor=lr_factor,
                                                      verbose=True)
 
@@ -1283,8 +1299,8 @@ if __name__ == '__main__':
         best_val_loss = None
 
     # Define Dataset
-    train_set = Ped_data(filename=cmd_args.train, flag="Training")
-    val_set = Ped_data(filename=cmd_args.val, flag="Validation")
+    train_set = DrivingData(filename=cmd_args.train, flag="Training")
+    val_set = DrivingData(filename=cmd_args.val, flag="Validation")
     # Create Dataloader
     do_shuffle_training = False
     if config.sample_mode == 'hierarchical':
@@ -1299,7 +1315,7 @@ if __name__ == '__main__':
     # Train the model
     if cmd_args.resume:
         init_loss, init_accuracy = evaluate(10000, -1)  # check the untrained model
-        record_tb_data_list(-1, None, None, init_accuracy, init_loss)
+        record_tensor_board_log(-1, None, None, init_accuracy, init_loss)
 
     train()
 

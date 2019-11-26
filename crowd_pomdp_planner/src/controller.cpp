@@ -150,7 +150,7 @@ DSPOMDP* Controller::InitializeModel(option::Option* options) {
 
 void Controller::CreateNNPriors(DSPOMDP* model) {
 
-	logd << "DEBUG: Creating solver prior " << endl;
+	logv << "DEBUG: Creating solver prior " << endl;
 
 	if (Globals::config.use_multi_thread_) {
 		SolverPrior::nn_priors.resize(Globals::config.NUM_THREADS);
@@ -158,7 +158,7 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 		SolverPrior::nn_priors.resize(1);
 
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-		logd << "DEBUG: Creating prior " << i << endl;
+		logv << "DEBUG: Creating prior " << i << endl;
 
 		SolverPrior::nn_priors[i] =
 				static_cast<PedPomdp*>(model)->CreateSolverPrior(
@@ -176,7 +176,7 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 	}
 
 	prior_ = SolverPrior::nn_priors[0];
-	logd << "DEBUG: Created solver prior " << typeid(*prior_).name() <<
+	logv << "DEBUG: Created solver prior " << typeid(*prior_).name() <<
 			"at ts " << SolverPrior::get_timestamp() << endl;
 }
 
@@ -298,7 +298,7 @@ void Controller::InitializeDefaultParameters() {
 
 //	Globals::config.root_seed=1024;
 
-	logging::level(3);
+	logging::level(4);
 
 	logi << "Planner default parameters:" << endl;
 	Globals::config.text();
@@ -452,11 +452,11 @@ bool Controller::getUnityPos() {
 	in_pose.setIdentity();
 	in_pose.frame_id_ = ModelParams::rosns + "/base_link";
 	assert(unity_driving_simulator_);
-	logd << "global_frame_id: " << global_frame_id << " " << endl;
+	logv << "global_frame_id: " << global_frame_id << " " << endl;
 	if (!unity_driving_simulator_->getObjectPose(global_frame_id, in_pose,
 			out_pose)) {
 		cerr << "transform error within Controller::RunStep" << endl;
-		logd << "laser frame " << in_pose.frame_id_ << endl;
+		logv << "laser frame " << in_pose.frame_id_ << endl;
 		ros::Rate err_retry_rate(10);
 		err_retry_rate.sleep();
 		return false; // skip the current step
@@ -521,7 +521,7 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
 
-		logd << __FUNCTION__ << " add history search state of ts "
+		logv << __FUNCTION__ << " add history search state of ts "
 				<< static_cast<PomdpState*>(search_state)->time_stamp << endl;
 
 		SolverPrior::nn_priors[i]->record_cur_history();
@@ -601,7 +601,7 @@ void Controller::PredictPedsForSearch(State* search_state) {
 			for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 				SolverPrior::nn_priors[i]->Add_in_search(-1, predicted_state);
 
-				logd << __FUNCTION__ << " add predicted search state of ts "
+				logv << __FUNCTION__ << " add predicted search state of ts "
 						<< predicted_state->time_stamp
 						<< " predicted from search state of ts "
 						<< static_cast<PomdpState*>(search_state)->time_stamp
@@ -635,7 +635,7 @@ void Controller::UpdatePriors(const State* cur_state, State* search_state) {
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
 
-		logd << __FUNCTION__ << " add history search state of ts "
+		logv << __FUNCTION__ << " add history search state of ts "
 				<< static_cast<PomdpState*>(search_state)->time_stamp
 				<< " hist len " << SolverPrior::nn_priors[i]->Size(true)
 				<< endl;
@@ -871,7 +871,7 @@ void Controller::CheckCurPath() {
 void Controller::TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len) {
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 		SolverPrior::nn_priors[i]->Truncate(cur_search_hist_len, true);
-		logd << __FUNCTION__ << " truncating search history length to "
+		logv << __FUNCTION__ << " truncating search history length to "
 				<< cur_search_hist_len << endl;
 		SolverPrior::nn_priors[i]->compare_history_with_recorded();
 //		SolverPrior::nn_priors[i]->DebugHistory("Trunc history");

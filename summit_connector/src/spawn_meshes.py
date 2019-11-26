@@ -106,7 +106,9 @@ class SpawnMeshes(Drunc):
 
         # Imagery.
         if self.spawn_imagery:
-            def spawn_tiles(zoom, (min_lat, min_lon), (max_lat, max_lon)):
+            def spawn_tiles(zoom, min_geo, max_geo):
+                (min_lat, min_lon) = min_geo
+                (max_lat, max_lon) = max_geo
                 bottom_left_id = deg2num(zoom, min_lat, min_lon)
                 top_right_id = deg2num(zoom, max_lat, max_lon)
                 top_left_id = (zoom, top_right_id[1], bottom_left_id[2])

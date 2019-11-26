@@ -91,6 +91,7 @@ public:
     void speedCallback(nav_msgs::Odometry odo);
     void moveSpeedCallback(geometry_msgs::Twist speed);
     void cmdSteerCallback(const std_msgs::Float32::ConstPtr steer);
+    void lane_change_Callback(const std_msgs::Int32::ConstPtr data);
 	void publishPath();
 
 
@@ -130,7 +131,8 @@ public:
 	ros::Publisher pa_pub;
 	ros::Publisher cmdPub_, actionPub_, actionPubPlot_;
 
-    ros::Subscriber speedSub_, laneSub_, obsSub_, agentSub_, agentpathSub_, mapSub_, scanSub_, move_base_speed_, steerSub_;
+    ros::Subscriber speedSub_, laneSub_, obsSub_, agentSub_, agentpathSub_,
+    	mapSub_, scanSub_, move_base_speed_, steerSub_, lane_change_Sub_;
 
     ros::Timer timer_speed;
     ros::Timer timer_cmd_update;

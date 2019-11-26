@@ -2,6 +2,8 @@
 #include "WorldModel.h"
 #include "ped_pomdp.h"
 
+#include <std_msgs/Int32.h>
+
 #include <msg_builder/StartGoal.h>
 #include <msg_builder/car_info.h>
 #include <msg_builder/peds_info.h>
@@ -52,9 +54,9 @@ double pub_frequency = 9.0;
 
 void pedPoseCallback(msg_builder::ped_local_frame_vector);
 
-void laneCallback(msg_builder::Lanes data);
+//void laneCallback(msg_builder::Lanes data);
 
-void obstacleCallback(msg_builder::Obstacles data);
+//void obstacleCallback(msg_builder::Obstacles data);
 
 void agentArrayCallback(msg_builder::TrafficAgentArray);
 
@@ -198,8 +200,6 @@ void WorldSimulator::Connect_Carla(){
 bool WorldSimulator::Connect() {
 	cerr << "DEBUG: Connecting with world" << endl;
 
-	Connect_Carla();
-
 	cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp", 1);
 	actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action", 1);
 	actionPubPlot_ = nh.advertise<geometry_msgs::Twist>("pomdp_action_plot", 1);
@@ -220,10 +220,11 @@ bool WorldSimulator::Connect() {
 	agentSub_ = nh.subscribe("agent_array", 1, agentArrayCallback);
 	agentpathSub_ = nh.subscribe("agent_path_array", 1, agentPathArrayCallback);
 
-	laneSub_ = nh.subscribe("local_lanes", 1, laneCallback);
-	obsSub_ = nh.subscribe("local_obstacles", 1, obstacleCallback);
+//	laneSub_ = nh.subscribe("local_lanes", 1, laneCallback);
+//	obsSub_ = nh.subscribe("local_obstacles", 1, obstacleCallback);
 
 	steerSub_ = nh.subscribe("cmd_steer", 1, &WorldSimulator::cmdSteerCallback, this);
+	lane_change_Sub_ = nh.subscribe("gamma_lane_decision", 1, &WorldSimulator::lane_change_Callback, this);
 
 	logi << "Subscribers and Publishers created at the "
 			<< SolverPrior::get_timestamp() << "th second" << endl;
@@ -234,6 +235,9 @@ bool WorldSimulator::Connect() {
 
 	logi << "plan get at the " << SolverPrior::get_timestamp()
 				<< "th second" << endl;
+
+	Connect_Carla();
+
 	ros::spinOnce();
 
 	int tick = 0;
@@ -348,8 +352,8 @@ tf::Stamped<tf::Pose> WorldSimulator::GetBaseLinkPose() {
 	in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
 
 	while (!getObjectPose(global_frame_id, in_pose, out_pose)) {
-		logd << "transform error within GetCurrentState" << endl;
-		logd << "laser frame " << in_pose.frame_id_ << endl;
+		logv << "transform error within GetCurrentState" << endl;
+		logv << "laser frame " << in_pose.frame_id_ << endl;
 		ros::Rate err_retry_rate(10);
 		err_retry_rate.sleep();
 	}
@@ -381,7 +385,7 @@ State* WorldSimulator::GetCurrentState() {
 	coord = poseToCoord(out_pose);
 	//}
 
-	logd << "======transformed pose = " << coord.x << " " << coord.y << endl;
+	logv << "======transformed pose = " << coord.x << " " << coord.y << endl;
 
 	updated_car.pos = coord;
 	updated_car.vel = real_speed_;
@@ -405,7 +409,7 @@ State* WorldSimulator::GetCurrentState() {
 	}
 	current_state.time_stamp = SolverPrior::get_timestamp();
 
-	logd << " current state time stamp " << current_state.time_stamp << endl;
+	logv << " current state time stamp " << current_state.time_stamp << endl;
 
 	// logi << "&current_state " << &current_state << endl;
 	return static_cast<State*>(&current_state);
@@ -507,9 +511,9 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
 	/* Publish action and step reward */
 
-//	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Publish action (for data collection)"<<endl;
+//	logv << "[WorldSimulator::"<<__FUNCTION__<<"] Publish action (for data collection)"<<endl;
 //	publishAction(action, step_reward);
-	logd << "[WorldSimulator::" << __FUNCTION__
+	logv << "[WorldSimulator::" << __FUNCTION__
 			<< "] Update steering and target speed" << endl;
 
 	/* Publish steering and target velocity to Unity */
@@ -574,7 +578,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	 * Caution: obs info is not up-to-date here. Don't use it
 	 */
 
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Generate obs" << endl;
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Generate obs" << endl;
 	obs = static_cast<PedPomdp*>(model_)->StateToIndex(GetCurrentState());
 
 	//worldModel.traffic_agent_sim_[0] -> OutputTime();
@@ -887,7 +891,7 @@ extern double marker_colors[20][3];
 void WorldSimulator::publishAction(int action, double reward) {
 	if (action == -1)
 		return;
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers" << endl;
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers" << endl;
 
 	uint32_t shape = visualization_msgs::Marker::CUBE;
 	visualization_msgs::Marker marker;
@@ -898,7 +902,7 @@ void WorldSimulator::publishAction(int action, double reward) {
 	marker.id = 0;
 	marker.type = shape;
 	marker.action = visualization_msgs::Marker::ADD;
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers check 1"
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers check 1"
 			<< endl;
 	double px, py;
 	px = stateTracker->carpos.x;
@@ -910,7 +914,7 @@ void WorldSimulator::publishAction(int action, double reward) {
 	marker.pose.orientation.y = 0.0;
 	marker.pose.orientation.z = 0.0;
 	marker.pose.orientation.w = 1.0;
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers check 2"
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers check 2"
 			<< endl;
 
 	// Set the scale of the marker in meters
@@ -920,7 +924,7 @@ void WorldSimulator::publishAction(int action, double reward) {
 
 	int aid = action;
 	aid = max(aid, 0) % 3;
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] color id" << aid
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] color id" << aid
 			<< " action " << action << endl;
 
 	marker.color.r = marker_colors[action_map[aid]][0];
@@ -929,10 +933,10 @@ void WorldSimulator::publishAction(int action, double reward) {
 	marker.color.a = 1.0;
 
 	ros::Duration d(1 / ModelParams::control_freq);
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Publish marker" << endl;
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Publish marker" << endl;
 	marker.lifetime = d;
 	actionPub_.publish(marker);
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Publish action comand"
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Publish action comand"
 			<< endl;
 	geometry_msgs::Twist action_cmd;
 	action_cmd.linear.x = action;
@@ -944,9 +948,9 @@ bool WorldSimulator::getObjectPose(string target_frame,
 		tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const {
 	out_pose.setIdentity();
 
-	logd << "laser frame " << in_pose.frame_id_ << endl;
+	logv << "laser frame " << in_pose.frame_id_ << endl;
 
-	logd << "getting transform of frame " << target_frame << endl;
+	logv << "getting transform of frame " << target_frame << endl;
 
 	try {
 		tf_.transformPose(target_frame, in_pose, out_pose);
@@ -992,19 +996,20 @@ bool sortFn(Pedestrian p1, Pedestrian p2) {
 	return p1.id < p2.id;
 }
 
-void laneCallback(msg_builder::Lanes data){
-	double data_time_sec = SolverPrior::get_timestamp();
-	DEBUG(
-			string_sprintf("receive %d lanes at time %f",
-					data.lane_segments.size(), SolverPrior::get_timestamp()));
-}
 
-void obstacleCallback(msg_builder::Obstacles data){
-	double data_time_sec = SolverPrior::get_timestamp();
-	DEBUG(
-			string_sprintf("receive %d obstacle contours at time %f",
-					data.contours.size(), SolverPrior::get_timestamp()));
-}
+//void laneCallback(msg_builder::Lanes data){
+//	double data_time_sec = SolverPrior::get_timestamp();
+//	DEBUG(
+//			string_sprintf("receive %d lanes at time %f",
+//					data.lane_segments.size(), SolverPrior::get_timestamp()));
+//}
+//
+//void obstacleCallback(msg_builder::Obstacles data){
+//	double data_time_sec = SolverPrior::get_timestamp();
+//	DEBUG(
+//			string_sprintf("receive %d obstacle contours at time %f",
+//					data.contours.size(), SolverPrior::get_timestamp()));
+//}
 
 void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
@@ -1079,7 +1084,7 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 	// DEBUG(string_sprintf("ped_list len %d", ped_list.size()));
 	// DEBUG(string_sprintf("veh_list len %d", veh_list.size()));
-//	logd << "====================[ agentArrayCallback end ]================="
+//	logv << "====================[ agentArrayCallback end ]================="
 //			<< endl;
 
 	SimulatorBase::agents_data_ready = true;
@@ -1158,7 +1163,7 @@ void agentPathArrayCallback(msg_builder::AgentPathArray data) {
 }
 
 void pedPoseCallback(msg_builder::ped_local_frame_vector lPedLocal) {
-	logd << "======================[ pedPoseCallback ]= ts "
+	logv << "======================[ pedPoseCallback ]= ts "
 			<< Globals::ElapsedTime() << " ==================" << endl;
 
 	DEBUG(string_sprintf("receive peds num %d", lPedLocal.ped_local.size()));
@@ -1180,7 +1185,7 @@ void pedPoseCallback(msg_builder::ped_local_frame_vector lPedLocal) {
 		WorldSimulator::stateTracker->updatePed(ped_list[i]);
 	}
 
-	logd << "====================[ pedPoseCallback end ]================="
+	logv << "====================[ pedPoseCallback end ]================="
 			<< endl;
 
 	SimulatorBase::agents_data_ready = true;
@@ -1201,11 +1206,14 @@ void receive_map_callback(nav_msgs::OccupancyGrid map) {
 	logi << "[receive_map_callback] end ts: " << SolverPrior::get_timestamp() << endl;
 }
 
+void WorldSimulator::lane_change_Callback(const std_msgs::Int32::ConstPtr lane_decision){
+	p_IL_data.action_reward.lane_change = int(lane_decision->data);
+}
 
 void WorldSimulator::cmdSteerCallback(const std_msgs::Float32::ConstPtr steer){
 //	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
 	// receive steering in rad
-	p_IL_data.action_reward.angular.x = float(steer->data);
+	p_IL_data.action_reward.steering_normalized = float(steer->data);
 }
 
 
@@ -1330,10 +1338,10 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state,
 	// action for publish
 	geometry_msgs::Twist p_action_reward;
 
-	p_IL_data.action_reward.linear.y = reward;
-	p_IL_data.action_reward.linear.z = cmd_vel;
+	p_IL_data.action_reward.step_reward = reward;
+	p_IL_data.action_reward.target_speed = cmd_vel;
 
-	p_IL_data.action_reward.linear.x =
+	p_IL_data.action_reward.acceleration_id =
 			static_cast<PedPomdp*>(model_)->GetAccelerationID(safeAction);
 	// steering come from ROS topic
     // p_IL_data.action_reward.angular.x = static_cast<PedPomdp*>(model_)->GetSteering(safeAction);
