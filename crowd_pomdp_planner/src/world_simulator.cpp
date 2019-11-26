@@ -1207,13 +1207,13 @@ void receive_map_callback(nav_msgs::OccupancyGrid map) {
 }
 
 void WorldSimulator::lane_change_Callback(const std_msgs::Int32::ConstPtr lane_decision){
-	p_IL_data.action_reward.lane_change = int(lane_decision->data);
+	p_IL_data.action_reward.lane_change.data = int(lane_decision->data);
 }
 
 void WorldSimulator::cmdSteerCallback(const std_msgs::Float32::ConstPtr steer){
 //	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
 	// receive steering in rad
-	p_IL_data.action_reward.steering_normalized = float(steer->data);
+	p_IL_data.action_reward.steering_normalized.data = float(steer->data);
 }
 
 
@@ -1338,10 +1338,10 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state,
 	// action for publish
 	geometry_msgs::Twist p_action_reward;
 
-	p_IL_data.action_reward.step_reward = reward;
-	p_IL_data.action_reward.target_speed = cmd_vel;
+	p_IL_data.action_reward.step_reward.data = reward;
+	p_IL_data.action_reward.target_speed.data = cmd_vel;
 
-	p_IL_data.action_reward.acceleration_id =
+	p_IL_data.action_reward.acceleration_id.data =
 			static_cast<PedPomdp*>(model_)->GetAccelerationID(safeAction);
 	// steering come from ROS topic
     // p_IL_data.action_reward.angular.x = static_cast<PedPomdp*>(model_)->GetSteering(safeAction);

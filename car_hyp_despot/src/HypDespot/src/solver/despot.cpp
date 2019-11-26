@@ -102,7 +102,7 @@ ScenarioUpperBound* DESPOT::upper_bound() const {
 VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
                      ScenarioLowerBound* lower_bound, ScenarioUpperBound* upper_bound,
                      const DSPOMDP* model, History& history, SearchStatistics* statistics) {
-  logv << __FUNCTION__ << endl;
+	logv << __FUNCTION__ << endl;
 	VNode* cur = root;
 
 	int hist_size = history.Size();
@@ -227,9 +227,6 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		prior_hist_size = SolverPrior::nn_priors[threadID]->Size(true);
 
 	do {
-
-//		cout << "trial 1" << endl;
-
 		if (statistics != NULL
 		        && cur->depth() > statistics->Get_longest_trial_len()) {
 			statistics->Update_longest_trial_len(cur->depth());
@@ -246,8 +243,6 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			                            "debug trial end blocker found");
 			break;
 		}
-
-//		cout << "trial 2" << endl;
 
 		try {
 			lock_guard < mutex > lck(cur->GetMutex());
@@ -271,7 +266,6 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			cout << "Locking error: " << e.what() << endl;
 			raise(SIGABRT);
 		}
-//		cout << "trial 3" << endl;
 
 		auto start = Time::now();
 		Shared_QNode* qstar;
@@ -302,8 +296,6 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			raise(SIGABRT);
 		}
 
-//		cout << "trial 4" << endl;
-
 		// lets_drive
 		if (Globals::config.use_prior){
 
@@ -315,13 +307,9 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 
 				qstar->prior_values_ready(true);
 
-	//			return cur; // Debugging
-
 				InitChildrenLowerBounds(qstar, lower_bound, model, streams, history);
 			}
 		}
-
-//		cout << "trial 5" << endl;
 
 		try {
 			next = static_cast<Shared_VNode*>(SelectBestWEUNode(qstar, despot_thread));
@@ -342,8 +330,6 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			raise(SIGABRT);
 		}
 
-//		cout << "trial 6" << endl;
-
 		if (statistics != NULL) {
 			statistics->Add_time_path( Globals::ElapsedTime(start) );
 		}
@@ -357,9 +343,6 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		if (Globals::config.use_prior){
 			State* cur_sample_state = cur->particles()[0];
 			SolverPrior::nn_priors[threadID]->Add_in_search(qstar->edge(), cur_sample_state);
-
-//			cur->car_tensor = SolverPrior::nn_priors[threadID]->Process_state_to_car_tensor(cur_sample_state);
-//			cur->map_tensor = SolverPrior::nn_priors[threadID]->Process_state_to_map_tensor(cur_sample_state);
 
 			logv << __FUNCTION__ << " add history search state of ts " <<
 					static_cast<PomdpState*>(cur_sample_state)->time_stamp << endl;
@@ -480,7 +463,7 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
                               double& explore_time, double& backup_time, int& num_trials,
                               double timeout, MsgQueque<Shared_VNode>& node_queue,
                               MsgQueque<Shared_VNode>& print_queue, int threadID) {
-  logv << __FUNCTION__ << endl;
+	logv << __FUNCTION__ << endl;
 	Globals::ChooseGPUForThread();			//otherwise the GPUID would be 0 (default)
 	Globals::AddMappedThread(this_thread::get_id(), threadID);
 	used_time = 0;
@@ -489,10 +472,11 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 	num_trials = 0;
 	Shared_VNode* root = node_queue.receive(true, timeout);
 
-
 	logv << "time_out = "<< timeout << endl;
 
 	do {
+		logd << "Trial " << num_trials << " start" << endl;
+
 		if (root == NULL || Globals::Timeout(timeout)) {
 			int the_case = (root == NULL) ? 0 : 1;
 			Globals::Global_print_deleteT(this_thread::get_id(), 0, the_case);
@@ -514,6 +498,8 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 
 		used_time += Globals::ElapsedTime(start);
 		explore_time += Globals::ElapsedTime(start);
+
+		logd << "Backup in trial " << num_trials << " start" << endl;
 
 		start = Time::now();
 		if (Expansion_done)
@@ -538,6 +524,7 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 			}
 		}
 
+		logd << "Backup in trial " << num_trials << " end" << endl;
 
 		if (statistics != NULL) {
 			statistics->Add_time_backup(Globals::ElapsedTime(start));
@@ -545,9 +532,10 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 		used_time += Globals::ElapsedTime(start);
 		backup_time += Globals::ElapsedTime(start);
 
+		logd << "Trial " << num_trials << " end" << endl;
+
 		Globals::AddSerialTime(used_time);
 		num_trials++;
-
 		print_queue.send(root);
 
 //		if (DESPOT::Debug_mode || FIX_SCENARIO == 1)
