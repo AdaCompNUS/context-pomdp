@@ -1399,7 +1399,7 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
             elapsed_time = time.time() - start_t
             print('[INFO] POMDP planner terminated normally in %f s' % elapsed_time)
             if elapsed_time < 20:
-                open_search_log = True
+                pass # open_search_log = True
 
         if run_query_srvs:
             print('[INFO] Terminating the nn query server')
