@@ -43,9 +43,9 @@ class Spectator(Drunc):
             camera_blueprint.set_attribute('motion_blur_min_object_screen_size', '0.0')
             self.camera_sensor_actor = self.world.spawn_actor(
                 camera_blueprint,
-                carla.Transform(carla.Location(x=-32.0, z=24.0), carla.Rotation(pitch=-30.0)),
+                # carla.Transform(carla.Location(x=-32.0, z=24.0), carla.Rotation(pitch=-30.0)),
                 # carla.Transform(carla.Location(x=-16.0, z=12.0), carla.Rotation(pitch=-30.0)),
-                # carla.Transform(carla.Location(x=0.5, y=-0.3, z=1.4), carla.Rotation(pitch=0.0)),
+                carla.Transform(carla.Location(x=0.0, y=-0.3, z=1.2), carla.Rotation(pitch=0.0)),
                 # carla.Transform(carla.Location(x=-10.0, y=-0.0, z=20.0),
                 #     carla.Rotation(pitch=-45.0)),
                 # carla.Transform(carla.Location(x=-320.0, z=480.0), carla.Rotation(pitch=-60.0)),

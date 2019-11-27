@@ -6,10 +6,7 @@ import carla
 import random
 import numpy as np
 import rospy
-import os
-import timeit
-import time
-
+import sys
 from std_msgs.msg import Float32, Bool, Int32
 from geometry_msgs.msg import Twist
 import nav_msgs.msg
@@ -24,6 +21,7 @@ default_agent_pos = carla.Vector2D(10000, 10000)
 default_agent_bbox = [default_agent_pos + carla.Vector2D(1, -1), default_agent_pos + carla.Vector2D(1, 1),
                       default_agent_pos + carla.Vector2D(-1, 1), default_agent_pos + carla.Vector2D(-1, -1)]
 
+spawn_size_min = None
 
 class CrowdAgent(object):
     def __init__(self, drunc, actor, preferred_speed):
@@ -601,6 +599,8 @@ class GammaCrowdController(Drunc):
     def update_gamma(self, event):
         update_time = event.current_real
 
+        start_time = time.time()
+
         # Check for ego actor.
         self.find_ego_actor()
 
@@ -615,21 +615,32 @@ class GammaCrowdController(Drunc):
             bounds_max = bounds_center + carla.Vector2D(150, 150)
 
         # Determine spawning variables.
+        global spawn_size_min
         if not self.initialized:
             spawn_size_min = 0
             spawn_size_max = 150
+            spawn_cap = 500
         else:
-            spawn_size_min = 100
+            # spawn_size_min = 100
             spawn_size_max = 150
+            spawn_cap = 1
         spawn_segment_map = self.network_segment_map.intersection(
             get_spawn_occupancy_map(bounds_center, spawn_size_min, spawn_size_max))
         spawn_segment_map.seed_rand(self.rng.getrandbits(32))
-
         aabb_map = carla.AABBMap(
             [self.get_aabb(agent.actor) for agent in self.network_bike_agents + self.network_car_agents] +
             [self.get_aabb(self.ego_actor)])
+        if not self.initialized:
+            spawn_size_min = 100
 
-        for i in range(self.num_network_car_agents - len(self.network_car_agents)):
+        # end_time = time.time()
+        # print("get maps time {} s".format(end_time - start_time))
+        # start_time = time.time()
+
+        to_spawn = self.adjust_spawn_params(spawn_cap, self.num_network_car_agents - len(self.network_car_agents),
+                                            'car')
+
+        for i in range(to_spawn):
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map,
                                               rng=self.rng)
             if aabb_map.intersects(carla.AABB2D(
@@ -648,7 +659,7 @@ class GammaCrowdController(Drunc):
                 self.rng.choice(self.cars_blueprints),
                 trans)
             if actor:
-                actor.set_collision_enabled(False)
+                # actor.set_collision_enabled(False)
                 self.world.wait_for_tick(1.0)  # For actor to update pos and bounds, and for collision to apply.
                 self.network_car_agents.append(CrowdNetworkCarAgent(
                     self, actor, path,
@@ -658,7 +669,10 @@ class GammaCrowdController(Drunc):
             if len(self.network_car_agents) > 0:
                 self.do_publish = True
 
-        for _ in range(self.num_network_bike_agents - len(self.network_bike_agents)):
+        to_spawn = self.adjust_spawn_params(spawn_cap, self.num_network_bike_agents - len(self.network_bike_agents),
+                                            'bikes')
+
+        for _ in range(to_spawn):
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map,
                                               rng=self.rng)
             if aabb_map.intersects(carla.AABB2D(
@@ -677,7 +691,7 @@ class GammaCrowdController(Drunc):
                 self.rng.choice(self.bikes_blueprints),
                 trans)
             if actor:
-                actor.set_collision_enabled(False)
+                # actor.set_collision_enabled(False)
                 self.world.wait_for_tick(1.0)  # For actor to update pos and bounds, and for collision to apply.
 
                 self.network_bike_agents.append(CrowdNetworkBikeAgent(
@@ -688,7 +702,9 @@ class GammaCrowdController(Drunc):
             if len(self.network_bike_agents) > 0:
                 self.do_publish = True
 
-        for _ in range(self.num_sidewalk_agents - len(self.sidewalk_agents)):
+        to_spawn = self.adjust_spawn_params(spawn_cap, self.num_sidewalk_agents - len(self.sidewalk_agents), 'walkers')
+
+        for _ in range(to_spawn):
             path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, bounds_min, bounds_max,
                                                self.rng)
             trans = carla.Transform()
@@ -700,7 +716,7 @@ class GammaCrowdController(Drunc):
                 self.rng.choice(self.walker_blueprints),
                 trans)
             if actor:
-                actor.set_collision_enabled(False)
+                # actor.set_collision_enabled(False)
                 self.world.wait_for_tick(1.0)  # For actor to update pos and bounds, and for collision to apply.
 
                 self.sidewalk_agents.append(CrowdSidewalkAgent(
@@ -709,6 +725,10 @@ class GammaCrowdController(Drunc):
 
             if len(self.sidewalk_agents) > 0:
                 self.do_publish = True
+
+        # end_time = time.time()
+        # print("spawn actor time {} s".format(end_time - start_time))
+        # start_time = time.time()
 
         if not self.initialized:
             # send a one time message to inform the pomdp planner
@@ -802,6 +822,10 @@ class GammaCrowdController(Drunc):
         except Exception as e:
             print(e)
 
+        # end_time = time.time()
+        # print("gamma step time {} s".format(end_time - start_time))
+        # start_time = time.time()
+
         if not self.initialized:
             self.start_time = rospy.Time.now()
             self.initialized = True
@@ -832,6 +856,23 @@ class GammaCrowdController(Drunc):
         self.sidewalk_agents = [a for a in next_agents if a and type(a) is CrowdSidewalkAgent]
 
         self.client.apply_batch_sync(commands)
+
+        # end_time = time.time()
+        # print("send command time {} s".format(end_time - start_time))
+        # sys.stdout.flush()
+
+    def adjust_spawn_params(self, spawn_cap, to_spawn, flag=''):
+        global spawn_size_min
+        # print("spawning {} {}".format(to_spawn, flag))
+        if to_spawn > spawn_cap:
+            spawn_size_min = max(spawn_size_min - 20, 10)
+            to_spawn = min(spawn_cap, to_spawn)
+        elif flag == 'car':
+            spawn_size_min = min(spawn_size_min + 10, 100)
+        # print("capping to {} {}".format(to_spawn, flag))
+        # print("spawn size min {}".format(spawn_size_min))
+        sys.stdout.flush()
+        return to_spawn
 
     def publish_agents(self, tick):
         if self.do_publish is False:

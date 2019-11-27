@@ -7,15 +7,16 @@ port=$4
 launch_sim=$5
 record_bags=$6
 # maploc=beijing
-# maploc=random
-maploc=meskel_square
+maploc=random
+# maploc=meskel_square
+# maploc=beijing
 # maploc=shi_men_er_lu
 # mode=rollout
 mode=joint_pomdp
 # mode=gamma
 # mode=lets-drive
 rands=-1
-eps_len=60.0
+eps_len=120.0
 
 echo "User: $USER"
 echo "PATH: $PATH"
