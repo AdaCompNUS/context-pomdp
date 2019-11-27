@@ -134,24 +134,25 @@ def get_statistics(root_path, filtered_files):
                     col_count += 1
                     break
 
-        ave_speed = ave_speed / (cur_step-10)
-        ave_speeds.append(ave_speed)
-        dec_count  = dec_count / float(cur_step)
-        acc_count  = acc_count / float(cur_step)
-        mat_count  = mat_count / float(cur_step)
-        dec_counts.append(dec_count)
-        acc_counts.append(acc_count)
-        mat_counts.append(mat_count)
-        trav_dists.append(dist)
-        if reach_goal_flag == True:
-            goal_count+=1
-            assert(cur_step != 0)
-            goal_step.append(cur_step)
-        else:
-            pass # print("fail file: ", txtfile)
-        if collision_flag == True:
-            pass #col_count += 1
-            # print("col file: ", txtfile)
+        if cur_step > 10:
+            ave_speed = ave_speed / (cur_step-10)
+            ave_speeds.append(ave_speed)
+            dec_count  = dec_count / float(cur_step)
+            acc_count  = acc_count / float(cur_step)
+            mat_count  = mat_count / float(cur_step)
+            dec_counts.append(dec_count)
+            acc_counts.append(acc_count)
+            mat_counts.append(mat_count)
+            trav_dists.append(dist)
+            if reach_goal_flag == True:
+                goal_count+=1
+                assert(cur_step != 0)
+                goal_step.append(cur_step)
+            else:
+                pass # print("fail file: ", txtfile)
+            if collision_flag == True:
+                pass #col_count += 1
+                # print("col file: ", txtfile)
     print("%d filtered files found in %s" % (len(filtered_files), root_path))
 
     print("goal rate :", float(goal_count)/total_count)
