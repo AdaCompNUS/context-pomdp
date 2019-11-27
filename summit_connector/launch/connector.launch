@@ -53,5 +53,7 @@
   <!--
   <node name="spectator" pkg="" type="spectator.py" output="screen"/>
   -->
+  <!--
   <node name="visualize_live" pkg="summit_connector" type="visualize_live.py" output="screen"/>
+  -->
 </launch>
