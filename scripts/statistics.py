@@ -132,6 +132,7 @@ def get_statistics(root_path, filtered_files):
                 if ('collision = 1' in line or 'INININ' in line or 'in real collision' in line) and reach_goal_flag == False:
                     collision_flag = True
                     col_count += 1
+                    break
 
         ave_speed = ave_speed / (cur_step-10)
         ave_speeds.append(ave_speed)
