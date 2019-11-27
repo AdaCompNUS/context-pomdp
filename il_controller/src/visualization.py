@@ -107,8 +107,11 @@ def visualize_res(Z, step):
 
 
 def visualize_distribution(p, true_p, step, flag):
-    # print("[visualize_distribution]")
+    # print("[visualize_distribution] {}: p={} true_p={}".format(flag, p, true_p))
+
     try:
+        assert p is not None, "Inferred probability is None"
+        assert true_p is not None, "Label is None"
         num_bins = None
 
         min_val = -config.max_steering_degree
@@ -127,6 +130,11 @@ def visualize_distribution(p, true_p, step, flag):
             max_val = config.vel_max
             min_val = 0
             num_bins = config.num_vel_bins
+            resolution = (max_val - min_val) / num_bins
+        elif flag == "lane":
+            min_val = -1.0
+            max_val = 1.0
+            num_bins = config.num_lane_bins
             resolution = (max_val - min_val) / num_bins
 
         bin_width = resolution
@@ -290,7 +298,7 @@ def export_prediction(value, true_value, step, flag):
 
 def visualize(X, step, root=""):
     print("[visualize] ")
-    print("==> goal channel to plot: {}".format(config.channel_goal))
+    # print("==> goal channel to plot: {}".format(config.channel_goal))
 
     last_ped = 0
     car_channel = 0
@@ -311,8 +319,9 @@ def visualize(X, step, root=""):
                         axarr[i, j].imshow(X[last_ped, config.channel_map[0]],
                                            cmap=map_type, interpolation='nearest')
                     if j == 1:
-                        axarr[i, j].imshow(X[last_ped, config.channel_goal],
-                                           cmap=map_type, interpolation='nearest')
+                        if config.use_goal_channel:
+                            axarr[i, j].imshow(X[last_ped, config.channel_goal],
+                                               cmap=map_type, interpolation='nearest')
                     if j == 2:
                         axarr[i, j].imshow(X[last_ped, config.channel_lane],
                                            cmap=map_type, interpolation='nearest')

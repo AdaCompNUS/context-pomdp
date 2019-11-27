@@ -151,11 +151,11 @@ def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_rewa
             continue
 
         action_reward_data = ActionReward()
-        action_reward_data.cur_speed = None  # current velocity of the car
+        action_reward_data.cur_speed = act_reward_dict[timestamp].cur_speed  # current velocity of the car
         action_reward_data.target_speed = act_reward_dict[timestamp].target_speed  # target velocity of the car
         action_reward_data.steering_normalized = act_reward_dict[timestamp].steering_normalized  # steering
         action_reward_data.lane_change = act_reward_dict[timestamp].lane_change  # reward
-        action_reward_data.acceleration_raw = act_reward_dict[timestamp].acceleration_raw  # acc
+        action_reward_data.acceleration_id = act_reward_dict[timestamp].acceleration_id  # acc
         action_reward_data.step_reward = act_reward_dict[timestamp].step_reward  # reward
 
         combined_dict[timestamp] = {
@@ -519,19 +519,19 @@ def process_values(data_dict, gamma, output_dict, sample_idx, timestamps):
     for idx in range(len(timestamps)):
         ts = timestamps[idx]
         if config.reward_mode == 'data':
-            reward_arr[idx] = data_dict[ts]['action_reward'].step_reward
+            reward_arr[idx] = data_dict[ts]['action_reward'].step_reward.data
         elif config.reward_mode == 'func':
-            steer_data = data_dict[ts]['action_reward'].steering_normalized
+            steer_data = data_dict[ts]['action_reward'].steering_normalized.data
             prev_ts = ts
             if idx >= 1:
                 prev_ts = timestamps[idx - 1]
             try:
-                prev_steer_data = data_dict[prev_ts]['action_reward'].steering_normalized
+                prev_steer_data = data_dict[prev_ts]['action_reward'].steering_normalized.data
             except Exception as e:
                 print(e)
                 pdb.set_trace()
 
-            acc_data = data_dict[ts]['action_reward'].acceleration_id
+            acc_data = data_dict[ts]['action_reward'].acceleration_id.data
             reward_arr[idx] = reward_function(prev_steer_data, steer_data, acc_data)
 
         if idx in sample_idx:
@@ -553,16 +553,16 @@ def process_values(data_dict, gamma, output_dict, sample_idx, timestamps):
 def process_actions(data_dict, idx, output_dict, ts):
     # parse other info
     tmp = np.zeros(3, dtype=np.float32)
-    tmp[config.label_linear] = data_dict[ts]['action_reward'].cur_speed
-    tmp[config.label_cmdvel] = data_dict[ts]['action_reward'].target_speed
+    tmp[config.label_linear] = float(data_dict[ts]['action_reward'].cur_speed.data)
+    tmp[config.label_cmdvel] = float(data_dict[ts]['action_reward'].target_speed.data)
     output_dict[idx]['vel'] = tmp
 
     output_dict[idx]['steer_norm'] = np.array(
-        [data_dict[ts]['action_reward'].steering_normalized], dtype=np.float32)
+        [float(data_dict[ts]['action_reward'].steering_normalized.data)], dtype=np.float32)
     output_dict[idx]['acc_id'] = np.array(
-        [data_dict[ts]['action_reward'].acceleration_id], dtype=np.float32)
+        [float(data_dict[ts]['action_reward'].acceleration_id.data)], dtype=np.int32)
     output_dict[idx]['lane_change'] = np.array(
-        [data_dict[ts]['action_reward'].lane_change], dtype=np.float32)
+        [float(data_dict[ts]['action_reward'].lane_change.data)], dtype=np.int32)
 
 
 def process_car(data_idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio, resolution, origin):

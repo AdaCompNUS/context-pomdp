@@ -16,7 +16,7 @@ global_config = global_params.config
 def get_input_slicing():
     ped_start = min(global_config.channel_map)
     ped_end = max(global_config.channel_map) + 1
-    gppn_end = max(ped_end, global_config.channel_goal + 1, global_config.channel_lane + 1)
+    gppn_end = max(ped_end, global_config.gppn_input_end)
     hist_start = min(global_config.channel_hist)
     hist_end = max(global_config.channel_hist) + 1
     return ped_start, ped_end, gppn_end, hist_start, hist_end
@@ -32,6 +32,30 @@ def error_handler(e):
     print(
         'Error on file {} line {}'.format(sys.exc_info()[-1].tb_frame.f_code.co_filename, sys.exc_info()[-1].tb_lineno),
         type(e).__name__, e)
+
+
+class EmptyValueHead(nn.Module):
+    def __init__(self, ):
+        super(EmptyValueHead, self).__init__()
+
+    def forward(self, x):
+        return None
+
+
+class EmptyActionHead(nn.Module):
+    def __init__(self, ):
+        super(EmptyActionHead, self).__init__()
+
+    def forward(self, x):
+        return None
+
+
+class EmptyMdnActionHead(nn.Module):
+    def __init__(self, ):
+        super(EmptyMdnActionHead, self).__init__()
+
+    def forward(self, x):
+        return None, None, None
 
 
 class ActionHead(nn.Module):
@@ -77,8 +101,8 @@ class LargeActionHead(nn.Module):
                             bias=True)
         self.relu1 = nn.ReLU(inplace=True)
         self.fc1 = nn.Linear(in_features=128,
-                            out_features=num_classes,
-                            bias=True)
+                             out_features=num_classes,
+                             bias=True)
 
     def forward(self, x):
         if global_config.do_dropout:
@@ -152,6 +176,7 @@ class PolicyValueNet(nn.Module):
         self.num_steering_bins = global_config.num_steering_bins
         self.num_vel_bins = global_config.num_vel_bins
         self.num_acc_bins = global_config.num_acc_bins
+        self.num_lane_bins = global_config.num_lane_bins
 
         self.car_gppn, self.car_lstm, self.map_lstm = None, None, None
         if global_config.vanilla_resnet:
@@ -182,35 +207,28 @@ class PolicyValueNet(nn.Module):
         self.drop_o = nn.Dropout()
         self.drop_o_2d = nn.Dropout2d()
 
-        self.value_head = ValueHead(inplanes=self.resnet.num_out_features)
-        self.fc_modules_size += get_module_size(self.value_head)
-
+        self.value_head, self.ang_head, self.acc_head, self.vel_head, self.lane_head = None, None, None, None, None
         if global_config.head_mode == "mdn":
-            self.acc_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
-            self.ang_head = ActionMdnHead(inplanes=self.resnet.num_out_features, num_modes=10)
-
-            if global_config.use_vel_head:
-                self.vel_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
+            self.heads = self.construct_mdn_heads()
         elif global_config.head_mode == "hybrid":
-            self.acc_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
-            if global_config.use_vel_head:
-                self.vel_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
-            self.ang_head = ActionHead(inplanes=self.resnet.num_out_features,
-                                       num_classes=self.num_steering_bins)
+            self.heads = self.construct_hybrid_heads()
         else:
-            self.acc_head = LargeActionHead(inplanes=self.resnet.num_out_features,
-                                       num_classes=self.num_acc_bins)
-            self.ang_head = ActionHead(inplanes=self.resnet.num_out_features,
-                                       num_classes=self.num_steering_bins)
-            if global_config.use_vel_head:
-                self.vel_head = ActionHead(inplanes=self.resnet.num_out_features,
-                                           num_classes=self.num_vel_bins)
+            self.heads = self.construct_categorical_heads()
 
-        self.fc_modules_size += get_module_size(self.acc_head)
-        self.fc_modules_size += get_module_size(self.ang_head)
-        if global_config.use_vel_head:
-            self.fc_modules_size += get_module_size(self.vel_head)
+        for head in self.heads:
+            self.fc_modules_size += get_module_size(head)
 
+        self.initialize_parameters()
+
+        self.freezed_modules = []
+        self.freeze_parameters()
+
+        print_model_size(self)
+
+        self.ped_start, self.ped_end, self.gppn_end, self.hist_start, self.hist_end \
+            = get_input_slicing()
+
+    def initialize_parameters(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -228,13 +246,74 @@ class PolicyValueNet(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-        self.freezed_modules = []
-        self.freeze_parameters()
+    def construct_categorical_heads(self):
+        if global_config.fit_all or global_config.fit_action or global_config.fit_ang:
+            self.ang_head = ActionHead(inplanes=self.resnet.num_out_features, num_classes=self.num_steering_bins)
+        else:
+            self.ang_head = EmptyActionHead()
+        if global_config.fit_all or global_config.fit_action or global_config.fit_acc:
+            self.acc_head = LargeActionHead(inplanes=self.resnet.num_out_features, num_classes=self.num_acc_bins)
+        else:
+            self.acc_head = EmptyActionHead()
+        if global_config.use_vel_head and (global_config.fit_all or global_config.fit_action or global_config.fit_vel):
+            self.vel_head = ActionHead(inplanes=self.resnet.num_out_features, num_classes=self.num_vel_bins)
+        else:
+            self.vel_head = EmptyActionHead()
+        if global_config.fit_all or global_config.fit_action or global_config.fit_lane:
+            self.lane_head = ActionHead(inplanes=self.resnet.num_out_features, num_classes=self.num_lane_bins)
+        else:
+            self.lane_head = EmptyActionHead()
+        if global_config.fit_val or global_config.fit_all:
+            self.value_head = ValueHead(inplanes=self.resnet.num_out_features)
+        else:
+            self.value_head = EmptyValueHead()
+        return [self.ang_head, self.acc_head, self.vel_head, self.lane_head, self.value_head]
 
-        print_model_size(self)
+    def construct_hybrid_heads(self):
+        if global_config.fit_all or global_config.fit_action or global_config.fit_ang:
+            self.ang_head = ActionHead(inplanes=self.resnet.num_out_features, num_classes=self.num_steering_bins)
+        else:
+            self.ang_head = EmptyActionHead()
+        if global_config.fit_all or global_config.fit_action or global_config.fit_acc:
+            self.acc_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
+        else:
+            self.acc_head = EmptyMdnActionHead()
+        if global_config.use_vel_head and (global_config.fit_all or global_config.fit_action or global_config.fit_vel):
+            self.vel_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
+        else:
+            self.vel_head = EmptyMdnActionHead()
+        if global_config.fit_all or global_config.fit_action or global_config.fit_lane:
+            self.lane_head = ActionHead(inplanes=self.resnet.num_out_features, num_classes=self.num_lane_bins)
+        else:
+            self.lane_head = EmptyActionHead()
+        if global_config.fit_val or global_config.fit_all:
+            self.value_head = ValueHead(inplanes=self.resnet.num_out_features)
+        else:
+            self.value_head = EmptyValueHead()
+        return [self.ang_head, self.acc_head, self.vel_head, self.lane_head, self.value_head]
 
-        self.ped_start, self.ped_end, self.gppn_end, self.hist_start, self.hist_end \
-            = get_input_slicing()
+    def construct_mdn_heads(self):
+        if global_config.fit_all or global_config.fit_action or global_config.fit_ang:
+            self.ang_head = ActionMdnHead(inplanes=self.resnet.num_out_features, num_modes=10)
+        else:
+            self.ang_head = EmptyMdnActionHead()
+        if global_config.fit_all or global_config.fit_action or global_config.fit_acc:
+            self.acc_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
+        else:
+            self.acc_head = EmptyMdnActionHead()
+        if global_config.use_vel_head and (global_config.fit_all or global_config.fit_action or global_config.fit_vel):
+            self.vel_head = ActionMdnHead(inplanes=self.resnet.num_out_features)
+        else:
+            self.vel_head = EmptyMdnActionHead()
+        if global_config.fit_all or global_config.fit_action or global_config.fit_lane:
+            self.lane_head = ActionHead(inplanes=self.resnet.num_out_features, num_classes=self.num_lane_bins)
+        else:
+            self.lane_head = EmptyActionHead()
+        if global_config.fit_val or global_config.fit_all:
+            self.value_head = ValueHead(inplanes=self.resnet.num_out_features)
+        else:
+            self.value_head = EmptyValueHead()
+        return [self.ang_head, self.acc_head, self.vel_head, self.lane_head, self.value_head]
 
     def freeze_parameters(self):
         for module in self.freezed_modules:
@@ -301,40 +380,8 @@ class PolicyValueNet(nn.Module):
         if global_config.do_dropout and global_config.head_mode == 'categorical':
             res_images = self.drop_o_2d(res_images)
 
-        if global_config.head_mode == "mdn":
-            value, acc_pi, acc_sigma, acc_mu, ang_pi, ang_mu, ang_sigma = None, None, None, None, None, None, None
-            if global_config.fit_all or global_config.fit_val:
-                value = self.value_head(res_images)
-            if global_config.fit_all or global_config.fit_action or global_config.fit_acc:
-                acc_pi, acc_sigma, acc_mu = self.acc_head(res_images)
-            if global_config.fit_all or global_config.fit_action or global_config.fit_ang:
-                ang_pi, ang_sigma, ang_mu = self.ang_head(res_images)
-            if global_config.use_vel_head:
-                vel_pi, vel_sigma, vel_mu = self.vel_head(res_images)
-            else:
-                vel_pi, vel_sigma, vel_mu = None, None, None
-            return value, acc_pi, acc_mu, acc_sigma, ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, \
-                   car_values[0], res_images[0]
-        elif global_config.head_mode == "hybrid":
-            value, acc_pi, acc_sigma, acc_mu, ang = None, None, None, None, None
-            if global_config.fit_all or global_config.fit_val:
-                value = self.value_head(res_images)
-            if global_config.fit_all or global_config.fit_action or global_config.fit_acc:
-                acc_pi, acc_sigma, acc_mu = self.acc_head(res_images)
-            if global_config.fit_all or global_config.fit_action or global_config.fit_ang:
-                ang = self.ang_head(res_images)
-            if global_config.use_vel_head:
-                vel_pi, vel_sigma, vel_mu = self.vel_head(res_images)
-            else:
-                vel_pi, vel_sigma, vel_mu = None, None, None
-            return value, acc_pi, acc_mu, acc_sigma, ang, vel_pi, vel_mu, vel_sigma, \
-                   car_values[0], res_images[0]
-        else:
-            if global_config.use_vel_head:
-                vel_out = self.vel_head(res_images)
-            else:
-                vel_out = None
-            return self.value_head(res_images), self.acc_head(res_images), self.ang_head(res_images), vel_out, \
+        return self.value_head(res_images), self.acc_head(res_images), self.ang_head(res_images), \
+               self.vel_head(res_images), self.lane_head(res_images), \
                    car_values[0], res_images[0]
 
 

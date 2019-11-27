@@ -214,7 +214,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
                             ScenarioLowerBound* lower_bound, ScenarioUpperBound* upper_bound,
                             const DSPOMDP* model, History& history, bool& Expansion_done,
                             Shared_SearchStatistics* statistics, bool despot_thread) {
-  logv << __FUNCTION__ << endl;
+	logd << __FUNCTION__ << endl;
 	Shared_VNode* cur = root;
 
 	int hist_size = history.Size();
@@ -227,6 +227,8 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		prior_hist_size = SolverPrior::nn_priors[threadID]->Size(true);
 
 	do {
+		logd << "Level " << cur->depth() << " start" << endl;
+
 		if (statistics != NULL
 		        && cur->depth() > statistics->Get_longest_trial_len()) {
 			statistics->Update_longest_trial_len(cur->depth());
@@ -335,6 +337,8 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		}
 		PathTrackTime += Globals::ElapsedTime(start);
 
+		logd << "Level " << cur->depth() << " end, moving to next" << endl;
+
 		if (next == NULL) {
 			break;
 		}
@@ -347,6 +351,7 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			logv << __FUNCTION__ << " add history search state of ts " <<
 					static_cast<PomdpState*>(cur_sample_state)->time_stamp << endl;
 		}
+
 	} while (cur->depth() < Globals::config.search_depth
 	         && WEU((VNode*) cur) > 0 &&
 	         !Globals::Timeout(Globals::config.time_per_move));
@@ -463,7 +468,7 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
                               double& explore_time, double& backup_time, int& num_trials,
                               double timeout, MsgQueque<Shared_VNode>& node_queue,
                               MsgQueque<Shared_VNode>& print_queue, int threadID) {
-	logv << __FUNCTION__ << endl;
+	logd << __FUNCTION__ << endl;
 	Globals::ChooseGPUForThread();			//otherwise the GPUID would be 0 (default)
 	Globals::AddMappedThread(this_thread::get_id(), threadID);
 	used_time = 0;

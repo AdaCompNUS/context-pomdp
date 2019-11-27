@@ -11,9 +11,12 @@ import torch.optim as optim
 from tensorboardX import SummaryWriter
 from Data_processing import global_params
 from tqdm import tqdm
+import torch.nn as nn
 import torch.nn.functional as F
 from Components.nan_police import *
 from visualization import *
+
+global_config = global_params.config
 
 model_device_id = global_config.GPU_devices[0]
 device = torch.device("cuda:" + str(model_device_id) if torch.cuda.is_available() else "cpu")
@@ -97,8 +100,8 @@ def train():
         last_data = None
         last_loss = 0.0
 
-        with tqdm(total=len(train_loader_vis.dataset), ncols=100) as pbar:
-            for i, data_mini_batch in enumerate(train_loader_vis):  # Loop over batches of data
+        with tqdm(total=len(train_loader.dataset), ncols=100) as pbar:
+            for i, data_mini_batch in enumerate(train_loader):  # Loop over batches of data
 
                 visualize_data = False
                 if i <= 0:  # 0 -> 20
@@ -186,6 +189,7 @@ def train():
                                                                                           print_time=visualize_data,
                                                                                           image_flag=train_flag,
                                                                                           step=epoch)
+                    # print("lane_logits = {}".format(lane_logits))
 
                     visualize_predictions(epoch, acc_logits, acc_labels, ang_logits, ang_labels, vel_logits,
                                           velocity_labels, lane_logits, lane_labels, visualize_data, sm, train_flag)
@@ -201,22 +205,19 @@ def train():
 
                     ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy = \
                         calculate_accuracy(acc_logits, acc_labels, ang_logits, ang_labels,
-                                           lane_logits, lane_labels, vel_logits, velocity_labels)
+                                           vel_logits, velocity_labels, lane_logits, lane_labels)
 
                     accuracy_dict = choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, lane_accuracy,
                                                     global_config)
 
                     record_loss_and_accuracy(input_images, loss_dict, accuracy_dict, loss_recorders, accuracy_recorders)
 
-                last_loss = loss_dict[0]
-
+                last_loss = loss_dict['combined'][0]
                 # Backward pass
-                loss_dict[0].backward()
+                loss_dict['combined'][0].backward()
 
                 optimizer.step()
                 pbar.update(input_images.size(0))
-
-                last_data = input_images
 
         # Evaluation
         validation_loss_recorders, validation_accuracy_recorders = evaluate(last_loss, epoch)
@@ -367,13 +368,11 @@ def evaluate(last_train_loss, epoch):
                                          accuracy_recorders_val)
 
             if i == 0:
-                first_loss = loss_dict[0]
+                first_loss = loss_dict['combined'][0]
 
     if abs(first_loss - last_train_loss) >= 4:
         print("Last mdn accuracy (val): %f" % accuracy_recorders_val['combined'].last)
-
     inference_time = time.time() - start_time
-
     print("Evaluation time %fs" % inference_time)
 
     return loss_recorders_val, accuracy_recorders_val
@@ -383,92 +382,139 @@ def visualize_mdn_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_
                               vel_mu, vel_pi, vel_sigma, velocity_labels, lane, lane_labels, visualize_data, sm, flag):
     if visualize_data:
         try:
-            lane_probs = sm(lane)
+            lane_probs = None
+            if lane is not None:
+                lane_probs = sm(lane)
+            for i in range(0, min(10, cmd_args.batch_size)):
+                acc_mu_draw, acc_pi_draw, acc_sigma_draw, acc_label = None, None, None, None
+                ang_mu_draw, ang_pi_draw, ang_sigma_draw, ang_label = None, None, None, None
+                vel_mu_draw, vel_pi_draw, vel_sigma_draw, vel_label = None, None, None, None
+                lane_prob, lane_label = None, None
 
-            if config.use_vel_head:
-                visualize_mdn_output_with_labels(flag + str(epoch), acc_mu[0].detach(), acc_pi[0].detach(),
-                                                 acc_sigma[0].detach(), ang_mu[0].detach(),
-                                                 ang_pi[0].detach(), ang_sigma[0].detach(), vel_mu[0].detach(),
-                                                 vel_pi[0].detach(), vel_sigma[0].detach(),
-                                                 lane_probs[0].detach(),
-                                                 acc_labels[0].detach(),
-                                                 ang_labels[0].detach(),
-                                                 velocity_labels[0].detach(),
-                                                 lane_labels[0].detach())
-            else:
-                if acc_pi is None:
-                    acc_pi = torch.zeros(1, global_config.num_guassians_in_heads)
-                    acc_mu = torch.zeros(1, global_config.num_guassians_in_heads, 1)
-                    acc_sigma = torch.zeros(1, global_config.num_guassians_in_heads, 1)
-                if ang_pi is None:
-                    ang_pi = torch.zeros(1, global_config.num_guassians_in_heads)
-                    ang_mu = torch.zeros(1, global_config.num_guassians_in_heads, 1)
-                    ang_sigma = torch.zeros(1, global_config.num_guassians_in_heads, 1)
+                if acc_pi is not None:
+                    acc_pi_draw = acc_pi[i].detach()
+                    acc_mu_draw = acc_mu[i].detach()
+                    acc_sigma_draw = acc_sigma[i].detach()
+                if ang_pi is not None:
+                    ang_pi_draw = ang_pi[i].detach()
+                    ang_mu_draw = ang_mu[i].detach()
+                    ang_sigma_draw = ang_sigma[i].detach()
+                if vel_pi is not None:
+                    vel_pi_draw = vel_pi[i].detach()
+                    vel_mu_draw = vel_mu[i].detach()
+                    vel_sigma_draw = vel_sigma[i].detach()
+                if lane_probs is not None:
+                    lane_prob = lane_probs[i].detach()
 
-                visualize_mdn_output_with_labels(flag + str(epoch), acc_mu[0].detach(), acc_pi[0].detach(),
-                                                 acc_sigma[0].detach(), ang_mu[0].detach(),
-                                                 ang_pi[0].detach(), ang_sigma[0].detach(),
-                                                 None, None, None, lane_probs[0].detach(),
-                                                 acc_labels[0].detach(),
-                                                 ang_labels[0].detach(),
-                                                 velocity_labels[0].detach(),
-                                                 lane_labels[0].detach())
+                acc_label, ang_label, vel_label, lane_label, _ = \
+                    detach_labels(i, acc_labels, ang_labels, velocity_labels, lane_labels, None)
+
+                visualize_mdn_output_with_labels(flag + str(epoch),
+                                                 acc_mu_draw, acc_pi_draw, acc_sigma_draw,
+                                                 ang_mu_draw, ang_pi_draw, ang_sigma_draw,
+                                                 vel_mu_draw, vel_pi_draw, vel_sigma_draw,
+                                                 lane_prob,
+                                                 acc_label, ang_label, vel_label, lane_label)
         except Exception as e:
             print(e)
             exit(1)
 
 
-def visualize_hybrid_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang, ang_labels, velocity_labels, lane,
-                                 lane_labels, value, value_labels, visualize_data, sm, flag):
+def detach_labels(i, acc_labels, ang_labels, velocity_labels, lane_labels, value_labels):
+    acc_label, ang_label, vel_label, lane_label, value_label = None, None, None, None, None
+    if acc_labels is not None:
+        acc_label = acc_labels[i].detach()
+    if ang_labels is not None:
+        ang_label = ang_labels[i].detach()
+    if lane_labels is not None:
+        lane_label = lane_labels[i].detach()
+    if velocity_labels is not None:
+        vel_label = velocity_labels[i].detach()
+    if value_labels is not None:
+        value_label = value_labels[i].detach()
+    return acc_label, ang_label, vel_label, lane_label, value_label
+
+
+def visualize_hybrid_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang, ang_labels,
+                                 vel_mu, vel_pi, vel_sigma, velocity_labels,
+                                 lane, lane_labels, value, value_labels,
+                                 visualize_data, sm, flag):
     if visualize_data:
-
-        if acc_pi is None:
-            acc_pi = torch.zeros(1, global_config.num_guassians_in_heads)
-            acc_mu = torch.zeros(1, global_config.num_guassians_in_heads, 1)
-            acc_sigma = torch.zeros(1, global_config.num_guassians_in_heads, 1)
-        if ang is None:
-            ang = torch.zeros(1, global_config.num_steering_bins)
-
-        ang_probs = sm(ang)
-        lane_probs = sm(lane)
-
+        ang_probs, lane_probs = None, None
+        if ang is not None:
+            ang_probs = sm(ang)
+        if lane is not None:
+            lane_probs = sm(lane)
         for i in range(0, min(10, cmd_args.batch_size)):
-            if value is None:
-                value_vis = None
-            else:
-                value_vis = value[i].detach()
+            acc_mu_draw, acc_pi_draw, acc_sigma_draw, acc_label = None, None, None, None
+            vel_mu_draw, vel_pi_draw, vel_sigma_draw, vel_label = None, None, None, None
+            ang_prob, ang_label = None, None
+            lane_prob, lane_label = None, None
+            value_draw, value_label = None, None
+
+            if acc_pi is not None:
+                acc_pi_draw = acc_pi[i].detach()
+                acc_mu_draw = acc_mu[i].detach()
+                acc_sigma_draw = acc_sigma[i].detach()
+            if ang_probs is not None:
+                ang_prob = ang_probs[i].detach()
+            if lane_probs is not None:
+                lane_prob = lane_probs[i].detach()
+            if vel_pi is not None:
+                vel_pi_draw = vel_pi[i].detach()
+                vel_mu_draw = vel_mu[i].detach()
+                vel_sigma_draw = vel_sigma[i].detach()
+            if value is not None:
+                value_draw = value[i].detach()
+
+            acc_label, ang_label, vel_label, lane_label, value_label = detach_labels(
+                i, acc_labels, ang_labels, velocity_labels, lane_labels, value_labels)
 
             visualize_hybrid_output_with_labels(flag + str(epoch) + '_' + str(i),
-                                                acc_mu[i].detach(), acc_pi[i].detach(), acc_sigma[i].detach(),
-                                                ang_probs[i].detach(),
-                                                None, None, None,
-                                                lane_probs[i].detach(),
-                                                value_vis,
-                                                acc_labels[i].detach(), ang_labels[i].detach(),
-                                                velocity_labels[i].detach(),
-                                                lane_labels[i].detach(),
-                                                value_labels[i])
+                                                acc_mu_draw, acc_pi_draw, acc_sigma_draw,
+                                                ang_prob,
+                                                vel_mu_draw, vel_pi_draw, vel_sigma_draw,
+                                                lane_prob,
+                                                value,
+                                                acc_label, ang_label, vel_label, lane_label, value_label)
 
 
 def visualize_predictions(epoch, acc, acc_labels, ang, ang_labels, vel, velocity_labels, lane, lane_labels,
                           visualize_data, sm, flag):
     if visualize_data:
-        acc_probs = sm(acc)
-        ang_probs = sm(ang)
-        lane_probs = sm(lane)
-        if config.use_vel_head:
+        acc_probs, ang_probs, vel_probs, lane_probs = None, None, None, None
+        if acc is not None:
+            acc_probs = sm(acc)
+        if ang is not None:
+            ang_probs = sm(ang)
+        if vel is not None:
             vel_probs = sm(vel)
-            visualize_output_with_labels(flag + str(epoch),
-                                         acc_probs[0].detach(), ang_probs[0].detach(),
-                                         vel_probs[0].detach(), lane_probs[0].detach(),
-                                         acc_labels[0].detach(), ang_labels[0].detach(),
-                                         velocity_labels[0].detach(), lane_labels[0].detach())
-        else:
+        if lane is not None:
+            lane_probs = sm(lane)
+        for i in range(0, min(10, cmd_args.batch_size)):
+            acc_prob, ang_prob, vel_prob, lane_prob = None, None, None, None
+            acc_label, ang_label, vel_label, lane_label = None, None, None, None
+            if acc_probs is not None:
+                acc_prob = acc_probs[i].detach()
+            if ang_probs is not None:
+                ang_prob = ang_probs[i].detach()
+            if lane_probs is not None:
+                lane_prob = lane_probs[i].detach()
+            if vel_probs is not None:
+                vel_prob = vel_probs[i].detach()
 
-            visualize_output_with_labels(flag + str(epoch), acc_probs[0].detach(), ang_probs[0].detach(),
-                                         None, lane_probs[0].detach(),
-                                         acc_labels[0].detach(),
-                                         ang_labels[0].detach(), None, lane_labels[0].detach())
+            if acc_labels is not None:
+                acc_label = acc_labels[i].detach()
+            if ang_labels is not None:
+                ang_label = ang_labels[i].detach()
+            if lane_labels is not None:
+                lane_label = lane_labels[i].detach()
+            if velocity_labels is not None:
+                vel_label = velocity_labels[i].detach()
+
+            visualize_output_with_labels(flag + str(epoch) + '_' + str(i),
+                                         acc_prob, ang_prob, vel_prob, lane_prob,
+                                         acc_label, ang_label, vel_label, lane_label)
 
 
 def alloc_recorders():
@@ -587,8 +633,7 @@ def forward_pass_jit(X, step=0, drive_net=None, cmd_config=None, print_time=Fals
 
 
 def calculate_loss(acc, acc_labels, ang, ang_labels, vel, velocity_labels, lane, lane_labels, value, value_labels):
-    v_loss = criterion(value, value_labels)
-    vel_loss, acc_loss, ang_loss, lane_loss = None, None, None, None
+    vel_loss, acc_loss, ang_loss, lane_loss, v_loss = None, None, None, None, None
 
     if config.fit_acc or config.fit_action or config.fit_all:
         acc_loss = cel_criterion(acc, acc_labels)
@@ -599,13 +644,14 @@ def calculate_loss(acc, acc_labels, ang, ang_labels, vel, velocity_labels, lane,
             vel_loss = cel_criterion(vel, velocity_labels)
     if config.fit_lane or config.fit_action or config.fit_all:
         lane_loss = cel_criterion(lane, lane_labels)
+    if config.fit_val or config.fit_all:
+        v_loss = criterion(value, value_labels)
     return acc_loss, ang_loss, vel_loss, lane_loss, v_loss
 
 
 def calculate_mdn_loss(acc_pi, acc_mu, acc_sigma, acc_labels, ang_pi, ang_mu, ang_sigma, ang_labels,
                        vel_pi, vel_mu, vel_sigma, velocity_labels, lane, lane_labels, value, value_labels):
-    v_loss = criterion(value, value_labels)
-    vel_loss, acc_loss, ang_loss, lane_loss = None, None, None, None
+    vel_loss, acc_loss, ang_loss, lane_loss, v_loss = None, None, None, None, None
 
     if config.fit_acc or config.fit_action or config.fit_all:
         acc_loss = calculate_mdn_loss_action(acc_pi, acc_mu, acc_sigma, acc_labels)
@@ -616,6 +662,8 @@ def calculate_mdn_loss(acc_pi, acc_mu, acc_sigma, acc_labels, ang_pi, ang_mu, an
             vel_loss = calculate_mdn_loss_action(vel_pi, vel_mu, vel_sigma, velocity_labels)
     if config.fit_lane or config.fit_action or config.fit_all:
         lane_loss = cel_criterion(lane, lane_labels)
+    if config.fit_val or config.fit_all:
+        v_loss = criterion(value, value_labels)
     return acc_loss, ang_loss, vel_loss, lane_loss, v_loss
 
 
@@ -679,12 +727,12 @@ def record_tensor_board_log(epoch, accuracy_recorders, loss_recorders, val_accur
         flag = flag_mapping[key]
         train_accuracy = None
         if key in accuracy_recorders.keys():
-            train_accuracy = accuracy_recorders[key][0]
-        train_loss = loss_recorders[key][0]
+            train_accuracy = accuracy_recorders[key]
+        train_loss = loss_recorders[key]
         val_accuracy = None
         if key in val_accuracy_recorders.keys():
-            val_accuracy = val_accuracy_recorders[key][0]
-        val_loss = val_loss_recorders[key][0]
+            val_accuracy = val_accuracy_recorders[key]
+        val_loss = val_loss_recorders[key]
         record_tensor_board_data(epoch, train_accuracy, train_loss, val_accuracy, val_loss, flag)
 
     current_lr = 0.0
@@ -724,6 +772,8 @@ def calculate_accuracy(acc, acc_labels, ang, ang_labels, vel, velocity_labels, l
     acc_accuracy = get_accuracy(acc, acc_labels, topk=(1,))[0]
     if global_config.use_vel_head:
         vel_accuracy = get_accuracy(vel, velocity_labels, topk=(1, 2))[1]
+    # print("lane: {}, lane_labels: {}".format(lane, lane_labels), flush=True)
+
     lane_accuracy = get_accuracy(lane, lane_labels, topk=(1,))[0]
 
     return ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy
@@ -763,15 +813,20 @@ def calculate_hybrid_accuracy(acc_pi, acc_mu, acc_sigma, acc_labels,
 
 def record_loss_and_accuracy(batch_data, loss_dict, accuracy_dict,
                              loss_recorders, accuracy_recorders):
-    for flag, loss_item in enumerate(loss_dict.items()):
-        loss_recorders[flag].update(float(loss_item[0]), batch_data.size(0))
-    for flag, accuracy_item in enumerate(accuracy_dict.items()):
-        accuracy_recorders[flag].update(float(accuracy_item[0]), batch_data.size(0))
+    for idx, flag in enumerate(loss_dict):
+        # print("flag {}, loss_item {}".format(flag, loss_item), flush=True)
+        loss_item = loss_dict[flag]
+        if loss_item[1] > 0:
+            loss_recorders[flag].update(float(loss_item[0]), batch_data.size(0))
+    for idx, flag in enumerate(accuracy_dict):
+        accuracy_item = accuracy_dict[flag]
+        if accuracy_item[1] > 0:
+            accuracy_recorders[flag].update(float(accuracy_item[0]), batch_data.size(0))
 
 
 def choose_loss(acc_loss, ang_loss, vel_loss, lane_loss, v_loss, config):
     loss_dict = {
-        'combined': None,
+        'combined': (0.0, 1.0),
         'steer': (0.0, 0.0),
         'acc': (0.0, 0.0),
         'vel': (0.0, 0.0),
@@ -791,17 +846,21 @@ def choose_loss(acc_loss, ang_loss, vel_loss, lane_loss, v_loss, config):
 
     total_loss = 0.0
     total_weight = 0.0
-    for flag, loss_item in loss_dict.items():
-        total_loss += loss_item[0]
-        total_weight += loss_item[1]
+    for idx, flag in enumerate(loss_dict):
+        loss_item = loss_dict[flag]
+        if flag != "combined":
+            total_loss += loss_item[0]
+            total_weight += loss_item[1]
 
-    loss_dict['combined'] = total_loss / total_weight
+    loss_dict['combined'] = (total_loss / total_weight, 1.0)
+
+    # print('loss dict: {}'.format(loss_dict))
     return loss_dict
 
 
 def choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, lane_accuracy, config):
     accuracy_dict = {
-        'combined': None,
+        'combined': (0.0, 1.0),
         'steer': (0.0, 0.0),
         'acc': (0.0, 0.0),
         'vel': (0.0, 0.0),
@@ -818,11 +877,13 @@ def choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, lane_accuracy, con
 
     total_accuracy = 0.0
     total_weight = 0.0
-    for flag, loss_item in accuracy_dict.items():
-        total_accuracy += loss_item[0]
-        total_weight += loss_item[1]
+    for idx, flag in enumerate(accuracy_dict):
+        accuracy_item = accuracy_dict[flag]
+        if flag != 'combined':
+            total_accuracy += accuracy_item[0]
+            total_weight += accuracy_item[1]
 
-    accuracy_dict['combined'] = total_accuracy / total_weight
+    accuracy_dict['combined'] = (total_accuracy / total_weight, 1.0)
     return accuracy_dict
 
 

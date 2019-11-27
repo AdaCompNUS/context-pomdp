@@ -9,6 +9,7 @@ record_bags=$6
 # maploc=beijing
 # maploc=random
 maploc=meskel_square
+# maploc=shi_men_er_lu
 # mode=rollout
 mode=joint_pomdp
 # mode=gamma

@@ -76,10 +76,12 @@ StreamManager::StreamManager(int dummy){
 
 
 void ChooseGPUForThread(){
-	int devicesCount;
-	cudaGetDeviceCount(&devicesCount);
-	int deviceIndex = Globals::config.GPUid;
-	cudaSetDevice(deviceIndex);
+	if (Globals::config.useGPU){
+		int devicesCount;
+		cudaGetDeviceCount(&devicesCount);
+		int deviceIndex = Globals::config.GPUid;
+		cudaSetDevice(deviceIndex);
+	}
 }
 
 void RecordStartTime(){

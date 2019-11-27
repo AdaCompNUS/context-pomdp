@@ -10,6 +10,7 @@ import signal
 from os.path import expanduser
 from clear_process import clear_process, clear_nodes
 import copy
+from timeit import default_timer as timer
 
 sim_mode = "carla"  # "unity"
 
@@ -50,6 +51,7 @@ monitor_worker = None
 Timeout_inner_monitor_pid, Timeout_monitor_pid = None, None
 
 search_log_name = None 
+open_search_log = False
 
 NO_NET = 0
 IMITATION = 1
@@ -1348,8 +1350,9 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
 
     pomdp_out = open(get_txt_file_name(round, run, case), 'w')
 
-    global search_log_name
+    global search_log_name, open_search_log
     search_log_name = copy.copy(pomdp_out.name)
+    open_search_log = False
     print("Search log %s" % search_log_name)
 
     if config.verbosity > 0:
@@ -1371,9 +1374,7 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
 
         if config.use_drive_net_mode >= IMITATION and 'yuanfu' in home:
             rviz_proc, rviz_out = launch_rviz(round, run, case)
-
-        # time.sleep(600)
-
+        
         if config.test_mode:
             pomdp_proc.wait(timeout=int(config.eps_length/config.time_scale))
         else:
@@ -1381,9 +1382,6 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
         print("[INFO] waiting successfully ended", flush=True)
 
         monitor_worker.terminate()
-
-        # time.sleep(180)
-
 
     except subprocess.TimeoutExpired:
 
@@ -1400,6 +1398,8 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
         if not timeout_flag:
             elapsed_time = time.time() - start_t
             print('[INFO] POMDP planner terminated normally in %f s' % elapsed_time)
+            if elapsed_time < 20:
+                open_search_log = True
 
         if run_query_srvs:
             print('[INFO] Terminating the nn query server')
@@ -1575,7 +1575,7 @@ def exit_handler():
     
     clear_process(clear_outter=True, port = config.port)
 
-    if False and search_log_name is not None:
+    if open_search_log and search_log_name is not None:
         print("======== Opening search log")
         subprocess.call(('vim ' + search_log_name).split())
 

@@ -107,9 +107,10 @@ class PopulateImages(object):
                 agent_key = 'car'
                 src_entry = sample[agent_key]
 
-            for point in src_entry['goal']:
-                output_arr[i, config.channel_goal, int(
-                    point[0]), int(point[1])] = point[2]
+            if config.use_goal_channel:
+                for point in src_entry['goal']:
+                    output_arr[i, config.channel_goal, int(
+                        point[0]), int(point[1])] = point[2]
 
             if config.use_hist_channels:
                 for ts in range(config.num_hist_channels):

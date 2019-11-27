@@ -65,24 +65,29 @@ config.label_cmdvel = 1
 
 ''' Channel codes '''
 config.num_hist_channels = 4
+config.use_goal_channel = False
 # channel 0-3, exo history 1-4
 config.channel_map = []
 for i in range(config.num_hist_channels):
     config.channel_map.append(i)
 # channel 4, lanes
 config.channel_lane = config.num_hist_channels
+if not config.use_goal_channel:
+    config.gppn_input_end = config.channel_lane + 1
 # channel 5, goal path
 config.channel_goal = config.num_hist_channels + 1
+if config.use_goal_channel:
+    config.gppn_input_end = config.channel_goal + 1
 # channel 6-9, ego history 1-4
 config.use_hist_channels = False
 config.channel_hist = []
 for i in range(config.num_hist_channels):
-    config.channel_hist.append(i + config.channel_goal + 1)
+    config.channel_hist.append(i + config.gppn_input_end)
 # total number of channels
 if config.use_hist_channels:
-    config.total_num_channels = 2 + 2 * config.num_hist_channels
+    config.total_num_channels = config.channel_hist[-1] + 1
 else:
-    config.total_num_channels = 2 + config.num_hist_channels
+    config.total_num_channels = config.gppn_input_end
 ''' Channel codes '''
 
 

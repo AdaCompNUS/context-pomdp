@@ -1263,7 +1263,7 @@ void PedNeuralSolverPrior::Compute_pref(torch::Tensor input_tensor,
 		auto ang = ang_batch[node_id];
 		auto acc_float = acc.accessor<float, 1>();
 
-		if (logging::level() >= 3) {
+		if (logging::level() >= logging::INFO) {
 			cout << "large net raw acc output:" << endl;
 			for (int bin_idx = 0; bin_idx < acc.size(0); bin_idx++) {
 				if(delectNAN(acc_float[bin_idx])){
@@ -1332,7 +1332,7 @@ void PedNeuralSolverPrior::Compute_pref_hybrid(torch::Tensor input_tensor,
 		auto acc_sigma = acc_sigma_batch[node_id];
 		auto ang = ang_batch[node_id];
 
-		if (logging::level() >= 3) {
+		if (logging::level() >= logging::INFO) {
 			logv << "large net raw acc output:" << endl;
 			auto acc_pi_float = acc_pi.accessor<float, 1>();
 			auto acc_mu_float = acc_mu.accessor<float, 2>();
@@ -1459,7 +1459,7 @@ void PedNeuralSolverPrior::Update_prior_probs(at::Tensor& acc_probs_Tensor, at::
 
     auto acc_probs_double = acc_probs_Tensor.accessor<float, 1>();
 
-    if (logging::level()>=3){
+    if (logging::level()>=logging::INFO){
     	logv << "printing acc probs, acc_probs_Tensor dim=" << acc_probs_Tensor.sizes() << endl;
     	for (int acc_id =0; acc_id < acc_probs_Tensor.sizes()[0]; acc_id++){
 			double query_acc = ped_model->GetAccelerationNoramlized(acc_id);

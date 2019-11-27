@@ -2118,7 +2118,7 @@ void WorldBeliefTracker::update() {
     // DEBUG("Update agent_beliefs");
     auto sorted_agents = stateTracker.getSortedAgents();
 
-    if (logging::level()>=4){
+    if (logging::level()>=logging::VERBOSE){
     	logi << "belief update start" << endl;
     	stateTracker.text(sorted_agents);
     }
@@ -2159,7 +2159,7 @@ void WorldBeliefTracker::update() {
         }
     }    
 
-    if (logging::level()>=4){
+    if (logging::level()>=logging::VERBOSE){
 		text(agent_beliefs);
 	}
     //
@@ -2206,7 +2206,7 @@ void WorldBeliefTracker::update() {
 
 	cur_time_stamp = SolverPrior::get_timestamp();
 
-	if (logging::level()>=4){
+	if (logging::level()>=logging::VERBOSE){
 		logi << "belief update end" << endl;
 	}
 
@@ -2334,7 +2334,7 @@ void WorldBeliefTracker::printBelief() const {
 }
 
 PomdpState WorldBeliefTracker::text() const{
-	if (logging::level()>=4){
+	if (logging::level()>=logging::VERBOSE){
 		for(int i=0; i < sorted_beliefs.size() && i < min(20,ModelParams::N_PED_IN); i++) {
 			auto& p = *sorted_beliefs[i];
 			cout << "[WorldBeliefTracker::text] " << this << "->p:" << &p << endl;
@@ -2352,7 +2352,7 @@ PomdpState WorldBeliefTracker::text() const{
 }
 
 void WorldBeliefTracker::text(const std::map<int, AgentBelief>& agent_bs) const{
-    if (logging::level()>=4){
+    if (logging::level()>=logging::VERBOSE){
         cout << "=> Agent beliefs: " << endl;
         for (auto itr = agent_bs.begin(); itr != agent_bs.end(); ++itr) {
             int id = itr->first;
@@ -2921,7 +2921,7 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents
 
 void WorldModel::PrintMeanDirs(std::map<int, AgentBelief> old_agents, 
     map<int, const Agent*>& curr_agents){
-	if(logging::level()>=4){
+	if(logging::level()>=logging::VERBOSE){
 		int num_agents = old_agents.size();
 
         int count = 0;
@@ -3179,7 +3179,7 @@ bool WorldModel::CheckCarWithObsLine(const CarStruct& car, COORD start_point, CO
 
 void WorldStateTracker::text(const vector<WorldStateTracker::AgentDistPair>& sorted_agents) const{
     
-    if (logging::level()>=4){
+    if (logging::level()>=logging::VERBOSE){
         cout << "=> Sorted_agents:" << endl;
 
         for (auto& dist_agent_pair: sorted_agents){
@@ -3193,7 +3193,7 @@ void WorldStateTracker::text(const vector<WorldStateTracker::AgentDistPair>& sor
 }
 
 void WorldStateTracker::text(const vector<Pedestrian>& tracked_peds) const{
-    if (logging::level()>=4){
+    if (logging::level()>=logging::VERBOSE){
         cout << "=> ped_list:" << endl;
         for (auto& agent: tracked_peds) {
             fprintf(stderr, "==> id / type / pos / vel / cross / reset: %d / %d / (%f %f) / (%f %f) / %d / %d \n", 
@@ -3203,7 +3203,7 @@ void WorldStateTracker::text(const vector<Pedestrian>& tracked_peds) const{
 }
 
 void WorldStateTracker::text(const vector<Vehicle>& tracked_vehs) const{
-    if (logging::level()>=4){
+    if (logging::level()>=logging::VERBOSE){
         cout << "=> veh_list:" << endl;
         for (auto& agent: tracked_vehs) {
             fprintf(stderr, "==> id / type / pos / vel / heading_dir / reset: %d / %d / (%f %f) / (%f %f) / %f / %d \n", 

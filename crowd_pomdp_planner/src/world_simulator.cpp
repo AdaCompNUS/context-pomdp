@@ -402,7 +402,7 @@ State* WorldSimulator::GetCurrentState() {
 
 	current_state.assign(state);
 
-	if (logging::level() >= 4){
+	if (logging::level() >= logging::VERBOSE){
 		printf("GetCurrentState start");
 		static_cast<PedPomdp*>(model_)->PrintWorldState(current_state);
 		printf("GetCurrentState end");
@@ -466,7 +466,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	PomdpStateWorld* curr_state =
 			static_cast<PomdpStateWorld*>(GetCurrentState());
 
-	if (logging::level() >= 3)
+	if (logging::level() >= logging::INFO)
 		static_cast<PedPomdp*>(model_)->PrintWorldState(*curr_state);
 
 	double acc;
@@ -1277,8 +1277,8 @@ void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
 		ModelParams::CAR_LENGTH = 0;
 		float car_yaw = ego_car.car_yaw;
 
-		if (fabs(car_yaw - odom_heading_) > 0.4
-				&& fabs(car_yaw - odom_heading_) < 2 * M_PI - 0.4)
+		if (fabs(car_yaw - odom_heading_) > 0.6
+				&& fabs(car_yaw - odom_heading_) < 2 * M_PI - 0.6)
 			if (odom_heading_ != 0)
 				ERR(
 						string_sprintf(
@@ -1339,6 +1339,7 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state,
 	geometry_msgs::Twist p_action_reward;
 
 	p_IL_data.action_reward.step_reward.data = reward;
+	p_IL_data.action_reward.cur_speed.data = real_speed_;
 	p_IL_data.action_reward.target_speed.data = cmd_vel;
 
 	p_IL_data.action_reward.acceleration_id.data =
