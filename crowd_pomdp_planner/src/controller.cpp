@@ -298,7 +298,7 @@ void Controller::InitializeDefaultParameters() {
 
 //	Globals::config.root_seed=1024;
 
-	logging::level(4);
+	logging::level(3);
 
 	logi << "Planner default parameters:" << endl;
 	Globals::config.text();
