@@ -11,6 +11,7 @@ maploc=random
 # maploc=meskel_square
 # maploc=beijing
 # maploc=shi_men_er_lu
+# maploc=highway
 # mode=rollout
 mode=joint_pomdp
 # mode=gamma

@@ -33,6 +33,7 @@
 #include <msg_builder/peds_info.h>
 
 #include "std_msgs/Float32.h"
+#include <std_msgs/Bool.h>
 
 #include "simulator_base.h"
 
@@ -92,6 +93,7 @@ public:
     void moveSpeedCallback(geometry_msgs::Twist speed);
     void cmdSteerCallback(const std_msgs::Float32::ConstPtr steer);
     void lane_change_Callback(const std_msgs::Int32::ConstPtr data);
+    void ego_car_dead_callback(std_msgs::Bool::ConstPtr data);
 	void publishPath();
 
 

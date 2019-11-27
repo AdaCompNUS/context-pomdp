@@ -217,6 +217,9 @@ bool WorldSimulator::Connect() {
 	carSub_ = nh.subscribe("ego_state", 1, &WorldSimulator::update_il_car,
 			this);
 
+    egodeadSub_ = nh.subscribe("ego_dead", 1, &WorldSimulator::ego_car_dead_callback, this); //Bool
+
+
 	agentSub_ = nh.subscribe("agent_array", 1, agentArrayCallback);
 	agentpathSub_ = nh.subscribe("agent_path_array", 1, agentPathArrayCallback);
 
@@ -385,6 +388,9 @@ State* WorldSimulator::GetCurrentState() {
 	coord = poseToCoord(out_pose);
 	//}
 
+	if(!network_occupancy_map_.Contains(cg::Vector2D(coord.x, coord.y)))
+		ERR("Ego-vehicle going out of bound !");
+
 	logv << "======transformed pose = " << coord.x << " " << coord.y << endl;
 
 	updated_car.pos = coord;
@@ -507,6 +513,8 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 				PedPomdp::ACT_DEC);
 		steer = 0;
 		action = static_cast<PedPomdp*>(model_)->GetActionID(steer, acc);
+
+		ERR("Termination of episode due to coll.");
 	}
 
 	/* Publish action and step reward */
@@ -1204,6 +1212,11 @@ void receive_map_callback(nav_msgs::OccupancyGrid map) {
 	}
 
 	logi << "[receive_map_callback] end ts: " << SolverPrior::get_timestamp() << endl;
+}
+
+void WorldSimulator::ego_car_dead_callback(std_msgs::Bool::ConstPtr data){
+
+	ERR("Ego car is dead, reached the edge of the current map");
 }
 
 void WorldSimulator::lane_change_Callback(const std_msgs::Int32::ConstPtr lane_decision){
