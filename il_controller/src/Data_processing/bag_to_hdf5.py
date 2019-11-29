@@ -193,6 +193,16 @@ def was_near_goal(combined_dict):
     return reach_goal
 
 
+def trim_episode_end(combined_dict):
+    all_keys = list(combined_dict.keys())
+
+    trim_start = len(all_keys) - 6  # trim two seconds of data
+    for i in range(trim_start, len(all_keys)):
+        del combined_dict[all_keys[i]]
+
+    return combined_dict
+
+
 def trim_data_after_reach_goal(combined_dict, car_goal):
     if car_goal is None:
         # get goal coordinates
@@ -209,7 +219,6 @@ def trim_data_after_reach_goal(combined_dict, car_goal):
     cur_car_pos = None
     goal_dist = None
 
-    all_keys = list(combined_dict.keys())
     for timestamp in all_keys:
         cur_car_pos = combined_dict[timestamp]['agents'][0].car.car_pos
 
@@ -380,7 +389,7 @@ def shuffle_and_sample_indices(timestamps):
     else:
         random.shuffle(sample_shuffled_idx)
         sample_shuffled_idx = iter(sample_shuffled_idx)
-        sample_length = config.num_samples_per_traj
+        sample_length = min(config.num_samples_per_traj, len(timestamps) / 6)
     return sample_idx, sample_length, sample_shuffled_idx
 
 
@@ -1596,7 +1605,10 @@ def main(bagspath, nped, start_file, end_file, thread_id):
                 if topics_complete:  # all topics in the bag are non-empty
                     per_step_data_dict, map_dict = combine_topics_in_one_dict(
                         map_dict, plan_dict, ped_dict, car_dict, act_reward_dict, obs_dict, lane_dict)
+
+                    per_step_data_dict = trim_episode_end(per_step_data_dict)
                     end_time = time.time()
+
                     print("Thread %d parsed: elapsed time %f s" % (thread_id, end_time - start_time))
 
                     h5_data_dict, data_valid = create_h5_data(per_step_data_dict, map_dict)
