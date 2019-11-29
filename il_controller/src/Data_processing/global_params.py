@@ -40,7 +40,7 @@ config.num_lane_bins = 3
 
 
 ''' Sampling settings '''
-config.num_samples_per_traj = 20
+config.num_samples_per_traj = 40
 config.num_agents_in_map = 20
 config.buffer_mode = 'full'  # full or replay
 config.sample_mode = 'random'  # hierarchical or random
