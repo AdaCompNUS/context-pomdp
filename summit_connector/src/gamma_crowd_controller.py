@@ -865,7 +865,7 @@ class GammaCrowdController(Drunc):
         global spawn_size_min
         # print("spawning {} {}".format(to_spawn, flag))
         if to_spawn > spawn_cap:
-            spawn_size_min = max(spawn_size_min - 20, 10)
+            spawn_size_min = max(spawn_size_min - 20, 20)
             to_spawn = min(spawn_cap, to_spawn)
         elif flag == 'car':
             spawn_size_min = min(spawn_size_min + 10, 100)

@@ -3227,5 +3227,5 @@ void WorldStateTracker::check_world_status() {
 	}
 
 	if (alive_count == 0)
-		ERR("No agent alive in the current scene.");
+		DEBUG("No agent alive in the current scene.");
 }

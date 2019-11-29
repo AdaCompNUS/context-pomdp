@@ -462,7 +462,7 @@ class EgoVehicle(Drunc):
                 return
 
         self.send_control()
-        self.draw_path(self.path)
+        # self.draw_path(self.path)
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()
