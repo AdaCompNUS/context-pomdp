@@ -24,7 +24,7 @@ config.num_data_loaders = num_gpus*4
 
 
 ''' Action model settings '''
-config.steering_resolution = 1.0/7.0  # no unit
+config.steering_resolution = 5.0  # no unit
 config.max_steering_degree = 35.0 
 config.num_steering_bins = 2 * int(round(config.max_steering_degree / config.steering_resolution))
 

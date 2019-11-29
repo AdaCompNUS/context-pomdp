@@ -191,6 +191,7 @@ class PolicyValueNet(nn.Module):
                 self.input_channels_resnet = global_config.gppn_out_channels
 
         # 3 channels include the Value image and the 2 hist layers (idx 0 is value image)
+        # print("self.input_channels_resnet={}".format(self.input_channels_resnet))
 
         self.pre_resnet = None
         if not global_config.vanilla_resnet:
@@ -392,14 +393,17 @@ def print_model_size(model):
     resnet_size = 0
     if model.resnet:
         resnet_size = get_module_size(model.resnet)
+        # print('resnet_size = {}'.format(get_module_size(model.resnet)))
 
     if model.pre_resnet:
         resnet_size += get_module_size(model.pre_resnet)
+        # print('pre_resnet_size = {}'.format(get_module_size(model.pre_resnet)))
 
     gppn_size = 0
 
     if model.car_gppn:
         gppn_size += get_module_size(model.car_gppn)
+        # print('car_gppn_size = {}'.format(get_module_size(model.car_gppn)))
 
     head_size = 0
     if model.ang_head:
