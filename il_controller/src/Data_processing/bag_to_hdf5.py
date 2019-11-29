@@ -372,7 +372,8 @@ def create_h5_data(data_dict,
 
     if len(output_dict.keys()) == 0:
         print("[Investigate] Bag results in no data!")
-        pdb.set_trace()
+        # pdb.set_trace()
+        return dict(output_dict), False
     else:
         print("Creating data with %d time steps..." % len(output_dict.keys()))
 
