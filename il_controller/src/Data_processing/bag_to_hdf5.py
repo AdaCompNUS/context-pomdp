@@ -389,7 +389,7 @@ def shuffle_and_sample_indices(timestamps):
     else:
         random.shuffle(sample_shuffled_idx)
         sample_shuffled_idx = iter(sample_shuffled_idx)
-        sample_length = min(config.num_samples_per_traj, len(timestamps) / 6)
+        sample_length = int(min(config.num_samples_per_traj, int(len(timestamps) / 6)))
     return sample_idx, sample_length, sample_shuffled_idx
 
 
