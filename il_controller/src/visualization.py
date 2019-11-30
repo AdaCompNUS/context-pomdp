@@ -38,7 +38,7 @@ title_loc = 'center'
 
 
 def visualize_gppn(Z, flag, step):
-    print("[visualize_gppn] ")
+    # print("[visualize_gppn] ")
 
     Z = Z.detach().cpu().numpy()
 
@@ -67,7 +67,7 @@ def visualize_gppn(Z, flag, step):
 
 
 def visualize_resimage(Z, step):
-    print("[visualize_resimage] ")
+    # print("[visualize_resimage] ")
 
     x_dim = 8
     y_dim = 8
@@ -93,7 +93,7 @@ def visualize_resimage(Z, step):
 
 
 def visualize_res(Z, step):
-    print("[visualize_res] ")
+    # print("[visualize_res] ")
 
     fig = plt.figure(1)
     horizontal = np.arange(-500, 500, 1)
@@ -388,7 +388,7 @@ def visualize_image(car_map, root="", subfolder="h5_car_map"):
 
 
 def visualize_both_agent_inputs(Cart_data, image_data, step, root=""):
-    print("[visualize_cart] ")
+    # print("[visualize_cart] ")
 
     x_dim = 2 + 2
     stride = 2
@@ -523,7 +523,7 @@ def visualize_hybrid_output_with_labels(count, acc_mu, acc_pi, acc_sigma, ang_pr
 def visualize_mdn_output_with_labels(count, acc_mu, acc_pi, acc_sigma, ang_mu, ang_pi, ang_sigma,
                                      vel_mu, vel_pi, vel_sigma, lane_probs,
                                      encoded_acc_label, encoded_ang_label, encoded_vel_label, encoded_lane_label):
-    print("\n[visualize_mdn_output_with_labels] ")
+    # print("\n[visualize_mdn_output_with_labels] ")
     if config.fit_ang or config.fit_action or config.fit_all:
         visualize_guassian_mixture(ang_pi, ang_mu, ang_sigma, encoded_ang_label, count, 'steering')
     if config.fit_acc or config.fit_action or config.fit_all:
@@ -538,7 +538,7 @@ def visualize_mdn_output_with_labels(count, acc_mu, acc_pi, acc_sigma, ang_mu, a
 def visualize_output_with_labels(count, acc_probs, ang_probs, vel_probs, lane_probs,
                                  encoded_acc_label, encoded_ang_label,
                                  encoded_vel_label, encoded_lane_label):
-    print("\n[visualize_output_with_labels] ")
+    # print("\n[visualize_output_with_labels] ")
     if config.fit_ang or config.fit_action or config.fit_all:
         visualize_distribution(ang_probs, encoded_ang_label, count, 'steering')
     if config.fit_acc or config.fit_action or config.fit_all:

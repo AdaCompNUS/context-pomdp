@@ -531,6 +531,14 @@ def alloc_recorders():
             flags = flags + ['steer', 'acc', 'vel', 'lane']
         else:
             flags = flags + ['steer', 'acc', 'lane']
+    elif global_config.fit_acc:
+        flags = flags + ['acc']
+    elif global_config.fit_ang:
+        flags = flags + ['steer']
+    elif global_config.fit_vel:
+        flags = flags + ['vel']
+    elif global_config.fit_lane:
+        flags = flags + ['lane']
 
     for flag in flags:
         loss_recorders[flag] = AverageMeter(flag)
@@ -767,14 +775,18 @@ def record_tensor_board_data(epoch, epoch_accuracy, epoch_loss, validation_accur
 
 
 def calculate_accuracy(acc, acc_labels, ang, ang_labels, vel, velocity_labels, lane, lane_labels):
-    vel_accuracy = None
-    ang_accuracy = get_accuracy(ang, ang_labels, topk=(1, 2))[1]
-    acc_accuracy = get_accuracy(acc, acc_labels, topk=(1,))[0]
+    vel_accuracy, acc_accuracy, ang_accuracy, lane_accuracy = None, None, None, None
+    if config.fit_acc or config.fit_action or config.fit_all:
+        acc_accuracy = get_accuracy(acc, acc_labels, topk=(1,))[0]
+    if config.fit_ang or config.fit_action or config.fit_all:
+        ang_accuracy = get_accuracy(ang, ang_labels, topk=(1, 2))[1]
     if global_config.use_vel_head:
-        vel_accuracy = get_accuracy(vel, velocity_labels, topk=(1, 2))[1]
+        if config.fit_vel or config.fit_action or config.fit_all:
+            vel_accuracy = get_accuracy(vel, velocity_labels, topk=(1, 2))[1]
     # print("lane: {}, lane_labels: {}".format(lane, lane_labels), flush=True)
 
-    lane_accuracy = get_accuracy(lane, lane_labels, topk=(1,))[0]
+    if config.fit_lane or config.fit_action or config.fit_all:
+        lane_accuracy = get_accuracy(lane, lane_labels, topk=(1,))[0]
 
     return ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy
 
@@ -813,6 +825,7 @@ def calculate_hybrid_accuracy(acc_pi, acc_mu, acc_sigma, acc_labels,
 
 def record_loss_and_accuracy(batch_data, loss_dict, accuracy_dict,
                              loss_recorders, accuracy_recorders):
+    # print('loss_recorders.keys()={}'.format(loss_recorders.keys()))
     for idx, flag in enumerate(loss_dict):
         # print("flag {}, loss_item {}".format(flag, loss_item), flush=True)
         loss_item = loss_dict[flag]

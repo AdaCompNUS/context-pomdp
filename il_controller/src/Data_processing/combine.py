@@ -29,7 +29,6 @@ import gc
 config = global_params.config
 imsize = config.imsize
 num_agents = 1 + 0
-num_steering_bins = config.num_steering_bins
 LARGE_NO = 300000
 populate_images = PopulateImages()
 
