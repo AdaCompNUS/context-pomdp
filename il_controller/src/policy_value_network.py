@@ -410,6 +410,8 @@ def print_model_size(model):
         head_size += get_module_size(model.ang_head)
     if model.acc_head:
         head_size += get_module_size(model.acc_head)
+    if model.lane_head:
+        head_size += get_module_size(model.lane_head)
     if model.value_head:
         head_size += get_module_size(model.value_head)
 
