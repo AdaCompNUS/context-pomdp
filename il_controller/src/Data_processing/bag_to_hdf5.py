@@ -97,6 +97,7 @@ def parse_bag_file(filename=None):
             ped_dict[timestamp.to_nsec()] = msg.cur_peds.peds
             car_dict[timestamp.to_nsec()] = msg.cur_car
             act_reward_dict[timestamp.to_nsec()] = msg.action_reward
+            # print('msg.action_reward={}'.format(msg.action_reward))
         elif topic == '/local_obstacles':
             obs_dict[timestamp.to_nsec()] = msg.contours
         elif topic == '/local_lanes':
@@ -149,6 +150,8 @@ def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_rewa
 
         if not hist_complete:
             continue
+
+        # print('act_reward_dict[timestamp].acceleration_id={}'.format(act_reward_dict[timestamp].acceleration_id))
 
         action_reward_data = ActionReward()
         action_reward_data.cur_speed = act_reward_dict[timestamp].cur_speed  # current velocity of the car
@@ -569,6 +572,7 @@ def process_actions(data_dict, idx, output_dict, ts):
 
     output_dict[idx]['steer_norm'] = np.array(
         [float(data_dict[ts]['action_reward'].steering_normalized.data)], dtype=np.float32)
+    # print('output_dict[idx][steer_norm]={}'.format(output_dict[idx]['steer_norm'][0]))
     output_dict[idx]['acc_id'] = np.array(
         [float(data_dict[ts]['action_reward'].acceleration_id.data)], dtype=np.int32)
     output_dict[idx]['lane_change'] = np.array(

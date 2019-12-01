@@ -274,7 +274,7 @@ class DrivingData(data.Dataset):
             transform_idx = 0  # Identity transformation
         # take the steering in radians, convert to degrees
         steer_normalized = self.data['ang_normalized_labels'][data_index]
-        steer_degree = np.degrees(ang_transform_normalized_to_degree(steer_normalized))
+        steer_degree = ang_transform_normalized_to_degree(steer_normalized)
         input_data = self.data['data'][data_index]
 
         # validate_map(input_data, "DataSet __getitem__")
@@ -282,6 +282,7 @@ class DrivingData(data.Dataset):
         input_data = self.encode_input(input_data)
 
         steer_label = self.encode_steer_from_degree(steer_degree)  # this returns only the index of the non zero bin
+        print("raw data {}, degree {}, bin_idx {}".format(steer_normalized[0], steer_degree[0], steer_label), flush=True)
         acc_id_label = self.encode_acc_from_id(self.data['acc_id_labels'][data_index])
         vel = 0.0
         if config.fit_vel or config.fit_action or config.fit_all:
@@ -317,7 +318,7 @@ class DrivingData(data.Dataset):
         data_index_in_dataset = self.get_start_data_pos(scene_index, traj_index) + data_index_in_traj
 
         steer_normalized = self.data[scene_index]['ang_normalized_labels'][data_index_in_dataset]
-        steer_degree = np.degrees(ang_transform_normalized_to_degree(steer_normalized))
+        steer_degree = ang_transform_normalized_to_degree(steer_normalized)
 
         input_data = self.data[scene_index]['data'][data_index_in_dataset]
 

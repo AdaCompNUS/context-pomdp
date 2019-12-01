@@ -226,7 +226,7 @@ bool WorldSimulator::Connect() {
 //	laneSub_ = nh.subscribe("local_lanes", 1, laneCallback);
 //	obsSub_ = nh.subscribe("local_obstacles", 1, obstacleCallback);
 
-	steerSub_ = nh.subscribe("cmd_steer", 1, &WorldSimulator::cmdSteerCallback, this);
+	steerSub_ = nh.subscribe("purepursuit_cmd_steer", 1, &WorldSimulator::cmdSteerCallback, this);
 	lane_change_Sub_ = nh.subscribe("gamma_lane_decision", 1, &WorldSimulator::lane_change_Callback, this);
 
 	logi << "Subscribers and Publishers created at the "

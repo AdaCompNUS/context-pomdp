@@ -19,7 +19,7 @@ from msg_builder.msg import car_info as CarInfo  # panpan
 
 
 # TODO Speed up spawning logic to prevent hangs in ROS.
-class CrowdProcessor(Drunc):
+class CrowdProcessor(Summit):
     def __init__(self):
         super(CrowdProcessor, self).__init__()
 

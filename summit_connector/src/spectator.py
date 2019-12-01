@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-from drunc import Drunc
+from summit import Summit
 import carla
 
 import random
@@ -17,7 +17,7 @@ import datetime, os, sys, time
 
 
 # TODO Improve logic to allow registration against ego vehicle add/deletion/change.
-class Spectator(Drunc):
+class Spectator(Summit):
     def __init__(self):
         super(Spectator, self).__init__()
 

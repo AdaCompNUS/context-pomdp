@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-from drunc import Drunc
+from summit import Summit
 import carla
 
 import math
@@ -232,7 +232,7 @@ class CrowdSidewalkAgent(CrowdAgent):
                 carla.Vector3D(velocity.x, velocity.y, 0),
                 1.0, False)
 
-class SimpleCrowdController(Drunc):
+class SimpleCrowdController(Summit):
     def __init__(self):
         super(SimpleCrowdController, self).__init__()
         self.network_car_agents = []

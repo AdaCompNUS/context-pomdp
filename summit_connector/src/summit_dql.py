@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-from drunc import Drunc 
+from summit import Summit 
 import carla
 import rospy
 import msg_builder.msg
@@ -35,7 +35,7 @@ def get_bounding_box(actor):
 def overlay(img1, img2):
     return np.copyto(img1, img2, where=(img2 != 0))
 
-class SummitDQL(Drunc):
+class SummitDQL(Summit):
     def __init__(self):
         super(SummitDQL, self).__init__()
 

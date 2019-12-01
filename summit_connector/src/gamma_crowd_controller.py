@@ -24,8 +24,8 @@ default_agent_bbox = [default_agent_pos + carla.Vector2D(1, -1), default_agent_p
 spawn_size_min = None
 
 class CrowdAgent(object):
-    def __init__(self, drunc, actor, preferred_speed):
-        self.drunc = drunc
+    def __init__(self, summit, actor, preferred_speed):
+        self.summit = summit
         self.actor = actor
         self.preferred_speed = preferred_speed
         self.stuck_time = None
@@ -61,8 +61,8 @@ class CrowdAgent(object):
 
 
 class CrowdNetworkAgent(CrowdAgent):
-    def __init__(self, drunc, actor, path, preferred_speed):
-        super(CrowdNetworkAgent, self).__init__(drunc, actor, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed):
+        super(CrowdNetworkAgent, self).__init__(summit, actor, preferred_speed)
         self.path = path
 
     def get_agent_params(self):
@@ -94,15 +94,15 @@ class CrowdNetworkAgent(CrowdAgent):
             return None
 
         current_offset = self.path.get_min_offset(position)
-        nearest_route_point = self.drunc.network.get_nearest_route_point(position)
+        nearest_route_point = self.summit.network.get_nearest_route_point(position)
         if nearest_route_point.edge == self.path.route_points[0].edge and nearest_route_point.lane != \
                 self.path.route_points[0].lane:
             if rng.uniform(0.0, 1.0) <= lane_change_probability:
-                new_path_candidates = self.drunc.network.get_next_route_paths(nearest_route_point,
+                new_path_candidates = self.summit.network.get_next_route_paths(nearest_route_point,
                                                                               self.path.min_points - 1,
                                                                               self.path.interval)
                 if len(new_path_candidates) > 0:
-                    new_path = NetworkAgentPath(self.drunc, self.path.min_points, self.path.interval)
+                    new_path = NetworkAgentPath(self.summit, self.path.min_points, self.path.interval)
                     new_path.route_points = rng.choice(new_path_candidates)[0:self.path.min_points]
                     self.path = new_path
 
@@ -160,8 +160,8 @@ class CrowdNetworkAgent(CrowdAgent):
 
 
 class CrowdNetworkCarAgent(CrowdNetworkAgent):
-    def __init__(self, drunc, actor, path, preferred_speed):
-        super(CrowdNetworkCarAgent, self).__init__(drunc, actor, path, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed):
+        super(CrowdNetworkCarAgent, self).__init__(summit, actor, path, preferred_speed)
 
     def get_agent_params(self):
         return carla.AgentParams.get_default('Car')
@@ -171,8 +171,8 @@ class CrowdNetworkCarAgent(CrowdNetworkAgent):
 
 
 class CrowdNetworkBikeAgent(CrowdNetworkAgent):
-    def __init__(self, drunc, actor, path, preferred_speed):
-        super(CrowdNetworkBikeAgent, self).__init__(drunc, actor, path, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed):
+        super(CrowdNetworkBikeAgent, self).__init__(summit, actor, path, preferred_speed)
 
     def get_agent_params(self):
         return carla.AgentParams.get_default('Bicycle')
@@ -182,8 +182,8 @@ class CrowdNetworkBikeAgent(CrowdNetworkAgent):
 
 
 class CrowdSidewalkAgent(CrowdAgent):
-    def __init__(self, drunc, actor, path, preferred_speed):
-        super(CrowdSidewalkAgent, self).__init__(drunc, actor, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed):
+        super(CrowdSidewalkAgent, self).__init__(summit, actor, preferred_speed)
         self.path = path
 
     def get_agent_params(self):
@@ -234,7 +234,7 @@ class CrowdSidewalkAgent(CrowdAgent):
             1.0, False)
 
 
-class GammaCrowdController(Drunc):
+class GammaCrowdController(Summit):
     def __init__(self):
         super(GammaCrowdController, self).__init__()
 
@@ -588,8 +588,8 @@ class GammaCrowdController(Drunc):
                     self.gamma_lane_change_pub.publish(remain)
 
             # if rng.uniform(0.0, 1.0) <= lane_change_probability:
-            #     new_path_candidates = self.drunc.network.get_next_route_paths(nearest_route_point, self.path.min_points - 1, self.path.interval)
-            #     new_path = NetworkAgentPath(self.drunc, self.path.min_points, self.path.interval)
+            #     new_path_candidates = self.summit.network.get_next_route_paths(nearest_route_point, self.path.min_points - 1, self.path.interval)
+            #     new_path = NetworkAgentPath(self.summit, self.path.min_points, self.path.interval)
             #     new_path.route_points = rng.choice(new_path_candidates)[0:self.path.min_points]
             #     self.path = new_path
 

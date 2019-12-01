@@ -9,7 +9,7 @@ import time
 import rospy
 import struct
 
-from drunc import Drunc, summit_root
+from summit import Summit, summit_root
 import carla
 
 from std_msgs.msg import Bool
@@ -67,7 +67,7 @@ WALL_MAT = [
         '/Game/Carla/Static/Walls/WallTunnel01/M_WallTunnel01',
         '/Game/Carla/Static/Walls/Wall15/T_Wall15']
 
-class SpawnMeshes(Drunc):
+class SpawnMeshes(Summit):
     def __init__(self):
         super(SpawnMeshes, self).__init__()
 

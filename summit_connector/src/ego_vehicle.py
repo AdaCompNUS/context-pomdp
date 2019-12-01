@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-from drunc import Drunc
+from summit import Summit
 import carla
 
 import random
@@ -31,7 +31,7 @@ remain = 0
 change_right = 1
 
 
-class EgoVehicle(Drunc):
+class EgoVehicle(Summit):
     def __init__(self):
         super(EgoVehicle, self).__init__()
 
