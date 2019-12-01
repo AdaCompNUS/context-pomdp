@@ -1,5 +1,5 @@
 #
-# LeTS-Drive with SUMMIT simulator integration
+# Crowd driving with collision-avoidance controllers, POMDP planners, and LeTS-Drive in the SUMMIT simulator
 
 Simulation and driving in SUMMIT (click to see video): 
 
