@@ -282,7 +282,7 @@ class DrivingData(data.Dataset):
         input_data = self.encode_input(input_data)
 
         steer_label = self.encode_steer_from_degree(steer_degree)  # this returns only the index of the non zero bin
-        print("raw data {}, degree {}, bin_idx {}".format(steer_normalized[0], steer_degree[0], steer_label), flush=True)
+        # print("raw data {}, degree {}, bin_idx {}".format(steer_normalized[0], steer_degree[0], steer_label), flush=True)
         acc_id_label = self.encode_acc_from_id(self.data['acc_id_labels'][data_index])
         vel = 0.0
         if config.fit_vel or config.fit_action or config.fit_all:
