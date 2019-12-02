@@ -68,7 +68,11 @@ class ActionHead(nn.Module):
         self.conv = conv1x1(inplanes, outplanes, stride=1)
         if not global_config.disable_bn_in_resnet:
             self.bn = nn.BatchNorm2d(outplanes, track_running_stats=global_config.track_running_stats)
-        self.relu = nn.ReLU(inplace=True)
+
+        if global_config.use_leaky_relu:
+            self.relu = nn.LeakyReLU(0.2, inplace=True)
+        else:
+            self.relu = nn.ReLU(inplace=True)
         self.fc = nn.Linear(in_features=imsize * imsize * outplanes,
                             out_features=num_classes,
                             bias=True)
@@ -95,11 +99,17 @@ class LargeActionHead(nn.Module):
         self.conv = conv1x1(inplanes, outplanes, stride=1)
         if not global_config.disable_bn_in_resnet:
             self.bn = nn.BatchNorm2d(outplanes, track_running_stats=global_config.track_running_stats)
-        self.relu = nn.ReLU(inplace=True)
+        if global_config.use_leaky_relu:
+            self.relu = nn.LeakyReLU(0.2, inplace=True)
+        else:
+            self.relu = nn.ReLU(inplace=True)
         self.fc = nn.Linear(in_features=imsize * imsize * outplanes,
                             out_features=128,
                             bias=True)
-        self.relu1 = nn.ReLU(inplace=True)
+        if global_config.use_leaky_relu:
+            self.relu1 = nn.LeakyReLU(0.2, inplace=True)
+        else:
+            self.relu1 = nn.ReLU(inplace=True)
         self.fc1 = nn.Linear(in_features=128,
                              out_features=num_classes,
                              bias=True)
@@ -127,7 +137,10 @@ class ActionMdnHead(nn.Module):
         self.conv = conv1x1(inplanes, outplanes, stride=1)
         if not global_config.disable_bn_in_resnet:
             self.bn = nn.BatchNorm2d(outplanes, track_running_stats=global_config.track_running_stats)
-        self.relu = nn.ReLU(inplace=True)
+        if global_config.use_leaky_relu:
+            self.relu = nn.LeakyReLU(0.2, inplace=True)
+        else:
+            self.relu = nn.ReLU(inplace=True)
 
         self.mdn = mdn.MDN(in_features=imsize * imsize * outplanes, out_features=1,
                            num_gaussians=num_modes)
@@ -151,7 +164,10 @@ class ValueHead(nn.Module):
         self.conv = conv1x1(inplanes, outplanes, stride=1)
         if not global_config.disable_bn_in_resnet:
             self.bn = nn.BatchNorm2d(outplanes, track_running_stats=global_config.track_running_stats)
-        self.relu = nn.ReLU(inplace=True)
+        if global_config.use_leaky_relu:
+            self.relu = nn.LeakyReLU(0.2, inplace=True)
+        else:
+            self.relu = nn.ReLU(inplace=True)
         self.fc = nn.Linear(in_features=imsize * imsize * outplanes,
                             out_features=1,
                             bias=True)

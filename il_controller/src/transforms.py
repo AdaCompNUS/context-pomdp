@@ -3,6 +3,7 @@ import ipdb as pdb
 import numpy as np
 
 from Data_processing import global_params
+from Data_processing.global_params import error_handler
 
 config = global_params.config
 import random
@@ -31,12 +32,6 @@ def show_array(tensor):
         error_handler(e)
         exit(-1)
         # pdb.set_trace()
-
-
-def error_handler(e):
-    print(
-        'Error on file {} line {}'.format(sys.exc_info()[-1].tb_frame.f_code.co_filename, sys.exc_info()[-1].tb_lineno),
-        type(e).__name__, e)
 
 
 def validate_map(data, msg):
@@ -78,6 +73,20 @@ class PopulateImages(object):
 
         # output_arr: dim (num_agents, congig.total_num_channels, imsize, imsize)
         acc_id_labels, ang_norm_labels, v_labels, vel_labels, lane_labels = self.get_labels(sample)
+
+        if config.visualize_raw_data:
+            # visualization.visualized_exo_agent_data(output_arr[i, config.channel_map[0]:config.channel_map[3]+1],
+            #                                         root='Data_processing/')
+            # visualization.visualize_image(output_arr[i, config.channel_lane], root='Data_processing/',
+            #                               subfolder='h5_lane_image')
+            from visualization import visualize_overlay_image
+            visualize_overlay_image(output_arr[0, config.channel_lane],
+                                                  output_arr[0, config.channel_map[0]],
+                                                  output_arr[0, config.channel_map[3]],
+                                                  lane_labels,
+                                                  acc_id_labels,
+                                                  root='Data_processing/',
+                                                  subfolder='h5_overlay_image')
         cart_dat_arr = self.get_cart_data(sample)
 
         return output_arr, cart_dat_arr, v_labels, acc_id_labels, ang_norm_labels, vel_labels, lane_labels
@@ -490,7 +499,7 @@ class Fliplr(object):
     def __init__(self):
         pass
 
-    def __call__(self, input, steer):
+    def __call__(self, input, steer, lane):
         # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         #
         output = np.zeros_like(input, dtype=np.float32)
@@ -498,7 +507,7 @@ class Fliplr(object):
             for j in range(config.total_num_channels):
                 output[i, j] = np.fliplr(input[i, j])
 
-        return output, -steer  # flip the steering
+        return output, -steer, -lane  # flip the steering
 
 
 class Flipud(object):
@@ -508,14 +517,14 @@ class Flipud(object):
     def __init__(self):
         pass
 
-    def __call__(self, input, steer):
+    def __call__(self, input, steer, lane):
         # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         #
         output = np.zeros_like(input, dtype=np.float32)
         for i in range(1 + 0):
             for j in range(config.total_num_channels):
                 output[i, j] = np.flipud(input[i, j])
-        return output, -steer  # flip the steering
+        return output, -steer, -lane  # flip the steering
 
 
 class Rot(object):
@@ -525,14 +534,14 @@ class Rot(object):
     def __init__(self, amount):
         self.amount = amount
 
-    def __call__(self, input, steer):
+    def __call__(self, input, steer, lane):
         # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         output = np.zeros_like(input, dtype=np.float32)
         for i in range(1 + 0):
             for j in range(config.total_num_channels):
                 output[i, j] = np.rot90(input[i, j], self.amount)
 
-        return output, steer
+        return output, steer, lane
 
 
 class FlipRot(object):
@@ -542,14 +551,14 @@ class FlipRot(object):
     def __init__(self, amount):
         self.amount = amount
 
-    def __call__(self, input, steer):
+    def __call__(self, input, steer, lane):
         # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         output = np.zeros_like(input, dtype=np.float32)
         for i in range(1 + 0):
             for j in range(config.total_num_channels):
                 output[i, j] = np.rot90(np.flipud(input[i, j]), self.amount)
 
-        return output, -steer
+        return output, -steer, -lane
 
 
 class Identity(object):
@@ -559,8 +568,8 @@ class Identity(object):
     def __init__(self):
         pass
 
-    def __call__(self, input, steer):
-        return input, steer
+    def __call__(self, input, steer, lane):
+        return input, steer, lane
 
 
 class Normalize(object):

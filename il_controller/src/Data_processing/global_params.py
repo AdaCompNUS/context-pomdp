@@ -1,5 +1,13 @@
 from argparse import Namespace
 import torch
+import sys
+
+
+def error_handler(e):
+    print(
+        'Error on file {} line {}'.format(sys.exc_info()[-1].tb_frame.f_code.co_filename, sys.exc_info()[-1].tb_lineno),
+        type(e).__name__, e)
+
 
 config = Namespace()
 # velocity labels used in data['vel_steer']
@@ -94,6 +102,7 @@ else:
 ''' Training settings '''
 # toggle data augmentation
 config.augment_data = True
+config.use_leaky_relu = True
 # toggle dropout
 config.do_dropout = False
 config.do_prob = 0.5
@@ -122,6 +131,8 @@ config.fit_all = True
 
 ''' NN settings '''
 config.imsize = 32
+config.default_map_dim = 1024
+config.image_half_size_meters = 20.0
 config.lstm_mode = 'gppn'  # 'gppn' or 'convlstm'
 config.vanilla_resnet = False
 # GPPN params
@@ -145,7 +156,7 @@ config.num_guassians_in_heads = 5
 
 
 ''' Loss settings '''
-config.reward_mode = 'func'
+config.reward_mode = 'data'
 config.gamma = 1.0
 config.val_scale = 1.0  # 10.0
 config.ang_scale = 1.0  # 10.0
@@ -160,7 +171,7 @@ config.lane_scale = 1.0
 config.visualize_train_data = True
 config.visualize_val_data = False
 config.visualize_inter_data = True
-config.visualize_raw_data = False
+config.visualize_raw_data = True
 # toggle debug printing
 config.print_preds = False
 config.draw_prediction_records = False

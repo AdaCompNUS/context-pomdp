@@ -702,6 +702,7 @@ def termination():
     terminal = False
     for param_group in optimizer.param_groups:
         current_lr = param_group['lr']
+        print("Current learning rate: {}".format(current_lr))
         if current_lr <= cmd_args.lr * lr_factor ** 6:
             terminal = True
             print("Terminate learning: learning rate too small")
@@ -1244,7 +1245,7 @@ def resume_model():
         resume_partial_model(checkpoint['state_dict'], net)
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cmd_args.lr,
                                weight_decay=config.l2_reg_weight)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, threshold=1e-2, factor=lr_factor,
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=0, threshold=1e-2, factor=lr_factor,
                                                          verbose=True)
 
         print("=> loaded checkpoint '{}' (epoch {})"

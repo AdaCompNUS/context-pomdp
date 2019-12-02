@@ -7,12 +7,15 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from transforms import *
 from Components.mdn import gaussian_probability, gaussian_probability_np, mdn_accuracy
 
 import pdb
 
+from Data_processing import global_params
+from Data_processing.global_params import error_handler
+
 config = global_params.config
+from transforms import make_onehot
 
 
 def inspect(X):
@@ -386,6 +389,36 @@ def visualize_image(car_map, root="", subfolder="h5_car_map"):
         error_handler(e)
         pdb.set_trace()
 
+
+def visualize_overlay_image(base_image, top_image, top_image1, lane_label, acc_label, root="", subfolder="h5_overlay_map"):
+    try:
+        global vis_step
+        vis_step += 1
+        fig, axarr = plt.subplots(1, 1)
+        fig.set_figheight(6)
+        fig.set_figwidth(6)
+        draw_image = np.stack([top_image, top_image1, base_image], axis=-1)
+        # arr = draw_image[:, :, 0]
+        # print(arr[np.nonzero(arr)])
+        # arr = draw_image[:, :, 1]
+        # print(arr[np.nonzero(arr)])
+        # arr = draw_image[:, :, 2]
+        # print(arr[np.nonzero(arr)])
+        # exit(-1)
+        axarr.imshow(draw_image, interpolation='nearest')
+
+        axarr.annotate('lane: {}'.format(lane_label), color='white',
+                    xy=(80, 80), xycoords='figure pixels')
+        axarr.annotate('acc: {}'.format(acc_label), color='white',
+                       xy=(80, 100), xycoords='figure pixels')
+        plt.tight_layout()
+
+        image_subfolder = os.path.join('visualize/', subfolder)
+        save_figure(fig, image_subfolder, root, 'raw/' + str(vis_step))
+
+    except Exception as e:
+        error_handler(e)
+        pdb.set_trace()
 
 def visualize_both_agent_inputs(Cart_data, image_data, step, root=""):
     # print("[visualize_cart] ")

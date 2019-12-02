@@ -49,7 +49,6 @@ from msg_builder.msg import peds_car_info, ActionReward
 import time
 import copy
 
-default_map_dim = 1024
 
 # default_map_dim = 1024
 
@@ -69,6 +68,14 @@ GOAL_REWARD = 0.0
 learning_mode = 'im'
 
 agent_file = None
+
+
+class CoordFrame:
+    def __init__(self):
+        self.center = []
+        self.origin = []
+        self.x_axis = []
+        self.y_axis = []
 
 
 def parse_bag_file(filename=None):
@@ -288,16 +295,34 @@ def euclid_dist(x1, x2):
     return np.sqrt((x1[0] - x2[0]) ** 2 + (x1[1] - x2[1]) ** 2)
 
 
-def point_to_indices(x, y, origin, resolution, dim):
+def point_to_indices(x, y, coord_frame, resolution, dim):
+    dir = [x - coord_frame.center[0], y - coord_frame.center[1]]
+    x_coord = dir[0] * coord_frame.x_axis[0] + dir[1] * coord_frame.x_axis[1]
+    y_coord = dir[0] * coord_frame.y_axis[0] + dir[1] * coord_frame.y_axis[1]
+
     indices = np.array(
-        [(x - origin[0]) / resolution,
-         (y - origin[1]) / resolution],
+        [(x_coord + config.image_half_size_meters) / resolution,
+         (y_coord + config.image_half_size_meters) / resolution],
         dtype=np.float32)
+
     if np.any(indices < 0) or np.any(indices > (dim - 1)):
         return np.array([-1, -1], dtype=np.float32)
 
     return indices
 
+
+def point_to_indices_no_checking(x, y, coord_frame, resolution):
+    dir = [x - coord_frame.center[0], y - coord_frame.center[1]]
+    x_coord = dir[0] * coord_frame.x_axis[0] + dir[1] * coord_frame.x_axis[1]
+    y_coord = dir[0] * coord_frame.y_axis[0] + dir[1] * coord_frame.y_axis[1]
+
+    # print("dir {}, x_coord {}, y_coord {}".format(dir, x_coord, y_coord))
+    indices = np.array(
+        [(x_coord + config.image_half_size_meters) / resolution,
+         (y_coord + config.image_half_size_meters) / resolution],
+        dtype=np.float32)
+
+    return indices
 
 # now create data in the required format here don't forget to add random data for ped goal beliefs and history too
 # coz pedestrians are not constant, also add car dimensions for history image
@@ -312,7 +337,7 @@ def create_h5_data(data_dict,
     # !! down_sample_ratio should be 1/2^n, e.g., 1/2^5=0.03125 !!
     print("Processing data with %d source time steps..." % len(data_dict.keys()))
 
-    dim, map_intensity, map_intensity_scale, map_ts, new_dim, origin, raw_map_array, resolution = \
+    dim, map_intensity, map_intensity_scale, map_ts, new_dim, coord_frame, raw_map_array, resolution = \
         parse_map_data(down_sample_ratio, map_dict)
 
     # get data for other topics
@@ -345,26 +370,26 @@ def create_h5_data(data_dict,
         hist_cars, hist_exo_agents = get_history_agents(data_dict, ts)
 
         if map_array is None:
-            origin = None
+            coord_frame = None
 
         agents_are_valid = process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution, map_intensity,
-                                              map_intensity_scale, origin)
+                                              map_intensity_scale, coord_frame)
 
         if not agents_are_valid:
             return dict(output_dict), False  # report invalid peds
 
         if map_array is None:
-            origin = select_null_map_origin(hist_cars, 0)
+            coord_frame = select_null_map_coord_frame(hist_cars, 0)
 
         process_maps(down_sample_ratio, idx, map_array, output_dict, hist_env_maps)
 
-        process_car(idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio, resolution, origin)
+        process_car(idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio, resolution, coord_frame)
 
         process_actions(data_dict, idx, output_dict, ts)
 
-        process_obstacles(idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, origin)
+        process_obstacles(idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, coord_frame)
 
-        process_lanes(idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, origin)
+        process_lanes(idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, coord_frame)
 
         process_parametric_agents(idx, output_dict, hist_exo_agents, hist_cars)
 
@@ -398,7 +423,7 @@ def shuffle_and_sample_indices(timestamps):
 
 
 def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution, map_intensity, map_intensity_scale,
-                       origin=None):
+                       coord_frame=None):
     try:
         nearest_agent_ids = get_nearest_agent_ids(hist_exo_agents[0], hist_cars[0])  # return ped id
         valid_agent = 0
@@ -409,15 +434,16 @@ def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolutio
 
             hist_agent = get_exo_agent_history(agent_id, hist_exo_agents)
 
-            origins = []
+            coord_frames = []
             for i in range(config.num_hist_channels):
-                if origin is None:
-                    origins.append(select_null_map_origin(hist_cars, i))
+                if coord_frame is None:
+                    coord_frames.append(select_null_map_coord_frame(hist_cars, i))
                 else:
-                    origins.append(origin)
+                    coord_frames.append(coord_frame)
 
             # calculate position in map image
-            hist_image_space_agent, is_out_map = get_image_space_agent_history(hist_agent, origins, resolution, dim)
+            hist_image_space_agent, is_out_map = get_image_space_agent_history(hist_agent, coord_frames, resolution,
+                                                                               dim)
 
             # discard agents outside the map
             if is_out_map:
@@ -494,7 +520,7 @@ def create_null_maps():
     map_array = None
     hist_ped_maps = []
     for i in range(config.num_hist_channels):
-        hist_ped_maps.append(np.zeros((default_map_dim, default_map_dim), dtype=np.float32))
+        hist_ped_maps.append(np.zeros((config.default_map_dim, config.default_map_dim), dtype=np.float32))
 
     return map_array, hist_ped_maps
 
@@ -579,19 +605,19 @@ def process_actions(data_dict, idx, output_dict, ts):
         [float(data_dict[ts]['action_reward'].lane_change.data)], dtype=np.int32)
 
 
-def process_car(data_idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio, resolution, origin):
+def process_car(data_idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio, resolution, coord_frame):
     process_car_inner(output_dict[data_idx], data_dict[ts], hist_cars, dim, down_sample_ratio,
-                      origin, resolution)
+                      coord_frame, resolution)
 
 
 def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, dim, down_sample_ratio,
-                      origin, resolution):
+                      coord_frame, resolution):
     try:
         print_time = False
         path = data_dict_entry['plan']
         # parse path data
         start_time = time.time()
-        path_data = construct_path_data(path, origin, resolution, dim,
+        path_data = construct_path_data(path, coord_frame, resolution, dim,
                                         down_sample_ratio)
         if print_time:
             elapsed_time = time.time() - start_time
@@ -600,11 +626,11 @@ def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, dim, down_s
         # parse car data
         start_time = time.time()
 
-        origins = []
+        coord_frames = []
         for i in range(config.num_hist_channels):
-            origins.append(select_null_map_origin(hist_cars, i))
+            coord_frames.append(select_null_map_coord_frame(hist_cars, i))
 
-        output_dict_entry['car'] = construct_car_data(origins, resolution, dim, down_sample_ratio,
+        output_dict_entry['car'] = construct_car_data(coord_frames, resolution, dim, down_sample_ratio,
                                                       hist_cars, path_data=path_data)
 
         # print('----------------------------------------')
@@ -647,28 +673,25 @@ def process_maps_inner(down_sample_ratio, map_array, output_dict_entry, hist_ped
     # combine the static map and the pedestrian map
     output_dict_entry['maps'] = hist_env_map
 
-    if config.visualize_raw_data:
-        visualization.visualized_exo_agent_data(hist_env_map, root='Data_processing/')
 
-
-def process_obstacles(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, origin):
+def process_obstacles(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, coord_frame):
     process_obstacles_inner(output_dict[data_idx], data_dict[ts], dim, down_sample_ratio,
-                      origin, resolution)
+                            coord_frame, resolution)
 
 
 def process_obstacles_inner(output_dict_entry, data_dict_entry, dim, down_sample_ratio,
-                      origin, resolution):
+                            coord_frame, resolution):
     obstacles = data_dict_entry['obstacles']
-    output_dict_entry['obs'] = construct_obs_data(origin, resolution, dim, down_sample_ratio, obstacles)
+    output_dict_entry['obs'] = construct_obs_data(coord_frame, resolution, dim, down_sample_ratio, obstacles)
     pass
 
 
-def construct_obs_data(origin, resolution, dim, down_sample_ratio, obstacles):
-    obs_points = get_obs_points(obstacles, origin, dim, down_sample_ratio, resolution)
+def construct_obs_data(coord_frame, resolution, dim, down_sample_ratio, obstacles):
+    obs_points = get_obs_points(obstacles, coord_frame, dim, down_sample_ratio, resolution)
     return obs_points
 
 
-def get_obs_points(obstacles, origin, dim_high_res, down_sample_ratio, resolution):
+def get_obs_points(obstacles, coord_frame, dim_high_res, down_sample_ratio, resolution):
     # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
     obs_points = None
 
@@ -676,7 +699,7 @@ def get_obs_points(obstacles, origin, dim_high_res, down_sample_ratio, resolutio
     for obs in obstacles:
         print_time = False
         start_time = time.time()
-        image_space_obstacle = get_image_space_obstacle(obs, origin, resolution)
+        image_space_obstacle = get_image_space_obstacle(obs, coord_frame, resolution)
         if print_time:
             elapsed_time = time.time() - start_time
             print("Obstacle prepare time: " + str(elapsed_time) + " s")
@@ -701,24 +724,24 @@ def get_obs_points(obstacles, origin, dim_high_res, down_sample_ratio, resolutio
     return obs_points
 
 
-def process_lanes(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, origin):
+def process_lanes(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, coord_frame):
     process_lanes_inner(output_dict[data_idx], data_dict[ts], dim, down_sample_ratio,
-                      origin, resolution)
+                        coord_frame, resolution)
 
 
 def process_lanes_inner(output_dict_entry, data_dict_entry, dim, down_sample_ratio,
-                      origin, resolution):
+                        coord_frame, resolution):
     lanes = data_dict_entry['lanes']
-    output_dict_entry['lane'] = construct_lane_data(origin, resolution, dim, down_sample_ratio, lanes)
+    output_dict_entry['lane'] = construct_lane_data(coord_frame, resolution, dim, down_sample_ratio, lanes)
     pass
 
 
-def construct_lane_data(origin, resolution, dim, down_sample_ratio, lanes):
-    lane_points = get_lane_points(lanes, origin, dim, down_sample_ratio, resolution)
+def construct_lane_data(coord_frame, resolution, dim, down_sample_ratio, lanes):
+    lane_points = get_lane_points(lanes, coord_frame, dim, down_sample_ratio, resolution)
     return lane_points
 
 
-def get_lane_points(lanes, origin, dim_high_res, down_sample_ratio, resolution):
+def get_lane_points(lanes, coord_frame, dim_high_res, down_sample_ratio, resolution):
     # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
     lane_points = None
 
@@ -726,7 +749,7 @@ def get_lane_points(lanes, origin, dim_high_res, down_sample_ratio, resolution):
     for lane_seg in lanes:
         print_time = False
         start_time = time.time()
-        image_space_lane = get_image_space_lane(lane_seg, origin, resolution)
+        image_space_lane = get_image_space_lane(lane_seg, coord_frame, resolution)
         if print_time:
             elapsed_time = time.time() - start_time
             print("Lane prepare time: " + str(elapsed_time) + " s")
@@ -741,7 +764,7 @@ def get_lane_points(lanes, origin, dim_high_res, down_sample_ratio, resolution):
     try:
         start_time = time.time()
         lane_points = get_pyramid_image_points(lane_pixels, dim_high_res, down_sample_ratio,
-                                              draw_image=True, draw_flag='lane')
+                                               draw_image=True, draw_flag='lane')
         if print_time:
             elapsed_time = time.time() - start_time
             print("Lane pyramid time: " + str(elapsed_time) + " s")
@@ -824,7 +847,7 @@ def normalize(ped_array):
     return ped_array
 
 
-def get_map_indices(hist_agent, dim, origin, resolution):
+def get_polygons(hist_agent, dim, coord_frame, resolution):
     hist_positions = []
     is_out_map = True  # it will be true if all hist pos are outside of the map
     for i in range(len(hist_agent)):
@@ -833,7 +856,7 @@ def get_map_indices(hist_agent, dim, origin, resolution):
             ped = hist_agent[i]
 
             if ped is not None:
-                hist_positions[i] = point_to_indices(ped.ped_pos.x, ped.ped_pos.y, origin, resolution, dim)
+                hist_positions[i] = point_to_indices(ped.ped_pos.x, ped.ped_pos.y, coord_frame, resolution, dim)
                 is_out_map = is_out_map and np.any(hist_positions[i] == -1)
             else:
                 hist_positions[i] = np.array([None, None], dtype=np.float32)
@@ -842,37 +865,6 @@ def get_map_indices(hist_agent, dim, origin, resolution):
             pdb.set_trace()
 
     return hist_positions, is_out_map
-
-
-def get_polygons(hist_agent, dim, origin, resolution):
-    hist_positions = []
-    is_out_map = True  # it will be true if all hist pos are outside of the map
-    for i in range(len(hist_agent)):
-        hist_positions.append(np.array([], dtype=np.float32))
-        try:
-            ped = hist_agent[i]
-
-            if ped is not None:
-                hist_positions[i] = point_to_indices(ped.ped_pos.x, ped.ped_pos.y, origin, resolution, dim)
-                is_out_map = is_out_map and np.any(hist_positions[i] == -1)
-            else:
-                hist_positions[i] = np.array([None, None], dtype=np.float32)
-        except Exception as e:
-            error_handler(e)
-            pdb.set_trace()
-
-    return hist_positions, is_out_map
-
-
-def add_to_ped_map(hist_ped, hist_ped_maps, dim, map_intensity, map_intensity_scale, origin, resolution):
-    for ts in range(len(hist_ped)):
-        ped = hist_ped[ts]
-        if ped is not None:
-            ped_map_array = hist_ped_maps[ts]
-            fill_ped_in_map(dim, map_intensity, map_intensity_scale, origin, ped, ped_map_array, resolution)
-        else:
-            pass
-            # print("Ped hist {} empty".format(ts))
 
 
 def fill_agent_map(hist_image_space_agent, hist_env_maps, map_intensity, map_intensity_scale, dim):
@@ -886,13 +878,6 @@ def fill_agent_map(hist_image_space_agent, hist_env_maps, map_intensity, map_int
         else:
             pass
         ts += 1
-
-
-def fill_ped_in_map(dim, map_intensity, map_intensity_scale, origin, ped, ped_map_array, resolution):
-    position = point_to_indices(ped.ped_pos.x, ped.ped_pos.y, origin, resolution, dim)
-    if np.all(position != -1):
-        ped_map_array[int(round(position[1]))][int(round(position[0]))] = map_intensity * map_intensity_scale
-    # return position
 
 
 def fill_pixels_in_map(map_intensity, map_intensity_scale, positions, env_map_array):
@@ -1039,18 +1024,18 @@ def parse_map_data(down_sample_ratio, map_dict):
         # get map data if it exists
         map_ts = list(map_dict.keys())[0]
 
-        dim, map_intensity, map_intensity_scale, new_dim, origin, raw_map_array, resolution = \
+        dim, map_intensity, map_intensity_scale, new_dim, coord_frame, raw_map_array, resolution = \
             parse_map_data_from_dict(down_sample_ratio, map_dict[map_ts])
 
-        return dim, map_intensity, map_intensity_scale, map_ts, new_dim, origin, raw_map_array, resolution
+        return dim, map_intensity, map_intensity_scale, map_ts, new_dim, coord_frame, raw_map_array, resolution
     else:
         # create dummy map if no map data.
         map_ts = None
         raw_map_array = None
-        origin = None
+        coord_frame = None
         dim, map_intensity, map_intensity_scale, new_dim, resolution = \
             create_null_map_data(down_sample_ratio)
-        return dim, map_intensity, map_intensity_scale, map_ts, new_dim, origin, raw_map_array, resolution
+        return dim, map_intensity, map_intensity_scale, map_ts, new_dim, coord_frame, raw_map_array, resolution
 
 
 def parse_map_data_from_dict(down_sample_ratio, map_dict_entry):
@@ -1058,20 +1043,26 @@ def parse_map_data_from_dict(down_sample_ratio, map_dict_entry):
     raw_map_array = np.asarray(map_dict_entry.data).reshape(
         (map_dict_entry.info.height, map_dict_entry.info.width))
     resolution = map_dict_entry.info.resolution
-    origin = map_dict_entry.info.origin.position.x, map_dict_entry.info.origin.position.y
+    # origin: left top corner of the image
+    origin = [map_dict_entry.info.origin.position.x, map_dict_entry.info.origin.position.y]
     dim = int(map_dict_entry.info.height)  # square assumption
+    coord_frame = CoordFrame()
+    coord_frame.origin = origin
+    coord_frame.center = [origin[0] + resolution * dim / 2.0, origin[0] + resolution * dim / 2.0]
+    coord_frame.x_axis = [1, 0]
+    coord_frame.y_axis = [0, 1]
     # map_intensity = np.max(raw_map_array)
 
     map_intensity = np.max(raw_map_array)
     map_intensity_scale = 1500.0
 
     new_dim = int(dim * down_sample_ratio)
-    return dim, map_intensity, map_intensity_scale, new_dim, origin, raw_map_array, resolution
+    return dim, map_intensity, map_intensity_scale, new_dim, coord_frame, raw_map_array, resolution
 
 
 def create_null_map_data(down_sample_ratio):
-    resolution = 0.0390625
-    dim = default_map_dim
+    resolution = config.image_half_size_meters * 2.0 / config.default_map_dim  # 0.0390625
+    dim = config.default_map_dim
     map_intensity = 1.0
     map_intensity_scale = 1500.0
 
@@ -1095,7 +1086,7 @@ def rescale_image(image,
 
 
 def get_pyramid_image_points(points,
-                             dim=default_map_dim,
+                             dim=config.default_map_dim,
                              down_sample_ratio=0.03125,
                              intensities=False,
                              draw_image=False, draw_flag='car'):
@@ -1107,14 +1098,14 @@ def get_pyramid_image_points(points,
         fill_image_with_points(arr, dim, points, intensities)
         # down sample the image
         arr1 = rescale_image(arr, down_sample_ratio)
-
-        if draw_image and config.visualize_raw_data:
-            if 'car' in draw_flag:
-                visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_car_image')
-            elif 'lane' in draw_flag:
-                visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_lane_image')
-            elif 'obs' in draw_flag:
-                visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_obs_image')
+        arr1 = normalize(arr1)
+        # if draw_image and config.visualize_raw_data:
+        #     if 'car' in draw_flag:
+        #         visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_car_image')
+        #     elif 'lane' in draw_flag:
+        #         visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_lane_image')
+        #     elif 'obs' in draw_flag:
+        #         visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_obs_image')
 
         format_point = extract_nonzero_points(arr1)
     except Exception as e:
@@ -1233,14 +1224,13 @@ def construct_blank_ped_data():
     return ped_output_dict
 
 
-def construct_path_data(path, origin, resolution, dim, down_sample_ratio):
+def construct_path_data(path, coord_frame, resolution, dim, down_sample_ratio):
     path_output_dict = {'path': list([])}
     for pos in path.poses:
-        pix_pos = np.array(
-            [(pos.pose.position.x - origin[0]) / resolution,
-             (pos.pose.position.y - origin[1]) / resolution],
-            dtype=np.float32)
-        if np.any(pix_pos < 0) or np.any(pix_pos > (dim - 1)):
+
+        pix_pos = point_to_indices(pos.pose.position.x, pos.pose.position.y, coord_frame, resolution, dim)
+
+        if np.any(pix_pos == -1):
             continue  # skip path points outside the map
         else:
             path_output_dict['path'].append(pix_pos)
@@ -1251,7 +1241,7 @@ def construct_path_data(path, origin, resolution, dim, down_sample_ratio):
     return path_output_dict
 
 
-def construct_car_data(origins, resolution, dim, down_sample_ratio, hist_cars, path_data=None):
+def construct_car_data(coord_frames, resolution, dim, down_sample_ratio, hist_cars, path_data=None):
     car_output_dict = {'goal': list([]), 'hist': [], 'car_state': []}
     try:
         # 'goal' contains the rescaled path in pixel points
@@ -1263,11 +1253,11 @@ def construct_car_data(origins, resolution, dim, down_sample_ratio, hist_cars, p
                 if i == 0:
                     draw = True
 
-                car_points = get_car_points(hist_cars[i], origins[i], dim, down_sample_ratio, resolution, draw)
+                car_points = get_car_points(hist_cars[i], coord_frames[i], dim, down_sample_ratio, resolution, draw)
                 car_output_dict['hist'].append(car_points)
         else:
             for i in range(len(hist_cars)):
-                car_points = get_car_state_points(hist_cars[i], origins[i], dim, down_sample_ratio, resolution)
+                car_points = get_car_state_points(hist_cars[i], coord_frames[i], dim, down_sample_ratio, resolution)
                 car_output_dict['car_state'].append(car_points)
 
     except Exception as e:
@@ -1277,14 +1267,14 @@ def construct_car_data(origins, resolution, dim, down_sample_ratio, hist_cars, p
     return car_output_dict
 
 
-def get_car_points(car, origin, dim_high_res, down_sample_ratio, resolution, draw_image=False):
+def get_car_points(car, coord_frame, dim_high_res, down_sample_ratio, resolution, draw_image=False):
     # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
     car_points = None
 
     if car is not None:
         print_time = False
         start_time = time.time()
-        image_space_car = get_image_space_car(car, origin, resolution)
+        image_space_car = get_image_space_car(car, coord_frame, resolution)
         if print_time:
             elapsed_time = time.time() - start_time
             print("Car prepare time: " + str(elapsed_time) + " s")
@@ -1310,24 +1300,26 @@ def get_car_points(car, origin, dim_high_res, down_sample_ratio, resolution, dra
 
 
 def normalize_intensity(points, target_intensity):
-    intensities = points[:,2]
+    intensities = points[:, 2]
     max_intensity = np.max(intensities)
     intensities = intensities / max_intensity * target_intensity
     points[:, 2] = intensities
 
 
-def get_car_state_points(car, origin, dim_high_res, down_sample_ratio, resolution):
+def get_car_state_points(car, coord_frame, dim_high_res, down_sample_ratio, resolution):
     # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
     car_state_points = None
 
     if car is not None:
-        image_space_car_state = get_image_space_car_state(car, origin, resolution)
+        image_space_car_state = get_image_space_car_state(car, coord_frame, resolution)
+        # print("[bag2hdf] image_space_car_state: {}".format(image_space_car_state))
+
         # construct the image
         car_state_edge_pixels = fill_polygon_edges(image_space_car_state)
         # print("[bag2hdf] num points in car_state_edge_pixels: {}".format(len(car_state_edge_pixels)))
         try:
             car_state_points = get_pyramid_image_points(car_state_edge_pixels, dim_high_res, down_sample_ratio,
-                                                  draw_flag='car_state')
+                                                        draw_flag='car_state')
             # print("[bag2hdf] num points in car_state_points: {}".format(len(car_state_points)))
             normalize_intensity(car_state_points, 2.0)
         except Exception as e:
@@ -1374,46 +1366,48 @@ def get_car_points_in_low_res_image(car_edge_points, image_high_res, image_low_r
     return car_points
 
 
-def get_image_space_car(car, origin, resolution):
+def get_image_space_car(car, coord_frame, resolution):
     X = []
     for point in car.car_bbox.points:
-        x = (point.x - origin[0]) / resolution
-        y = (point.y - origin[1]) / resolution
-        X.append([x, y, 1])
+        pixels = point_to_indices_no_checking(point.x, point.y, coord_frame, resolution)
+        X.append([pixels[0], pixels[1], 1])
 
     return np.asarray(X)
 
-def get_image_space_car_state(car, origin, resolution):
+
+def get_image_space_car_state(car, coord_frame, resolution):
     X = []
-
     car_dir = (car.car_speed * math.cos(car.car_yaw), car.car_speed * math.sin(car.car_yaw))
+    # print("coord_frame: {}".format(coord_frame))
+    # print("car.car_pos: {}".format(car.car_pos))
+    pixels = point_to_indices_no_checking(car.car_pos.x, car.car_pos.y, coord_frame, resolution)
+    # print('car center pixels {}'.format(pixels))
+    X.append([pixels[0], pixels[1], 1])
+    pixels = point_to_indices_no_checking(car.car_pos.x + car_dir[0],
+                                          car.car_pos.y + car_dir[1],
+                                          coord_frame, resolution)
+    # print('car heading pixels {}'.format(pixels), flush=True)
+    # exit(-1)
 
-    x = (car.car_pos.x - origin[0]) / resolution
-    y = (car.car_pos.y - origin[1]) / resolution
-    X.append([x, y, 1])
-    x = (car.car_pos.x + car_dir[0] - origin[0]) / resolution
-    y = (car.car_pos.y + car_dir[1] - origin[1]) / resolution
-    X.append([x, y, 1])
+    X.append([pixels[0], pixels[1], 1])
     return np.asarray(X)
 
-def get_image_space_obstacle(obs, origin, resolution):
+
+def get_image_space_obstacle(obs, coord_frame, resolution):
     X = []
     for point in obs.points:
-        x = (point.x - origin[0]) / resolution
-        y = (point.y - origin[1]) / resolution
-        X.append([x, y, 1])
+        pixels = point_to_indices_no_checking(point.x, point.y, coord_frame, resolution)
+        X.append([pixels[0], pixels[1], 1])
 
     return np.asarray(X)
 
 
-def get_image_space_lane(lane_segment, origin, resolution):
+def get_image_space_lane(lane_segment, coord_frame, resolution):
     X = []
-    x = (lane_segment.start.x - origin[0]) / resolution
-    y = (lane_segment.start.y - origin[1]) / resolution
-    X.append([x, y, 1])
-    x = (lane_segment.end.x - origin[0]) / resolution
-    y = (lane_segment.end.y - origin[1]) / resolution
-    X.append([x, y, 1])
+    pixels = point_to_indices_no_checking(lane_segment.start.x, lane_segment.start.y, coord_frame, resolution)
+    X.append([pixels[0], pixels[1], 1])
+    pixels = point_to_indices_no_checking(lane_segment.end.x, lane_segment.end.y, coord_frame, resolution)
+    X.append([pixels[0], pixels[1], 1])
 
     return np.asarray(X)
 
@@ -1421,10 +1415,23 @@ def get_image_space_lane(lane_segment, origin, resolution):
 def select_null_map_origin(hist_cars, ts=0):
     # origin is the upper-left corner of the map
     cur_car = hist_cars[ts]
-    return [cur_car.car_pos.x - 20.0, cur_car.car_pos.y - 20.0]
+    return [cur_car.car_pos.x - config.image_half_size_meters, cur_car.car_pos.y - config.image_half_size_meters]
 
 
-def get_image_space_agent_history(agent_history, origins, resolution, dim):
+def select_null_map_coord_frame(hist_cars, ts=0):
+    # origin is the upper-left corner of the map
+    cur_car = hist_cars[ts]
+    frame = CoordFrame()
+
+    frame.origin = [cur_car.car_pos.x - config.image_half_size_meters,
+                        cur_car.car_pos.y - config.image_half_size_meters]
+    frame.center = [cur_car.car_pos.x, cur_car.car_pos.y]
+    frame.x_axis = [math.cos(cur_car.car_yaw), math.sin(cur_car.car_yaw)]
+    frame.y_axis = [-math.sin(cur_car.car_yaw), math.cos(cur_car.car_yaw)]
+    return frame
+
+
+def get_image_space_agent_history(agent_history, coord_frames, resolution, dim):
     try:
         # ped_pos, ped_id, ped_goal_id, ped_speed, ped_vel, bb_x, bb_y, heading
         is_out_map = True
@@ -1433,27 +1440,26 @@ def get_image_space_agent_history(agent_history, origins, resolution, dim):
         for hist_agent in agent_history:
             if hist_agent is not None:
                 theta = hist_agent.heading
-                x = hist_agent.ped_pos.x - origins[i][0]
-                y = hist_agent.ped_pos.y - origins[i][1]
-                # transformation matrix: rotate by theta and translate with (x,y)
-                T = np.asarray([[cos(theta), -sin(theta), x], [sin(theta),
-                                                               cos(theta), y], [0, 0, 1]])
 
-                # bb_x is width of agent, bb_y is forward of agents.
-                # car vertices in its local frame
                 x1, y1, x2, y2, x3, y3, x4, y4 = hist_agent.bb_y, hist_agent.bb_x, -hist_agent.bb_y, hist_agent.bb_x, \
                                                  -hist_agent.bb_y, -hist_agent.bb_x, hist_agent.bb_y, -hist_agent.bb_x
-
                 # homogeneous coordinates
-                X = np.asarray([[x1, y1, 1], [x2, y2, 1], [x3, y3, 1], [x4, y4, 1]])
-
+                agent_bb = np.asarray([[x1, y1, 1], [x2, y2, 1], [x3, y3, 1], [x4, y4, 1]])
                 # rotate and translate the car
-                X = np.array([T.dot(x.T) for x in X], dtype=np.float32)
-                # scale the car
-                X = X / resolution
-                transformed_history.append(X)
+                T = np.asarray([[cos(theta), -sin(theta), hist_agent.ped_pos.x],
+                                [sin(theta), cos(theta), hist_agent.ped_pos.y],
+                                [0, 0, 1]])
+                agent_bb = np.array([T.dot(x.T) for x in agent_bb], dtype=np.float32)
 
-                frame_agent_is_out_map = check_out_map(X, dim)
+                transformed_agent = []
+                for x in agent_bb:
+                    pixels = point_to_indices_no_checking(x[0], x[1], coord_frames[i], resolution)
+                    transformed_agent.append([pixels[0], pixels[1], 1])
+                transformed_agent = np.array(transformed_agent)
+
+                transformed_history.append(transformed_agent)
+
+                frame_agent_is_out_map = check_out_map(transformed_agent, dim)
 
                 # agent should be included if it enters the map ar any of the history time steps
                 if frame_agent_is_out_map is False:

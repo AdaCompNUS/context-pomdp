@@ -12,6 +12,7 @@ from Components.nan_police import *
 import numpy as np
 import sys
 from Data_processing import global_params
+from Data_processing.global_params import error_handler
 global_config = global_params.config
 
 ONEOVERSQRT2PI = 1.0 / math.sqrt(2*math.pi)
@@ -317,9 +318,6 @@ def mdn_accuracy(pi, sigma, mu, target):
 
     accuracy = torch.mean(safe_sum)
     return accuracy
-
-
-from transforms import error_handler
 
 
 def sample_mdn(pi, sigma, mu):

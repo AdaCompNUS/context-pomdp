@@ -57,7 +57,7 @@ class DataMonitor(data.Dataset):
         self.has_plan = False
         self.has_lane = False
         self.has_data = False
-        self.origin = None
+        self.coord_frame = None
         self.resolution = None
         self.dim = None
         self.new_dim = None
@@ -313,12 +313,12 @@ class DataMonitor(data.Dataset):
         try:
             if flag == "map":
                 if self.has_map:
-                    self.dim, self.map_intensity, self.map_intensity_scale, self.new_dim, self.origin, \
+                    self.dim, self.map_intensity, self.map_intensity_scale, self.new_dim, self.coord_frame, \
                         self.raw_map_array, self.resolution = \
                         bag_to_hdf5.parse_map_data_from_dict(down_sample_ratio, self.combined_dict['map'])
                 else:
                     self.raw_map_array = None
-                    self.origin = None
+                    self.coord_frame = None
                     self.dim, self.map_intensity, self.map_intensity_scale, self.new_dim, self.resolution = \
                         bag_to_hdf5.create_null_map_data(down_sample_ratio)
             elif flag == "data":
@@ -338,13 +338,13 @@ class DataMonitor(data.Dataset):
                 self.check_history_completeness(hist_cars)
 
                 # start_time = time.time()
-                self.origin = None
+                self.coord_frame = None
                 agents_are_valid = bag_to_hdf5.process_exo_agents(hist_cars=hist_cars, hist_exo_agents=hist_peds,
-                                                                hist_env_maps=self.ped_map_array, dim=self.dim,
-                                                                resolution=self.resolution,
-                                                                map_intensity=self.map_intensity,
-                                                                map_intensity_scale=self.map_intensity_scale,
-                                                                origin=self.origin)
+                                                                  hist_env_maps=self.ped_map_array, dim=self.dim,
+                                                                  resolution=self.resolution,
+                                                                  map_intensity=self.map_intensity,
+                                                                  map_intensity_scale=self.map_intensity_scale,
+                                                                  coord_frame=self.coord_frame)
 
                 # elapsed_time = time.time() - start_time
                 # print("Peds processing time: " + str(elapsed_time) + " s")
@@ -352,7 +352,7 @@ class DataMonitor(data.Dataset):
                 if not agents_are_valid:
                     return False  # report invalid peds
 
-                self.origin = bag_to_hdf5.select_null_map_origin(hist_cars, 0)
+                self.coord_frame = bag_to_hdf5.select_null_map_coord_frame(hist_cars, 0)
 
                 # start_time = time.time()
                 bag_to_hdf5.process_maps_inner(down_sample_ratio, map_array, self.output_dict,
@@ -362,15 +362,15 @@ class DataMonitor(data.Dataset):
 
                 # start_time = time.time()
                 bag_to_hdf5.process_car_inner(self.output_dict, self.combined_dict, hist_cars,
-                                              self.dim, down_sample_ratio, self.origin, self.resolution)
+                                              self.dim, down_sample_ratio, self.coord_frame, self.resolution)
                 # elapsed_time = time.time() - start_time
                 # print("Car processing time: " + str(elapsed_time) + " s")
             elif flag == 'lanes':
                 hist_cars, hist_peds = \
                     bag_to_hdf5.get_bounded_history(self.combined_dict, 'hist')
-                self.origin = bag_to_hdf5.select_null_map_origin(hist_cars, 0)
+                self.coord_frame = bag_to_hdf5.select_null_map_coord_frame(hist_cars, 0)
                 bag_to_hdf5.process_lanes_inner(self.output_dict, self.combined_dict,
-                                                self.dim, down_sample_ratio, self.origin, self.resolution)
+                                                self.dim, down_sample_ratio, self.coord_frame, self.resolution)
 
             # put all info into images
             # start_time = time.time()

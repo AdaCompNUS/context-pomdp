@@ -263,8 +263,8 @@ class DrivingData(data.Dataset):
     def get_datalen(self, scene):
         return self.accumulated_data_length[str(scene)][-1]
 
-    def get_augmented_data(self, transform_idx, input_data, steer):
-        return self.transform_list[transform_idx](input_data, steer)
+    def get_augmented_data(self, transform_idx, input_data, steer, lane):
+        return self.transform_list[transform_idx](input_data, steer, lane)
 
     def get_item(self, global_index):
 
@@ -277,8 +277,9 @@ class DrivingData(data.Dataset):
         steer_degree = ang_transform_normalized_to_degree(steer_normalized)
         input_data = self.data['data'][data_index]
 
+        lane = self.data['lane_labels'][data_index]
         # validate_map(input_data, "DataSet __getitem__")
-        input_data, steer_degree = self.get_augmented_data(transform_idx, input_data, steer_degree)
+        input_data, steer_degree, lane = self.get_augmented_data(transform_idx, input_data, steer_degree, lane)
         input_data = self.encode_input(input_data)
 
         steer_label = self.encode_steer_from_degree(steer_degree)  # this returns only the index of the non zero bin
@@ -289,7 +290,6 @@ class DrivingData(data.Dataset):
             vel = self.data['vel_labels'][data_index]
         vel_label = self.encode_vel_from_raw(vel)
 
-        lane = self.data['lane_labels'][data_index]
         lane_label = self.encode_lane_from_int(lane)
 
         v_label = self.encode_value(self.data['v_labels'][data_index])
@@ -322,7 +322,8 @@ class DrivingData(data.Dataset):
 
         input_data = self.data[scene_index]['data'][data_index_in_dataset]
 
-        input_data, steer_degree = self.get_augmented_data(transform_idx, input_data, steer_degree)
+        lane = self.data[scene_index]['lane_labels'][data_index_in_dataset]
+        input_data, steer_degree, lane = self.get_augmented_data(transform_idx, input_data, steer_degree, lane)
 
         input_data = self.encode_input(input_data)
 
@@ -336,7 +337,6 @@ class DrivingData(data.Dataset):
 
         vel_label = self.encode_vel_from_raw(vel)
 
-        lane = self.data[scene_index]['lane_labels'][data_index_in_dataset]
         lane_label = self.encode_lane_from_int(lane)
 
         v_label = self.encode_value(self.data[scene_index]['v_labels'][data_index_in_dataset])
