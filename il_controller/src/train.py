@@ -1245,7 +1245,7 @@ def resume_model():
         resume_partial_model(checkpoint['state_dict'], net)
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cmd_args.lr,
                                weight_decay=config.l2_reg_weight)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=0, threshold=1e-2, factor=lr_factor,
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, threshold=1e-2, factor=lr_factor,
                                                          verbose=True)
 
         print("=> loaded checkpoint '{}' (epoch {})"
@@ -1365,7 +1365,7 @@ if __name__ == '__main__':
     # Optimizer: weight_decay is the scaling factor for L2 regularization
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cmd_args.lr,
                            weight_decay=config.l2_reg_weight)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=2, threshold=1e-2, factor=lr_factor,
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, threshold=1e-2, factor=lr_factor,
                                                      verbose=True)
 
     if cmd_args.resume:
