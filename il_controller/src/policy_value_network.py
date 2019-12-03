@@ -70,7 +70,7 @@ class ActionHead(nn.Module):
             self.bn = nn.BatchNorm2d(outplanes, track_running_stats=global_config.track_running_stats)
 
         if global_config.use_leaky_relu:
-            self.relu = nn.LeakyReLU(0.2, inplace=True)
+            self.relu = nn.LeakyReLU(config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
         self.fc = nn.Linear(in_features=imsize * imsize * outplanes,
@@ -100,14 +100,14 @@ class LargeActionHead(nn.Module):
         if not global_config.disable_bn_in_resnet:
             self.bn = nn.BatchNorm2d(outplanes, track_running_stats=global_config.track_running_stats)
         if global_config.use_leaky_relu:
-            self.relu = nn.LeakyReLU(0.2, inplace=True)
+            self.relu = nn.LeakyReLU(config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
         self.fc = nn.Linear(in_features=imsize * imsize * outplanes,
                             out_features=128,
                             bias=True)
         if global_config.use_leaky_relu:
-            self.relu1 = nn.LeakyReLU(0.2, inplace=True)
+            self.relu1 = nn.LeakyReLU(config.leaky_factor, inplace=True)
         else:
             self.relu1 = nn.ReLU(inplace=True)
         self.fc1 = nn.Linear(in_features=128,
@@ -138,7 +138,7 @@ class ActionMdnHead(nn.Module):
         if not global_config.disable_bn_in_resnet:
             self.bn = nn.BatchNorm2d(outplanes, track_running_stats=global_config.track_running_stats)
         if global_config.use_leaky_relu:
-            self.relu = nn.LeakyReLU(0.2, inplace=True)
+            self.relu = nn.LeakyReLU(config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
 
@@ -165,7 +165,7 @@ class ValueHead(nn.Module):
         if not global_config.disable_bn_in_resnet:
             self.bn = nn.BatchNorm2d(outplanes, track_running_stats=global_config.track_running_stats)
         if global_config.use_leaky_relu:
-            self.relu = nn.LeakyReLU(0.2, inplace=True)
+            self.relu = nn.LeakyReLU(config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
         self.fc = nn.Linear(in_features=imsize * imsize * outplanes,

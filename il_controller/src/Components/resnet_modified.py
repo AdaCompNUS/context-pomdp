@@ -35,7 +35,7 @@ class BasicBlock(nn.Module):
         self.conv1 = conv3x3(inplanes, planes, stride)
         self.bn1 = nn.BatchNorm2d(planes, track_running_stats=config.track_running_stats)
         if config.use_leaky_relu:
-            self.relu = nn.LeakyReLU(0.2, inplace=True)
+            self.relu = nn.LeakyReLU(config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(planes, planes)
@@ -73,7 +73,7 @@ class Bottleneck(nn.Module):
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes * 4, track_running_stats=config.track_running_stats)
         if config.use_leaky_relu:
-            self.relu = nn.LeakyReLU(0.2, inplace=True)
+            self.relu = nn.LeakyReLU(config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
@@ -115,7 +115,7 @@ class ResNetModified(nn.Module):
         self.bn1 = nn.BatchNorm2d(self.in_planes, track_running_stats=config.track_running_stats)
 
         if config.use_leaky_relu:
-            self.relu = nn.LeakyReLU(0.2, inplace=True)
+            self.relu = nn.LeakyReLU(config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
 

@@ -104,6 +104,7 @@ else:
 # toggle data augmentation
 config.augment_data = True
 config.use_leaky_relu = True
+config.leaky_factor = 0.01
 # toggle dropout
 config.do_dropout = False
 config.do_prob = 0.5
