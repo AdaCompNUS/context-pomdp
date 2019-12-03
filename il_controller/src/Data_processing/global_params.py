@@ -106,7 +106,7 @@ config.augment_data = True
 config.use_leaky_relu = True
 config.leaky_factor = 0.01
 # toggle dropout
-config.do_dropout = False
+config.do_dropout = True
 config.do_prob = 0.5
 # L2 regularization factor
 config.l2_reg_weight = 0  # 1e-3
