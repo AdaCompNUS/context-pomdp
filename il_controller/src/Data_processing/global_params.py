@@ -68,6 +68,7 @@ config.value_normalizer = 10.0
 config.label_linear = 0
 # config.label_angular = 1
 config.label_cmdvel = 1
+config.steer_normalized_limit = 0.4
 ''' Data label settings '''
 
 
@@ -171,7 +172,7 @@ config.lane_scale = 1.0
 config.visualize_train_data = True
 config.visualize_val_data = False
 config.visualize_inter_data = True
-config.visualize_raw_data = True
+config.visualize_raw_data = False
 # toggle debug printing
 config.print_preds = False
 config.draw_prediction_records = False

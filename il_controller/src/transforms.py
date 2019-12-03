@@ -339,7 +339,7 @@ class SteerEncoderDegreeToOnehot(object):
         #
         ang = ang_transform_degree_to_normalized(ang)
 
-        bin_idx = float_to_onehot(v=ang, v_min=-1.0, v_max=1.0,
+        bin_idx = float_to_onehot(v=ang, v_min=-config.steer_normalized_limit, v_max=config.steer_normalized_limit,
                                   num_bins=self.num_steering_bins)
 
         return bin_idx
@@ -435,7 +435,8 @@ class SteerDecoderOnehot2Degree(object):
         # input angle in degrees
         # clip ang to max_steering range
         #
-        steer = onehot_to_float(bin_idx=bin_idx, v_min=-1.0, v_max=1.0,
+        steer = onehot_to_float(bin_idx=bin_idx,
+                                v_min=-config.steer_normalized_limit, v_max=config.steer_normalized_limit,
                                 num_bins=self.num_steering_bins)
         steer = ang_transform_normalized_to_degree(steer)
 
