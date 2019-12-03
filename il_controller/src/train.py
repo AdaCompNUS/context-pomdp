@@ -15,6 +15,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from Components.nan_police import *
 from visualization import *
+from Components.max_ent_loss import CELossWithMaxEntRegularizer
 
 global_config = global_params.config
 
@@ -71,6 +72,16 @@ class SoftCrossEntropy(nn.Module):
         sample_num, class_num = target.shape
         loss = torch.sum(torch.mul(log_likelihood, target)) / sample_num  # =============== here #################
 
+        return loss
+
+
+class EntropyLoss(nn.Module):
+    def __init__(self):
+        super(EntropyLoss, self).__init__()
+
+    def forward(self, x, y):
+        loss = F.softmax(x, dim=1) * F.log_softmax(x, dim=1)
+        loss = loss.sum()
         return loss
 
 
@@ -1361,7 +1372,8 @@ if __name__ == '__main__':
     if config.label_smoothing:
         cel_criterion = SoftCrossEntropy().to(device)
     else:
-        cel_criterion = nn.CrossEntropyLoss().to(device)
+        # cel_criterion = nn.CrossEntropyLoss().to(device)
+        cel_criterion = CELossWithMaxEntRegularizer().to(device)
     # Optimizer: weight_decay is the scaling factor for L2 regularization
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cmd_args.lr,
                            weight_decay=config.l2_reg_weight)
