@@ -156,12 +156,13 @@ def make_onehot(num_bins, bin_idx, prob):
 
 def float_to_onehot(v, v_min, v_max, num_bins):
     try:
-        if v > v_max - 0.0001:
+        if v > v_max:
             print("float_to_onehot warning: v > v_max, v={}".format(v), flush=True)
             v = v_max - 0.0001
         elif v < v_min:
             print("float_to_onehot warning: v < v_min, v={}".format(v), flush=True)
             v = v_min
+        v = min(v, v_max - 0.0001)
         onehot_resolution = (v_max - v_min) / float(num_bins)
         bin_idx = int(np.floor(((v - v_min) / onehot_resolution)))
 
