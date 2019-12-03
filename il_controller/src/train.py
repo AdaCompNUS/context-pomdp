@@ -756,6 +756,8 @@ def record_tensor_board_log(epoch, accuracy_recorders, loss_recorders, val_accur
         record_tensor_board_data(epoch, train_accuracy, train_loss, val_accuracy, val_loss, flag)
 
     current_lr = 0.0
+    for param_group in optimizer.param_groups:
+        current_lr = param_group['lr']
     writer.add_scalars('data/lr', {'lr': current_lr, '0': 0.0}, epoch + 1)
 
 
