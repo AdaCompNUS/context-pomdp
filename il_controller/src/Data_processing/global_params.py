@@ -68,7 +68,7 @@ config.value_normalizer = 10.0
 config.label_linear = 0
 # config.label_angular = 1
 config.label_cmdvel = 1
-config.steer_normalized_limit = 0.4
+config.steer_normalized_limit = 0.6
 ''' Data label settings '''
 
 
