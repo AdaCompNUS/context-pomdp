@@ -203,11 +203,17 @@ def was_near_goal(combined_dict):
 
 
 def trim_episode_end(combined_dict):
-    all_keys = list(combined_dict.keys())
+    try:
+        all_keys = list(combined_dict.keys())
 
-    trim_start = len(all_keys) - 6  # trim two seconds of data
-    for i in range(trim_start, len(all_keys)):
-        del combined_dict[all_keys[i]]
+        trim_start = max(len(all_keys) - 6, 0)  # trim two seconds of data
+        for i in range(trim_start, len(all_keys)):
+            if all_keys[i] in combined_dict.keys():
+                del combined_dict[all_keys[i]]
+    except Exception as e:
+        print_long('combined_dict.keys()={}'.format(list(combined_dict.keys())))
+        error_handler(e)
+
 
     return combined_dict
 
