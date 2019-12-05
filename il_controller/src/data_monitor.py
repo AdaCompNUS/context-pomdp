@@ -3,27 +3,18 @@ import sys
 sys.path.append('./Data_processing/')
 
 from Data_processing import global_params
+from Data_processing.global_params import print_long
+
 config = global_params.config
 
 import os
 
 if config.pycharm_mode:
     import pyros_setup
+
     pyros_setup.configurable_import().configure('mysetup.cfg').activate()
 
-import os, shutil
-
-import time
-import argparse
-import torch
-import torch.nn as nn
-from torch.autograd import Variable
-import torch.optim as optim
-import torchvision.transforms as transforms
-from torch.distributions import Categorical
-import ipdb as pdb
-from dataset import *
-from model_drive_net import *
+from policy_value_network import *
 from tensorboardX import SummaryWriter
 import matplotlib
 
@@ -31,16 +22,13 @@ matplotlib.use('Agg')
 from Data_processing import bag_to_hdf5
 from visualization import *
 
-import threading
-
-valid_threshold = 1000
+hist_num_threshold = config.num_hist_channels
 
 import rospy
 from nav_msgs.msg import Path, Odometry, OccupancyGrid
-from msg_builder.msg import peds_believes, peds_car_info, imitation_data, Lanes
+from msg_builder.msg import peds_car_info, imitation_data, Lanes
 from std_msgs.msg import Float32
 import copy
-
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 writer = SummaryWriter()
@@ -49,30 +37,30 @@ writer = SummaryWriter()
 class DataMonitor(data.Dataset):
 
     def __init__(self):
-        self.lock = threading.Lock()
 
-        self.valid_count = 0
-        self.has_map = False
-        self.has_hist = False
-        self.has_plan = False
-        self.has_lane = False
-        self.has_data = False
+        self.cur_hist_count = 0
+
+        self.map_ready = False
+        self.local_lanes_ready = False
+        self.il_data_ready = False
+        self.steering_ready = False
+
         self.coord_frame = None
         self.resolution = None
         self.dim = None
         self.new_dim = None
         self.map_intensity = None
         self.map_intensity_scale = None
-        self.is_triggered = False
+
         self.data_is_alive = False
         # wait for data for 10 check_alive calls, if no data, exit program
         self.data_patience_clock = 0
-        self.data_patience = 10
+        self.data_patience = 50
         imsize = config.imsize
         # container to be updated directly by subscribers
         self.combined_dict = {
             'map': {},
-            'hist': [None for x in range(config.num_hist_channels)],
+            'agents_hist': [None for x in range(config.num_hist_channels)],
             'plan': {}
         }
         # intermediate container for images
@@ -86,12 +74,9 @@ class DataMonitor(data.Dataset):
             },
         }
 
-        self.hist_ts = None
-        self.belief_ts = None
-        self.path_ts = None
         # final array for input images
         self.cur_data = {
-            'true_steer': None,
+            'true_steer_normalized': None,
             'true_acc': None,
             'true_vel': None,
             'true_lane': None,
@@ -102,10 +87,8 @@ class DataMonitor(data.Dataset):
         # register callback functions
         rospy.Subscriber('/map', OccupancyGrid, self.receive_map_callback)
         rospy.Subscriber('/il_data', imitation_data, self.receive_il_data_callback, queue_size=1)
-        rospy.Subscriber('/local_lanes', Lanes, self.receive_lane_data_callback, queue_size=1)
+        rospy.Subscriber('/local_lanes', Lanes, self.receive_lane_callback, queue_size=1)
         rospy.Subscriber('/purepursuit_cmd_steer', Float32, self.receive_cmd_steer_callback, queue_size=1)
-        self.steering_topic_alive = True
-        self.steering_is_triggered = False
 
         self.raw_map_array = None
         self.ped_map_array = []
@@ -121,112 +104,64 @@ class DataMonitor(data.Dataset):
         self.true_vel = None
         self.true_lane = None
 
-        self.update_steering = True
-        self.update_data = True
-        self.data_idx = 0
-
     # parse data from ros topics
     def receive_map_callback(self, data):
-        self.has_map = False
+        self.map_ready = False
         return
 
-        self.lock.acquire()
-        print("Receive map")
-        if self.has_map:
-            self.valid_count -= 1  # disable inference when updating data
+        print_long("Receive map")
         try:
             self.combined_dict['map'] = data
-
-            status = self.convert_to_nn_input("map")
-            if status:
-                self.valid_count += 1
-                if not self.has_map:
-                    self.has_map = True
-            else:
-                self.has_map = False
+            self.map_ready = self.convert_to_nn_input("map")
         except Exception as e:
             print("Exception", e)
-            self.has_map = False
+            self.map_ready = False
         finally:
-            if self.has_map:
-                pass  # print("Map updated")
-            else:
-                print("Map skipped")
-            if self.lock.locked():
-                self.lock.release()  # release self.lock, no matter what
-
-    def receive_il_data_callback(self, data):
-        if not self.update_data:
-            self.data_is_alive = True
-            self.data_patience_clock = 0
-            return
-        self.lock.acquire()
-        start_time = time.time()
-        self.update_data = False
-        print("Receive data")
-        if self.has_data:
-            self.valid_count -= 1  # disable inference when updating data
-        try:
-
-            self.parse_data_from_msg(data)
-
-            if self.convert_to_nn_input("data"):
-                self.valid_count += 1
-                if not self.has_data:
-                    self.has_data = True
-            else:
-                self.has_data = False
-        except Exception as e:
-            print("Exception", e)
-            self.has_data = False
-        finally:
-            if self.has_data:
-                elapsed_time = time.time() - start_time
-                print("Data processing time: " + str(elapsed_time) + " s")
-                # pass #print("Hist updated")
-            else:
-                print("Data package skipped")
-            if self.lock.locked():
-                self.lock.release()  # release self.lock, no matter what
-            self.update_data = True
-
-    def receive_lane_callback(self, data):
-        self.lock.acquire()
-        print("Receive lane")
-        if self.has_lane:
-            self.valid_count -= 1  # disable inference when updating data
-        try:
-            self.combined_dict['lanes'] = data
-
-            status = self.convert_to_nn_input("lanes")
-            if status:
-                self.valid_count += 1
-                if not self.has_lane:
-                    self.has_lane = True
-            else:
-                self.has_lane = False
-        except Exception as e:
-            print("Exception", e)
-            self.has_lane = False
-        finally:
-            if self.has_lane:
+            if self.map_ready:
                 pass
             else:
-                print("Lane skipped")
-            if self.lock.locked():
-                self.lock.release()  # release self.lock, no matter what
+                print_long("Map skipped")
+
+    def receive_il_data_callback(self, data):
+        self.data_is_alive = True
+        self.data_patience_clock = 0
+
+        start_time = time.time()
+        print_long("Receive data")
+        try:
+            self.parse_il_data_from_msg(data)
+            self.il_data_ready, self.cur_hist_count = self.convert_to_nn_input("data")
+        except Exception as e:
+            print("Exception", e)
+            self.il_data_ready = False
+        finally:
+            if self.il_data_ready:
+                elapsed_time = time.time() - start_time
+                print_long("Data processing time: " + str(elapsed_time) + " s")
+            else:
+                print_long("Data package skipped")
+
+    def receive_lane_callback(self, data):
+        print_long("Receive lane")
+        try:
+            self.combined_dict['lanes'] = data.lane_segments
+            self.local_lanes_ready, _ = self.convert_to_nn_input("lanes")
+        except Exception as e:
+            print("Exception", e)
+            self.local_lanes_ready = False
+        finally:
+            if self.local_lanes_ready:
+                pass
+            else:
+                print_long("Lane skipped")
 
     def receive_cmd_steer_callback(self, data):
-        if self.update_steering:
-            # print("steering data call_back~~~~~~~~~~~~~~~~~~~~:", np.degrees(float(data.data)))
-            self.true_steering_norm = float(data.data)
-            self.cur_data['true_steer'] = self.true_steering_norm
-            self.steering_topic_alive = True
-            self.steering_is_triggered = True
-        else:
-            print("steering data call_back~~~~~~~~~~~ data skipped ~~~~~~~~~:")
+        # print_long("steering data call_back~~~~~~~~~~~~~~~~~~~~:", np.degrees(float(data.data)))
+        self.true_steering_norm = float(data.data)
+        self.cur_data['true_steer_normalized'] = self.true_steering_norm
+        self.steering_ready = True
 
-    def parse_data_from_msg(self, data):
+    def parse_il_data_from_msg(self, data):
         start_time = time.time()
 
         self.parse_history(data)
@@ -234,7 +169,7 @@ class DataMonitor(data.Dataset):
         self.parse_actions(data)
 
         elapsed_time = time.time() - start_time
-        print("Topic parsing time: " + str(elapsed_time) + " s")
+        print_long("Topic parsing time: " + str(elapsed_time) + " s")
 
     def parse_actions(self, data):
         print('Parsing angle from il_data:', data.action_reward.steering_normalized)
@@ -242,7 +177,7 @@ class DataMonitor(data.Dataset):
         self.true_acc = data.action_reward.acceleration_id
         self.true_vel = data.action_reward.target_speed
         self.true_lane = data.action_reward.lane_change
-        # print("*******************************`Get action reward from data:", data.action_reward)
+        # print_long("*******************************`Get action reward from data:", data.action_reward)
 
     def parse_plan(self, data):
         self.combined_dict['plan'] = data.plan
@@ -254,19 +189,19 @@ class DataMonitor(data.Dataset):
         try:
             for i in reversed(range(1, config.num_hist_channels)):
                 self.hist_agents[i] = peds_car_info()
-                if self.combined_dict['hist'][i-1] is not None:
+                if self.combined_dict['agents_hist'][i - 1] is not None:
                     self.hist_agents[i].car = self.hist_agents[i - 1].car
                     self.hist_agents[i].peds = self.hist_agents[i - 1].peds
                 else:
                     self.hist_agents[i].car = None
                     self.hist_agents[i].peds = None
 
-                self.combined_dict['hist'][i] = copy.deepcopy(self.hist_agents[i])
+                self.combined_dict['agents_hist'][i] = copy.deepcopy(self.hist_agents[i])
 
             self.hist_agents[0] = peds_car_info()
             self.hist_agents[0].car = data.cur_car
             self.hist_agents[0].peds = data.cur_peds.peds
-            self.combined_dict['hist'][0] = copy.deepcopy(self.hist_agents[0])
+            self.combined_dict['agents_hist'][0] = copy.deepcopy(self.hist_agents[0])
 
         except Exception as e:
             error_handler(e)
@@ -279,21 +214,23 @@ class DataMonitor(data.Dataset):
             # get goal coordinates
             plan = self.combined_dict['plan']
 
-            if config.car_goal[0] == -1 and config.car_goal[1] == -1: # no goal input from cmd_args
+            if config.car_goal[0] == -1 and config.car_goal[1] == -1:  # no goal input from cmd_args
                 goal_coord = bag_to_hdf5.get_goal(plan)
             else:
                 goal_coord = config.car_goal
 
             # send terminal signal when car is within 1.2 meters of goal
             if bag_to_hdf5.euclid_dist(goal_coord, (
-                    self.combined_dict['hist'][0].car.car_pos.x, self.combined_dict['hist'][0].car.car_pos.y)) < 1.3:
+                    self.combined_dict['agents_hist'][0].car.car_pos.x,
+                    self.combined_dict['agents_hist'][0].car.car_pos.y)) < 1.3:
                 terminal = True
-                print("================= Goal reached ===================")
+                print_long("================= Goal reached ===================")
                 return terminal
             else:
-                print("================= Car: %f %f, goal: %f %f ===================" %
-                      (self.combined_dict['hist'][0].car.car_pos.x, self.combined_dict['hist'][0].car.car_pos.y,
-                       goal_coord[0], goal_coord[1]))
+                print_long("================= Car: %f %f, goal: %f %f ===================" %
+                           (self.combined_dict['agents_hist'][0].car.car_pos.x,
+                            self.combined_dict['agents_hist'][0].car.car_pos.y,
+                            goal_coord[0], goal_coord[1]))
         except Exception as e:
             error_handler(e)
             pdb.set_trace()
@@ -301,89 +238,85 @@ class DataMonitor(data.Dataset):
         return terminal
 
     def data_valid(self):
-        global valid_threshold
-        if self.valid_count < valid_threshold:  # valid only when all 4 types of info exists: map, believes, hist, and plan
-            print("Data not ready yet: valid_count: " + str(self.valid_count))
+        global hist_num_threshold
+        if self.cur_hist_count < hist_num_threshold:  # valid only when all 4 types of info exists: map, believes, hist, and plan
+            print_long("Data not ready yet: cur_hist_count: " + str(self.cur_hist_count))
             return False
         else:
             return True
 
     def convert_to_nn_input(self, flag=None, down_sample_ratio=0.03125):
-        print("Converting " + flag + " info...")
+        print_long("Converting " + flag + " info...")
+        cur_hist_count = 0
         try:
             if flag == "map":
-                if self.has_map:
+                if self.map_ready:
                     self.dim, self.map_intensity, self.map_intensity_scale, self.new_dim, self.coord_frame, \
-                        self.raw_map_array, self.resolution = \
+                    self.raw_map_array, self.resolution = \
                         bag_to_hdf5.parse_map_data_from_dict(down_sample_ratio, self.combined_dict['map'])
-                else:
+
+            elif flag == "data":
+                # reset patience clock
+                if not self.map_ready:
                     self.raw_map_array = None
                     self.coord_frame = None
                     self.dim, self.map_intensity, self.map_intensity_scale, self.new_dim, self.resolution = \
                         bag_to_hdf5.create_null_map_data(down_sample_ratio)
-            elif flag == "data":
-                # reset patience clock
-                self.data_is_alive = True
-                self.is_triggered = True
-                self.data_patience_clock = 0
+                    map_array, self.ped_map_array = bag_to_hdf5.create_null_maps()
+                else:
+                    map_array, self.ped_map_array = \
+                        bag_to_hdf5.create_maps_inner(self.combined_dict['map'], self.raw_map_array)
 
-                map_array, self.ped_map_array = \
-                    bag_to_hdf5.create_maps_inner(self.combined_dict['map'], self.raw_map_array)
+                hist_cars, hist_peds, cur_hist_count = \
+                    bag_to_hdf5.get_bounded_history(self.combined_dict, 'agents_hist')
 
-                hist_cars, hist_peds = \
-                    bag_to_hdf5.get_bounded_history(self.combined_dict, 'hist')
+                # if not self.check_history_completeness(hist_cars):
+                #     return False
+                if cur_hist_count == 0:
+                    print_long("no history agents yet...")
+                    return False, cur_hist_count
 
-                self.data_idx += 1
-
-                self.check_history_completeness(hist_cars)
-
-                # start_time = time.time()
                 self.coord_frame = None
-                agents_are_valid = bag_to_hdf5.process_exo_agents(hist_cars=hist_cars, hist_exo_agents=hist_peds,
-                                                                  hist_env_maps=self.ped_map_array, dim=self.dim,
-                                                                  resolution=self.resolution,
-                                                                  map_intensity=self.map_intensity,
-                                                                  map_intensity_scale=self.map_intensity_scale,
-                                                                  coord_frame=self.coord_frame)
-
-                # elapsed_time = time.time() - start_time
-                # print("Peds processing time: " + str(elapsed_time) + " s")
+                agents_are_valid, elapsed_time = \
+                    bag_to_hdf5.process_exo_agents(hist_cars=hist_cars, hist_exo_agents=hist_peds,
+                                                   hist_env_maps=self.ped_map_array, dim=self.dim,
+                                                   resolution=self.resolution, coord_frame=self.coord_frame)
+                print_long("Exo-agents processing time: " + str(elapsed_time) + " s")
 
                 if not agents_are_valid:
-                    return False  # report invalid peds
+                    return False, cur_hist_count  # report invalid peds
 
                 self.coord_frame = bag_to_hdf5.select_null_map_coord_frame(hist_cars, 0)
 
-                # start_time = time.time()
-                bag_to_hdf5.process_maps_inner(down_sample_ratio, map_array, self.output_dict,
-                                               self.ped_map_array)
-                # elapsed_time = time.time() - start_time
-                # print("Map processing time: " + str(elapsed_time) + " s")
+                elapsed_time = bag_to_hdf5.process_maps_inner(down_sample_ratio, map_array, self.output_dict,
+                                                              self.ped_map_array)
+                print_long("Agent map processing time: " + str(elapsed_time) + " s")
 
-                # start_time = time.time()
-                bag_to_hdf5.process_car_inner(self.output_dict, self.combined_dict, hist_cars,
-                                              self.dim, down_sample_ratio, self.coord_frame, self.resolution)
-                # elapsed_time = time.time() - start_time
-                # print("Car processing time: " + str(elapsed_time) + " s")
+                elapsed_time = bag_to_hdf5.process_car_inner(self.output_dict, self.combined_dict, hist_cars,
+                                                             self.dim, down_sample_ratio, self.coord_frame,
+                                                             self.resolution)
+                print_long("Ego car processing time: " + str(elapsed_time) + " s")
+
             elif flag == 'lanes':
-                hist_cars, hist_peds = \
-                    bag_to_hdf5.get_bounded_history(self.combined_dict, 'hist')
+                hist_cars, hist_peds, cur_hist_count = \
+                    bag_to_hdf5.get_bounded_history(self.combined_dict, 'agents_hist')
+                if cur_hist_count == 0:
+                    print_long("no history agents yet...")
+                    return False, cur_hist_count
                 self.coord_frame = bag_to_hdf5.select_null_map_coord_frame(hist_cars, 0)
-                bag_to_hdf5.process_lanes_inner(self.output_dict, self.combined_dict,
-                                                self.dim, down_sample_ratio, self.coord_frame, self.resolution)
+                elapsed_time = bag_to_hdf5.process_lanes_inner(self.output_dict, self.combined_dict, None, None,
+                                                               down_sample_ratio, self.coord_frame, self.resolution)
+                print_long("Lane processing time: " + str(elapsed_time) + " s")
 
-            # put all info into images
-            # start_time = time.time()
-            self.data_to_images(flag)
+            elapsed_time = self.data_to_images(flag)
+            print_long("Input image conversion time: " + str(elapsed_time) + " s")
             self.record_labels()
-            # elapsed_time = time.time() - start_time
-            # print("Image conversion time: " + str(elapsed_time) + " s")
 
-            print(flag + " update done.")
-            return True
+            print_long(flag + " update done.")
+            return True, cur_hist_count
         except Exception as e:
             error_handler(e)
-            return False
+            return False, cur_hist_count
 
     def check_history_completeness(self, hist_cars):
         history_is_complete = True
@@ -394,63 +327,62 @@ class DataMonitor(data.Dataset):
         return history_is_complete
 
     def record_labels(self):
-        self.cur_data['true_steer'] = self.true_steering_norm
+        self.cur_data['true_steer_normalized'] = self.true_steering_norm
         self.cur_data['true_acc'] = self.true_acc
         self.cur_data['true_vel'] = self.true_vel
         self.cur_data['true_lane'] = self.true_lane
 
     def data_to_images(self, flag):
+        start = time.time()
         try:
             if self.output_dict['maps'] is not None:
                 for c in range(0, config.num_hist_channels):
-                    self.cur_data['nn_input'][0, 1, config.channel_map[c]] = self.output_dict['maps'][c]
+                    self.cur_data['nn_input'][0, 0, config.channel_map[c]] = self.output_dict['maps'][c]
             else:
                 for c in range(0, config.num_hist_channels):
-                    self.cur_data['nn_input'][0, 1, config.channel_map[c], ...] = 0
+                    self.cur_data['nn_input'][0, 0, config.channel_map[c], ...] = 0
 
             if flag == "data":
-                if self.output_dict['car']['goal'] is None or self.output_dict['lane'] is None:
-                    return
-
-                self.cur_data['nn_input'][0, i, config.channel_goal, ...] = 0
-                self.cur_data['nn_input'][0, i, config.channel_lane, ...] = 0
-
-                for point in self.output_dict['lane']:
-                    self.cur_data['nn_input'][0, i, config.channel_lane, int(
-                        point[0]), int(point[1])] = point[2]
+                if self.output_dict['lane'] is not None:
+                    self.cur_data['nn_input'][0, 0, config.channel_lane, ...] = 0
+                    for point in self.output_dict['lane']:
+                        self.cur_data['nn_input'][0, 0, config.channel_lane, int(
+                            point[0]), int(point[1])] = point[2]
 
                 agent_flag = 'car'
-                for point in self.output_dict[agent_flag]['goal']:
-                    self.cur_data['nn_input'][0, i, config.channel_goal, int(
-                        point[0]), int(point[1])] = point[2]
+                if config.use_goal_channel and self.output_dict[agent_flag]['goal'] is not None:
+                    self.cur_data['nn_input'][0, 0, config.channel_goal, ...] = 0
+                    for point in self.output_dict[agent_flag]['goal']:
+                        self.cur_data['nn_input'][0, 0, config.channel_goal, int(
+                            point[0]), int(point[1])] = point[2]
 
                 if config.use_hist_channels:
                     for c in range(0, config.num_hist_channels):
-                        self.cur_data['nn_input'][0, i, config.channel_hist[c], ...] = 0
                         if self.output_dict[agent_flag]['hist'][c] is not None:
+                            self.cur_data['nn_input'][0, 0, config.channel_hist[c], ...] = 0
                             for point in self.output_dict[agent_flag]['hist'][c]:
-                                self.cur_data['nn_input'][0, i, config.channel_hist[c], int(
+                                self.cur_data['nn_input'][0, 0, config.channel_hist[c], int(
                                     point[0]), int(point[1])] = point[2]
-                        else:
-                            pass
 
         except Exception as e:
             error_handler(e)
-            return
+        finally:
+            end = time.time()
+            return end - start
 
     def check_alive(self):
-        if self.is_triggered:
-
+        if self.data_is_alive:
             self.data_patience_clock += 1
-            print("============================ data_lock %d, is_alive %d ======================" %
-                  (self.data_patience_clock, self.data_is_alive))
+            print_long("============================ data_lock %d, is_alive %d ======================" %
+                       (self.data_patience_clock, self.data_is_alive))
 
             # data supply is missing
             if self.data_patience_clock >= self.data_patience:
                 self.data_is_alive = False
+                return False
 
-            return self.data_is_alive
+            return True
         else:
             # still waiting for first data
-            print('Waiting for triggering')
+            print_long('Waiting for triggering')
             return True

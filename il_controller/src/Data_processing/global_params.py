@@ -1,12 +1,26 @@
 from argparse import Namespace
 import torch
-import sys
+import sys, os, time
+from inspect import getframeinfo
+
+init_time = time.time()
+import traceback
 
 
 def error_handler(e):
     print(
         'Error on file {} line {}'.format(sys.exc_info()[-1].tb_frame.f_code.co_filename, sys.exc_info()[-1].tb_lineno),
         type(e).__name__, e)
+    print('Call-stack:')
+    traceback.print_stack()
+    exit(-1)
+    # sys.exit(str(e))
+
+
+def print_long(msg):
+    frameinfo = getframeinfo(sys._getframe(1))
+    print('[{}:{}:{}] {}. ts {:.1f}'.format(os.path.basename(frameinfo.filename), frameinfo.function, frameinfo.lineno,
+                                        msg, time.time()-init_time))
 
 
 config = Namespace()

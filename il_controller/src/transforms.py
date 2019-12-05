@@ -3,7 +3,7 @@ import ipdb as pdb
 import numpy as np
 
 from Data_processing import global_params
-from Data_processing.global_params import error_handler
+from Data_processing.global_params import error_handler, print_long
 
 config = global_params.config
 import random
@@ -75,10 +75,6 @@ class PopulateImages(object):
         acc_id_labels, ang_norm_labels, v_labels, vel_labels, lane_labels = self.get_labels(sample)
 
         if config.visualize_raw_data:
-            # visualization.visualized_exo_agent_data(output_arr[i, config.channel_map[0]:config.channel_map[3]+1],
-            #                                         root='Data_processing/')
-            # visualization.visualize_image(output_arr[i, config.channel_lane], root='Data_processing/',
-            #                               subfolder='h5_lane_image')
             from visualization import visualize_overlay_image
             visualize_overlay_image(output_arr[0, config.channel_lane],
                                                   output_arr[0, config.channel_map[0]],
@@ -126,15 +122,6 @@ class PopulateImages(object):
                     for point in src_entry['hist'][ts]:
                         output_arr[i, config.channel_hist[ts], int(
                             point[0]), int(point[1])] = point[2]
-            else:
-                for ts in range(config.num_hist_channels):
-                    # print("[transform] num points in src_entry['car_state'][ts]: {}".format(
-                    # len(src_entry['car_state'][ts])))
-                    for point in src_entry['car_state'][ts]:
-                        # print("point {} {} intensity {}".format(point[0], point[1], point[2]))
-                        output_arr[i, config.channel_map[ts], int(
-                            point[0]), int(point[1])] = point[2]
-                    # show_array(output_arr[i, config.channel_map[ts]])
 
         except Exception as e:
             print(e)
@@ -426,7 +413,7 @@ class MdnVelDecoderNormalized2Raw(object):
         return vel
 
 
-class SteerDecoderOnehot2Degree(object):
+class SteerDecoderOnehot2Normalized(object):
     """
     Convert one-hot vector encoding to steering angle from degree value
     """
@@ -444,7 +431,7 @@ class SteerDecoderOnehot2Degree(object):
         steer = onehot_to_float(bin_idx=bin_idx,
                                 v_min=-config.steer_normalized_limit, v_max=config.steer_normalized_limit,
                                 num_bins=self.num_steering_bins)
-        steer = ang_transform_normalized_to_degree(steer)
+        # steer = ang_transform_normalized_to_degree(steer)
 
         return steer
 

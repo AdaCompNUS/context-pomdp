@@ -172,7 +172,7 @@ def parse_cmd_args():
                         help='Use drive net for control: 0 no / 1 imitation / 2 lets_drive')
     parser.add_argument('--model',
                         type=str,
-                        default='trained_models/hybrid_unicorn.pth',
+                        default='trained_models/cate_action.pth',
                         help='Drive net model name')
     parser.add_argument('--val_model',
                         type=str,
@@ -1233,8 +1233,7 @@ def launch_drive_net(round, run, case):
         print("=========================1==========================")
 
         global shell_cmd
-        shell_cmd = 'python3 test.py --batch_size 128 --lr 0.0001 --no_vin 0 --l_h 100 --vinout 28 --w 64 --fit all ' \
-                    '--ssm 0.03 --goalx ' + str(goal_x) + ' --goaly ' + str(goal_y) + \
+        shell_cmd = config.ros_pref + 'python3 test.py --batch_size 128 --lr 0.0001 ' + \
                     ' --modelfile ' + config.model
 
         # action_hybrid_unicorn_newdata
@@ -1246,7 +1245,7 @@ def launch_drive_net(round, run, case):
             print(shell_cmd)
             print('drive_net_log: ', get_debug_file_name('drive_net_log', round, run, case))
 
-        drive_net_proc = subprocess.Popen(shell_cmd.split(),
+        drive_net_proc = subprocess.Popen(shell_cmd, shell=True,
                                           cwd=os.path.join(home, nn_folder)
                                           , stderr=drive_net_out, stdout=drive_net_out)
         drive_net_proc_link = drive_net_proc

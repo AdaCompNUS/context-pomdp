@@ -14,7 +14,7 @@ import cv2
 sys.path.append(ros_path)
 
 from global_params import config
-
+from global_params import print_long
 if config.pycharm_mode:
     import pyros_setup
 
@@ -41,14 +41,13 @@ import glob
 from skimage.draw import polygon, line
 
 from transforms import *
-import visualization
 
-from geometry_msgs.msg import Twist
 from msg_builder.msg import peds_car_info, ActionReward
 
 import time
 import copy
 
+print_time = False
 
 # default_map_dim = 1024
 
@@ -295,7 +294,7 @@ def euclid_dist(x1, x2):
     return np.sqrt((x1[0] - x2[0]) ** 2 + (x1[1] - x2[1]) ** 2)
 
 
-def point_to_indices(x, y, coord_frame, resolution, dim):
+def point_to_pixel(x, y, coord_frame, resolution, dim):
     dir = [x - coord_frame.center[0], y - coord_frame.center[1]]
     x_coord = dir[0] * coord_frame.x_axis[0] + dir[1] * coord_frame.x_axis[1]
     y_coord = dir[0] * coord_frame.y_axis[0] + dir[1] * coord_frame.y_axis[1]
@@ -311,7 +310,7 @@ def point_to_indices(x, y, coord_frame, resolution, dim):
     return indices
 
 
-def point_to_indices_no_checking(x, y, coord_frame, resolution):
+def point_to_pixels_no_checking(x, y, coord_frame, resolution):
     dir = [x - coord_frame.center[0], y - coord_frame.center[1]]
     x_coord = dir[0] * coord_frame.x_axis[0] + dir[1] * coord_frame.x_axis[1]
     y_coord = dir[0] * coord_frame.y_axis[0] + dir[1] * coord_frame.y_axis[1]
@@ -340,6 +339,9 @@ def create_h5_data(data_dict,
     dim, map_intensity, map_intensity_scale, map_ts, new_dim, coord_frame, raw_map_array, resolution = \
         parse_map_data(down_sample_ratio, map_dict)
 
+    map_array, hist_env_maps, hist_car_maps, lane_map, obs_map, goal_map = \
+        create_maps(map_dict, map_ts, raw_map_array)
+
     # get data for other topics
     output_dict = OrderedDict()
     timestamps = list(data_dict.keys())
@@ -364,32 +366,31 @@ def create_h5_data(data_dict,
 
         create_dict_entry(idx, output_dict)
 
-        map_array, hist_env_maps = \
-            create_maps(map_dict, map_ts, raw_map_array)
+        clear_maps(hist_env_maps, hist_car_maps, lane_map, obs_map, goal_map)
 
         hist_cars, hist_exo_agents = get_history_agents(data_dict, ts)
 
         if map_array is None:
             coord_frame = None
 
-        agents_are_valid = process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution, map_intensity,
-                                              map_intensity_scale, coord_frame)
+        agents_are_valid, _ = process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution,
+                                                 coord_frame=coord_frame)
 
         if not agents_are_valid:
             return dict(output_dict), False  # report invalid peds
 
-        if map_array is None:
-            coord_frame = select_null_map_coord_frame(hist_cars, 0)
-
         process_maps(down_sample_ratio, idx, map_array, output_dict, hist_env_maps)
 
-        process_car(idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio, resolution, coord_frame)
+        process_car(idx, ts, output_dict, data_dict, hist_cars, hist_car_maps, goal_map,
+                    dim, down_sample_ratio, resolution, coord_frame)
 
         process_actions(data_dict, idx, output_dict, ts)
 
-        process_obstacles(idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, coord_frame)
+        process_obstacles(idx, ts, output_dict, data_dict, hist_cars[0], obs_map, down_sample_ratio, resolution,
+                          coord_frame)
 
-        process_lanes(idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, coord_frame)
+        process_lanes(idx, ts, output_dict, data_dict, hist_cars[0], lane_map,
+                      down_sample_ratio, resolution, coord_frame)
 
         process_parametric_agents(idx, output_dict, hist_exo_agents, hist_cars)
 
@@ -422,82 +423,138 @@ def shuffle_and_sample_indices(timestamps):
     return sample_idx, sample_length, sample_shuffled_idx
 
 
-def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution, map_intensity, map_intensity_scale,
-                       coord_frame=None):
+def draw_polygon_edges(points, image, intensity, intensity_scale, is_contour):
     try:
-        nearest_agent_ids = get_nearest_agent_ids(hist_exo_agents[0], hist_cars[0])  # return ped id
-        valid_agent = 0
-
-        for agent_no in range(len(nearest_agent_ids)):
-            #
-            agent_id = nearest_agent_ids[agent_no]
-
-            hist_agent = get_exo_agent_history(agent_id, hist_exo_agents)
-
-            coord_frames = []
-            for i in range(config.num_hist_channels):
-                if coord_frame is None:
-                    coord_frames.append(select_null_map_coord_frame(hist_cars, i))
-                else:
-                    coord_frames.append(coord_frame)
-
-            # calculate position in map image
-            hist_image_space_agent, is_out_map = get_image_space_agent_history(hist_agent, coord_frames, resolution,
-                                                                               dim)
-
-            # discard agents outside the map
-            if is_out_map:
-                # print("Agent {} outside of map, ".format(agent_id))
+        for i, p in enumerate(points):
+            r0 = int(round(p[0]))
+            c0 = int(round(p[1]))
+            if i+1 < len(points):
+                r1 = int(round(points[i+1][0]))
+                c1 = int(round(points[i+1][1]))
+            elif is_contour:
+                r1 = int(round(points[0][0]))
+                c1 = int(round(points[0][1]))
+            else:  # not a contour
                 continue
-                #
-            else:
-                # Project the rest of agents in environment maps
-                fill_agent_map(hist_image_space_agent, hist_env_maps, map_intensity, map_intensity_scale, dim)
-                valid_agent += 1
 
-        # print("{} peds used in frame env_map".format(valid_agent))
-        if valid_agent == 0:
-            print("Warning!!!!!!: no exo-agent appeared in the local map")
+            cv2.line(image, (r0, c0), (r1, c1), color=intensity * intensity_scale)
+    except Exception as e:
+        error_handler(e)
+        pdb.set_trace()
+
+
+def draw_car(car, image, coord_frame, down_sample_ratio, resolution, pyramid_image=False, pyramid_points=False):
+    start_time = time.time()
+
+    if car is not None:
+        image_space_car = get_image_space_car(car, coord_frame, resolution)
+        draw_polygon_edges(image_space_car, image, intensity=1.0, intensity_scale=1.0, is_contour=True)
+
+    if pyramid_image:
+        return image_to_pyramid_image(image, down_sample_ratio), time.time() - start_time
+    if pyramid_points:
+        return image_to_pyramid_pixels(image, down_sample_ratio), time.time() - start_time
+
+
+def draw_car_state(car, image, coord_frame, down_sample_ratio, resolution, pyramid_image=False, pyramid_points=False):
+    try:
+        image_space_car_state = get_image_space_car_state(car, coord_frame, resolution)
+        draw_polygon_edges(image_space_car_state, image, intensity=2.0, intensity_scale=1.0, is_contour=False)
+
+        if pyramid_image:
+            return image_to_pyramid_image(image, down_sample_ratio)
+        if pyramid_points:
+            return image_to_pyramid_pixels(image, down_sample_ratio)
 
     except Exception as e:
         error_handler(e)
         pdb.set_trace()
 
-    return True
+
+def draw_agent(agent, car, image, coord_frame, resolution, dim, down_sample_ratio, pyramid_image=False,
+               pyramid_points=False):
+    start_time = time.time()
+    if agent is not None and car is not None:
+        image_space_agent, is_out_map = \
+            get_image_space_agent(agent, car, coord_frame, resolution, dim)
+        if not is_out_map:
+            draw_polygon_edges(image_space_agent, image, intensity=0.5, intensity_scale=1.0, is_contour=True)
+
+    if pyramid_image:
+        return image_to_pyramid_image(image, down_sample_ratio), time.time() - start_time
+    if pyramid_points:
+        return image_to_pyramid_pixels(image, down_sample_ratio), time.time() - start_time
 
 
-def process_ped(data_idx, ped_idx, output_dict, hist_positions,
-                dim, down_sample_ratio):
-    # k-nearest neighbours
-    # parse ped goal, and fill history entries
+def draw_path(path, image, coord_frame, resolution, dim, down_sample_ratio, pyramid_image=False, pyramid_points=False):
+    start_time = time.time()
+    path_pixels = []
+    for pos in path.poses:
+        pix_pos = point_to_pixel(pos.pose.position.x, pos.pose.position.y, coord_frame, resolution, dim)
+        if not np.any(pix_pos == -1):  # skip path points outside the map
+            path_pixels.append(pix_pos)
 
-    if data_idx is None:
-        process_ped_inner(ped_idx, output_dict, hist_positions,
-                          dim, down_sample_ratio)
-    else:
-        process_ped_inner(ped_idx, output_dict[data_idx], hist_positions,
-                          dim, down_sample_ratio)
+    image.fill(0.0)
+    draw_polygon_edges(path_pixels, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
 
-
-def process_ped_inner(ped_idx, output_dict_entry, hist_positions,
-                      dim, down_sample_ratio):
-    # k-nearest neighbours
-    # parse ped goal, and fill history entries
-    if config.num_hist_channels > 2:
-        output_dict_entry['ped'][ped_idx] = construct_ped_data(dim, down_sample_ratio, hist_positions)
-    else:
-        output_dict_entry['ped'][ped_idx] = construct_ped_data(dim, down_sample_ratio, hist_positions)
+    if pyramid_image:
+        return image_to_pyramid_image(image, down_sample_ratio), time.time() - start_time
+    if pyramid_points:
+        return image_to_pyramid_pixels(image, down_sample_ratio), time.time() - start_time
 
 
-def process_blank_ped(data_idx, ped_idx, output_dict):
-    process_blank_ped_inner(output_dict[data_idx], ped_idx)
+def draw_lanes(lanes, image, car, coord_frame, down_sample_ratio, resolution, pyramid_image=False,
+               pyramid_points=False):
+    start_time = time.time()
+
+    image.fill(0.0)
+    for lane_seg in lanes:
+        image_space_lane = get_image_space_lane(lane_seg, car, coord_frame, resolution)
+        draw_polygon_edges(image_space_lane, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
+
+    if pyramid_image:
+        return image_to_pyramid_image(image, down_sample_ratio), time.time() - start_time
+    if pyramid_points:
+        return image_to_pyramid_pixels(image, down_sample_ratio), time.time() - start_time
 
 
-def process_blank_ped_inner(output_dict_entry, valid_ped):
-    if config.num_hist_channels > 2:
-        output_dict_entry['ped'][valid_ped] = construct_blank_ped_data()
-    else:
-        output_dict_entry['ped'][valid_ped] = construct_blank_ped_data()
+def draw_obstacles(obstacles, image, car, coord_frame, down_sample_ratio, resolution, pyramid_image=False,
+                   pyramid_points=False):
+    start_time = time.time()
+
+    image.fill(0.0)
+    for obs in obstacles:
+        image_space_obstacle = get_image_space_obstacle(obs, car, coord_frame, resolution)
+        draw_polygon_edges(image_space_obstacle, image, intensity=1.0, intensity_scale=1.0, is_contour=True)
+
+    if pyramid_image:
+        return image_to_pyramid_image(image, down_sample_ratio), time.time() - start_time
+    if pyramid_points:
+        return image_to_pyramid_pixels(image, down_sample_ratio), time.time() - start_time
+
+
+def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution, down_sample_ratio=0.03125,
+                       coord_frame=None):
+    start = time.time()
+    try:
+        nearest_agent_ids = get_nearest_agent_ids(hist_exo_agents[0], hist_cars[0])  # return ped id
+
+        if not config.use_hist_channels:
+            for ts, car in enumerate(hist_cars):
+                draw_car_state(car, hist_env_maps[ts], coord_frame, down_sample_ratio, resolution)
+
+        for agent_id in nearest_agent_ids:
+            agent_history = get_exo_agent_history(agent_id, hist_exo_agents)
+            for ts, hist_agent in enumerate(agent_history):
+                draw_agent(hist_agent, hist_cars[ts], hist_env_maps[ts], coord_frame, resolution, dim,
+                           down_sample_ratio)
+
+    except Exception as e:
+        error_handler(e)
+        pdb.set_trace()
+
+    end = time.time()
+    return True, end-start
 
 
 def create_maps(map_dict, map_ts, raw_map_array):
@@ -509,20 +566,47 @@ def create_maps(map_dict, map_ts, raw_map_array):
 
 def create_maps_inner(map_dict_entry, raw_map_array):
     map_array = np.array(raw_map_array, dtype=np.float32)
+    goal_map = None
+    lane_map = np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=np.float32)
+    obs_map = np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=np.float32)
+    if config.use_goal_channel:
+        goal_map = np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=np.float32)
     hist_ped_maps = []
+    hist_car_maps = []
     for i in range(config.num_hist_channels):
         hist_ped_maps.append(np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=np.float32))
+        if config.use_hist_channels:
+            hist_car_maps.append(np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=np.float32))
 
-    return map_array, hist_ped_maps
+    return map_array, hist_ped_maps, hist_car_maps, lane_map, obs_map, goal_map
 
 
 def create_null_maps():
-    map_array = None
+    map_array, goal_map = None, None
+    lane_map = np.zeros((config.default_map_dim, config.default_map_dim), dtype=np.float32)
+    obs_map = np.zeros((config.default_map_dim, config.default_map_dim), dtype=np.float32)
+    if config.use_goal_channel:
+        goal_map = np.zeros((config.default_map_dim, config.default_map_dim), dtype=np.float32)
     hist_ped_maps = []
+    hist_car_maps = []
     for i in range(config.num_hist_channels):
         hist_ped_maps.append(np.zeros((config.default_map_dim, config.default_map_dim), dtype=np.float32))
+        if config.use_hist_channels:
+            hist_car_maps.append(np.zeros((config.default_map_dim, config.default_map_dim), dtype=np.float32))
 
-    return map_array, hist_ped_maps
+    return map_array, hist_ped_maps, hist_car_maps, lane_map, obs_map, goal_map
+
+
+def clear_maps(hist_env_maps, hist_car_maps, lane_map, obs_map, goal_map):
+    lane_map.fill(0.0)
+    obs_map.fill(0.0)
+    if config.use_goal_channel:
+        goal_map.fill(0.0)
+    for hist_env_map in hist_env_maps:
+        hist_env_map.fill(0.0)
+    if config.use_hist_channels:
+        for hist_car_map in hist_car_maps:
+            hist_car_map.fill(0.0)
 
 
 def reward_function(prev_steer_data, steer_data, acc_data):
@@ -605,46 +689,43 @@ def process_actions(data_dict, idx, output_dict, ts):
         [float(data_dict[ts]['action_reward'].lane_change.data)], dtype=np.int32)
 
 
-def process_car(data_idx, ts, output_dict, data_dict, hist_cars, dim, down_sample_ratio, resolution, coord_frame):
-    process_car_inner(output_dict[data_idx], data_dict[ts], hist_cars, dim, down_sample_ratio,
-                      coord_frame, resolution)
+def process_car(data_idx, ts, output_dict, data_dict, hist_cars, hist_car_images, goal_image,
+                dim, down_sample_ratio, resolution, coord_frame):
+    process_car_inner(output_dict[data_idx], data_dict[ts], hist_cars, hist_car_images, goal_image,
+                      dim, down_sample_ratio, coord_frame, resolution)
 
 
-def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, dim, down_sample_ratio,
-                      coord_frame, resolution):
+def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, hist_car_images, goal_image,
+                      dim, down_sample_ratio, coord_frame, resolution, mode='offline'):
+    start = time.time()
+    output_dict_entry['car'] = {'goal': None, 'hist': None}
     try:
-        print_time = False
+        elapsed_time = 0.0
         path = data_dict_entry['plan']
-        # parse path data
-        start_time = time.time()
-        path_data = construct_path_data(path, coord_frame, resolution, dim,
-                                        down_sample_ratio)
+
+        if config.use_goal_channel:
+            if mode == 'offline':
+                output_dict_entry['car']['goal'], elapsed_time = draw_path(path, goal_image, coord_frame, resolution,
+                                                                           dim, down_sample_ratio, pyramid_points=True)
+            elif mode == 'online':
+                output_dict_entry['car']['goal'], elapsed_time = draw_path(path, goal_image, coord_frame, resolution,
+                                                                           dim, down_sample_ratio, pyramid_image=True)
         if print_time:
-            elapsed_time = time.time() - start_time
             print("Construct path time: " + str(elapsed_time) + " s")
 
         # parse car data
-        start_time = time.time()
-
-        coord_frames = []
-        for i in range(config.num_hist_channels):
-            coord_frames.append(select_null_map_coord_frame(hist_cars, i))
-
-        output_dict_entry['car'] = construct_car_data(coord_frames, resolution, dim, down_sample_ratio,
-                                                      hist_cars, path_data=path_data)
-
-        # print('----------------------------------------')
-        # print('len of output_dict_entry[car][hist] = {}'.format(len(output_dict_entry['car']['hist'])))
-        # print(output_dict_entry['car']['hist'])
-        # print('----------------------------------------')
-
+        if config.use_hist_channels:
+            output_dict_entry['car']['hist'], elapsed_time = construct_car_data(hist_car_images, hist_cars,
+                                                                  coord_frame, resolution, down_sample_ratio, mode)
         if print_time:
-            elapsed_time = time.time() - start_time
             print("Construct car time: " + str(elapsed_time) + " s")
 
     except Exception as e:
         error_handler(e)
         pdb.set_trace()
+    finally:
+        end = time.time()
+        return end - start
 
 
 def process_maps(down_sample_ratio, idx, map_array, output_dict, hist_ped_maps):
@@ -652,126 +733,63 @@ def process_maps(down_sample_ratio, idx, map_array, output_dict, hist_ped_maps):
 
 
 def process_maps_inner(down_sample_ratio, map_array, output_dict_entry, hist_ped_maps):
+    start = time.time()
     if map_array is not None:
         map_array = rescale_image(map_array, down_sample_ratio)
         map_array = np.array(map_array, dtype=np.int32)
-        # print("rescaled map max", map_array.max())
         map_array = normalize(map_array)
-        # print("normalized map max", map_array.max())
 
     hist_env_map = []
     for i in range(len(hist_ped_maps)):
         ped_array = rescale_image(hist_ped_maps[i], down_sample_ratio)
-        # print("rescaled ped_array max", ped_array.max())
         ped_array = normalize(ped_array)
-        # print("normalized ped_array max", ped_array.max())
         if map_array is not None:
             ped_array = np.maximum(map_array, ped_array)
-        # print("merged ped_array max", np.maximum(map_array, ped_array).max())
         hist_env_map.append(ped_array)
 
     # combine the static map and the pedestrian map
     output_dict_entry['maps'] = hist_env_map
+    end = time.time()
+    return end-start
 
 
-def process_obstacles(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, coord_frame):
-    process_obstacles_inner(output_dict[data_idx], data_dict[ts], dim, down_sample_ratio,
-                            coord_frame, resolution)
+def process_obstacles(data_idx, ts, output_dict, data_dict, cur_car, obs_image, down_sample_ratio, resolution,
+                      coord_frame):
+    process_obstacles_inner(output_dict[data_idx], data_dict[ts], cur_car, obs_image, down_sample_ratio, coord_frame,
+                            resolution)
 
 
-def process_obstacles_inner(output_dict_entry, data_dict_entry, dim, down_sample_ratio,
-                            coord_frame, resolution):
+def process_obstacles_inner(output_dict_entry, data_dict_entry, cur_car, obs_image, down_sample_ratio, coord_frame,
+                            resolution, mode='offline'):
     obstacles = data_dict_entry['obstacles']
-    output_dict_entry['obs'] = construct_obs_data(coord_frame, resolution, dim, down_sample_ratio, obstacles)
-    pass
+
+    if mode == 'offline':
+        output_dict_entry['obs'], _ = draw_obstacles(obstacles, obs_image, cur_car, coord_frame, down_sample_ratio,
+                                                  resolution, pyramid_points=True)
+    elif mode == 'online':
+        output_dict_entry['obs'], _ = draw_obstacles(obstacles, obs_image, cur_car, coord_frame, down_sample_ratio,
+                                                  resolution, pyramid_image=True)
 
 
-def construct_obs_data(coord_frame, resolution, dim, down_sample_ratio, obstacles):
-    obs_points = get_obs_points(obstacles, coord_frame, dim, down_sample_ratio, resolution)
-    return obs_points
+def process_lanes(data_idx, ts, output_dict, data_dict, cur_car, lane_image, down_sample_ratio, resolution,
+                  coord_frame):
+    process_lanes_inner(output_dict[data_idx], data_dict[ts], cur_car, lane_image, down_sample_ratio, coord_frame,
+                        resolution)
 
 
-def get_obs_points(obstacles, coord_frame, dim_high_res, down_sample_ratio, resolution):
-    # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
-    obs_points = None
-
-    obs_edge_pixels = []
-    for obs in obstacles:
-        print_time = False
-        start_time = time.time()
-        image_space_obstacle = get_image_space_obstacle(obs, coord_frame, resolution)
-        if print_time:
-            elapsed_time = time.time() - start_time
-            print("Obstacle prepare time: " + str(elapsed_time) + " s")
-
-        # construct the image
-        start_time = time.time()
-        obs_edge_pixels = obs_edge_pixels + fill_polygon_edges(image_space_obstacle)
-        if print_time:
-            elapsed_time = time.time() - start_time
-            print("Fill obstacle time: " + str(elapsed_time) + " s")
-
-    try:
-        start_time = time.time()
-        obs_points = get_pyramid_image_points(obs_edge_pixels, dim_high_res, down_sample_ratio,
-                                              draw_image=True, draw_flag='obs')
-        if print_time:
-            elapsed_time = time.time() - start_time
-            print("Obs pyramid time: " + str(elapsed_time) + " s")
-    except Exception as e:
-        error_handler(e)
-
-    return obs_points
-
-
-def process_lanes(data_idx, ts, output_dict, data_dict, dim, down_sample_ratio, resolution, coord_frame):
-    process_lanes_inner(output_dict[data_idx], data_dict[ts], dim, down_sample_ratio,
-                        coord_frame, resolution)
-
-
-def process_lanes_inner(output_dict_entry, data_dict_entry, dim, down_sample_ratio,
-                        coord_frame, resolution):
+def process_lanes_inner(output_dict_entry, data_dict_entry, cur_car, lane_image, down_sample_ratio, coord_frame,
+                        resolution, mode='offline'):
+    start = time.time()
     lanes = data_dict_entry['lanes']
-    output_dict_entry['lane'] = construct_lane_data(coord_frame, resolution, dim, down_sample_ratio, lanes)
-    pass
 
-
-def construct_lane_data(coord_frame, resolution, dim, down_sample_ratio, lanes):
-    lane_points = get_lane_points(lanes, coord_frame, dim, down_sample_ratio, resolution)
-    return lane_points
-
-
-def get_lane_points(lanes, coord_frame, dim_high_res, down_sample_ratio, resolution):
-    # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
-    lane_points = None
-
-    lane_pixels = []
-    for lane_seg in lanes:
-        print_time = False
-        start_time = time.time()
-        image_space_lane = get_image_space_lane(lane_seg, coord_frame, resolution)
-        if print_time:
-            elapsed_time = time.time() - start_time
-            print("Lane prepare time: " + str(elapsed_time) + " s")
-
-        # construct the image
-        start_time = time.time()
-        lane_pixels = lane_pixels + fill_polygon_edges(image_space_lane)
-        if print_time:
-            elapsed_time = time.time() - start_time
-            print("Fill lane_seg time: " + str(elapsed_time) + " s")
-
-    try:
-        start_time = time.time()
-        lane_points = get_pyramid_image_points(lane_pixels, dim_high_res, down_sample_ratio,
-                                               draw_image=True, draw_flag='lane')
-        if print_time:
-            elapsed_time = time.time() - start_time
-            print("Lane pyramid time: " + str(elapsed_time) + " s")
-    except Exception as e:
-        error_handler(e)
-
-    return lane_points
+    if mode == 'offline':
+        output_dict_entry['lane'], _ = draw_lanes(lanes, lane_image, cur_car, coord_frame, down_sample_ratio, resolution,
+                                               pyramid_points=True)
+    elif mode == 'online':
+        output_dict_entry['lane'], _ = draw_lanes(lanes, lane_image, cur_car, coord_frame, down_sample_ratio, resolution,
+                                               pyramid_image=True)
+    end = time.time()
+    return end - start
 
 
 def process_parametric_agents(idx, output_dict, hist_exo_agents, hist_cars):
@@ -842,58 +860,13 @@ def process_parametric_agents_inner(output_dict_entry, hist_exo_agents, hist_car
 
 
 def normalize(ped_array):
-    if np.max(ped_array) > 0:
-        ped_array = ped_array / np.max(ped_array)
-    return ped_array
-
-
-def get_polygons(hist_agent, dim, coord_frame, resolution):
-    hist_positions = []
-    is_out_map = True  # it will be true if all hist pos are outside of the map
-    for i in range(len(hist_agent)):
-        hist_positions.append(np.array([], dtype=np.float32))
-        try:
-            ped = hist_agent[i]
-
-            if ped is not None:
-                hist_positions[i] = point_to_indices(ped.ped_pos.x, ped.ped_pos.y, coord_frame, resolution, dim)
-                is_out_map = is_out_map and np.any(hist_positions[i] == -1)
-            else:
-                hist_positions[i] = np.array([None, None], dtype=np.float32)
-        except Exception as e:
-            error_handler(e)
-            pdb.set_trace()
-
-    return hist_positions, is_out_map
-
-
-def fill_agent_map(hist_image_space_agent, hist_env_maps, map_intensity, map_intensity_scale, dim):
-    ts = 0
-    for agent in hist_image_space_agent:
-        if agent is not None:
-            env_map_array = hist_env_maps[ts]
-            if not check_out_map(agent, dim):
-                agent_edge_pixels = fill_polygon_edges(agent)
-                fill_pixels_in_map(map_intensity, map_intensity_scale, agent_edge_pixels, env_map_array)
-        else:
-            pass
-        ts += 1
-
-
-def fill_pixels_in_map(map_intensity, map_intensity_scale, positions, env_map_array):
     try:
-        for position in positions:
-            position = np.array(position, dtype=np.float32)
-            if np.all(position != -1) and np.all(position >= 0) \
-                    and np.all(position < env_map_array.shape[0]):
-                env_map_array[int(round(position[1]))][int(round(position[0]))] = map_intensity * map_intensity_scale
-            else:
-                pass
-                # print("point out of map bound: point ({},{}), map dim {}.".format(
-                #     position[0], position[1], env_map_array.shape[0]))
+        if np.max(ped_array) > 0:
+            ped_array = ped_array / np.max(ped_array)
     except Exception as e:
         error_handler(e)
-        pdb.set_trace()
+    finally:
+        return ped_array
 
 
 def get_exo_agent_history(ped_id, hist_exo_agents):
@@ -939,7 +912,7 @@ def history_complete(ped_id, hist_exo_agents):
 def get_history_agents(data_dict, ts):
     # agent_file.write("\n====== ts {} ======\n".format(ts))
 
-    hist_cars, hist_exo_agents = \
+    hist_cars, hist_exo_agents, _ = \
         get_bounded_history(data_dict[ts], 'agents')
 
     debug_history(hist_cars, hist_exo_agents)
@@ -971,17 +944,22 @@ def debug_history(hist_cars, hist_exo_agents):
 def get_bounded_history(data_dict_entry, flag_hist):
     hist_cars = []
     hist_exo_agents = []
-
+    hist_count = 0
     try:
         for i in range(config.num_hist_channels):
 
-            # print("--------------------------------------------------------------------")
-            # print(data_dict_entry[flag_hist][i])
-            # print("--------------------------------------------------------------------")
-
-            if data_dict_entry[flag_hist][i].peds is not None and data_dict_entry[flag_hist][i].car is not None:
-                hist_exo_agents.append(make_agent_id_dict(data_dict_entry[flag_hist][i].peds))
-                hist_cars.append(data_dict_entry[flag_hist][i].car)
+            if data_dict_entry[flag_hist][i] is not None:
+                if data_dict_entry[flag_hist][i].peds is not None:
+                    hist_exo_agents.append(make_agent_id_dict(data_dict_entry[flag_hist][i].peds))
+                    # print_long("hist step {} exist".format(i))
+                else:
+                    hist_exo_agents.append(None)
+                if data_dict_entry[flag_hist][i].car is not None:
+                    hist_cars.append(data_dict_entry[flag_hist][i].car)
+                else:
+                    hist_cars.append(None)
+                hist_count += \
+                    int(data_dict_entry[flag_hist][i].peds is not None or data_dict_entry[flag_hist][i].car is not None)
             else:
                 hist_exo_agents.append(None)
                 hist_cars.append(None)
@@ -991,7 +969,7 @@ def get_bounded_history(data_dict_entry, flag_hist):
         error_handler(e)
         pdb.set_trace()
 
-    return hist_cars, hist_exo_agents
+    return hist_cars, hist_exo_agents, hist_count
 
 
 def create_dict_entry(idx, output_dict):
@@ -1001,7 +979,6 @@ def create_dict_entry(idx, output_dict):
         'car': {
             'goal': None,
             'hist': None,
-            'car_state': None,
         },
         'cart_agents': None,
         'vel': None,
@@ -1085,33 +1062,31 @@ def rescale_image(image,
     return image1
 
 
-def get_pyramid_image_points(points,
-                             dim=config.default_map_dim,
-                             down_sample_ratio=0.03125,
-                             intensities=False,
-                             draw_image=False, draw_flag='car'):
-    format_point = None
-
+def image_to_pyramid_pixels(image, down_sample_ratio=0.03125):
+    nonzero_points = None
     try:
         # !! input points are in Euclidean space (x,y), output points are in image space (row, column) !!
-        arr = np.zeros((dim, dim), dtype=np.float32)
-        fill_image_with_points(arr, dim, points, intensities)
         # down sample the image
-        arr1 = rescale_image(arr, down_sample_ratio)
+        arr1 = rescale_image(image, down_sample_ratio)
         arr1 = normalize(arr1)
-        # if draw_image and config.visualize_raw_data:
-        #     if 'car' in draw_flag:
-        #         visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_car_image')
-        #     elif 'lane' in draw_flag:
-        #         visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_lane_image')
-        #     elif 'obs' in draw_flag:
-        #         visualization.visualize_image(arr1, root='Data_processing/', subfolder='h5_obs_image')
-
-        format_point = extract_nonzero_points(arr1)
+        nonzero_points = extract_nonzero_points(arr1)
     except Exception as e:
         error_handler(e)
         pdb.set_trace()
-    return format_point
+    return nonzero_points
+
+
+def image_to_pyramid_image(image, down_sample_ratio=0.03125):
+    pyramid_image = None
+    try:
+        # !! input points are in Euclidean space (x,y), output points are in image space (row, column) !!
+        # down sample the image
+        pyramid_image = rescale_image(image, down_sample_ratio)
+        pyramid_image = normalize(pyramid_image)
+    except Exception as e:
+        error_handler(e)
+        pdb.set_trace()
+    return pyramid_image
 
 
 def extract_nonzero_points(arr1):
@@ -1124,22 +1099,6 @@ def extract_nonzero_points(arr1):
     except Exception as e:
         error_handler(e)  # do nothing
     return format_point
-
-
-def fill_image_with_points(arr, dim, points, intensities=False):
-    intensity = 1.0
-    for point in points:
-        try:
-            point = np.array(point, dtype=np.float32)
-            if np.any(point > (dim - 1)) or np.any(point < 0):
-                continue
-            if intensities:
-                arr[int(round(point[1])), int(round(point[0]))] = point[2]
-            else:
-                arr[int(round(point[1])), int(round(point[0]))] = intensity
-        except Exception as e:
-            error_handler(e)  # do nothing
-            pass
 
 
 def get_nearest_agent_ids(agents, car):
@@ -1162,319 +1121,139 @@ def dist(agent, car):
                    (agent.ped_pos.y - car.car_pos.y) ** 2)
 
 
-def construct_ped_data(dim, down_sample_ratio, hist_positions):
-    ped_output_dict = {'hist': [list([])]}
-    print_time = True
-
-    try:
-        # create original scale array, downscale using pyramid scheme, get non zero indexes and values
-        hist_positions_in_image = []
-
-        for i in range(hist_positions):
-            position = hist_positions[i]
-            if position.size:
-                start_time = time.time()
-                hist_positions_in_image.append(get_pyramid_image_points(list([position]), dim=dim,
-                                                                        down_sample_ratio=down_sample_ratio))
-                if print_time:
-                    elapsed_time = time.time() - start_time
-                    print("ped pyramid time: " + str(elapsed_time) + " s")
-            else:
-                hist_positions_in_image.append(np.array([], dtype=np.float32))
-
-        ped_output_dict['hist'] = hist_positions_in_image
-
-    except Exception as e:
-        error_handler(e)
-        pdb.set_trace()
-
-    return ped_output_dict
-
-
-def construct_blank_ped_data():
-    ped_output_dict = {'goal': list([]), 'hist1': list([]), 'hist2': list([]), 'hist3': list([]), 'hist4': list([])}
-
-    try:
-        # create original scale array, downscale using pyramid scheme, get non zero indexes and values
-        positions_in_image = np.array([], dtype=np.float32)
-        prev_positions_in_image = np.array([], dtype=np.float32)
-
-        # if config.num_hist_channels > 2:
-        prev_positions2_in_image = np.array([], dtype=np.float32)
-        prev_positions3_in_image = np.array([], dtype=np.float32)
-
-        # get goal coordinates in meters
-        goal_coords = np.array([], dtype=np.float32)
-
-        try:
-            assert (len(goal_coords))
-            ped_output_dict['goal'] = goal_coords
-        except Exception as e:
-            error_handler(e)
-            pdb.set_trace()
-
-        ped_output_dict['hist1'] = positions_in_image
-        ped_output_dict['hist2'] = prev_positions_in_image
-        ped_output_dict['hist3'] = prev_positions2_in_image
-        ped_output_dict['hist4'] = prev_positions3_in_image
-    except Exception as e:
-        error_handler(e)
-        pdb.set_trace()
-
-    return ped_output_dict
-
-
-def construct_path_data(path, coord_frame, resolution, dim, down_sample_ratio):
-    path_output_dict = {'path': list([])}
-    for pos in path.poses:
-
-        pix_pos = point_to_indices(pos.pose.position.x, pos.pose.position.y, coord_frame, resolution, dim)
-
-        if np.any(pix_pos == -1):
-            continue  # skip path points outside the map
-        else:
-            path_output_dict['path'].append(pix_pos)
-    path_output_dict['path'] = np.array(
-        path_output_dict['path'], dtype=np.float32)
-    path_output_dict['path'] = get_pyramid_image_points(
-        path_output_dict['path'], dim=dim, down_sample_ratio=down_sample_ratio)
-    return path_output_dict
-
-
-def construct_car_data(coord_frames, resolution, dim, down_sample_ratio, hist_cars, path_data=None):
-    car_output_dict = {'goal': list([]), 'hist': [], 'car_state': []}
-    try:
-        # 'goal' contains the rescaled path in pixel points
-        car_output_dict['goal'] = path_data['path']
-
-        if config.use_hist_channels:
-            for i in range(len(hist_cars)):
-                draw = False
-                if i == 0:
-                    draw = True
-
-                car_points = get_car_points(hist_cars[i], coord_frames[i], dim, down_sample_ratio, resolution, draw)
-                car_output_dict['hist'].append(car_points)
-        else:
-            for i in range(len(hist_cars)):
-                car_points = get_car_state_points(hist_cars[i], coord_frames[i], dim, down_sample_ratio, resolution)
-                car_output_dict['car_state'].append(car_points)
-
-    except Exception as e:
-        error_handler(e)
-        pdb.set_trace()
-
-    return car_output_dict
-
-
-def get_car_points(car, coord_frame, dim_high_res, down_sample_ratio, resolution, draw_image=False):
-    # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
-    car_points = None
-
-    if car is not None:
-        print_time = False
-        start_time = time.time()
-        image_space_car = get_image_space_car(car, coord_frame, resolution)
-        if print_time:
-            elapsed_time = time.time() - start_time
-            print("Car prepare time: " + str(elapsed_time) + " s")
-
-        # construct the image
-        start_time = time.time()
-        car_edge_pixels = fill_polygon_edges(image_space_car)
-        if print_time:
-            elapsed_time = time.time() - start_time
-            print("Fill car time: " + str(elapsed_time) + " s")
-
-        try:
-            start_time = time.time()
-            car_points = get_pyramid_image_points(car_edge_pixels, dim_high_res, down_sample_ratio,
-                                                  draw_image=draw_image, draw_flag='car')
-            if print_time:
-                elapsed_time = time.time() - start_time
-                print("Car pyramid time: " + str(elapsed_time) + " s")
-        except Exception as e:
-            error_handler(e)
-
-    return car_points
-
-
-def normalize_intensity(points, target_intensity):
-    intensities = points[:, 2]
-    max_intensity = np.max(intensities)
-    intensities = intensities / max_intensity * target_intensity
-    points[:, 2] = intensities
-
-
-def get_car_state_points(car, coord_frame, dim_high_res, down_sample_ratio, resolution):
-    # create transformation matrix of point, multiply with 4 points in local coordinates to get global coordinates
-    car_state_points = None
-
-    if car is not None:
-        image_space_car_state = get_image_space_car_state(car, coord_frame, resolution)
-        # print("[bag2hdf] image_space_car_state: {}".format(image_space_car_state))
-
-        # construct the image
-        car_state_edge_pixels = fill_polygon_edges(image_space_car_state)
-        # print("[bag2hdf] num points in car_state_edge_pixels: {}".format(len(car_state_edge_pixels)))
-        try:
-            car_state_points = get_pyramid_image_points(car_state_edge_pixels, dim_high_res, down_sample_ratio,
-                                                        draw_flag='car_state')
-            # print("[bag2hdf] num points in car_state_points: {}".format(len(car_state_points)))
-            normalize_intensity(car_state_points, 2.0)
-        except Exception as e:
-            error_handler(e)
-
-    return car_state_points
-
-
-def get_image_points_local_pyramid(car_edge_points, dim_high_res, down_sample_ratio, print_time, start_time):
-    # allocate high-res and low-res images
-    image_high_res = np.zeros((dim_high_res, dim_high_res), dtype=np.float32)
-    image_low_res = np.zeros((config.imsize, config.imsize), dtype=np.float32)
-    if print_time:
-        elapsed_time = time.time() - start_time
-        print("Alloc image time: " + str(elapsed_time) + " s")
+def construct_car_data(car_images, hist_cars, coord_frame, resolution, down_sample_ratio, mode='offline'):
+    car_hist_data = []
     start_time = time.time()
-    fill_image_with_points(image_high_res, dim_high_res, car_edge_points)
-    if print_time:
-        elapsed_time = time.time() - start_time
-        print("Fill image time: " + str(elapsed_time) + " s")
-    start_time = time.time()
-    car_points = get_car_points_in_low_res_image(car_edge_points, image_high_res, image_low_res, dim_high_res,
-                                                 down_sample_ratio)
-    return car_points, start_time
+    try:
+        for ts, car in enumerate(hist_cars):
+            if mode == 'offline':
+                car_hist_data.append(
+                    draw_car(car, car_images[ts], coord_frame, down_sample_ratio, resolution, pyramid_points=True)[0])
+            elif mode == 'online':
+                car_hist_data.append(
+                    draw_car(car, car_images[ts], coord_frame, down_sample_ratio, resolution, pyramid_image=True)[0])
+    except Exception as e:
+        error_handler(e)
+        pdb.set_trace()
 
-
-def get_car_points_in_low_res_image(car_edge_points, image_high_res, image_low_res, dim, down_sample_ratio):
-    # find the corresponding range in the low-res image
-    x_range_low_res, y_range_low_res = get_car_range_low_res(car_edge_points, down_sample_ratio)
-    # find the high-res image range
-    x_range_low_res_dialected, y_range_low_res_dialected = dialect_range_low_res(x_range_low_res, y_range_low_res,
-                                                                                 down_sample_ratio)
-    x_range_high_res, y_range_high_res = get_range_high_res(x_range_low_res_dialected, y_range_low_res_dialected,
-                                                            down_sample_ratio)
-    # copy the range into a small patch
-    image_patch_high_res = image_high_res[x_range_high_res[0]:x_range_high_res[1],
-                           y_range_high_res[0]:y_range_high_res[1]].copy()
-    # down sample the small patch
-    image_patch_low_res = rescale_image(image_patch_high_res, down_sample_ratio)
-    # copy the patch to the low-res image
-    image_low_res[x_range_low_res_dialected[0]:x_range_low_res_dialected[1],
-    y_range_low_res_dialected[0]:y_range_low_res_dialected[1]] = image_patch_low_res
-    car_points = extract_nonzero_points(image_low_res)
-    return car_points
+    elapsed_time = time.time() - start_time
+    return car_hist_data, elapsed_time
 
 
 def get_image_space_car(car, coord_frame, resolution):
+    if coord_frame is None:
+        coord_frame = select_null_map_coord_frame(car)
+
     X = []
     for point in car.car_bbox.points:
-        pixels = point_to_indices_no_checking(point.x, point.y, coord_frame, resolution)
+        pixels = point_to_pixels_no_checking(point.x, point.y, coord_frame, resolution)
         X.append([pixels[0], pixels[1], 1])
 
     return np.asarray(X)
 
 
 def get_image_space_car_state(car, coord_frame, resolution):
+    if coord_frame is None:
+        coord_frame = select_null_map_coord_frame(car)
+
     X = []
     car_dir = (car.car_speed * math.cos(car.car_yaw), car.car_speed * math.sin(car.car_yaw))
-    # print("coord_frame: {}".format(coord_frame))
-    # print("car.car_pos: {}".format(car.car_pos))
-    pixels = point_to_indices_no_checking(car.car_pos.x, car.car_pos.y, coord_frame, resolution)
-    # print('car center pixels {}'.format(pixels))
+    pixels = point_to_pixels_no_checking(car.car_pos.x, car.car_pos.y, coord_frame, resolution)
     X.append([pixels[0], pixels[1], 1])
-    pixels = point_to_indices_no_checking(car.car_pos.x + car_dir[0],
-                                          car.car_pos.y + car_dir[1],
-                                          coord_frame, resolution)
-    # print('car heading pixels {}'.format(pixels), flush=True)
-    # exit(-1)
+    pixels = point_to_pixels_no_checking(car.car_pos.x + car_dir[0],
+                                         car.car_pos.y + car_dir[1],
+                                         coord_frame, resolution)
 
     X.append([pixels[0], pixels[1], 1])
     return np.asarray(X)
 
 
-def get_image_space_obstacle(obs, coord_frame, resolution):
+def get_image_space_obstacle(obs, car, coord_frame, resolution):
     X = []
+    if coord_frame is None:
+        coord_frame = select_null_map_coord_frame(car)
     for point in obs.points:
-        pixels = point_to_indices_no_checking(point.x, point.y, coord_frame, resolution)
+        pixels = point_to_pixels_no_checking(point.x, point.y, coord_frame, resolution)
         X.append([pixels[0], pixels[1], 1])
 
     return np.asarray(X)
 
 
-def get_image_space_lane(lane_segment, coord_frame, resolution):
+def get_image_space_lane(lane_segment, car, coord_frame, resolution):
     X = []
-    pixels = point_to_indices_no_checking(lane_segment.start.x, lane_segment.start.y, coord_frame, resolution)
+    if coord_frame is None:
+        coord_frame = select_null_map_coord_frame(car)
+    pixels = point_to_pixels_no_checking(lane_segment.start.x, lane_segment.start.y, coord_frame, resolution)
     X.append([pixels[0], pixels[1], 1])
-    pixels = point_to_indices_no_checking(lane_segment.end.x, lane_segment.end.y, coord_frame, resolution)
+    pixels = point_to_pixels_no_checking(lane_segment.end.x, lane_segment.end.y, coord_frame, resolution)
     X.append([pixels[0], pixels[1], 1])
 
     return np.asarray(X)
 
 
-def select_null_map_origin(hist_cars, ts=0):
-    # origin is the upper-left corner of the map
-    cur_car = hist_cars[ts]
-    return [cur_car.car_pos.x - config.image_half_size_meters, cur_car.car_pos.y - config.image_half_size_meters]
-
-
-def select_null_map_coord_frame(hist_cars, ts=0):
-    # origin is the upper-left corner of the map
-    cur_car = hist_cars[ts]
+def select_null_map_coord_frame(car):
     frame = CoordFrame()
 
-    frame.origin = [cur_car.car_pos.x - config.image_half_size_meters,
-                        cur_car.car_pos.y - config.image_half_size_meters]
-    frame.center = [cur_car.car_pos.x, cur_car.car_pos.y]
-    frame.x_axis = [math.cos(cur_car.car_yaw), math.sin(cur_car.car_yaw)]
-    frame.y_axis = [-math.sin(cur_car.car_yaw), math.cos(cur_car.car_yaw)]
+    frame.origin = [car.car_pos.x - config.image_half_size_meters,
+                    car.car_pos.y - config.image_half_size_meters]
+    frame.center = [car.car_pos.x, car.car_pos.y]
+    frame.x_axis = [math.cos(car.car_yaw), math.sin(car.car_yaw)]
+    frame.y_axis = [-math.sin(car.car_yaw), math.cos(car.car_yaw)]
     return frame
 
 
-def get_image_space_agent_history(agent_history, coord_frames, resolution, dim):
+def get_image_space_agent(agent, car, coord_frame, resolution, dim):
+    if coord_frame is None and car is not None:
+        coord_frame = select_null_map_coord_frame(car)
+    if agent is None:
+        return None
+    else:
+        theta = agent.heading
+
+        x1, y1, x2, y2, x3, y3, x4, y4 = agent.bb_y, agent.bb_x, -agent.bb_y, agent.bb_x, \
+                                         -agent.bb_y, -agent.bb_x, agent.bb_y, -agent.bb_x
+        # homogeneous coordinates
+        agent_bb = np.asarray([[x1, y1, 1], [x2, y2, 1], [x3, y3, 1], [x4, y4, 1]])
+        # rotate and translate the car
+        T = np.asarray([[cos(theta), -sin(theta), agent.ped_pos.x],
+                        [sin(theta), cos(theta), agent.ped_pos.y],
+                        [0, 0, 1]])
+        agent_bb = np.array([T.dot(x.T) for x in agent_bb], dtype=np.float32)
+
+        image_space_agent = []
+        for x in agent_bb:
+            pixels = point_to_pixels_no_checking(x[0], x[1], coord_frame, resolution)
+            image_space_agent.append([pixels[0], pixels[1], 1])
+        image_space_agent = np.array(image_space_agent)
+
+        is_out_map = check_out_map(image_space_agent, dim)
+
+        return image_space_agent, is_out_map
+
+
+def get_image_space_agent_history(agent_history, hist_cars,  coord_frame, resolution, dim):
+    is_out_map = True
+    transformed_history = []
     try:
-        # ped_pos, ped_id, ped_goal_id, ped_speed, ped_vel, bb_x, bb_y, heading
-        is_out_map = True
-        transformed_history = []
         i = 0
         for hist_agent in agent_history:
-            if hist_agent is not None:
-                theta = hist_agent.heading
 
-                x1, y1, x2, y2, x3, y3, x4, y4 = hist_agent.bb_y, hist_agent.bb_x, -hist_agent.bb_y, hist_agent.bb_x, \
-                                                 -hist_agent.bb_y, -hist_agent.bb_x, hist_agent.bb_y, -hist_agent.bb_x
-                # homogeneous coordinates
-                agent_bb = np.asarray([[x1, y1, 1], [x2, y2, 1], [x3, y3, 1], [x4, y4, 1]])
-                # rotate and translate the car
-                T = np.asarray([[cos(theta), -sin(theta), hist_agent.ped_pos.x],
-                                [sin(theta), cos(theta), hist_agent.ped_pos.y],
-                                [0, 0, 1]])
-                agent_bb = np.array([T.dot(x.T) for x in agent_bb], dtype=np.float32)
-
-                transformed_agent = []
-                for x in agent_bb:
-                    pixels = point_to_indices_no_checking(x[0], x[1], coord_frames[i], resolution)
-                    transformed_agent.append([pixels[0], pixels[1], 1])
-                transformed_agent = np.array(transformed_agent)
-
-                transformed_history.append(transformed_agent)
-
-                frame_agent_is_out_map = check_out_map(transformed_agent, dim)
-
-                # agent should be included if it enters the map ar any of the history time steps
-                if frame_agent_is_out_map is False:
-                    is_out_map = False
-                else:
-                    pass  # print("frame out of map, dist to origin {}".format(dist))
-            else:
-                transformed_history.append(None)
+            transformed_agent, agent_is_out_map = \
+                get_image_space_agent(hist_agent, hist_cars[i], coord_frame, resolution, dim)
+            transformed_history.append(transformed_agent)
 
             i += 1
+            # agent should be included if it enters the map ar any of the history time steps
+            if agent_is_out_map is False:
+                is_out_map = False
+            else:
+                pass  # print("frame out of map, dist to origin {}".format(dist))
 
-        return transformed_history, is_out_map
     except Exception as e:
         error_handler(e)
         pdb.set_trace()
+    finally:
+        return transformed_history, is_out_map
 
 
 def check_out_map(X, dim):
@@ -1484,87 +1263,7 @@ def check_out_map(X, dim):
     return False
 
 
-def get_range_high_res(x_range_dialected, y_range_dialected, down_sample_ratio):
-    upsample_scale = 1.0 / down_sample_ratio
-
-    x_range_high_res = [int(x_range_dialected[0] * upsample_scale), int(x_range_dialected[1] * upsample_scale)]
-    y_range_high_res = [int(y_range_dialected[0] * upsample_scale), int(y_range_dialected[1] * upsample_scale)]
-    return x_range_high_res, y_range_high_res
-
-
-def dialect_range_low_res(x_range_low_res, y_range_low_res, down_sample_ratio):
-    rescale_times = int(math.log(1 / down_sample_ratio, 2))
-    x_range_dialected = [x_range_low_res[0] - rescale_times, x_range_low_res[1] + rescale_times]
-    y_range_dialected = [y_range_low_res[0] - rescale_times, y_range_low_res[1] + rescale_times]
-
-    x_range_dialected = np.maximum(x_range_dialected, 0)
-    y_range_dialected = np.maximum(y_range_dialected, 0)
-    x_range_dialected = np.minimum(x_range_dialected, config.imsize)
-    y_range_dialected = np.minimum(y_range_dialected, config.imsize)
-
-    return x_range_dialected, y_range_dialected
-
-
-def get_car_range_low_res(points, down_sample_ratio):
-    i_range = [1000000000, 0]
-    j_range = [1000000000, 0]
-    try:
-        for point in points:
-            x = point[0]
-            y = point[1]
-            x_low_res = int(x * down_sample_ratio)
-            y_low_res = int(y * down_sample_ratio)
-            if j_range[0] > x_low_res:
-                j_range[0] = x_low_res
-            if i_range[0] > y_low_res:
-                i_range[0] = y_low_res
-            if j_range[1] < x_low_res + 1:
-                j_range[1] = x_low_res + 1
-            if i_range[1] < y_low_res + 1:
-                i_range[1] = y_low_res + 1
-
-    except Exception as e:
-        error_handler(e)  # do nothing
-    return i_range, j_range
-
-
-def fill_inside_car(points):
-    points = np.array(np.round(points), dtype=np.int32)
-    r = [p[0] for p in points]
-    c = [p[1] for p in points]
-    # fill the polygon
-    rr, cc = polygon(r, c)
-    new_points = zip(rr, cc)
-    return list(new_points)
-
-
-def fill_polygon_edges(points):
-    new_points = []
-    try:
-        points = np.array(np.round(points), dtype=np.int32)
-
-        for i, p in enumerate(points):
-            r0 = p[0]
-            c0 = p[1]
-            if i + 1 < len(points):
-                r1 = points[i + 1][0]
-                c1 = points[i + 1][1]
-            else:
-                r1 = points[0][0]
-                c1 = points[0][1]
-
-            rr, cc = line(r0, c0, r1, c1)
-            new_points = new_points + list(zip(rr, cc))
-
-    except Exception as e:
-        error_handler(e)
-
-    # fill the polygon
-    return list(new_points)
-
-
 # save in hdf5 format and load in hdf5 in dataloader class of pytorch
-
 def main(bagspath, nped, start_file, end_file, thread_id):
     global agent_file
     # Walk into subdirectories recursively and collect all txt files
@@ -1658,17 +1357,6 @@ def main(bagspath, nped, start_file, end_file, thread_id):
 import codecs
 
 
-def parse_car_goal_from_txt(txt_file):
-    with codecs.open(txt_file, 'r', encoding='utf-8',
-                     errors='ignore') as fdata:
-        for line in fdata:
-            if 'car goal:' in line:
-                line_split = line.split(' ')
-                # print(line)
-                return float(line_split[2]), float(line_split[3])
-    return None
-
-
 def parse_goals_using_h5_name(h5_name, peds_goal_path):
     goal_string = 'goals_' + \
                   h5_name.split('/')[-1].split('_case')[0]
@@ -1726,7 +1414,7 @@ def filter_txt_files(bagspath, txt_files):
     # Filter trajectories that don't reach goal or collide before reaching goal
     for txtfile in txt_files:
         #
-        if is_valid_file(txt_file):
+        if is_valid_file(txtfile):
             filtered_files.append(txtfile)
 
     filtered_files.sort()

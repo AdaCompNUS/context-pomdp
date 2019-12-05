@@ -16,8 +16,10 @@ from dataset import set_encoders
 from Components.mdn import sample_mdn, sample_mdn_ml
 from policy_value_network import PolicyValueNet
 import numpy as np
+from Data_processing.global_params import print_long
 
 from std_msgs.msg import Float32, Int32
+from msg_builder.msg import car_info as CarInfo
 
 
 def set_decoders():
@@ -26,11 +28,11 @@ def set_decoders():
         decode_acc_raw = MdnAccDecoderNormalized2Raw()  # conversion from id to normalized acceleration
         decode_vel = MdnVelDecoderNormalized2Raw()  # conversion from id to normalized command velocity
     elif config.head_mode == "hybrid":
-        decode_steer_degree = SteerDecoderOnehot2Degree()  # one-hot vector of steering
+        decode_steer_degree = SteerDecoderOnehot2Normalized()  # one-hot vector of steering
         decode_acc_raw = MdnAccDecoderNormalized2Raw()  # conversion from id to normalized acceleration
         decode_vel = MdnVelDecoderNormalized2Raw()  # conversion from id to normalized command velocity
     else:
-        decode_steer_degree = SteerDecoderOnehot2Degree()  # one-hot vector of steering
+        decode_steer_degree = SteerDecoderOnehot2Normalized()  # one-hot vector of steering
         decode_acc_raw = AccDecoderOnehot2Raw()  # one-hot vector of acceleration
         decode_vel = VelDecoderOnehot2Raw()  # one-hot vector of command velocity
     decode_lane = LaneDecoderOnehot2Int()  # one-hot vector of command velocity
@@ -46,12 +48,12 @@ def get_copy(t):
 
 
 def print_full(msg, tensor):
-    print(msg)
+    print_long(msg)
     for i in range(tensor.size()[0]):
         for j in range(tensor.size()[1]):
             value = float(tensor[i][j].cpu())
             print(value, end=',')
-        print()
+        print_long('')
 
 
 class DriveController(nn.Module):
@@ -61,11 +63,12 @@ class DriveController(nn.Module):
         self.data_monitor = DataMonitor()
         self.drive_net = net
         # self.cmd_pub = rospy.Publisher('cmd_vel_drive_net', Twist, queue_size=1)
-        self.cmd_acc_pub = rospy.Publisher('imitation_cmd_acc', Float32, queue_size=1)
+        self.cmd_acc_pub = rospy.Publisher('imitation_cmd_accel', Float32, queue_size=1)
         self.cmd_steer_pub = rospy.Publisher('imitation_cmd_steer', Float32, queue_size=1)
         self.cmd_lane_pub = rospy.Publisher('imitation_lane_decision', Int32, queue_size=1)
 
         rospy.Subscriber("odom", Odometry, self.odom_call_back)
+        rospy.Subscriber("ego_state", CarInfo, self.cb_car_info, queue_size=1)
 
         self.drive_timer = rospy.Timer(rospy.Duration(1.0 / config.control_freq), self.control_loop)
 
@@ -76,7 +79,7 @@ class DriveController(nn.Module):
         self.encode_input = InputEncoder()
         self.encode_steer_from_degree, self.encode_acc_from_id, self.encode_vel_from_raw, self.encode_lane_from_int = \
             set_encoders()
-        self.decode_steer_to_degree, self.decode_acc_to_raw, self.decode_vel, self.decode_lane = set_decoders()
+        self.decode_steer_to_normalized, self.decode_acc_to_raw, self.decode_vel, self.decode_lane = set_decoders()
 
         self.count = 0
         self.true_steering = 0
@@ -96,18 +99,19 @@ class DriveController(nn.Module):
     def vel_call_back(self, data):
         self.label_ts = time.time()
         self.cur_vel = data.linear.y
-        print('Update current vel %f' % self.cur_vel)
+        print_long('Update current vel %f' % self.cur_vel)
 
     def odom_call_back(self, odo):
         self.cur_vel = odo.twist.twist.linear.x
-        # print('Update current vel %f from odometry' % self.cur_vel)
+        # print_long('Update current vel %f from odometry' % self.cur_vel)
 
     def cb_car_info(self, car_info):
+        # print_long("receiving ego_state")
         self.car_info = car_info
 
     def control_loop(self, time_step):
         if self.car_info is None:
-            print("ego_car not exist yet...")
+            # print_long("ego_car not exist yet...")
             return
 
         data_monitor_alive = self.data_monitor.check_alive()
@@ -117,42 +121,32 @@ class DriveController(nn.Module):
             if config.draw_prediction_records:
                 self.visualize_hybrid_record()
 
-            print("Node shutting down: data supply is broken")
+            print_long("Node shutting down: data supply is broken")
             rospy.signal_shutdown("Data supply is broken")
 
         do_loop = self.check_do_loop()
         if not do_loop:
-            print('skipping loop')
+            print_long('skipping loop')
             return False
 
-        if self.data_monitor.steering_is_triggered and self.data_monitor.steering_topic_alive:
-            self.data_monitor.steering_topic_alive = False
-
         self.update_steering = False
-        # self.data_monitor.update_steering = False
 
-        self.data_monitor.update_data = False
-
-        print('Disable data update')
-        self.data_monitor.lock.acquire()
         start_time = time.time()
 
         try:
             if not self.data_monitor.data_valid():  # wait for valid data
                 self.update_steering = True
-                self.data_monitor.update_data = True
-                self.data_monitor.update_steering = True
-                print('Data not valid, skipping inference')
+                print_long('Skipping inference')
                 return False
 
             if self.data_monitor.test_terminal():  # stop the car after reaching goal
                 self.publish_terminal_cmd()
-                print('Goal reached, skipping inference')
+                print_long('Goal reached, skipping inference')
                 return True
 
-            acc_label, ang_label, vel_label, lane_label = self.get_labels_combined()
+            acc_label, ang_label_normalized, vel_label, lane_label = self.get_labels_combined()
 
-            print("start inference: counter: " + str(self.count))
+            print_long("start inference: counter: " + str(self.count))
 
             # query the drive_net using current data
             if config.head_mode == "mdn":
@@ -174,7 +168,7 @@ class DriveController(nn.Module):
                                                ang_pi, ang_mu, ang_sigma,
                                                vel_pi, vel_mu, vel_sigma,
                                                lane_probs,
-                                               acc_label, ang_label, vel_label, lane_label)
+                                               acc_label, ang_label_normalized, vel_label, lane_label)
 
             elif config.head_mode == "hybrid":
                 # Forward pass
@@ -182,11 +176,11 @@ class DriveController(nn.Module):
                 ang_logits, \
                 vel_pi, vel_mu, vel_sigma, lane_logits, value = self.inference()
 
-                # print("================predicted value:", value)
+                # print_long("================predicted value:", value)
 
                 self.update_steering = True
 
-                # print("re-open steering update")
+                # print_long("re-open steering update")
 
                 ang_probs = self.sm(ang_logits)
                 lane_probs = self.sm(lane_logits)
@@ -201,7 +195,7 @@ class DriveController(nn.Module):
                                                   vel_pi, vel_mu, vel_sigma,
                                                   lane_probs,
                                                   value,
-                                                  acc_label, ang_label, vel_label, lane_label,
+                                                  acc_label, ang_label_normalized, vel_label, lane_label,
                                                   None,
                                                   acceleration)
 
@@ -215,7 +209,7 @@ class DriveController(nn.Module):
                                                                                 lane_logits)
 
                 self.visualize_predictions(acc_probs, ang_probs, vel_probs, lane_probs, acc_label,
-                                           ang_label, vel_label, lane_label)
+                                           ang_label_normalized, vel_label, lane_label)
 
                 acceleration, steering, velocity, lane = \
                     self.sample_from_categorical_distribution(acc_probs, ang_probs, vel_probs, lane_probs)
@@ -223,15 +217,16 @@ class DriveController(nn.Module):
             self.count += 1
 
             # construct ros topics for the outputs
-            print("Steering bin: %d" % steering)
-            steering = self.decode_steer_to_degree(steering)
+            print_long("Steering bin: %d" % steering)
+            steering_normalized = self.decode_steer_to_normalized(steering)
             acceleration = self.decode_acc_to_raw(acceleration)
             if config.use_vel_head:
                 velocity = self.decode_vel(velocity)
             lane = self.decode_lane(lane)
 
-            true_steering_degree = self.decode_steer_to_degree(ang_label)
+            true_steering_normalized = ang_label_normalized
             true_acceleration = self.decode_acc_to_raw(acc_label)
+            true_velocity = None
             if config.use_vel_head:
                 true_velocity = self.decode_vel(vel_label)
             true_lane = self.decode_lane(lane_label)
@@ -243,27 +238,18 @@ class DriveController(nn.Module):
                 self.acc_iter += 1
                 acceleration = self.old_acceleration
 
-            self.publish_actions(acceleration, steering, velocity, lane,
-                                 true_acceleration, true_steering_degree, true_velocity, true_lane)
-
-            self.data_monitor.update_data = True
+            self.publish_actions(acceleration, steering_normalized, velocity, lane,
+                                 true_acceleration, true_steering_normalized, true_velocity, true_lane)
 
             elapsed_time = time.time() - start_time
-            print("Elapsed time in controlloop: %fs" % elapsed_time)
-
-            self.data_monitor.update_steering = True
-
+            print_long("Elapsed time in controlloop: %fs" % elapsed_time)
             return True
         finally:
             self.release_all_locks()
             return False
 
     def release_all_locks(self):
-        if self.data_monitor.lock.locked():
-            self.data_monitor.lock.release()
         self.update_steering = True
-        self.data_monitor.update_steering = True
-        self.data_monitor.update_data = True
 
     def cal_pub_acc(self, acceleration):
         target_vel = self.cur_vel + acceleration / config.control_freq
@@ -277,11 +263,11 @@ class DriveController(nn.Module):
             throttle = 0.0
         return throttle
 
-    def cal_pub_steer(self, steering_degree):
-        return steering_degree / self.car_info.max_steer_angle
+    def cal_pub_steer(self, steering_normalized):
+        return steering_normalized
 
-    def publish_actions(self, acceleration, steering_degree, velocity, lane,
-                        true_steering_degree, true_accelaration, true_vel, true_lane):
+    def publish_actions(self, acceleration, steering_normalized, velocity, lane,
+                        true_steering_normalized, true_accelaration, true_vel, true_lane):
         try:
             cmd_acc = Float32()
             cmd_steer = Float32()
@@ -289,28 +275,28 @@ class DriveController(nn.Module):
 
             publish_true_steering = False
             if publish_true_steering:
-                print('Publishing ground-truth angle')
-                cmd_steer.data = self.cal_pub_steer(float(true_steering_degree))
-                publish_true_steering = bool(math.fabs(steering_degree - np.degrees(true_steering_degree)) > 20)
+                print_long('Publishing ground-truth angle')
+                cmd_steer.data = self.cal_pub_steer(float(true_steering_normalized))
+                publish_true_steering = bool(math.fabs(steering_normalized - np.degrees(true_steering_normalized)) > 0.1)
             else:
-                print('Publishing predicted angle')
-                cmd_steer.data = self.cal_pub_steer(steering_degree)
+                print_long('Publishing predicted angle')
+                cmd_steer.data = self.cal_pub_steer(steering_normalized)
 
             cmd_acc.data = self.cal_pub_acc(acceleration)  # _
             cmd_lane.data = lane
 
             if config.fit_ang or config.fit_action or config.fit_all:
-                print("output angle in degrees: %f" % float(steering_degree))
-                print("ground-truth angle: " + str(true_steering_degree))
+                print_long("output angle (normalized): %f" % float(steering_normalized))
+                print_long("ground-truth angle (normalized): " + str(true_steering_normalized))
             if config.fit_acc or config.fit_action or config.fit_all:
-                print("output acc: %f" % float(acceleration))
-                print("ground-truth acc: " + str(true_accelaration))
+                print_long("output acc: %f" % float(acceleration))
+                print_long("ground-truth acc: " + str(true_accelaration))
             if (config.fit_vel or config.fit_action or config.fit_all) and config.use_vel_head:
-                print("output vel: %f" % float(velocity))
-                print("ground-truth angle: " + str(true_vel))
+                print_long("output vel: %f" % float(velocity))
+                print_long("ground-truth angle: " + str(true_vel))
             if config.fit_lane or config.fit_action or config.fit_all:
-                print("output lane: %f" % float(lane))
-                print("ground-truth lane: " + str(true_lane))
+                print_long("output lane: %f" % float(lane))
+                print_long("ground-truth lane: " + str(true_lane))
 
             # publish action and acc commands
             self.cmd_acc_pub.publish(cmd_acc)
@@ -400,7 +386,7 @@ class DriveController(nn.Module):
                 error_handler(e)
 
             elapsed_time = time.time() - start_time
-            print("Visualization time: " + str(elapsed_time) + " s")
+            print_long("Visualization time: " + str(elapsed_time) + " s")
 
     def visualize_mdn_predictions(self, acc_pi, acc_mu, acc_sigma,
                                   ang_pi, ang_mu, ang_sigma,
@@ -423,7 +409,7 @@ class DriveController(nn.Module):
                 error_handler(e)
 
             elapsed_time = time.time() - start_time
-            print("Visualization time: " + str(elapsed_time) + " s")
+            print_long("Visualization time: " + str(elapsed_time) + " s")
 
     def visualize_hybrid_predictions(self, acc_pi, acc_mu, acc_sigma, ang_probs,
                                      vel_pi, vel_mu, vel_sigma, lane_probs, value,
@@ -446,7 +432,7 @@ class DriveController(nn.Module):
                 error_handler(e)
 
             elapsed_time = time.time() - start_time
-            print("Visualization time: " + str(elapsed_time) + " s")
+            print_long("Visualization time: " + str(elapsed_time) + " s")
         else:
 
             try:
@@ -458,11 +444,11 @@ class DriveController(nn.Module):
                                                            acc_label, steering_label, vel_label, lane_label,
                                                            acceleration]
             except Exception as e:
-                print(e)
+                error_handler(e)
                 exit(3)
 
     def visualize_hybrid_record(self):
-        print('Visualizing prediction records')
+        print_long('Visualizing prediction records')
         for step in self.output_record.keys():
             data = self.output_record[step]
             self.count = int(step)
@@ -489,7 +475,7 @@ class DriveController(nn.Module):
                                               acc_label, steering_label, vel_label, lane_label,
                                               None,  # value label
                                               accelaration, draw_truth=False, show_axis=False)
-        print('done')
+        print_long('done')
 
     def get_sm_probs(self, acc, ang, vel, lane):
         ang_probs = None
@@ -509,12 +495,12 @@ class DriveController(nn.Module):
         return acc_probs, ang_probs, vel_probs, lane_probs
 
     def get_labels_combined(self):
-        steering_label = self.data_monitor.cur_data['true_steer']
+        steering_normalized_label = self.data_monitor.cur_data['true_steer_normalized']
         acc_label = self.data_monitor.cur_data['true_acc']
         vel_label = self.data_monitor.cur_data['true_vel']
         lane_label = self.data_monitor.cur_data['true_lane']
 
-        return acc_label, steering_label, vel_label, lane_label
+        return acc_label, steering_normalized_label, vel_label, lane_label
 
     def check_do_loop(self):
         do_loop = True
@@ -536,10 +522,7 @@ class DriveController(nn.Module):
         self.cmd_steer_pub.publish(cmd_steer)
         self.cmd_lane_pub.publish(cmd_lane)
 
-        self.data_monitor.lock.release()
         self.update_steering = True
-        self.data_monitor.update_steering = True
-        self.data_monitor.update_data = True
 
     def get_encoded_labels(self, acc_label, steering_label, vel_label, lane_label):
         encoded_acc_label, encoded_steer_label, encoded_vel_label, encoded_lane_label = None, None, None, None
@@ -641,8 +624,8 @@ class DriveController(nn.Module):
                 acc_label_np = float_to_np(acc_label)
                 acc_label_normalized_np = self.encode_acc_from_id(acc_label_np)
         except Exception as e:
-            print(e)
-            print("Exception when encoding true acc label")
+            error_handler(e)
+            print_long("Exception when encoding true acc label")
             exit(1)
 
         return acc_label_normalized_np
@@ -656,11 +639,10 @@ class DriveController(nn.Module):
 
     def inference(self):
         self.drive_net.eval()
-        print("[inference] ")
+        print_long("[inference] ")
         try:
             with torch.no_grad():
                 X = self.get_current_data()
-                self.data_monitor.update_data = True
                 if config.model_type is "pytorch":
                     return forward_pass(X, self.count, self.drive_net, cmd_args, print_time=True, image_flag='test/')
                 elif config.model_type is "jit":

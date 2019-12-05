@@ -397,16 +397,8 @@ def visualize_overlay_image(base_image, top_image, top_image1, lane_label, acc_l
         fig, axarr = plt.subplots(1, 1)
         fig.set_figheight(6)
         fig.set_figwidth(6)
-        draw_image = np.stack([top_image, top_image1, base_image], axis=-1)
-        # arr = draw_image[:, :, 0]
-        # print(arr[np.nonzero(arr)])
-        # arr = draw_image[:, :, 1]
-        # print(arr[np.nonzero(arr)])
-        # arr = draw_image[:, :, 2]
-        # print(arr[np.nonzero(arr)])
-        # exit(-1)
+        draw_image = np.stack([top_image, top_image, base_image], axis=-1)
         axarr.imshow(draw_image, interpolation='nearest')
-
         axarr.annotate('lane: {}'.format(lane_label), color='white',
                     xy=(80, 80), xycoords='figure pixels')
         axarr.annotate('acc: {}'.format(acc_label), color='white',
