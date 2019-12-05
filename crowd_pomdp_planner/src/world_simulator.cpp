@@ -1293,17 +1293,14 @@ void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
 		if (fabs(car_yaw - odom_heading_) > 0.6
 				&& fabs(car_yaw - odom_heading_) < 2 * M_PI - 0.6)
 			if (odom_heading_ != 0)
-				ERR(
-						string_sprintf(
-								"Il topic car_yaw incorrect: %f , truth %f",
-								car_yaw, odom_heading_));
+				DEBUG(string_sprintf(
+						"Il topic car_yaw incorrect: %f , truth %f",
+						car_yaw, odom_heading_));
 
 		COORD tan_dir(-sin(car_yaw), cos(car_yaw));
 		COORD along_dir(cos(car_yaw), sin(car_yaw));
 		for (auto& point : ego_car.car_bbox.points) {
-			// fprintf(stderr,"car bb point: (%f, %f)\n", point.x, point.y);
 			COORD p(point.x - ego_car.car_pos.x, point.y - ego_car.car_pos.y);
-			// fprintf(stderr,"car bb point dir: (%f, %f)\n", p.x, p.y);
 			double proj = p.dot(tan_dir);
 			ModelParams::CAR_WIDTH = max(ModelParams::CAR_WIDTH, fabs(proj));
 			proj = p.dot(along_dir);
@@ -1312,8 +1309,6 @@ void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
 		ModelParams::CAR_WIDTH = ModelParams::CAR_WIDTH * 2;
 		ModelParams::CAR_LENGTH = ModelParams::CAR_LENGTH * 2;
 		ModelParams::CAR_FRONT = ModelParams::CAR_LENGTH / 2.0;
-		// DEBUG(string_sprintf("car dimension: font = %f , rear = %f, width = %f\n",
-		// ModelParams::CAR_FRONT, ModelParams::CAR_REAR, ModelParams::CAR_WIDTH));
 
 		if (Globals::config.useGPU)
 			static_cast<const PedPomdp*>(model_)->InitGPUCarParams();

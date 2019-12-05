@@ -46,11 +46,11 @@ class DataMonitor(data.Dataset):
         self.steering_ready = False
 
         self.coord_frame = None
-        self.resolution = None
-        self.dim = None
-        self.new_dim = None
-        self.map_intensity = None
-        self.map_intensity_scale = None
+
+        self.dim, self.map_intensity, self.map_intensity_scale, self.new_dim, self.resolution = \
+            bag_to_hdf5.create_null_map_data()
+        self.raw_map_array, self.hist_env_maps, self.hist_car_maps, self.lane_map, self.obs_map, self.goal_map \
+            = bag_to_hdf5.create_null_maps()
 
         self.data_is_alive = False
         # wait for data for 10 check_alive calls, if no data, exit program
@@ -89,11 +89,6 @@ class DataMonitor(data.Dataset):
         rospy.Subscriber('/il_data', imitation_data, self.receive_il_data_callback, queue_size=1)
         rospy.Subscriber('/local_lanes', Lanes, self.receive_lane_callback, queue_size=1)
         rospy.Subscriber('/purepursuit_cmd_steer', Float32, self.receive_cmd_steer_callback, queue_size=1)
-
-        self.raw_map_array = None
-        self.ped_map_array = []
-        for i in range(0, config.num_hist_channels):
-            self.ped_map_array.append(None)
 
         self.hist_agents = []
         for i in range(0, config.num_hist_channels):
@@ -257,15 +252,9 @@ class DataMonitor(data.Dataset):
 
             elif flag == "data":
                 # reset patience clock
-                if not self.map_ready:
-                    self.raw_map_array = None
-                    self.coord_frame = None
-                    self.dim, self.map_intensity, self.map_intensity_scale, self.new_dim, self.resolution = \
-                        bag_to_hdf5.create_null_map_data(down_sample_ratio)
-                    map_array, self.ped_map_array = bag_to_hdf5.create_null_maps()
-                else:
-                    map_array, self.ped_map_array = \
-                        bag_to_hdf5.create_maps_inner(self.combined_dict['map'], self.raw_map_array)
+                if self.map_ready:
+                    self.raw_map_array, self.hist_env_maps, self.hist_car_maps, self.lane_map, self.obs_map, self.goal_map \
+                        = bag_to_hdf5.create_maps_inner(self.combined_dict['map'], self.raw_map_array)
 
                 hist_cars, hist_peds, cur_hist_count = \
                     bag_to_hdf5.get_bounded_history(self.combined_dict, 'agents_hist')
@@ -279,22 +268,23 @@ class DataMonitor(data.Dataset):
                 self.coord_frame = None
                 agents_are_valid, elapsed_time = \
                     bag_to_hdf5.process_exo_agents(hist_cars=hist_cars, hist_exo_agents=hist_peds,
-                                                   hist_env_maps=self.ped_map_array, dim=self.dim,
+                                                   hist_env_maps=self.hist_env_maps, dim=self.dim,
                                                    resolution=self.resolution, coord_frame=self.coord_frame)
                 print_long("Exo-agents processing time: " + str(elapsed_time) + " s")
 
                 if not agents_are_valid:
                     return False, cur_hist_count  # report invalid peds
 
-                self.coord_frame = bag_to_hdf5.select_null_map_coord_frame(hist_cars, 0)
+                self.coord_frame = None
 
-                elapsed_time = bag_to_hdf5.process_maps_inner(down_sample_ratio, map_array, self.output_dict,
-                                                              self.ped_map_array)
+                elapsed_time = bag_to_hdf5.process_maps_inner(down_sample_ratio, self.raw_map_array, self.output_dict,
+                                                              self.hist_env_maps)
                 print_long("Agent map processing time: " + str(elapsed_time) + " s")
 
                 elapsed_time = bag_to_hdf5.process_car_inner(self.output_dict, self.combined_dict, hist_cars,
+                                                             self.hist_car_maps, self.goal_map,
                                                              self.dim, down_sample_ratio, self.coord_frame,
-                                                             self.resolution)
+                                                             self.resolution, mode='online')
                 print_long("Ego car processing time: " + str(elapsed_time) + " s")
 
             elif flag == 'lanes':
@@ -303,12 +293,13 @@ class DataMonitor(data.Dataset):
                 if cur_hist_count == 0:
                     print_long("no history agents yet...")
                     return False, cur_hist_count
-                self.coord_frame = bag_to_hdf5.select_null_map_coord_frame(hist_cars, 0)
-                elapsed_time = bag_to_hdf5.process_lanes_inner(self.output_dict, self.combined_dict, None, None,
-                                                               down_sample_ratio, self.coord_frame, self.resolution)
+                self.coord_frame = None
+                elapsed_time = bag_to_hdf5.process_lanes_inner(self.output_dict, self.combined_dict, hist_cars[0],
+                                                               self.lane_map, down_sample_ratio, self.coord_frame,
+                                                               self.resolution, mode='online')
                 print_long("Lane processing time: " + str(elapsed_time) + " s")
 
-            elapsed_time = self.data_to_images(flag)
+            elapsed_time = self.format_nn_input(flag)
             print_long("Input image conversion time: " + str(elapsed_time) + " s")
             self.record_labels()
 
@@ -332,7 +323,7 @@ class DataMonitor(data.Dataset):
         self.cur_data['true_vel'] = self.true_vel
         self.cur_data['true_lane'] = self.true_lane
 
-    def data_to_images(self, flag):
+    def format_nn_input(self, flag):
         start = time.time()
         try:
             if self.output_dict['maps'] is not None:
@@ -340,29 +331,28 @@ class DataMonitor(data.Dataset):
                     self.cur_data['nn_input'][0, 0, config.channel_map[c]] = self.output_dict['maps'][c]
             else:
                 for c in range(0, config.num_hist_channels):
-                    self.cur_data['nn_input'][0, 0, config.channel_map[c], ...] = 0
+                    self.cur_data['nn_input'][0, 0, config.channel_map[c], ...] = 0.0
 
             if flag == "data":
                 if self.output_dict['lane'] is not None:
-                    self.cur_data['nn_input'][0, 0, config.channel_lane, ...] = 0
-                    for point in self.output_dict['lane']:
-                        self.cur_data['nn_input'][0, 0, config.channel_lane, int(
-                            point[0]), int(point[1])] = point[2]
+                    self.cur_data['nn_input'][0, 0, config.channel_lane, ...] = self.output_dict['lane']
+                else:
+                    self.cur_data['nn_input'][0, 0, config.channel_lane, ...] = 0.0
 
                 agent_flag = 'car'
-                if config.use_goal_channel and self.output_dict[agent_flag]['goal'] is not None:
-                    self.cur_data['nn_input'][0, 0, config.channel_goal, ...] = 0
-                    for point in self.output_dict[agent_flag]['goal']:
-                        self.cur_data['nn_input'][0, 0, config.channel_goal, int(
-                            point[0]), int(point[1])] = point[2]
+                if config.use_goal_channel:
+                    if self.output_dict[agent_flag]['goal'] is not None:
+                        self.cur_data['nn_input'][0, 0, config.channel_goal, ...] = self.output_dict[agent_flag]['goal']
+                    else:
+                        self.cur_data['nn_input'][0, 0, config.channel_goal, ...] = 0.0
 
                 if config.use_hist_channels:
                     for c in range(0, config.num_hist_channels):
                         if self.output_dict[agent_flag]['hist'][c] is not None:
-                            self.cur_data['nn_input'][0, 0, config.channel_hist[c], ...] = 0
-                            for point in self.output_dict[agent_flag]['hist'][c]:
-                                self.cur_data['nn_input'][0, 0, config.channel_hist[c], int(
-                                    point[0]), int(point[1])] = point[2]
+                            self.cur_data['nn_input'][0, 0, config.channel_hist[c], ...] = \
+                                self.output_dict[agent_flag]['hist'][c]
+                        else:
+                            self.cur_data['nn_input'][0, 0, config.channel_hist[c], ...] = 0.0
 
         except Exception as e:
             error_handler(e)

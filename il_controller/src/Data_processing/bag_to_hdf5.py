@@ -1043,7 +1043,7 @@ def parse_map_data_from_dict(down_sample_ratio, map_dict_entry):
     return dim, map_intensity, map_intensity_scale, new_dim, coord_frame, raw_map_array, resolution
 
 
-def create_null_map_data(down_sample_ratio):
+def create_null_map_data(down_sample_ratio=0.03125):
     resolution = config.image_half_size_meters * 2.0 / config.default_map_dim  # 0.0390625
     dim = config.default_map_dim
     map_intensity = 1.0
@@ -1053,8 +1053,7 @@ def create_null_map_data(down_sample_ratio):
     return dim, map_intensity, map_intensity_scale, new_dim, resolution
 
 
-def rescale_image(image,
-                  down_sample_ratio=0.03125):
+def rescale_image(image, down_sample_ratio=0.03125):
     image1 = image.copy()
 
     try:
