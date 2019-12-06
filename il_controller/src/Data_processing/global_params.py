@@ -13,6 +13,7 @@ def error_handler(e):
         type(e).__name__, e)
     print('Call-stack:')
     traceback.print_stack()
+    sys.stdout.flush()
     exit(-1)
     # sys.exit(str(e))
 
@@ -20,7 +21,7 @@ def error_handler(e):
 def print_long(msg):
     frameinfo = getframeinfo(sys._getframe(1))
     print('[{}:{}:{}] {}. ts {:.1f}'.format(os.path.basename(frameinfo.filename), frameinfo.function, frameinfo.lineno,
-                                        msg, time.time()-init_time))
+                                        msg, time.time()-init_time), flush=True)
 
 
 config = Namespace()
@@ -55,7 +56,7 @@ config.acc_resolution = 2.0 / config.num_acc_bins
 config.max_acc = 1.5  # in degrees
 
 config.num_vel_bins = 6
-config.vel_max = 1.5
+config.vel_max = 8.0
 
 config.num_lane_bins = 3
 ''' Action model settings '''
@@ -186,7 +187,7 @@ config.lane_scale = 1.0
 # toggle data visualization
 config.visualize_train_data = True
 config.visualize_val_data = False
-config.visualize_inter_data = True
+config.visualize_inter_data = False
 config.visualize_raw_data = False
 # toggle debug printing
 config.print_preds = False

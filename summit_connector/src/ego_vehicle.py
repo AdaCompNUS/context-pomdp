@@ -43,12 +43,15 @@ class EgoVehicle(Summit):
         self.pp_cmd_steer = 0
         self.pomdp_cmd_accel = 0
         self.pomdp_cmd_steer = 0
+        self.lane_decision = 0
 
         self.start_time = None
         self.last_decision = remain
 
         # ROS stuff.
         self.control_mode = rospy.get_param('~control_mode', 'gamma')
+        print('Ego_vehicle control mode: {}'.format(self.control_mode))
+        sys.stdout.flush()
 
         self.pomdp_cmd_accel_sub = rospy.Subscriber('/pomdp_cmd_accel', Float32,
                                                     self.pomdp_cmd_accel_callback, queue_size=1)
@@ -66,7 +69,11 @@ class EgoVehicle(Summit):
         self.pp_cmd_accel_sub = rospy.Subscriber('/purepursuit_cmd_steer',
                                                  Float32, self.pp_cmd_steer_callback, queue_size=1)
 
-        self.gamma_lane_decision_sub = rospy.Subscriber('/gamma_lane_decision', Int32,
+        if self.control_mode == 'gamma' or self.control_mode == 'joint_pomdp' or self.control_mode == 'other':
+            self.gamma_lane_decision_sub = rospy.Subscriber('/gamma_lane_decision', Int32,
+                                                        self.gamma_lane_change_decision_callback, queue_size=1)
+        if self.control_mode == 'imitation':
+            self.imitation_lane_decision_sub = rospy.Subscriber('/imitation_lane_decision', Int32,
                                                         self.gamma_lane_change_decision_callback, queue_size=1)
 
         self.odom_broadcaster = tf.TransformBroadcaster()
@@ -361,12 +368,15 @@ class EgoVehicle(Summit):
         self.pp_cmd_steer = steer.data
 
     def gamma_lane_change_decision_callback(self, decision):
-        self.lane_decision = decision.data
+
+        self.lane_decision = int(decision.data)
         if self.lane_decision == self.last_decision:
             return
         if self.lane_decision * self.last_decision == -1:
             self.last_decision = self.lane_decision
             return
+        print('change lane decision {}'.format(self.lane_decision))
+        sys.stdout.flush()
         self.last_decision = self.lane_decision
         self.update_path(self.lane_decision)
 
@@ -391,7 +401,9 @@ class EgoVehicle(Summit):
             cmd_steer = self.gamma_cmd_steer
         elif self.control_mode == 'imitation':
             cmd_accel = self.imitation_cmd_accel
-            cmd_steer = self.imitation_cmd_steer
+            cmd_steer = self.pp_cmd_steer
+            # print('Publishing imitation cmd ({}, {}, {})'.format(cmd_accel, self.lane_decision, cmd_steer))
+            # sys.stdout.flush()
         elif self.control_mode == 'joint_pomdp':
             cmd_accel = self.pomdp_cmd_accel
             cmd_steer = self.pomdp_cmd_steer

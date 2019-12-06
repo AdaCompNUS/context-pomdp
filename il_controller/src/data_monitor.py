@@ -169,9 +169,9 @@ class DataMonitor(data.Dataset):
     def parse_actions(self, data):
         print('Parsing angle from il_data:', data.action_reward.steering_normalized)
         # self.true_steering = data.action_reward.steering_normalized
-        self.true_acc = data.action_reward.acceleration_id
-        self.true_vel = data.action_reward.target_speed
-        self.true_lane = data.action_reward.lane_change
+        self.true_acc = int(data.action_reward.acceleration_id.data)
+        self.true_vel = float(data.action_reward.target_speed.data)
+        self.true_lane = int(data.action_reward.lane_change.data)
         # print_long("*******************************`Get action reward from data:", data.action_reward)
 
     def parse_plan(self, data):
@@ -300,7 +300,7 @@ class DataMonitor(data.Dataset):
                 print_long("Lane processing time: " + str(elapsed_time) + " s")
 
             elapsed_time = self.format_nn_input(flag)
-            print_long("Input image conversion time: " + str(elapsed_time) + " s")
+            print_long("Input image formatting time: " + str(elapsed_time) + " s")
             self.record_labels()
 
             print_long(flag + " update done.")
@@ -326,18 +326,19 @@ class DataMonitor(data.Dataset):
     def format_nn_input(self, flag):
         start = time.time()
         try:
-            if self.output_dict['maps'] is not None:
-                for c in range(0, config.num_hist_channels):
-                    self.cur_data['nn_input'][0, 0, config.channel_map[c]] = self.output_dict['maps'][c]
-            else:
-                for c in range(0, config.num_hist_channels):
-                    self.cur_data['nn_input'][0, 0, config.channel_map[c], ...] = 0.0
-
-            if flag == "data":
+            if flag == "lane":
                 if self.output_dict['lane'] is not None:
                     self.cur_data['nn_input'][0, 0, config.channel_lane, ...] = self.output_dict['lane']
                 else:
                     self.cur_data['nn_input'][0, 0, config.channel_lane, ...] = 0.0
+
+            if flag == "data":
+                if self.output_dict['maps'] is not None:
+                    for c in range(0, config.num_hist_channels):
+                        self.cur_data['nn_input'][0, 0, config.channel_map[c]] = self.output_dict['maps'][c]
+                else:
+                    for c in range(0, config.num_hist_channels):
+                        self.cur_data['nn_input'][0, 0, config.channel_map[c], ...] = 0.0
 
                 agent_flag = 'car'
                 if config.use_goal_channel:

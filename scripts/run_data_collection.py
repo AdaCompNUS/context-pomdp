@@ -1416,9 +1416,9 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
 
         check_process(record_proc, '[finally] record')
         
-        if config.use_drive_net_mode == IMITATION:
-            while check_process(drive_net_proc, "[finally] drive_net_proc"):
-                time.sleep(1)
+        # if config.use_drive_net_mode == IMITATION:
+        #     while check_process(drive_net_proc, "[finally] drive_net_proc"):
+        #         time.sleep(1)
 
         print('End waiting for drive net.')
 

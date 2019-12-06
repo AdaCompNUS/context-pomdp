@@ -20,6 +20,7 @@ from Data_processing.global_params import print_long
 
 from std_msgs.msg import Float32, Int32
 from msg_builder.msg import car_info as CarInfo
+from torch.distributions import Categorical
 
 
 def set_decoders():
@@ -96,14 +97,9 @@ class DriveController(nn.Module):
         self.input_record = OrderedDict()
         self.output_record = OrderedDict()
 
-    def vel_call_back(self, data):
-        self.label_ts = time.time()
-        self.cur_vel = data.linear.y
-        print_long('Update current vel %f' % self.cur_vel)
-
     def odom_call_back(self, odo):
         self.cur_vel = odo.twist.twist.linear.x
-        # print_long('Update current vel %f from odometry' % self.cur_vel)
+        print_long('Update current vel %f from odometry' % self.cur_vel)
 
     def cb_car_info(self, car_info):
         # print_long("receiving ego_state")
@@ -204,13 +200,14 @@ class DriveController(nn.Module):
                 acc_logits, ang_logits, vel_logits, lane_logits, value = self.inference()
 
                 self.update_steering = True
-
+                print_long("Applying softmax")
                 acc_probs, ang_probs, vel_probs, lane_probs = self.get_sm_probs(acc_logits, ang_logits, vel_logits,
                                                                                 lane_logits)
 
                 self.visualize_predictions(acc_probs, ang_probs, vel_probs, lane_probs, acc_label,
                                            ang_label_normalized, vel_label, lane_label)
 
+                print_long("Sampling actions")
                 acceleration, steering, velocity, lane = \
                     self.sample_from_categorical_distribution(acc_probs, ang_probs, vel_probs, lane_probs)
 
@@ -224,6 +221,9 @@ class DriveController(nn.Module):
                 velocity = self.decode_vel(velocity)
             lane = self.decode_lane(lane)
 
+            print_long("ang_label_normalized: {}".format(ang_label_normalized))
+            print_long("acc_label: {}".format(acc_label))
+            print_long("lane_label: {}".format(lane_label))
             true_steering_normalized = ang_label_normalized
             true_acceleration = self.decode_acc_to_raw(acc_label)
             true_velocity = None
@@ -252,7 +252,7 @@ class DriveController(nn.Module):
         self.update_steering = True
 
     def cal_pub_acc(self, acceleration):
-        target_vel = self.cur_vel + acceleration / config.control_freq
+        target_vel = self.cur_vel + acceleration / 3.0  # config.control_freq
         target_vel = max(min(target_vel, config.vel_max), 0.0)  # target_speed_
 
         throttle = (target_vel - self.cur_vel + 0.05) * 1.0
@@ -308,27 +308,34 @@ class DriveController(nn.Module):
 
     @staticmethod
     def sample_categorical(probs):
-        distrib = Categorical(probs=probs)
-        bin = distrib.sample()
-        return bin
+        try:
+            distrib = Categorical(probs=probs)
+            bin = distrib.sample()
+            return bin
+        except Exception as e:
+            error_handler(e)
 
     @staticmethod
     def sample_categorical_ml(probs):
-        # print('probs: ', probs)
-        values, indices = probs.max(1)
-        # print('indices: ', indices)
-        bin = indices[0]
-        return bin
+        try:
+            values, indices = probs.max(1)
+            bin = indices[0]
+            return bin
+        except Exception as e:
+            error_handler(e)
 
     def sample_from_categorical_distribution(self, acc_probs, ang_probs, vel_probs, lane_probs):
-        steering_bin = self.sample_categorical_ml(probs=ang_probs)
-        acceleration_bin = self.sample_categorical(probs=acc_probs)
-        velocity_bin = None
-        if config.use_vel_head:
-            velocity_bin = self.sample_categorical(probs=vel_probs)
-        lane_bin = self.sample_categorical(probs=lane_probs)
+        try:
+            steering_bin = self.sample_categorical_ml(probs=ang_probs)
+            acceleration_bin = self.sample_categorical_ml(probs=acc_probs)
+            velocity_bin = None
+            if config.use_vel_head:
+                velocity_bin = self.sample_categorical(probs=vel_probs)
+            lane_bin = self.sample_categorical_ml(probs=lane_probs)
 
-        return acceleration_bin, steering_bin, velocity_bin, lane_bin
+            return acceleration_bin, steering_bin, velocity_bin, lane_bin
+        except Exception as e:
+            error_handler(e)
 
     @staticmethod
     def sample_guassian_mixture(pi, mu, sigma, mode="ml", component="acc"):

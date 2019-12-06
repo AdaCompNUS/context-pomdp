@@ -464,8 +464,9 @@ def draw_car(car, image, coord_frame, down_sample_ratio, resolution, pyramid_ima
 
 def draw_car_state(car, image, coord_frame, down_sample_ratio, resolution, pyramid_image=False, pyramid_points=False):
     try:
-        image_space_car_state = get_image_space_car_state(car, coord_frame, resolution)
-        draw_polygon_edges(image_space_car_state, image, intensity=2.0, intensity_scale=1.0, is_contour=False)
+        if car is not None:
+            image_space_car_state = get_image_space_car_state(car, coord_frame, resolution)
+            draw_polygon_edges(image_space_car_state, image, intensity=2.0, intensity_scale=1.0, is_contour=False)
 
         if pyramid_image:
             return image_to_pyramid_image(image, down_sample_ratio)
