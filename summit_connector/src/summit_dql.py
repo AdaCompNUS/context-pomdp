@@ -144,12 +144,12 @@ class SummitDQL(Summit):
 
     def imitation_image_callback(self, images):
         try:
-            # print('images received of type {}'.format(images.lane.encoding))
-            self.imitation_lane_image = CvBridge().imgmsg_to_cv2(images.lane)
-            self.imitation_hist_image = CvBridge().imgmsg_to_cv2(images.hist0)
-            self.imitation_hist1_image = CvBridge().imgmsg_to_cv2(images.hist1)
-            self.imitation_hist2_image = CvBridge().imgmsg_to_cv2(images.hist2)
-            self.imitation_hist3_image = CvBridge().imgmsg_to_cv2(images.hist3)
+            print('images received of type {}'.format(images.lane.encoding))
+            self.imitation_lane_image = (255 * np.ndarray((images.lane.height, images.lane.width), dtype=np.float32, buffer=images.lane.data)).astype(np.uint8)
+            self.imitation_hist_image = (255 * np.ndarray((images.hist0.height, images.hist0.width), dtype=np.float32, buffer=images.hist0.data)).astype(np.uint8)
+            self.imitation_hist1_image = (255 * np.ndarray((images.hist1.height, images.hist1.width), dtype=np.float32, buffer=images.hist1.data).astype(np.uint8)
+            self.imitation_hist2_image = (255 * np.ndarray((images.hist2.height, images.hist2.width), dtype=np.float32, buffer=images.hist2.data).astype(np.uint8)
+            self.imitation_hist3_image = (255 * np.ndarray((images.hist3.height, images.hist3.width), dtype=np.float32, buffer=images.hist3.data).astype(np.uint8)
         except Exception as e:
             error_handler(e)
 
