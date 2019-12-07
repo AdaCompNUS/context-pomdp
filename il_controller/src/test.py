@@ -359,7 +359,7 @@ class DriveController(nn.Module):
     def sample_from_categorical_distribution(self, acc_probs, ang_probs, vel_probs, lane_probs):
         try:
             steering_bin = self.sample_categorical_ml(probs=ang_probs)
-            acceleration_bin = self.sample_categorical_ml(probs=acc_probs)
+            acceleration_bin = self.sample_categorical(probs=acc_probs)
             velocity_bin = None
             if config.use_vel_head:
                 velocity_bin = self.sample_categorical(probs=vel_probs)
@@ -702,10 +702,13 @@ class DriveController(nn.Module):
             input_tensor = input_tensor.to(device)
 
             input_msg = InputImages()
-            print('lane image ={}'.format(
-                bag_to_hdf5.extract_nonzero_points(input_images_np[0, 0, config.channel_lane, ...])))
-            print('hist image ={}'.format(
-                bag_to_hdf5.extract_nonzero_points(input_images_np[0, 0, config.channel_map[0], ...])))
+            print('lane image max={}'.format(
+                np.max(input_images_np[0, 0, config.channel_lane, ...])))
+            print('hist image max={} {} {} {}'.format(
+                np.max(input_images_np[0, 0, config.channel_map[0], ...]),
+                np.max(input_images_np[0, 0, config.channel_map[1], ...]),
+                np.max(input_images_np[0, 0, config.channel_map[2], ...]),
+                np.max(input_images_np[0, 0, config.channel_map[3], ...])))
 
             input_msg.lane = \
                 CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_lane, ...])
@@ -721,7 +724,6 @@ class DriveController(nn.Module):
             return input_tensor
         except Exception as e:
             error_handler(e)
-
 
 
 def print_model_size(model):

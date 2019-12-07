@@ -401,6 +401,7 @@ class EgoVehicle(Summit):
             cmd_steer = self.gamma_cmd_steer
         elif self.control_mode == 'imitation':
             cmd_accel = self.imitation_cmd_accel
+            # cmd_steer = self.imitation_cmd_steer
             cmd_steer = self.pp_cmd_steer
             # print('Publishing imitation cmd ({}, {}, {})'.format(cmd_accel, self.lane_decision, cmd_steer))
             # sys.stdout.flush()

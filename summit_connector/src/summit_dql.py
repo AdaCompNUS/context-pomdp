@@ -184,11 +184,11 @@ class SummitDQL(Summit):
             if self.imitation_cmd_steer is not None:
                 bar_anchor_y += bar_width + bar_gap
                 self.draw_bar(frame, 0.0, bar_anchor_y, (0, 255, 0), bar_width, self.imitation_cmd_steer)
-                self.draw_text(frame, 'Acc', 0.0, bar_anchor_y, txt_shift_x=2.0)
+                self.draw_text(frame, 'Ang', 0.0, bar_anchor_y, txt_shift_x=2.0)
             if self.imitation_cmd_lane is not None:
                 bar_anchor_y += bar_width + bar_gap
                 self.draw_bar(frame, 0.0, bar_anchor_y, (0, 0, 255), bar_width, self.imitation_cmd_lane)
-                self.draw_text(frame, 'Acc', 0.0, bar_anchor_y, txt_shift_x=2.0)
+                self.draw_text(frame, 'Lane', 0.0, bar_anchor_y, txt_shift_x=2.0)
         return frame
 
     def draw_action_probs(self):

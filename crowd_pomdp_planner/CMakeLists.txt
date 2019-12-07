@@ -55,7 +55,7 @@ include_directories(
   ../crowd_pomdp_planner/src/
 )
 
-message("===================== ${CATKIN_DEVEL_PREFIX} ==================")
+# message("===================== ${CATKIN_DEVEL_PREFIX} ==================")
 
 add_library(car_hyp_despot STATIC IMPORTED)
 set_target_properties(car_hyp_despot PROPERTIES
