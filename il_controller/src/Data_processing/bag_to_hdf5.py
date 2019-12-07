@@ -513,6 +513,7 @@ def draw_path(path, image, coord_frame, resolution, dim, down_sample_ratio, pyra
 def draw_lanes(lanes, image, car, coord_frame, down_sample_ratio, resolution, pyramid_image=False,
                pyramid_points=False):
     start_time = time.time()
+    print('Rendering {} lane segments'.format(len(lanes)))
 
     image.fill(0.0)
     for lane_seg in lanes:
@@ -788,8 +789,6 @@ def process_lanes_inner(output_dict_entry, data_dict_entry, cur_car, lane_image,
                         resolution, mode='offline'):
     start = time.time()
     lanes = data_dict_entry['lanes']
-
-    print('Rendering {} lane segments'.format(len(lanes)))
 
     if mode == 'offline':
         output_dict_entry['lane'], _ = draw_lanes(lanes, lane_image, cur_car, coord_frame, down_sample_ratio, resolution,
@@ -1084,7 +1083,7 @@ def image_to_pyramid_pixels(image, down_sample_ratio=0.03125):
     return nonzero_points
 
 
-def image_to_pyramid_image(image, down_sample_ratio=0.03125):
+def image_to_pyramid_image(image, down_sample_ratio=0.03125, debug=False):
     pyramid_image = None
     try:
         # !! input points are in Euclidean space (x,y), output points are in image space (row, column) !!
@@ -1092,11 +1091,13 @@ def image_to_pyramid_image(image, down_sample_ratio=0.03125):
         pyramid_image = rescale_image(image, down_sample_ratio)
         pyramid_image = normalize(pyramid_image)
 
-        print_long('image max = {}'.format(np.max(pyramid_image)))
+        if debug:
+            print_long('image points = {}'.format(extract_nonzero_points(pyramid_image)))
+
+        return pyramid_image
     except Exception as e:
         error_handler(e)
         pdb.set_trace()
-    return pyramid_image
 
 
 def extract_nonzero_points(arr1):

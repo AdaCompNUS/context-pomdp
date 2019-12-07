@@ -20,7 +20,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_PREFIX_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
 add_definitions(-std=c++0x -O3)
 
-find_package(car_hyp_despot REQUIRED)
+# find_package(car_hyp_despot REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
@@ -54,6 +54,8 @@ include_directories(
   ../crowd_pomdp_planner/src/carla/
   ../crowd_pomdp_planner/src/
 )
+
+message("===================== ${CATKIN_DEVEL_PREFIX} ==================")
 
 add_library(car_hyp_despot STATIC IMPORTED)
 set_target_properties(car_hyp_despot PROPERTIES

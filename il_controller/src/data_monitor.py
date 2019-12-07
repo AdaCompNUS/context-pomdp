@@ -332,7 +332,8 @@ class DataMonitor(data.Dataset):
     def format_nn_input(self, flag):
         start = time.time()
         try:
-            if flag == "lane":
+            if flag == "lanes":
+                # print_long('lane points {}'.format(self.output_dict['lane']))
                 if self.output_dict['lane'] is not None:
                     self.cur_data['nn_input'][0, 0, config.channel_lane, ...] = self.output_dict['lane']
                 else:
