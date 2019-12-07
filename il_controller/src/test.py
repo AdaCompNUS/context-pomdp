@@ -702,7 +702,11 @@ class DriveController(nn.Module):
             input_tensor = input_tensor.to(device)
 
             input_msg = InputImages()
-            print('lane image ={}'.format(input_images_np[0, 0, config.channel_lane, ...]))
+            # print('lane image ={}'.format(
+            #     bag_to_hdf5.extract_nonzero_points(input_images_np[0, 0, config.channel_lane, ...])))
+            # print('hist image ={}'.format(
+            #     bag_to_hdf5.extract_nonzero_points(input_images_np[0, 0, config.channel_map[0], ...])))
+
             input_msg.lane = \
                 CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_lane, ...])
             input_msg.hist0 = \
