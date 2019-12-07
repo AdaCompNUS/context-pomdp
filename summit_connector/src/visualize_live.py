@@ -25,7 +25,9 @@ class VisualizeLive(SummitDQL):
         super(VisualizeLive, self).__init__()
 
     def update(self):
-        cv2.imshow('frame', self.draw_state_frame())
+        cv2.imshow('frame1', self.draw_state_frame())
+        cv2.imshow('frame2', self.draw_info_frame())
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
               return False
 

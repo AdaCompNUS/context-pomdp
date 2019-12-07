@@ -789,6 +789,8 @@ def process_lanes_inner(output_dict_entry, data_dict_entry, cur_car, lane_image,
     start = time.time()
     lanes = data_dict_entry['lanes']
 
+    print('Rendering {} lane segments'.format(len(lanes)))
+
     if mode == 'offline':
         output_dict_entry['lane'], _ = draw_lanes(lanes, lane_image, cur_car, coord_frame, down_sample_ratio, resolution,
                                                pyramid_points=True)
@@ -866,14 +868,14 @@ def process_parametric_agents_inner(output_dict_entry, hist_exo_agents, hist_car
     output_dict_entry['cart_agents'] = hist_agent_states
 
 
-def normalize(ped_array):
+def normalize(array):
     try:
-        if np.max(ped_array) > 0:
-            ped_array = ped_array / np.max(ped_array)
+        if np.max(array) > 0:
+            array = array / np.max(array)
     except Exception as e:
         error_handler(e)
     finally:
-        return ped_array
+        return array
 
 
 def get_exo_agent_history(ped_id, hist_exo_agents):
@@ -1089,6 +1091,8 @@ def image_to_pyramid_image(image, down_sample_ratio=0.03125):
         # down sample the image
         pyramid_image = rescale_image(image, down_sample_ratio)
         pyramid_image = normalize(pyramid_image)
+
+        print_long('image max = {}'.format(np.max(pyramid_image)))
     except Exception as e:
         error_handler(e)
         pdb.set_trace()

@@ -4,10 +4,23 @@ from summit import Summit
 import carla
 import rospy
 import msg_builder.msg
+from msg_builder.msg import ActionDistrib
 import nav_msgs.msg
 import cv2
 import numpy as np
 from std_msgs.msg import Float32, Int32
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
+from msg_builder.msg import InputImages
+import sys, traceback
+
+
+def error_handler(e):
+    print(
+        'Error on file {} line {}'.format(sys.exc_info()[-1].tb_frame.f_code.co_filename, sys.exc_info()[-1].tb_lineno),
+        type(e).__name__, e)
+    sys.stdout.flush()
+    exit(-1)
 
 
 def get_position(actor):
@@ -50,6 +63,10 @@ class SummitDQL(Summit):
         self.network_agents = []
         self.sidewalk_agents = []
         self.imitation_cmd_accel, self.imitation_cmd_steer, self.imitation_cmd_lane = None, None, None
+        self.imitation_acc_probs, self.imitation_steer_probs, self.imitation_lane_probs = None, None, None
+        self.imitation_lane_image = None
+        self.imitation_hist_image, self.imitation_hist1_image, self.imitation_hist2_image, self.imitation_hist3_image\
+            = None, None, None, None
         self.range = 30
         self.resolution = 0.1
         self.bounds_min = None
@@ -69,12 +86,17 @@ class SummitDQL(Summit):
             '/crowd/sidewalk_agents', msg_builder.msg.CrowdSidewalkAgentArray,
             self.sidewalk_agents_callback, queue_size=1)
 
-        self.imitation_cmd_accel_sub = rospy.Subscriber('/imitation_cmd_accel',
+        self.imitation_accel_sub = rospy.Subscriber('/imitation_cmd_accel',
                                                         Float32, self.imitation_cmd_accel_callback, queue_size=1)
-        self.imitation_cmd_steer_sub = rospy.Subscriber('/imitation_cmd_steer',
+        self.imitation_steer_sub = rospy.Subscriber('/imitation_cmd_steer',
                                                         Float32, self.imitation_cmd_steer_callback, queue_size=1)
-        self.imitation_lane_decision_sub = rospy.Subscriber('/imitation_lane_decision', Int32,
+        self.imitation_lane_sub = rospy.Subscriber('/imitation_lane_decision', Int32,
                                                             self.imitation_cmd_lane_callback, queue_size=1)
+        self.imitation_probs_sub = rospy.Subscriber('/imitation_action_distribs', ActionDistrib,
+                                                            self.imitation_probs_callback, queue_size=1)
+
+        self.imitation_input_sub = rospy.Subscriber("/imitation_input_images", InputImages, self.imitation_image_callback)
+
 
     def dispose(self):
         pass
@@ -82,6 +104,10 @@ class SummitDQL(Summit):
     def pixel(self, point):
         return (
             int((point.y - self.bounds_min.y) / self.resolution), int((self.bounds_max.x - point.x) / self.resolution))
+
+    def pixel_zero_center(self, point):
+        return (
+            int((point.y + self.range) / self.resolution), int((self.range - point.x) / self.resolution))
 
     def create_frame(self):
         return np.zeros((int(2 * self.range / self.resolution), int(2 * self.range / self.resolution), 3),
@@ -111,36 +137,105 @@ class SummitDQL(Summit):
     def imitation_cmd_lane_callback(self, lane):
         self.imitation_cmd_lane = lane.data
 
+    def imitation_probs_callback(self, action_probs):
+        self.imitation_acc_probs = action_probs.acc_probs
+        self.imitation_steer_probs = action_probs.steer_probs
+        self.imitation_lane_probs = action_probs.lane_probs
+
+    def imitation_image_callback(self, images):
+        try:
+            # print('images received of type {}'.format(images.lane.encoding))
+            self.imitation_lane_image = CvBridge().imgmsg_to_cv2(images.lane)
+            self.imitation_hist_image = CvBridge().imgmsg_to_cv2(images.hist0)
+            self.imitation_hist1_image = CvBridge().imgmsg_to_cv2(images.hist1)
+            self.imitation_hist2_image = CvBridge().imgmsg_to_cv2(images.hist2)
+            self.imitation_hist3_image = CvBridge().imgmsg_to_cv2(images.hist3)
+        except Exception as e:
+            error_handler(e)
+
+    def draw_input_images(self):
+        frame = self.create_frame()
+        self.draw_image(frame, self.imitation_lane_image, 25.0, -25.0)
+        self.draw_image(frame, self.imitation_hist_image, 25.0, -15.0)
+        return frame
+
+    def draw_image(self, frame, image, pos_x, pos_y):
+        try:
+            if image is not None:
+                print('image shape {}'.format(image.shape))
+                sys.stdout.flush()
+                (x_offset, y_offset) = self.pixel_zero_center(carla.Vector2D(pos_x, pos_y))
+                frame[y_offset:y_offset + self.imitation_lane_image.shape[0],
+                    x_offset:x_offset + self.imitation_lane_image.shape[1], 0] = image
+
+        except Exception as e:
+            error_handler(e)
+
     def draw_decisions(self):
         frame = self.create_frame()
-        bar_anchor = None
+        bar_anchor_y = None
         bar_width = 2.0
         bar_gap = 2.0
         if self.ego_state is not None:
             if self.imitation_cmd_accel is not None:
-                bar_anchor = 0.0
-                self.draw_bar(frame, bar_anchor, (255, 0, 0), 'Acc', bar_width, self.imitation_cmd_accel)
+                bar_anchor_y = 0.0
+                self.draw_bar(frame, 0.0, bar_anchor_y, (255, 0, 0), bar_width, self.imitation_cmd_accel)
+                self.draw_text(frame, 'Acc', 0.0, bar_anchor_y, txt_shift_x=2.0)
             if self.imitation_cmd_steer is not None:
-                bar_anchor += bar_width + bar_gap
-                self.draw_bar(frame, bar_anchor, (0, 255, 0), 'Ang', bar_width, self.imitation_cmd_steer)
+                bar_anchor_y += bar_width + bar_gap
+                self.draw_bar(frame, 0.0, bar_anchor_y, (0, 255, 0), bar_width, self.imitation_cmd_steer)
+                self.draw_text(frame, 'Acc', 0.0, bar_anchor_y, txt_shift_x=2.0)
             if self.imitation_cmd_lane is not None:
-                bar_anchor += bar_width + bar_gap
-                self.draw_bar(frame, bar_anchor, (0, 0, 255), 'Lane', bar_width, self.imitation_cmd_lane)
+                bar_anchor_y += bar_width + bar_gap
+                self.draw_bar(frame, 0.0, bar_anchor_y, (0, 0, 255), bar_width, self.imitation_cmd_lane)
+                self.draw_text(frame, 'Acc', 0.0, bar_anchor_y, txt_shift_x=2.0)
         return frame
 
-    def draw_bar(self, frame, bar_anchor, bar_color, text, bar_width, bar_height):
-        scale = 5.0
-        base = 25.0
+    def draw_action_probs(self):
+        frame = self.create_frame()
+        bar_width = 2.0
+        bar_gap = 0.2
+        if self.ego_state is not None:
+            bar_anchor_x, bar_anchor_y = 9.0, 0.0
+            self.draw_probs(frame, self.imitation_acc_probs, 'Acc_probs', (255, 0, 0), bar_anchor_x, bar_anchor_y,
+                            bar_gap, bar_width)
+            bar_anchor_x -= 3.0
+            self.draw_probs(frame, self.imitation_steer_probs, 'Ang_probs', (0, 255, 0), bar_anchor_x, bar_anchor_y,
+                            bar_gap, bar_width)
+            bar_anchor_x -= 3.0
+            self.draw_probs(frame, self.imitation_lane_probs, 'Lane_probs', (0, 0, 255), bar_anchor_x, bar_anchor_y,
+                            bar_gap, bar_width)
+
+        return frame
+
+    def draw_probs(self, frame, probs, text, color, bar_anchor_x, bar_anchor_y, bar_gap, bar_width):
+        if probs is not None:
+            bar_anchor_y = 0.0
+            self.draw_text(frame, text, bar_anchor_x, bar_anchor_y, txt_shift_x=0.0)
+            bar_anchor_y += 10.0
+            for prob in probs:
+                prob = float(prob.data)
+                self.draw_bar(frame, bar_anchor_x, bar_anchor_y, color, bar_width, prob)
+                bar_anchor_y += bar_width + bar_gap
+
+    def draw_bar(self, frame, bar_anchor_x, bar_anchor_y, bar_color, bar_width, bar_height):
+        scale = 2.5
+        base_shift_x = 25.0
+        base_shift_y = 25.0
+        pos_x = - base_shift_x + bar_anchor_x
+        pos_y = - base_shift_y + bar_anchor_y
+        bar_left_bottom = self.pixel_zero_center(carla.Vector2D(pos_x, pos_y))
+        bar_right_top = self.pixel_zero_center(carla.Vector2D(pos_x + scale * bar_height, pos_y + bar_width))
+        cv2.rectangle(frame, bar_left_bottom, bar_right_top, bar_color, 3, lineType=cv2.FILLED)
+
+    def draw_text(self, frame, text, bar_anchor_x, bar_anchor_y, txt_shift_x=0.0, txt_shift_y=0.0):
         font = 0.5
-        txt_shift = 2.0
-        bar_left_bottom = self.pixel(
-            carla.Vector2D(self.ego_state.car_pos.x - base, self.ego_state.car_pos.y - base + bar_anchor))
-        bar_right_top = self.pixel(carla.Vector2D(
-            self.ego_state.car_pos.x - base + scale * bar_height,
-            self.ego_state.car_pos.y - base + bar_anchor + bar_width))
-        txt_pos = self.pixel(
-            carla.Vector2D(self.ego_state.car_pos.x - base - txt_shift, self.ego_state.car_pos.y - base + bar_anchor))
-        cv2.rectangle(frame, bar_left_bottom, bar_right_top, bar_color, 3)
+        base_shift_x = 25.0
+        base_shift_y = 25.0
+        pos_x = - base_shift_x + bar_anchor_x
+        pos_y = - base_shift_y + bar_anchor_y
+        txt_pos = self.pixel_zero_center(
+            carla.Vector2D(pos_x - txt_shift_x, pos_y - txt_shift_y))
         cv2.putText(frame, text, txt_pos, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                     fontScale=font, color=(255, 255, 255), thickness=2, lineType=cv2.LINE_AA)
 
@@ -183,6 +278,11 @@ class SummitDQL(Summit):
         overlay(frame, self.draw_ego_path())
         overlay(frame, self.draw_exo_network_state())
         overlay(frame, self.draw_ego_state())
-        overlay(frame, self.draw_decisions())
+        return frame
+
+    def draw_info_frame(self):
+        frame = self.draw_decisions()
+        overlay(frame, self.draw_action_probs())
+        overlay(frame, self.draw_input_images())
 
         return frame

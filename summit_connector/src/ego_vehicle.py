@@ -69,11 +69,11 @@ class EgoVehicle(Summit):
         self.pp_cmd_accel_sub = rospy.Subscriber('/purepursuit_cmd_steer',
                                                  Float32, self.pp_cmd_steer_callback, queue_size=1)
 
-        if self.control_mode == 'gamma' or self.control_mode == 'joint_pomdp' or self.control_mode == 'other':
-            self.gamma_lane_decision_sub = rospy.Subscriber('/gamma_lane_decision', Int32,
-                                                        self.gamma_lane_change_decision_callback, queue_size=1)
         if self.control_mode == 'imitation':
             self.imitation_lane_decision_sub = rospy.Subscriber('/imitation_lane_decision', Int32,
+                                                        self.gamma_lane_change_decision_callback, queue_size=1)
+        else:
+            self.gamma_lane_decision_sub = rospy.Subscriber('/gamma_lane_decision', Int32,
                                                         self.gamma_lane_change_decision_callback, queue_size=1)
 
         self.odom_broadcaster = tf.TransformBroadcaster()

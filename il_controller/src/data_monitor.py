@@ -9,6 +9,7 @@ config = global_params.config
 
 import os
 
+
 if config.pycharm_mode:
     import pyros_setup
 
@@ -255,6 +256,11 @@ class DataMonitor(data.Dataset):
                 if self.map_ready:
                     self.raw_map_array, self.hist_env_maps, self.hist_car_maps, self.lane_map, self.obs_map, self.goal_map \
                         = bag_to_hdf5.create_maps_inner(self.combined_dict['map'], self.raw_map_array)
+                else:
+                    pass
+                    # print('Creating null maps')
+                    # self.raw_map_array, self.hist_env_maps, self.hist_car_maps, self.lane_map, self.obs_map, self.goal_map \
+                    #     = bag_to_hdf5.create_null_maps()
 
                 hist_cars, hist_peds, cur_hist_count = \
                     bag_to_hdf5.get_bounded_history(self.combined_dict, 'agents_hist')

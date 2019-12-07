@@ -6,6 +6,9 @@ sys.path.append('./Data_processing/')
 sys.path.append('./')
 
 import math
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
+from msg_builder.msg import InputImages
 
 import matplotlib
 
@@ -20,6 +23,7 @@ from Data_processing.global_params import print_long
 
 from std_msgs.msg import Float32, Int32
 from msg_builder.msg import car_info as CarInfo
+from msg_builder.msg import ActionDistrib
 from torch.distributions import Categorical
 
 
@@ -67,6 +71,9 @@ class DriveController(nn.Module):
         self.cmd_acc_pub = rospy.Publisher('imitation_cmd_accel', Float32, queue_size=1)
         self.cmd_steer_pub = rospy.Publisher('imitation_cmd_steer', Float32, queue_size=1)
         self.cmd_lane_pub = rospy.Publisher('imitation_lane_decision', Int32, queue_size=1)
+
+        self.cmd_probs_pub = rospy.Publisher('imitation_action_distribs', ActionDistrib, queue_size=1)
+        self.input_pub = rospy.Publisher('imitation_input_images', InputImages, queue_size=1)
 
         rospy.Subscriber("odom", Odometry, self.odom_call_back)
         rospy.Subscriber("ego_state", CarInfo, self.cb_car_info, queue_size=1)
@@ -207,6 +214,8 @@ class DriveController(nn.Module):
                 self.visualize_predictions(acc_probs, ang_probs, vel_probs, lane_probs, acc_label,
                                            ang_label_normalized, vel_label, lane_label)
 
+                self.publish_action_probs(acc_probs, ang_probs, lane_probs)
+
                 print_long("Sampling actions")
                 acceleration, steering, velocity, lane = \
                     self.sample_from_categorical_distribution(acc_probs, ang_probs, vel_probs, lane_probs)
@@ -247,6 +256,29 @@ class DriveController(nn.Module):
         finally:
             self.release_all_locks()
             return False
+
+    def publish_action_probs(self, acc_probs, ang_probs, lane_probs):
+        try:
+            action_probs_msg = ActionDistrib()
+            action_probs_msg.acc_probs = []
+
+            for prob in acc_probs.cpu().data.numpy()[0]:
+                tmp_acc_prob = Float32()
+                tmp_acc_prob.data = prob
+                action_probs_msg.acc_probs.append(tmp_acc_prob)
+            action_probs_msg.steer_probs = []
+            for prob in ang_probs.cpu().data.numpy()[0]:
+                tmp_steer_prob = Float32()
+                tmp_steer_prob.data = prob
+                action_probs_msg.steer_probs.append(tmp_steer_prob)
+            action_probs_msg.lane_probs = []
+            for prob in lane_probs.cpu().data.numpy()[0]:
+                tmp_lane_prob = Float32()
+                tmp_lane_prob.data = prob
+                action_probs_msg.lane_probs.append(tmp_lane_prob)
+            self.cmd_probs_pub.publish(action_probs_msg)
+        except Exception as e:
+            error_handler(e)
 
     def release_all_locks(self):
         self.update_steering = True
@@ -659,15 +691,33 @@ class DriveController(nn.Module):
             error_handler(e)
 
     def get_current_data(self):
-        input_images_np = self.data_monitor.cur_data['nn_input']
-        data_len = input_images_np.shape[0]
-        for i in range(0, data_len):
-            input_images_np[i] = self.encode_input(input_images_np[i])
-        input_tensor = torch.from_numpy(input_images_np)
-        if config.visualize_val_data:
-            pass
-        input_tensor = input_tensor.to(device)
-        return input_tensor
+        try:
+            input_images_np = self.data_monitor.cur_data['nn_input']
+            data_len = input_images_np.shape[0]
+            for i in range(0, data_len):
+                input_images_np[i] = self.encode_input(input_images_np[i])
+            input_tensor = torch.from_numpy(input_images_np)
+            if config.visualize_val_data:
+                pass
+            input_tensor = input_tensor.to(device)
+
+            input_msg = InputImages()
+            print('lane image ={}'.format(input_images_np[0, 0, config.channel_lane, ...]))
+            input_msg.lane = \
+                CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_lane, ...])
+            input_msg.hist0 = \
+                CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[0], ...])
+            input_msg.hist1 = \
+                CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[1], ...])
+            input_msg.hist2 = \
+                CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[2], ...])
+            input_msg.hist3 = \
+                CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[3], ...])
+            self.input_pub.publish(input_msg)
+            return input_tensor
+        except Exception as e:
+            error_handler(e)
+
 
 
 def print_model_size(model):
