@@ -63,7 +63,7 @@ config.num_lane_bins = 3
 
 
 ''' Sampling settings '''
-config.default_ratio = 1.0 / pow(2, 3) # down sample 3 times
+config.default_ratio = 1.0 / pow(2, 3)  # down sample 3 times
 config.num_samples_per_traj = 60
 config.min_samples_gap = 6
 config.num_agents_in_map = 20
