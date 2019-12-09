@@ -23,7 +23,7 @@ import datetime, sys, os
 import numpy as np
 
 
-record_video = True
+record_video = False
 # frame_width, frame_height = None, None
 video_file, video_out = None, None
 
@@ -39,7 +39,6 @@ class VisualizeLive(SummitDQL):
         global frame_array, frame_width, frame_height
         frame_array[:, 0:frame_height, :] = self.draw_info_frame()
         frame_array[:, frame_width:2*frame_height, :] = self.draw_state_frame()
-        # cv2.imshow('frame1', )
         cv2.imshow('frame', frame_array)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -58,7 +57,7 @@ class VisualizeLive(SummitDQL):
             global start_time, last_time
             elapsed_time = time.time() - start_time
             frame_time = time.time() - last_time
-            if True: # elapsed_time > 9:
+            if elapsed_time > 5:
                 print("elapsed {} frame {}".format(elapsed_time, frame_time))
                 # rgb_data = cv2.cvtColor(frame_array, cv2.COLOR_RGBA2RGB)
                 video_out.write(frame_array)
@@ -91,7 +90,7 @@ if __name__ == '__main__':
     # global frame_height, frame_width
     frame_width = int(2 * visualize_live.range / visualize_live.resolution)
     frame_height = int(2 * visualize_live.range / visualize_live.resolution)
-    frame_array = np.zeros((frame_width, 2 * frame_height, 3), np.float32)
+    frame_array = np.zeros((frame_width, 2 * frame_height, 3), np.uint8)
 
     if record_video:
         datetime_object = datetime.datetime.now()

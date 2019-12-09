@@ -65,7 +65,7 @@ class SummitDQL(Summit):
         self.imitation_cmd_accel, self.imitation_cmd_steer, self.imitation_cmd_lane = None, None, None
         self.imitation_acc_probs, self.imitation_steer_probs, self.imitation_lane_probs = None, None, None
         self.imitation_lane_image = None
-        self.imitation_hist_image, self.imitation_hist1_image, self.imitation_hist2_image, self.imitation_hist3_image\
+        self.imitation_hist_image, self.imitation_hist1_image, self.imitation_hist2_image, self.imitation_hist3_image \
             = None, None, None, None
         self.range = 30
         self.resolution = 0.1
@@ -87,16 +87,16 @@ class SummitDQL(Summit):
             self.sidewalk_agents_callback, queue_size=1)
 
         self.imitation_accel_sub = rospy.Subscriber('/imitation_cmd_accel',
-                                                        Float32, self.imitation_cmd_accel_callback, queue_size=1)
+                                                    Float32, self.imitation_cmd_accel_callback, queue_size=1)
         self.imitation_steer_sub = rospy.Subscriber('/imitation_cmd_steer',
-                                                        Float32, self.imitation_cmd_steer_callback, queue_size=1)
+                                                    Float32, self.imitation_cmd_steer_callback, queue_size=1)
         self.imitation_lane_sub = rospy.Subscriber('/imitation_lane_decision', Int32,
-                                                            self.imitation_cmd_lane_callback, queue_size=1)
+                                                   self.imitation_cmd_lane_callback, queue_size=1)
         self.imitation_probs_sub = rospy.Subscriber('/imitation_action_distribs', ActionDistrib,
-                                                            self.imitation_probs_callback, queue_size=1)
+                                                    self.imitation_probs_callback, queue_size=1)
 
-        self.imitation_input_sub = rospy.Subscriber("/imitation_input_images", InputImages, self.imitation_image_callback)
-
+        self.imitation_input_sub = rospy.Subscriber("/imitation_input_images", InputImages,
+                                                    self.imitation_image_callback)
 
     def dispose(self):
         pass
@@ -144,29 +144,40 @@ class SummitDQL(Summit):
 
     def imitation_image_callback(self, images):
         try:
-            print('images received of type {}'.format(images.lane.encoding))
-            self.imitation_lane_image = (255 * np.ndarray((images.lane.height, images.lane.width), dtype=np.float32, buffer=images.lane.data)).astype(np.uint8)
-            self.imitation_hist_image = (255 * np.ndarray((images.hist0.height, images.hist0.width), dtype=np.float32, buffer=images.hist0.data)).astype(np.uint8)
-            self.imitation_hist1_image = (255 * np.ndarray((images.hist1.height, images.hist1.width), dtype=np.float32, buffer=images.hist1.data).astype(np.uint8)
-            self.imitation_hist2_image = (255 * np.ndarray((images.hist2.height, images.hist2.width), dtype=np.float32, buffer=images.hist2.data).astype(np.uint8)
-            self.imitation_hist3_image = (255 * np.ndarray((images.hist3.height, images.hist3.width), dtype=np.float32, buffer=images.hist3.data).astype(np.uint8)
+            # print('images received of type {}'.format(images.lane.encoding))
+            self.imitation_lane_image = self.process_image(images.lane.data, images.lane.height, images.lane.width)
+            self.imitation_hist_image = self.process_image(images.hist0.data, images.hist0.height, images.hist0.width)
+            self.imitation_hist1_image = self.process_image(images.hist1.data, images.hist1.height, images.hist1.width)
+            self.imitation_hist2_image = self.process_image(images.hist2.data, images.hist2.height, images.hist2.width)
+            self.imitation_hist3_image = self.process_image(images.hist3.data, images.hist3.height, images.hist3.width)
         except Exception as e:
             error_handler(e)
 
+    def process_image(self, image, height, width):
+        up_scale = 5
+        border = 2
+        image = (255 * np.ndarray((height, width), dtype=np.float32, buffer=image)).astype(np.uint8)
+        image = cv2.resize(image, (up_scale * image.shape[0], up_scale * image.shape[1]), interpolation=cv2.INTER_AREA)
+        return cv2.copyMakeBorder(image, border, border, border, border, cv2.BORDER_CONSTANT, value=255)
+
     def draw_input_images(self):
         frame = self.create_frame()
-        self.draw_image(frame, self.imitation_lane_image, 25.0, -25.0)
-        self.draw_image(frame, self.imitation_hist_image, 25.0, -15.0)
+        self.draw_image(frame, self.imitation_lane_image, 25.0, -28.0)
+        self.draw_image(frame, self.imitation_hist_image, 25.0, -9.0)
+        self.draw_image(frame, self.imitation_hist1_image, 25.0, 10.0)
+        self.draw_image(frame, self.imitation_hist2_image, 5.0, -28.0)
+        self.draw_image(frame, self.imitation_hist3_image, 5.0, -9.0)
         return frame
 
     def draw_image(self, frame, image, pos_x, pos_y):
         try:
             if image is not None:
-                print('image shape {}'.format(image.shape))
+                # print('image shape {}'.format(image.shape))
                 sys.stdout.flush()
                 (x_offset, y_offset) = self.pixel_zero_center(carla.Vector2D(pos_x, pos_y))
-                frame[y_offset:y_offset + self.imitation_lane_image.shape[0],
-                    x_offset:x_offset + self.imitation_lane_image.shape[1], 0] = image
+                frame[y_offset:y_offset + image.shape[0], x_offset:x_offset + image.shape[1], 0] = image
+                frame[y_offset:y_offset + image.shape[0], x_offset:x_offset + image.shape[1], 1] = image
+                frame[y_offset:y_offset + image.shape[0], x_offset:x_offset + image.shape[1], 2] = image
 
         except Exception as e:
             error_handler(e)
@@ -174,21 +185,25 @@ class SummitDQL(Summit):
     def draw_decisions(self):
         frame = self.create_frame()
         bar_anchor_y = None
+        bar_anchor_x = -1.0
         bar_width = 2.0
-        bar_gap = 2.0
+        bar_gap = 3.0
         if self.ego_state is not None:
             if self.imitation_cmd_accel is not None:
                 bar_anchor_y = 0.0
-                self.draw_bar(frame, 0.0, bar_anchor_y, (255, 0, 0), bar_width, self.imitation_cmd_accel)
-                self.draw_text(frame, 'Acc', 0.0, bar_anchor_y, txt_shift_x=2.0)
+                self.draw_text(frame, 'Acc', bar_anchor_x, bar_anchor_y, txt_shift_x=0.0)
+                bar_anchor_y += 5.0
+                self.draw_bar(frame, bar_anchor_x, bar_anchor_y, (255, 0, 0), bar_width, self.imitation_cmd_accel)
             if self.imitation_cmd_steer is not None:
                 bar_anchor_y += bar_width + bar_gap
-                self.draw_bar(frame, 0.0, bar_anchor_y, (0, 255, 0), bar_width, self.imitation_cmd_steer)
-                self.draw_text(frame, 'Ang', 0.0, bar_anchor_y, txt_shift_x=2.0)
+                self.draw_text(frame, 'Ang', bar_anchor_x, bar_anchor_y, txt_shift_x=0.0)
+                bar_anchor_y += 5.0
+                self.draw_bar(frame, bar_anchor_x, bar_anchor_y, (0, 255, 0), bar_width, self.imitation_cmd_steer)
             if self.imitation_cmd_lane is not None:
                 bar_anchor_y += bar_width + bar_gap
-                self.draw_bar(frame, 0.0, bar_anchor_y, (0, 0, 255), bar_width, self.imitation_cmd_lane)
-                self.draw_text(frame, 'Lane', 0.0, bar_anchor_y, txt_shift_x=2.0)
+                self.draw_text(frame, 'Lane', bar_anchor_x, bar_anchor_y, txt_shift_x=0.0)
+                bar_anchor_y += 5.0
+                self.draw_bar(frame, bar_anchor_x, bar_anchor_y, (0, 0, 255), bar_width, self.imitation_cmd_lane)
         return frame
 
     def draw_action_probs(self):

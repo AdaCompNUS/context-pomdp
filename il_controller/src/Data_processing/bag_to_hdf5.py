@@ -337,7 +337,7 @@ y increases up, theta increases in anti clockwise '''
 
 def create_h5_data(data_dict,
                    map_dict,
-                   down_sample_ratio=0.03125,
+                   down_sample_ratio=config.default_ratio,
                    gamma=config.gamma):
     # !! down_sample_ratio should be 1/2^n, e.g., 1/2^5=0.03125 !!
     print("Processing data with %d source time steps..." % len(data_dict.keys()))
@@ -425,7 +425,7 @@ def shuffle_and_sample_indices(timestamps):
     else:
         random.shuffle(sample_shuffled_idx)
         sample_shuffled_idx = iter(sample_shuffled_idx)
-        sample_length = int(min(config.num_samples_per_traj, int(len(timestamps) / 6)))
+        sample_length = int(min(config.num_samples_per_traj, int(len(timestamps) / config.min_samples_gap)))
     return sample_idx, sample_length, sample_shuffled_idx
 
 
@@ -501,7 +501,6 @@ def draw_path(path, image, coord_frame, resolution, dim, down_sample_ratio, pyra
         if not np.any(pix_pos == -1):  # skip path points outside the map
             path_pixels.append(pix_pos)
 
-    image.fill(0.0)
     draw_polygon_edges(path_pixels, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
 
     if pyramid_image:
@@ -515,7 +514,6 @@ def draw_lanes(lanes, image, car, coord_frame, down_sample_ratio, resolution, py
     start_time = time.time()
     print('Rendering {} lane segments'.format(len(lanes)))
 
-    image.fill(0.0)
     for lane_seg in lanes:
         image_space_lane = get_image_space_lane(lane_seg, car, coord_frame, resolution)
         draw_polygon_edges(image_space_lane, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
@@ -530,7 +528,6 @@ def draw_obstacles(obstacles, image, car, coord_frame, down_sample_ratio, resolu
                    pyramid_points=False):
     start_time = time.time()
 
-    image.fill(0.0)
     for obs in obstacles:
         image_space_obstacle = get_image_space_obstacle(obs, car, coord_frame, resolution)
         draw_polygon_edges(image_space_obstacle, image, intensity=1.0, intensity_scale=1.0, is_contour=True)
@@ -541,7 +538,7 @@ def draw_obstacles(obstacles, image, car, coord_frame, down_sample_ratio, resolu
         return image_to_pyramid_pixels(image, down_sample_ratio), time.time() - start_time
 
 
-def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution, down_sample_ratio=0.03125,
+def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution, down_sample_ratio=config.default_ratio,
                        coord_frame=None):
     start = time.time()
     try:
@@ -1045,7 +1042,7 @@ def parse_map_data_from_dict(down_sample_ratio, map_dict_entry):
     return dim, map_intensity, map_intensity_scale, new_dim, coord_frame, raw_map_array, resolution
 
 
-def create_null_map_data(down_sample_ratio=0.03125):
+def create_null_map_data(down_sample_ratio=config.default_ratio):
     resolution = config.image_half_size_meters * 2.0 / config.default_map_dim  # 0.0390625
     dim = config.default_map_dim
     map_intensity = 1.0
@@ -1055,7 +1052,7 @@ def create_null_map_data(down_sample_ratio=0.03125):
     return dim, map_intensity, map_intensity_scale, new_dim, resolution
 
 
-def rescale_image(image, down_sample_ratio=0.03125):
+def rescale_image(image, down_sample_ratio=config.default_ratio):
     image1 = image.copy()
 
     try:
@@ -1069,7 +1066,7 @@ def rescale_image(image, down_sample_ratio=0.03125):
     return image1
 
 
-def image_to_pyramid_pixels(image, down_sample_ratio=0.03125):
+def image_to_pyramid_pixels(image, down_sample_ratio=config.default_ratio):
     nonzero_points = None
     try:
         # !! input points are in Euclidean space (x,y), output points are in image space (row, column) !!
@@ -1083,7 +1080,7 @@ def image_to_pyramid_pixels(image, down_sample_ratio=0.03125):
     return nonzero_points
 
 
-def image_to_pyramid_image(image, down_sample_ratio=0.03125, debug=False):
+def image_to_pyramid_image(image, down_sample_ratio=config.default_ratio, debug=False):
     pyramid_image = None
     try:
         # !! input points are in Euclidean space (x,y), output points are in image space (row, column) !!

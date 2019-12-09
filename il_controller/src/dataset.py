@@ -162,7 +162,8 @@ class DrivingData(data.Dataset):
         self.shuffled_traj_indices = {}  # used for train set, key: folder, value: [No. of traj, num of traj]
         self.shuffled_data_indices = {}
         self.trans_idx = {}
-        self.transform_list = [Identity(), Rot(1), Rot(2), Rot(3), Flipud(), FlipRot(1), FlipRot(2), FlipRot(3)]
+        # self.transform_list = [Identity(), Rot(1), Rot(2), Rot(3), Flipud(), FlipRot(1), FlipRot(2), FlipRot(3)]
+        self.transform_list = [Identity(), Flipud()]
 
         if self.flag == 'Training' and config.sample_mode == 'hierarchical':
             self.load_train_dataset_from_h5(filename, flag)

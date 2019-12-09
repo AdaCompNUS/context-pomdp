@@ -283,9 +283,8 @@ class DriveController(nn.Module):
     def release_all_locks(self):
         self.update_steering = True
 
-    def cal_pub_acc(self, acceleration):
-        target_vel = self.cur_vel + acceleration / 3.0  # config.control_freq
-        target_vel = max(min(target_vel, config.vel_max), 0.0)  # target_speed_
+    def cal_pub_acc_old(self, acceleration):
+        target_vel = self.cal_target_vel(acceleration)
 
         throttle = (target_vel - self.cur_vel + 0.05) * 1.0
         throttle = min(0.5, throttle)
@@ -293,6 +292,34 @@ class DriveController(nn.Module):
 
         if self.cur_vel <= 0.05 and throttle < 0:
             throttle = 0.0
+        return throttle
+
+    def cal_target_vel(self, acceleration):
+        speed_step = config.max_acc / 3.0
+        level = self.cur_vel / speed_step
+        if math.fabs(self.cur_vel - (level + 1) * speed_step) < speed_step * 0.3:
+            level = level + 1
+        next_level = level
+        if acceleration > 0.0:
+            next_level = level + 1
+        elif acceleration < 0.0:
+            next_level = max(0, level - 1)
+        target_vel = min(next_level * speed_step, config.vel_max)
+        return target_vel
+
+    def cal_pub_acc(self, acceleration):
+        target_vel = self.cal_target_vel(acceleration)
+
+        if self.cur_vel + 0.02 > target_vel > self.cur_vel - 0.02:
+            throttle = 0.025
+        elif target_vel >= self.cur_vel + 0.02:
+            throttle = (target_vel - self.cur_vel - 0.02) * 1.0
+            throttle = max(min(0.55, throttle), 0.025)
+        elif target_vel < self.cur_vel - 0.05:
+            throttle = 0.0
+        else:
+            throttle = (target_vel - self.cur_vel) * 3.0
+            throttle = max(-1.0, throttle)
         return throttle
 
     def cal_pub_steer(self, steering_normalized):
@@ -309,7 +336,8 @@ class DriveController(nn.Module):
             if publish_true_steering:
                 print_long('Publishing ground-truth angle')
                 cmd_steer.data = self.cal_pub_steer(float(true_steering_normalized))
-                publish_true_steering = bool(math.fabs(steering_normalized - np.degrees(true_steering_normalized)) > 0.1)
+                publish_true_steering = bool(
+                    math.fabs(steering_normalized - np.degrees(true_steering_normalized)) > 0.1)
             else:
                 print_long('Publishing predicted angle')
                 cmd_steer.data = self.cal_pub_steer(steering_normalized)
@@ -701,26 +729,19 @@ class DriveController(nn.Module):
                 pass
             input_tensor = input_tensor.to(device)
 
-            input_msg = InputImages()
-            print('lane image max={}'.format(
-                np.max(input_images_np[0, 0, config.channel_lane, ...])))
-            print('hist image max={} {} {} {}'.format(
-                np.max(input_images_np[0, 0, config.channel_map[0], ...]),
-                np.max(input_images_np[0, 0, config.channel_map[1], ...]),
-                np.max(input_images_np[0, 0, config.channel_map[2], ...]),
-                np.max(input_images_np[0, 0, config.channel_map[3], ...])))
-
-            input_msg.lane = \
-                CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_lane, ...])
-            input_msg.hist0 = \
-                CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[0], ...])
-            input_msg.hist1 = \
-                CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[1], ...])
-            input_msg.hist2 = \
-                CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[2], ...])
-            input_msg.hist3 = \
-                CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[3], ...])
-            self.input_pub.publish(input_msg)
+            if True:
+                input_msg = InputImages()
+                input_msg.lane = \
+                    CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_lane, ...])
+                input_msg.hist0 = \
+                    CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[0], ...])
+                input_msg.hist1 = \
+                    CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[1], ...])
+                input_msg.hist2 = \
+                    CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[2], ...])
+                input_msg.hist3 = \
+                    CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[3], ...])
+                self.input_pub.publish(input_msg)
             return input_tensor
         except Exception as e:
             error_handler(e)

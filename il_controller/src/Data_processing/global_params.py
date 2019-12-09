@@ -53,7 +53,7 @@ config.num_steering_bins = 2 * int(round(config.max_steering_degree / config.ste
 
 config.num_acc_bins = 3
 config.acc_resolution = 2.0 / config.num_acc_bins
-config.max_acc = 1.5  # in degrees
+config.max_acc = 3.0  # in degrees
 
 config.num_vel_bins = 6
 config.vel_max = 8.0
@@ -63,7 +63,9 @@ config.num_lane_bins = 3
 
 
 ''' Sampling settings '''
+config.default_ratio = 1.0 / pow(2, 3) # down sample 3 times
 config.num_samples_per_traj = 60
+config.min_samples_gap = 6
 config.num_agents_in_map = 20
 config.buffer_mode = 'full'  # full or replay
 config.sample_mode = 'random'  # hierarchical or random

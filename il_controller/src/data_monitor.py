@@ -241,7 +241,7 @@ class DataMonitor(data.Dataset):
         else:
             return True
 
-    def convert_to_nn_input(self, flag=None, down_sample_ratio=0.03125):
+    def convert_to_nn_input(self, flag=None, down_sample_ratio=config.default_ratio):
         print_long("Converting " + flag + " info...")
         cur_hist_count = 0
         try:
@@ -270,6 +270,8 @@ class DataMonitor(data.Dataset):
                 if cur_hist_count == 0:
                     print_long("no history agents yet...")
                     return False, cur_hist_count
+
+                bag_to_hdf5.clear_maps(self.hist_env_maps, self.hist_car_maps, self.lane_map, self.obs_map, self.goal_map)
 
                 self.coord_frame = None
                 agents_are_valid, elapsed_time = \
