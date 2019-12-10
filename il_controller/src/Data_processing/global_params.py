@@ -63,7 +63,8 @@ config.num_lane_bins = 3
 
 
 ''' Sampling settings '''
-config.default_ratio = 1.0 / pow(2, 3)  # down sample 3 times
+downscale_count = 3
+config.default_ratio = 1.0 / pow(2, downscale_count)  # down sample 3 times
 config.num_samples_per_traj = 60
 config.min_samples_gap = 6
 config.num_agents_in_map = 20
@@ -149,8 +150,8 @@ config.fit_all = True
 
 
 ''' NN settings '''
-config.imsize = 32
 config.default_map_dim = 1024
+config.imsize = int(config.default_map_dim / pow(2, downscale_count))
 config.image_half_size_meters = 20.0
 config.lstm_mode = 'gppn'  # 'gppn' or 'convlstm'
 config.vanilla_resnet = False

@@ -954,7 +954,7 @@ def parse_cmd_args():
                         default=None, help='Path to val file')
     parser.add_argument('--imsize',
                         type=int,
-                        default=32,
+                        default=config.imsize,
                         help='Size of input image')
     parser.add_argument('--lr',
                         type=float,

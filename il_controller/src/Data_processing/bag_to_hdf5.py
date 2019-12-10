@@ -512,7 +512,7 @@ def draw_path(path, image, coord_frame, resolution, dim, down_sample_ratio, pyra
 def draw_lanes(lanes, image, car, coord_frame, down_sample_ratio, resolution, pyramid_image=False,
                pyramid_points=False):
     start_time = time.time()
-    print('Rendering {} lane segments'.format(len(lanes)))
+    # print('Rendering {} lane segments'.format(len(lanes)))
 
     for lane_seg in lanes:
         image_space_lane = get_image_space_lane(lane_seg, car, coord_frame, resolution)

@@ -60,7 +60,7 @@ class EmptyMdnActionHead(nn.Module):
 
 class ActionHead(nn.Module):
 
-    def __init__(self, inplanes=64, imsize=16, num_classes=global_config.num_steering_bins):
+    def __init__(self, inplanes=64, imsize=int(global_config.imsize/2), num_classes=global_config.num_steering_bins):
         super(ActionHead, self).__init__()
         outplanes = 4
 
@@ -91,7 +91,7 @@ class ActionHead(nn.Module):
 
 class LargeActionHead(nn.Module):
 
-    def __init__(self, inplanes=64, imsize=16, num_classes=global_config.num_steering_bins):
+    def __init__(self, inplanes=64, imsize=int(global_config.imsize/2), num_classes=global_config.num_steering_bins):
         super(LargeActionHead, self).__init__()
         outplanes = 4
 
@@ -130,7 +130,7 @@ class LargeActionHead(nn.Module):
 
 class ActionMdnHead(nn.Module):
 
-    def __init__(self, inplanes=64, imsize=16, num_modes=global_config.num_guassians_in_heads):
+    def __init__(self, inplanes=64, imsize=int(global_config.imsize/2), num_modes=global_config.num_guassians_in_heads):
         super(ActionMdnHead, self).__init__()
 
         outplanes = 4
@@ -157,7 +157,7 @@ class ActionMdnHead(nn.Module):
 
 class ValueHead(nn.Module):
 
-    def __init__(self, inplanes=64, imsize=16):
+    def __init__(self, inplanes=64, imsize=int(global_config.imsize/2)):
         super(ValueHead, self).__init__()
         outplanes = 4
         self.drop_o_2d = nn.Dropout2d()
@@ -269,7 +269,7 @@ class PolicyValueNet(nn.Module):
         else:
             self.ang_head = EmptyActionHead()
         if global_config.fit_all or global_config.fit_action or global_config.fit_acc:
-            self.acc_head = LargeActionHead(inplanes=self.resnet.num_out_features, num_classes=self.num_acc_bins)
+            self.acc_head = ActionHead(inplanes=self.resnet.num_out_features, num_classes=self.num_acc_bins)
         else:
             self.acc_head = EmptyActionHead()
         if global_config.use_vel_head and (global_config.fit_all or global_config.fit_action or global_config.fit_vel):
@@ -456,7 +456,7 @@ if __name__ == '__main__':
                         default=None, help='Path to val file')
     parser.add_argument('--imsize',
                         type=int,
-                        default=32,
+                        default=global_config.imsize,
                         help='Size of image')
     parser.add_argument('--lr',
                         type=float,

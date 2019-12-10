@@ -29,7 +29,8 @@ import gc
 config = global_params.config
 imsize = config.imsize
 num_agents = 1 + 0
-LARGE_NO = 300000
+# LARGE_NO = 300000
+LARGE_NO = 3000
 populate_images = PopulateImages()
 
 num_threads = 1

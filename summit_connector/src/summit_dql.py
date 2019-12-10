@@ -94,7 +94,6 @@ class SummitDQL(Summit):
                                                    self.imitation_cmd_lane_callback, queue_size=1)
         self.imitation_probs_sub = rospy.Subscriber('/imitation_action_distribs', ActionDistrib,
                                                     self.imitation_probs_callback, queue_size=1)
-
         self.imitation_input_sub = rospy.Subscriber("/imitation_input_images", InputImages,
                                                     self.imitation_image_callback)
 
