@@ -99,9 +99,12 @@ class PopulateImages(object):
         return sample['cart_agents']
 
     def populate_lane(self, i, output_arr, sample):
-        for point in sample['lane']:
-            output_arr[i, config.channel_lane, int(
-                point[0]), int(point[1])] = point[2]
+        try:
+            for point in sample['lane']:
+                output_arr[i, config.channel_lane, int(
+                    point[0]), int(point[1])] = point[2]
+        except Exception as e:
+            print(e)
 
     def populate_goal_and_hist_images(self, i, output_arr, sample):
         try:
