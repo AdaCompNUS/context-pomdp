@@ -97,6 +97,7 @@ class PopulateImages(object):
             return acc_id_labels, ang_norm_labels, v_labels, vel_labels, lane_labels
         except Exception as e:
             error_handler(e)
+            print('sample={}'.format(sample))
 
     def get_cart_data(self, sample):
         return sample['cart_agents']
@@ -132,6 +133,7 @@ class PopulateImages(object):
 
         except Exception as e:
             error_handler(e)
+            print('sample={}'.format(sample))
 
     def copy_maps(self, i, output_arr, sample):
         try:
@@ -139,6 +141,7 @@ class PopulateImages(object):
                 output_arr[i, config.channel_map[ts]] = sample['maps'][ts]
         except Exception as e:
             error_handler(e)
+            print('sample={}'.format(sample))
         # validate_map(output_arr, "copy_maps")
 
 
