@@ -30,7 +30,6 @@ def show_array(tensor):
 
     except Exception as e:
         error_handler(e)
-        exit(-1)
         # pdb.set_trace()
 
 
@@ -96,8 +95,8 @@ class PopulateImages(object):
             lane_labels = sample['lane_change'][0]
             return acc_id_labels, ang_norm_labels, v_labels, vel_labels, lane_labels
         except Exception as e:
-            error_handler(e)
             print('sample={}'.format(sample))
+            error_handler(e)
 
     def get_cart_data(self, sample):
         return sample['cart_agents']
@@ -108,8 +107,8 @@ class PopulateImages(object):
                 output_arr[i, config.channel_lane, int(
                     point[0]), int(point[1])] = point[2]
         except Exception as e:
-            error_handler(e)
             print('sample["lane"]={}'.format(sample['lane']))
+            error_handler(e)
 
     def populate_goal_and_hist_images(self, i, output_arr, sample):
         try:
@@ -132,16 +131,16 @@ class PopulateImages(object):
                             point[0]), int(point[1])] = point[2]
 
         except Exception as e:
-            error_handler(e)
             print('sample={}'.format(sample))
+            error_handler(e)
 
     def copy_maps(self, i, output_arr, sample):
         try:
             for ts in range(config.num_hist_channels):
                 output_arr[i, config.channel_map[ts]] = sample['maps'][ts]
         except Exception as e:
-            error_handler(e)
             print('sample={}'.format(sample))
+            error_handler(e)
         # validate_map(output_arr, "copy_maps")
 
 
