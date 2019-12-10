@@ -88,12 +88,15 @@ class PopulateImages(object):
         return output_arr, cart_dat_arr, v_labels, acc_id_labels, ang_norm_labels, vel_labels, lane_labels
 
     def get_labels(self, sample):
-        v_labels = sample['value'][0]
-        acc_id_labels = sample['acc_id'][0]
-        ang_norm_labels = sample['steer_norm'][0]
-        vel_labels = sample['vel'][config.label_cmdvel]
-        lane_labels = sample['lane_change'][0]
-        return acc_id_labels, ang_norm_labels, v_labels, vel_labels, lane_labels
+        try:
+            v_labels = sample['value'][0]
+            acc_id_labels = sample['acc_id'][0]
+            ang_norm_labels = sample['steer_norm'][0]
+            vel_labels = sample['vel'][config.label_cmdvel]
+            lane_labels = sample['lane_change'][0]
+            return acc_id_labels, ang_norm_labels, v_labels, vel_labels, lane_labels
+        except Exception as e:
+            error_handler(e)
 
     def get_cart_data(self, sample):
         return sample['cart_agents']
@@ -104,7 +107,8 @@ class PopulateImages(object):
                 output_arr[i, config.channel_lane, int(
                     point[0]), int(point[1])] = point[2]
         except Exception as e:
-            print(e)
+            error_handler(e)
+            print('sample["lane"]={}'.format(sample['lane']))
 
     def populate_goal_and_hist_images(self, i, output_arr, sample):
         try:
@@ -127,14 +131,14 @@ class PopulateImages(object):
                             point[0]), int(point[1])] = point[2]
 
         except Exception as e:
-            print(e)
+            error_handler(e)
 
     def copy_maps(self, i, output_arr, sample):
         try:
             for ts in range(config.num_hist_channels):
                 output_arr[i, config.channel_map[ts]] = sample['maps'][ts]
         except Exception as e:
-            print(e)
+            error_handler(e)
         # validate_map(output_arr, "copy_maps")
 
 
@@ -219,8 +223,7 @@ def acc_transform_id_to_normalized(acc_id):
         return acc_norm
     except Exception as e:
         print("Exception at acc_transform")
-        print(e)
-        exit(1)
+        error_handler(e)
 
 
 def vel_transform_raw_to_normalized(vel):
@@ -267,8 +270,7 @@ def float_to_np(v):
 
     except Exception as e:
         print("Exception at float_to_np")
-        print(e)
-        exit(1)
+        error_handler(e)
 
 
 class MdnSteerEncoderDegree2Normalized(object):
