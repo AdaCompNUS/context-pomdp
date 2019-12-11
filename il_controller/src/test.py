@@ -631,7 +631,7 @@ class DriveController(nn.Module):
         return encoded_acc_label, encoded_steer_label, encoded_vel_label, encoded_lane_label
 
     def get_lane_label_onehot(self, lane_label):
-        lane_label_onehot = np.zeros(config.num_lane_bins, dtype=np.float32)
+        lane_label_onehot = np.zeros(config.num_lane_bins, dtype=np.float16)
         if config.fit_lane or config.fit_action or config.fit_all:
             lane_label_np = float_to_np(lane_label)
             bin_idx = self.encode_lane_from_int(lane_label_np)
@@ -643,7 +643,7 @@ class DriveController(nn.Module):
         return lane_label_onehot
 
     def get_vel_label_onehot(self, vel_label):
-        vel_label_onehot = np.zeros(config.num_vel_bins, dtype=np.float32)
+        vel_label_onehot = np.zeros(config.num_vel_bins, dtype=np.float16)
         if config.fit_vel or config.fit_action or config.fit_all:
             vel_label_np = float_to_np(vel_label)
             bin_idx = self.encode_vel_from_raw(vel_label_np)
@@ -655,7 +655,7 @@ class DriveController(nn.Module):
         return vel_label_onehot
 
     def get_acc_label_onehot(self, acc_label):
-        acc_label_onehot = np.zeros(config.num_acc_bins, dtype=np.float32)
+        acc_label_onehot = np.zeros(config.num_acc_bins, dtype=np.float16)
         if config.fit_acc or config.fit_action or config.fit_all:
             acc_label_np = float_to_np(acc_label)
             bin_idx = self.encode_acc_from_id(acc_label_np)
@@ -667,7 +667,7 @@ class DriveController(nn.Module):
         return acc_label_onehot
 
     def get_steer_label_onehot(self, steering_label):
-        steer_label_onehot = np.zeros(config.num_steering_bins, dtype=np.float32)
+        steer_label_onehot = np.zeros(config.num_steering_bins, dtype=np.float16)
         if config.fit_ang or config.fit_action or config.fit_all:
             true_steering_label = np.degrees(steering_label)
             bin_idx = self.encode_steer_from_degree(true_steering_label)
@@ -678,14 +678,14 @@ class DriveController(nn.Module):
         return steer_label_onehot
 
     def get_mdn_vel_label_normalized(self, vel_label):
-        vel_labels_normalized = np.zeros(1, dtype=np.float32)
+        vel_labels_normalized = np.zeros(1, dtype=np.float16)
         if config.fit_vel or config.fit_action or config.fit_all:
             vel_label_np = float_to_np(vel_label)
             vel_labels_normalized = self.encode_vel_from_raw(vel_label_np)
         return vel_labels_normalized
 
     def get_mdn_acc_label_normalized(self, acc_label):
-        acc_label_normalized_np = np.zeros(1, dtype=np.float32)
+        acc_label_normalized_np = np.zeros(1, dtype=np.float16)
         try:
             if config.fit_acc or config.fit_action or config.fit_all:
                 acc_label_np = float_to_np(acc_label)
@@ -698,7 +698,7 @@ class DriveController(nn.Module):
         return acc_label_normalized_np
 
     def get_mdn_steer_label_normalized(self, steering_label):
-        steer_label_normalized_np = np.zeros(1, dtype=np.float32)
+        steer_label_normalized_np = np.zeros(1, dtype=np.float16)
         if config.fit_ang or config.fit_action or config.fit_all:
             true_steering_label = np.degrees(steering_label)
             steer_label_normalized_np = self.encode_steer_from_degree(true_steering_label)

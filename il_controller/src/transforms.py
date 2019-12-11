@@ -58,14 +58,15 @@ class PopulateImages(object):
         # sample: 1 data point from the h5 table
         imsize = config.imsize
         num_agents = 1 + 0
+
         output_arr = np.zeros(
-            (num_agents, config.total_num_channels, imsize, imsize), dtype=np.float32)
+            (num_agents, config.total_num_channels, imsize, imsize), dtype=config.data_type)
+
         for i in range(num_agents):
             self.copy_maps(i, output_arr, sample)  # Exo history.
             self.populate_lane(i, output_arr, sample)  # Lanes.
             try:
                 self.populate_goal_and_hist_images(i, output_arr, sample)  # Goal + ego history.
-
             except Exception as e:
                 error_handler(e)
                 pdb.set_trace()
@@ -143,9 +144,12 @@ class PopulateImages(object):
             error_handler(e)
         # validate_map(output_arr, "copy_maps")
 
+    def float_to_uint8(self, output_arr):
+        return output_arr / np.max(output_arr) * 255.0
+
 
 def make_onehot(num_bins, bin_idx, prob):
-    onehot_labels = np.zeros((num_bins), dtype=np.float32)
+    onehot_labels = np.zeros((num_bins), dtype=np.float16)
     onehot_labels[bin_idx] = prob
     return onehot_labels
 
@@ -165,7 +169,7 @@ def float_to_onehot(v, v_min, v_max, num_bins):
         if not config.label_smoothing:
             return bin_idx
         else:  # not used
-            onehot_labels = np.zeros((num_bins), dtype=np.float32)
+            onehot_labels = np.zeros((num_bins), dtype=np.float16)
             eligible = 0
             if bin_idx + 1 < num_bins:
                 eligible += 1
@@ -266,7 +270,7 @@ def value_transform_normalized_to_raw(value):
 
 def float_to_np(v):
     try:
-        v_np = np.zeros(1, dtype=np.float32)
+        v_np = np.zeros(1, dtype=np.float16)
         v_np[0] = v
         return v_np
 
@@ -319,8 +323,11 @@ class InputEncoder(object):
     def __call__(self, input_data):
         # normalize input images
         #
-        input_data = self.normalize(input_data)
-        return input_data
+        if config.data_type == np.float16:
+            input_data = self.normalize(input_data)
+            return input_data
+        elif config.data_type == np.uint8:
+            return input_data.astype(np.float32)
 
 
 class SteerEncoderDegreeToOnehot(object):
@@ -503,7 +510,7 @@ class Fliplr(object):
     def __call__(self, input, steer, lane):
         # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         #
-        output = np.zeros_like(input, dtype=np.float32)
+        output = np.zeros_like(input, dtype=config.data_type)
         for i in range(1 + 0):
             for j in range(config.total_num_channels):
                 output[i, j] = np.fliplr(input[i, j])
@@ -521,7 +528,7 @@ class Flipud(object):
     def __call__(self, input, steer, lane):
         # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         #
-        output = np.zeros_like(input, dtype=np.float32)
+        output = np.zeros_like(input, dtype=config.data_type)
         for i in range(1 + 0):
             for j in range(config.total_num_channels):
                 output[i, j] = np.flipud(input[i, j])
@@ -537,7 +544,7 @@ class Rot(object):
 
     def __call__(self, input, steer, lane):
         # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
-        output = np.zeros_like(input, dtype=np.float32)
+        output = np.zeros_like(input, dtype=config.data_type)
         for i in range(1 + 0):
             for j in range(config.total_num_channels):
                 output[i, j] = np.rot90(input[i, j], self.amount)
@@ -554,7 +561,7 @@ class FlipRot(object):
 
     def __call__(self, input, steer, lane):
         # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
-        output = np.zeros_like(input, dtype=np.float32)
+        output = np.zeros_like(input, dtype=config.data_type)
         for i in range(1 + 0):
             for j in range(config.total_num_channels):
                 output[i, j] = np.rot90(np.flipud(input[i, j]), self.amount)

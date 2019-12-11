@@ -82,7 +82,7 @@ class DataMonitor(data.Dataset):
             'true_vel': None,
             'true_lane': None,
             'nn_input': np.zeros(
-                (1, 1, config.total_num_channels, imsize, imsize), dtype=np.float32)
+                (1, 1, config.total_num_channels, imsize, imsize), dtype=global_config.data_type)
         }
 
         # register callback functions

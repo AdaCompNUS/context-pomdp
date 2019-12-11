@@ -29,7 +29,7 @@ import gc
 config = global_params.config
 imsize = config.imsize
 num_agents = 1 + 0
-LARGE_NO = 300000
+DATA_CHUNCK_SIZE = 100000
 # LARGE_NO = 3000
 populate_images = PopulateImages()
 
@@ -167,25 +167,28 @@ def save_dataset_to_h5_compact(acc_id_labels_array, ang_normalized_labels_array,
                                traj_num, points_num):
     try:
         print("data shape: {}".format(data_array[0].shape))
+        print("data type: {}".format(config.data_type))
+
         f.create_dataset('data',
-                         data=data_array[0:counter], dtype=np.single)
+                         data=data_array[0:counter], dtype=config.data_type)
 
         print("Saving cart data...")
         print("data shape: {}".format(cart_data_array[0].shape))
+
         f.create_dataset('cart_data',
-                         data=cart_data_array[0:counter], dtype='f4')
+                         data=cart_data_array[0:counter], dtype=np.float16)
 
         print("Saving labels...")
-        f.create_dataset('v_labels', data=v_labels_array[0:counter], dtype='f4')
+        f.create_dataset('v_labels', data=v_labels_array[0:counter], dtype=np.float16)
         f.create_dataset('acc_id_labels', data=acc_id_labels_array[0:counter],
-                         dtype='f4')
+                         dtype=np.float16)
         f.create_dataset('ang_normalized_labels',
                          data=ang_normalized_labels_array[0:counter],
-                         dtype='f4')
+                         dtype=np.float16)
         f.create_dataset('vel_labels', data=vel_labels_array[0:counter],
-                         dtype='f4')
+                         dtype=np.float16)
         f.create_dataset('lane_labels', data=lane_labels_array[0:counter],
-                         dtype='f4')
+                         dtype=np.float16)
 
         if config.sample_mode == 'hierarchical':
             f.create_dataset('traj_num', data=traj_num, dtype='int32')
@@ -227,6 +230,10 @@ def put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_norme
                           data, cart_data, cart_data_array, v_labels_array,
                           value, vel, vel_labels_array, lane, lane_labels_array):
     try:
+        if counter >= data_array.shape[0]:
+            new_shape = data_array.shape
+            new_shape[0] += DATA_CHUNCK_SIZE
+            data_array = np.resize(data_array, new_shape)
         data_array[counter] = data
         # cart_data_array[counter] = cart_data
         v_labels_array[counter][0] = value
@@ -242,15 +249,15 @@ def put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_norme
 
 
 def allocate_containters():
-    data_array = np.zeros((LARGE_NO, num_agents, config.total_num_channels, imsize, imsize), dtype=np.float32)
-    cart_data_array = np.zeros((LARGE_NO, 2 * (1 + config.num_agents_in_map) * config.num_hist_channels),
-                               dtype=np.float32)
+    data_array = np.zeros((DATA_CHUNCK_SIZE, num_agents, config.total_num_channels, imsize, imsize), dtype=config.data_type)
+    cart_data_array = np.zeros((DATA_CHUNCK_SIZE, 2 * (1 + config.num_agents_in_map) * config.num_hist_channels),
+                               dtype=np.float16)
 
-    v_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
-    acc_id_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
-    ang_normalized_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
-    vel_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
-    lane_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
+    v_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float16)
+    acc_id_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float16)
+    ang_normalized_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float16)
+    vel_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float16)
+    lane_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float16)
 
     return acc_id_labels_array, ang_normalized_labels_array, data_array, cart_data_array, \
            v_labels_array, vel_labels_array, lane_labels_array

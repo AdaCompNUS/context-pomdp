@@ -63,6 +63,7 @@ config.num_lane_bins = 3
 
 
 ''' Sampling settings '''
+import numpy as np
 downscale_count = 3
 config.default_ratio = 1.0 / pow(2, downscale_count)  # down sample 3 times
 config.num_samples_per_traj = 60
@@ -70,6 +71,7 @@ config.min_samples_gap = 6
 config.num_agents_in_map = 20
 config.buffer_mode = 'full'  # full or replay
 config.sample_mode = 'random'  # hierarchical or random
+config.data_type = np.uint8  # np.float64
 ''' Sampling settings '''
 
 

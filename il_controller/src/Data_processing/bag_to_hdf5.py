@@ -308,10 +308,10 @@ def point_to_pixel(x, y, coord_frame, resolution, dim):
     indices = np.array(
         [(x_coord + config.image_half_size_meters) / resolution,
          (y_coord + config.image_half_size_meters) / resolution],
-        dtype=np.float32)
+        dtype=np.float16)
 
     if np.any(indices < 0) or np.any(indices > (dim - 1)):
-        return np.array([-1, -1], dtype=np.float32)
+        return np.array([-1, -1], dtype=np.float16)
 
     return indices
 
@@ -325,7 +325,7 @@ def point_to_pixels_no_checking(x, y, coord_frame, resolution):
     indices = np.array(
         [(x_coord + config.image_half_size_meters) / resolution,
          (y_coord + config.image_half_size_meters) / resolution],
-        dtype=np.float32)
+        dtype=np.float16)
 
     return indices
 
@@ -454,7 +454,10 @@ def draw_car(car, image, coord_frame, down_sample_ratio, resolution, pyramid_ima
 
     if car is not None:
         image_space_car = get_image_space_car(car, coord_frame, resolution)
-        draw_polygon_edges(image_space_car, image, intensity=1.0, intensity_scale=1.0, is_contour=True)
+        if config.data_type == np.float16:
+            draw_polygon_edges(image_space_car, image, intensity=1.0, intensity_scale=1.0, is_contour=True)
+        elif config.data_type == np.uint8:
+            draw_polygon_edges(image_space_car, image, intensity=255, intensity_scale=1, is_contour=True)
 
     if pyramid_image:
         return image_to_pyramid_image(image, down_sample_ratio), time.time() - start_time
@@ -466,8 +469,10 @@ def draw_car_state(car, image, coord_frame, down_sample_ratio, resolution, pyram
     try:
         if car is not None:
             image_space_car_state = get_image_space_car_state(car, coord_frame, resolution)
-            draw_polygon_edges(image_space_car_state, image, intensity=2.0, intensity_scale=1.0, is_contour=False)
-
+            if config.data_type == np.float16:
+                draw_polygon_edges(image_space_car_state, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
+            elif config.data_type == np.uint8:
+                draw_polygon_edges(image_space_car_state, image, intensity=255, intensity_scale=1, is_contour=False)
         if pyramid_image:
             return image_to_pyramid_image(image, down_sample_ratio)
         if pyramid_points:
@@ -485,7 +490,10 @@ def draw_agent(agent, car, image, coord_frame, resolution, dim, down_sample_rati
         image_space_agent, is_out_map = \
             get_image_space_agent(agent, car, coord_frame, resolution, dim)
         if not is_out_map:
-            draw_polygon_edges(image_space_agent, image, intensity=0.5, intensity_scale=1.0, is_contour=True)
+            if config.data_type == np.float16:
+                draw_polygon_edges(image_space_agent, image, intensity=0.5, intensity_scale=1.0, is_contour=True)
+            elif config.data_type == np.uint8:
+                draw_polygon_edges(image_space_agent, image, intensity=127, intensity_scale=1, is_contour=True)
 
     if pyramid_image:
         return image_to_pyramid_image(image, down_sample_ratio), time.time() - start_time
@@ -501,7 +509,10 @@ def draw_path(path, image, coord_frame, resolution, dim, down_sample_ratio, pyra
         if not np.any(pix_pos == -1):  # skip path points outside the map
             path_pixels.append(pix_pos)
 
-    draw_polygon_edges(path_pixels, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
+    if config.data_type == np.float16:
+        draw_polygon_edges(path_pixels, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
+    elif config.data_type == np.uint8:
+        draw_polygon_edges(path_pixels, image, intensity=255, intensity_scale=1, is_contour=False)
 
     if pyramid_image:
         return image_to_pyramid_image(image, down_sample_ratio), time.time() - start_time
@@ -516,7 +527,10 @@ def draw_lanes(lanes, image, car, coord_frame, down_sample_ratio, resolution, py
 
     for lane_seg in lanes:
         image_space_lane = get_image_space_lane(lane_seg, car, coord_frame, resolution)
-        draw_polygon_edges(image_space_lane, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
+        if config.data_type == np.float16:
+            draw_polygon_edges(image_space_lane, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
+        elif config.data_type == np.uint8:
+            draw_polygon_edges(image_space_lane, image, intensity=255, intensity_scale=1, is_contour=False)
 
     if pyramid_image:
         return image_to_pyramid_image(image, down_sample_ratio), time.time() - start_time
@@ -530,7 +544,10 @@ def draw_obstacles(obstacles, image, car, coord_frame, down_sample_ratio, resolu
 
     for obs in obstacles:
         image_space_obstacle = get_image_space_obstacle(obs, car, coord_frame, resolution)
-        draw_polygon_edges(image_space_obstacle, image, intensity=1.0, intensity_scale=1.0, is_contour=True)
+        if config.data_type == np.float16:
+            draw_polygon_edges(image_space_obstacle, image, intensity=1.0, intensity_scale=1.0, is_contour=True)
+        elif config.data_type == np.uint8:
+            draw_polygon_edges(image_space_obstacle, image, intensity=255, intensity_scale=1, is_contour=False)
 
     if pyramid_image:
         return image_to_pyramid_image(image, down_sample_ratio), time.time() - start_time
@@ -570,48 +587,53 @@ def create_maps(map_dict, map_ts, raw_map_array):
 
 
 def create_maps_inner(map_dict_entry, raw_map_array):
-    map_array = np.array(raw_map_array, dtype=np.float32)
+    map_array = np.array(raw_map_array, dtype=config.data_type)
     goal_map = None
-    lane_map = np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=np.float32)
-    obs_map = np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=np.float32)
+    lane_map = np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=config.data_type)
+    obs_map = np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=config.data_type)
     if config.use_goal_channel:
-        goal_map = np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=np.float32)
+        goal_map = np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=config.data_type)
     hist_ped_maps = []
     hist_car_maps = []
     for i in range(config.num_hist_channels):
-        hist_ped_maps.append(np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=np.float32))
+        hist_ped_maps.append(np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=config.data_type))
         if config.use_hist_channels:
-            hist_car_maps.append(np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=np.float32))
+            hist_car_maps.append(np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=config.data_type))
 
     return map_array, hist_ped_maps, hist_car_maps, lane_map, obs_map, goal_map
 
 
 def create_null_maps():
     map_array, goal_map = None, None
-    lane_map = np.zeros((config.default_map_dim, config.default_map_dim), dtype=np.float32)
-    obs_map = np.zeros((config.default_map_dim, config.default_map_dim), dtype=np.float32)
+    lane_map = np.zeros((config.default_map_dim, config.default_map_dim), dtype=config.data_type)
+    obs_map = np.zeros((config.default_map_dim, config.default_map_dim), dtype=config.data_type)
     if config.use_goal_channel:
-        goal_map = np.zeros((config.default_map_dim, config.default_map_dim), dtype=np.float32)
+        goal_map = np.zeros((config.default_map_dim, config.default_map_dim), dtype=config.data_type)
     hist_ped_maps = []
     hist_car_maps = []
     for i in range(config.num_hist_channels):
-        hist_ped_maps.append(np.zeros((config.default_map_dim, config.default_map_dim), dtype=np.float32))
+        hist_ped_maps.append(np.zeros((config.default_map_dim, config.default_map_dim), dtype=config.data_type))
         if config.use_hist_channels:
-            hist_car_maps.append(np.zeros((config.default_map_dim, config.default_map_dim), dtype=np.float32))
+            hist_car_maps.append(np.zeros((config.default_map_dim, config.default_map_dim), dtype=config.data_type))
 
     return map_array, hist_ped_maps, hist_car_maps, lane_map, obs_map, goal_map
 
 
 def clear_maps(hist_env_maps, hist_car_maps, lane_map, obs_map, goal_map):
-    lane_map.fill(0.0)
-    obs_map.fill(0.0)
+    null_value = 0
+    if config.data_type == np.float16:
+        null_value = 0.0
+    elif config.data_type == np.uint8:
+        null_value = 0
+    lane_map.fill(null_value)
+    obs_map.fill(null_value)
     if config.use_goal_channel:
-        goal_map.fill(0.0)
+        goal_map.fill(null_value)
     for hist_env_map in hist_env_maps:
-        hist_env_map.fill(0.0)
+        hist_env_map.fill(null_value)
     if config.use_hist_channels:
         for hist_car_map in hist_car_maps:
-            hist_car_map.fill(0.0)
+            hist_car_map.fill(null_value)
 
 
 def reward_function(prev_steer_data, steer_data, acc_data):
@@ -642,7 +664,7 @@ def reward_function(prev_steer_data, steer_data, acc_data):
 
 
 def process_values(data_dict, gamma, output_dict, sample_idx, timestamps):
-    reward_arr = np.zeros(len(timestamps), dtype=np.float32)
+    reward_arr = np.zeros(len(timestamps), dtype=np.float16)
     prev_steer_data = None
     for idx in range(len(timestamps)):
         ts = timestamps[idx]
@@ -664,8 +686,8 @@ def process_values(data_dict, gamma, output_dict, sample_idx, timestamps):
 
         if idx in sample_idx:
             output_dict[idx]['reward'] = np.array(
-                [reward_arr[idx]], dtype=np.float32)
-    value_arr = np.zeros(len(timestamps), dtype=np.float32)
+                [reward_arr[idx]], dtype=np.float16)
+    value_arr = np.zeros(len(timestamps), dtype=np.float16)
     # calculate value array from reward array
     for i in range(len(timestamps) - 1, -1,
                    -1):  # enumerate in the descending order
@@ -675,18 +697,18 @@ def process_values(data_dict, gamma, output_dict, sample_idx, timestamps):
             value_arr[i] = reward_arr[i] + (gamma * value_arr[i + 1])
         if i in sample_idx:
             output_dict[i]['value'] = np.array(
-                [value_arr[i]], dtype=np.float32)
+                [value_arr[i]], dtype=np.float16)
 
 
 def process_actions(data_dict, idx, output_dict, ts):
     # parse other info
-    tmp = np.zeros(3, dtype=np.float32)
+    tmp = np.zeros(3, dtype=np.float16)
     tmp[config.label_linear] = float(data_dict[ts]['action_reward'].cur_speed.data)
     tmp[config.label_cmdvel] = float(data_dict[ts]['action_reward'].target_speed.data)
     output_dict[idx]['vel'] = tmp
 
     output_dict[idx]['steer_norm'] = np.array(
-        [float(data_dict[ts]['action_reward'].steering_normalized.data)], dtype=np.float32)
+        [float(data_dict[ts]['action_reward'].steering_normalized.data)], dtype=np.float16)
     # print('output_dict[idx][steer_norm]={}'.format(output_dict[idx]['steer_norm'][0]))
     output_dict[idx]['acc_id'] = np.array(
         [float(data_dict[ts]['action_reward'].acceleration_id.data)], dtype=np.int32)
@@ -1081,12 +1103,12 @@ def image_to_pyramid_pixels(image, down_sample_ratio=config.default_ratio):
 
 
 def image_to_pyramid_image(image, down_sample_ratio=config.default_ratio, debug=False):
-    pyramid_image = None
     try:
         # !! input points are in Euclidean space (x,y), output points are in image space (row, column) !!
         # down sample the image
         pyramid_image = rescale_image(image, down_sample_ratio)
-        pyramid_image = normalize(pyramid_image)
+        if config.data_type == np.float16:
+            pyramid_image = normalize(pyramid_image)
 
         if debug:
             print_long('image points = {}'.format(extract_nonzero_points(pyramid_image)))
@@ -1103,7 +1125,7 @@ def extract_nonzero_points(arr1):
         indexes = np.where(arr1 != 0)
         format_point = np.array(
             [(x, y, arr1[x, y]) for x, y in zip(indexes[0], indexes[1])],
-            dtype=np.float32)
+            dtype=config.data_type)
     except Exception as e:
         error_handler(e)  # do nothing
     return format_point
@@ -1226,7 +1248,7 @@ def get_image_space_agent(agent, car, coord_frame, resolution, dim):
         T = np.asarray([[cos(theta), -sin(theta), agent.ped_pos.x],
                         [sin(theta), cos(theta), agent.ped_pos.y],
                         [0, 0, 1]])
-        agent_bb = np.array([T.dot(x.T) for x in agent_bb], dtype=np.float32)
+        agent_bb = np.array([T.dot(x.T) for x in agent_bb], dtype=np.float16)
 
         image_space_agent = []
         for x in agent_bb:
