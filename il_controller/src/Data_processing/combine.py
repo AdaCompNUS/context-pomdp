@@ -119,8 +119,8 @@ def save(files, filename, flag=-1):
         print("Saving data...")
         time.sleep(3)
 
-        save_dataset_to_h5(acc_id_labels_array, ang_normed_labels_array, counter, data_array, cart_data_array, f,
-                           v_labels_array, vel_labels_array, lane_labels_array, traj_num, points_num)
+        save_dataset_to_h5_compact(acc_id_labels_array, ang_normed_labels_array, counter, data_array, cart_data_array,
+                                   f, v_labels_array, vel_labels_array, lane_labels_array, traj_num, points_num)
 
     print("Collection memory garbages")
     del data_array, cart_data_array, acc_id_labels_array, vel_labels_array, ang_normed_labels_array, \
@@ -151,6 +151,40 @@ def save_dataset_to_h5(acc_id_labels_array, ang_normalized_labels_array, counter
         f.create_dataset('vel_labels', maxshape=(None, 1), data=vel_labels_array[0:counter],
                          dtype='f4')
         f.create_dataset('lane_labels', maxshape=(None, 1), data=lane_labels_array[0:counter],
+                         dtype='f4')
+
+        if config.sample_mode == 'hierarchical':
+            f.create_dataset('traj_num', data=traj_num, dtype='int32')
+            f.create_dataset('points_num', data=points_num, dtype='int32')
+    except Exception as e:
+        print("Investigate table")
+        error_handler(e)
+        pdb.set_trace()
+
+
+def save_dataset_to_h5_compact(acc_id_labels_array, ang_normalized_labels_array, counter, data_array,
+                               cart_data_array, f, v_labels_array, vel_labels_array, lane_labels_array,
+                               traj_num, points_num):
+    try:
+        print("data shape: {}".format(data_array[0].shape))
+        f.create_dataset('data',
+                         data=data_array[0:counter], dtype=np.single)
+
+        print("Saving cart data...")
+        print("data shape: {}".format(cart_data_array[0].shape))
+        f.create_dataset('cart_data',
+                         data=cart_data_array[0:counter], dtype='f4')
+
+        print("Saving labels...")
+        f.create_dataset('v_labels', data=v_labels_array[0:counter], dtype='f4')
+        f.create_dataset('acc_id_labels', data=acc_id_labels_array[0:counter],
+                         dtype='f4')
+        f.create_dataset('ang_normalized_labels',
+                         data=ang_normalized_labels_array[0:counter],
+                         dtype='f4')
+        f.create_dataset('vel_labels', data=vel_labels_array[0:counter],
+                         dtype='f4')
+        f.create_dataset('lane_labels', data=lane_labels_array[0:counter],
                          dtype='f4')
 
         if config.sample_mode == 'hierarchical':

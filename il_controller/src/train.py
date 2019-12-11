@@ -1374,8 +1374,8 @@ if __name__ == '__main__':
     if config.label_smoothing:
         cel_criterion = SoftCrossEntropy().to(device)
     else:
-        # cel_criterion = nn.CrossEntropyLoss().to(device)
-        cel_criterion = CELossWithMaxEntRegularizer().to(device)
+        cel_criterion = nn.CrossEntropyLoss().to(device)
+        # cel_criterion = CELossWithMaxEntRegularizer().to(device)
     # Optimizer: weight_decay is the scaling factor for L2 regularization
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cmd_args.lr,
                            weight_decay=config.l2_reg_weight)
