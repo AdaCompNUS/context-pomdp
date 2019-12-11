@@ -269,7 +269,7 @@ class PolicyValueNet(nn.Module):
         else:
             self.ang_head = EmptyActionHead()
         if global_config.fit_all or global_config.fit_action or global_config.fit_acc:
-            self.acc_head = ActionHead(inplanes=self.resnet.num_out_features, num_classes=self.num_acc_bins)
+            self.acc_head = LargeActionHead(inplanes=self.resnet.num_out_features, num_classes=self.num_acc_bins)
         else:
             self.acc_head = EmptyActionHead()
         if global_config.use_vel_head and (global_config.fit_all or global_config.fit_action or global_config.fit_vel):

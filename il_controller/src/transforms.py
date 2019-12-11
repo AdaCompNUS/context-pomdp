@@ -149,7 +149,7 @@ class PopulateImages(object):
 
 
 def make_onehot(num_bins, bin_idx, prob):
-    onehot_labels = np.zeros((num_bins), dtype=np.float16)
+    onehot_labels = np.zeros((num_bins), dtype=np.float32)
     onehot_labels[bin_idx] = prob
     return onehot_labels
 
@@ -169,7 +169,7 @@ def float_to_onehot(v, v_min, v_max, num_bins):
         if not config.label_smoothing:
             return bin_idx
         else:  # not used
-            onehot_labels = np.zeros((num_bins), dtype=np.float16)
+            onehot_labels = np.zeros((num_bins), dtype=np.float32)
             eligible = 0
             if bin_idx + 1 < num_bins:
                 eligible += 1
@@ -270,7 +270,7 @@ def value_transform_normalized_to_raw(value):
 
 def float_to_np(v):
     try:
-        v_np = np.zeros(1, dtype=np.float16)
+        v_np = np.zeros(1, dtype=np.float32)
         v_np[0] = v
         return v_np
 
@@ -323,7 +323,7 @@ class InputEncoder(object):
     def __call__(self, input_data):
         # normalize input images
         #
-        if config.data_type == np.float16:
+        if config.data_type == np.float32:
             input_data = self.normalize(input_data)
             return input_data
         elif config.data_type == np.uint8:

@@ -308,10 +308,10 @@ def point_to_pixel(x, y, coord_frame, resolution, dim):
     indices = np.array(
         [(x_coord + config.image_half_size_meters) / resolution,
          (y_coord + config.image_half_size_meters) / resolution],
-        dtype=np.float16)
+        dtype=np.float32)
 
     if np.any(indices < 0) or np.any(indices > (dim - 1)):
-        return np.array([-1, -1], dtype=np.float16)
+        return np.array([-1, -1], dtype=np.float32)
 
     return indices
 
@@ -325,7 +325,7 @@ def point_to_pixels_no_checking(x, y, coord_frame, resolution):
     indices = np.array(
         [(x_coord + config.image_half_size_meters) / resolution,
          (y_coord + config.image_half_size_meters) / resolution],
-        dtype=np.float16)
+        dtype=np.float32)
 
     return indices
 
@@ -445,8 +445,8 @@ def draw_polygon_edges(points, image, intensity, intensity_scale, is_contour):
 
             cv2.line(image, (r0, c0), (r1, c1), color=intensity * intensity_scale)
     except Exception as e:
+        print('image={}'.format(image))
         error_handler(e)
-        pdb.set_trace()
 
 
 def draw_car(car, image, coord_frame, down_sample_ratio, resolution, pyramid_image=False, pyramid_points=False):
@@ -454,7 +454,7 @@ def draw_car(car, image, coord_frame, down_sample_ratio, resolution, pyramid_ima
 
     if car is not None:
         image_space_car = get_image_space_car(car, coord_frame, resolution)
-        if config.data_type == np.float16:
+        if config.data_type == np.float32:
             draw_polygon_edges(image_space_car, image, intensity=1.0, intensity_scale=1.0, is_contour=True)
         elif config.data_type == np.uint8:
             draw_polygon_edges(image_space_car, image, intensity=255, intensity_scale=1, is_contour=True)
@@ -469,7 +469,7 @@ def draw_car_state(car, image, coord_frame, down_sample_ratio, resolution, pyram
     try:
         if car is not None:
             image_space_car_state = get_image_space_car_state(car, coord_frame, resolution)
-            if config.data_type == np.float16:
+            if config.data_type == np.float32:
                 draw_polygon_edges(image_space_car_state, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
             elif config.data_type == np.uint8:
                 draw_polygon_edges(image_space_car_state, image, intensity=255, intensity_scale=1, is_contour=False)
@@ -480,7 +480,6 @@ def draw_car_state(car, image, coord_frame, down_sample_ratio, resolution, pyram
 
     except Exception as e:
         error_handler(e)
-        pdb.set_trace()
 
 
 def draw_agent(agent, car, image, coord_frame, resolution, dim, down_sample_ratio, pyramid_image=False,
@@ -490,7 +489,7 @@ def draw_agent(agent, car, image, coord_frame, resolution, dim, down_sample_rati
         image_space_agent, is_out_map = \
             get_image_space_agent(agent, car, coord_frame, resolution, dim)
         if not is_out_map:
-            if config.data_type == np.float16:
+            if config.data_type == np.float32:
                 draw_polygon_edges(image_space_agent, image, intensity=0.5, intensity_scale=1.0, is_contour=True)
             elif config.data_type == np.uint8:
                 draw_polygon_edges(image_space_agent, image, intensity=127, intensity_scale=1, is_contour=True)
@@ -509,7 +508,7 @@ def draw_path(path, image, coord_frame, resolution, dim, down_sample_ratio, pyra
         if not np.any(pix_pos == -1):  # skip path points outside the map
             path_pixels.append(pix_pos)
 
-    if config.data_type == np.float16:
+    if config.data_type == np.float32:
         draw_polygon_edges(path_pixels, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
     elif config.data_type == np.uint8:
         draw_polygon_edges(path_pixels, image, intensity=255, intensity_scale=1, is_contour=False)
@@ -527,7 +526,7 @@ def draw_lanes(lanes, image, car, coord_frame, down_sample_ratio, resolution, py
 
     for lane_seg in lanes:
         image_space_lane = get_image_space_lane(lane_seg, car, coord_frame, resolution)
-        if config.data_type == np.float16:
+        if config.data_type == np.float32:
             draw_polygon_edges(image_space_lane, image, intensity=1.0, intensity_scale=1.0, is_contour=False)
         elif config.data_type == np.uint8:
             draw_polygon_edges(image_space_lane, image, intensity=255, intensity_scale=1, is_contour=False)
@@ -544,7 +543,7 @@ def draw_obstacles(obstacles, image, car, coord_frame, down_sample_ratio, resolu
 
     for obs in obstacles:
         image_space_obstacle = get_image_space_obstacle(obs, car, coord_frame, resolution)
-        if config.data_type == np.float16:
+        if config.data_type == np.float32:
             draw_polygon_edges(image_space_obstacle, image, intensity=1.0, intensity_scale=1.0, is_contour=True)
         elif config.data_type == np.uint8:
             draw_polygon_edges(image_space_obstacle, image, intensity=255, intensity_scale=1, is_contour=False)
@@ -573,7 +572,6 @@ def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolutio
 
     except Exception as e:
         error_handler(e)
-        pdb.set_trace()
 
     end = time.time()
     return True, end-start
@@ -616,12 +614,14 @@ def create_null_maps():
         if config.use_hist_channels:
             hist_car_maps.append(np.zeros((config.default_map_dim, config.default_map_dim), dtype=config.data_type))
 
+    print('hist_ped_maps[0]={}'.format(hist_ped_maps[0]))
+
     return map_array, hist_ped_maps, hist_car_maps, lane_map, obs_map, goal_map
 
 
 def clear_maps(hist_env_maps, hist_car_maps, lane_map, obs_map, goal_map):
     null_value = 0
-    if config.data_type == np.float16:
+    if config.data_type == np.float32:
         null_value = 0.0
     elif config.data_type == np.uint8:
         null_value = 0
@@ -664,7 +664,7 @@ def reward_function(prev_steer_data, steer_data, acc_data):
 
 
 def process_values(data_dict, gamma, output_dict, sample_idx, timestamps):
-    reward_arr = np.zeros(len(timestamps), dtype=np.float16)
+    reward_arr = np.zeros(len(timestamps), dtype=np.float32)
     prev_steer_data = None
     for idx in range(len(timestamps)):
         ts = timestamps[idx]
@@ -678,16 +678,15 @@ def process_values(data_dict, gamma, output_dict, sample_idx, timestamps):
             try:
                 prev_steer_data = data_dict[prev_ts]['action_reward'].steering_normalized.data
             except Exception as e:
-                print(e)
-                pdb.set_trace()
+                error_handler(e)
 
             acc_data = data_dict[ts]['action_reward'].acceleration_id.data
             reward_arr[idx] = reward_function(prev_steer_data, steer_data, acc_data)
 
         if idx in sample_idx:
             output_dict[idx]['reward'] = np.array(
-                [reward_arr[idx]], dtype=np.float16)
-    value_arr = np.zeros(len(timestamps), dtype=np.float16)
+                [reward_arr[idx]], dtype=np.float32)
+    value_arr = np.zeros(len(timestamps), dtype=np.float32)
     # calculate value array from reward array
     for i in range(len(timestamps) - 1, -1,
                    -1):  # enumerate in the descending order
@@ -697,18 +696,18 @@ def process_values(data_dict, gamma, output_dict, sample_idx, timestamps):
             value_arr[i] = reward_arr[i] + (gamma * value_arr[i + 1])
         if i in sample_idx:
             output_dict[i]['value'] = np.array(
-                [value_arr[i]], dtype=np.float16)
+                [value_arr[i]], dtype=np.float32)
 
 
 def process_actions(data_dict, idx, output_dict, ts):
     # parse other info
-    tmp = np.zeros(3, dtype=np.float16)
+    tmp = np.zeros(3, dtype=np.float32)
     tmp[config.label_linear] = float(data_dict[ts]['action_reward'].cur_speed.data)
     tmp[config.label_cmdvel] = float(data_dict[ts]['action_reward'].target_speed.data)
     output_dict[idx]['vel'] = tmp
 
     output_dict[idx]['steer_norm'] = np.array(
-        [float(data_dict[ts]['action_reward'].steering_normalized.data)], dtype=np.float16)
+        [float(data_dict[ts]['action_reward'].steering_normalized.data)], dtype=np.float32)
     # print('output_dict[idx][steer_norm]={}'.format(output_dict[idx]['steer_norm'][0]))
     output_dict[idx]['acc_id'] = np.array(
         [float(data_dict[ts]['action_reward'].acceleration_id.data)], dtype=np.int32)
@@ -749,7 +748,6 @@ def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, hist_car_im
 
     except Exception as e:
         error_handler(e)
-        pdb.set_trace()
     finally:
         end = time.time()
         return end - start
@@ -909,7 +907,6 @@ def get_exo_agent_history(ped_id, hist_exo_agents):
             error_handler(e)
             print("!!! Investigate: not able to extract info on ped {} "
                   "in one of history time step. Ped hist {}".format(ped_id, hist_exo_agents[i]))
-            pdb.set_trace()
 
     return exo_agent_hist
 
@@ -931,7 +928,6 @@ def history_complete(ped_id, hist_exo_agents):
                 has_hist = False
     except Exception as e:
         error_handler(e)
-        pdb.set_trace()
 
     return has_hist, hist_count
 
@@ -994,7 +990,6 @@ def get_bounded_history(data_dict_entry, flag_hist):
 
     except Exception as e:
         error_handler(e)
-        pdb.set_trace()
 
     return hist_cars, hist_exo_agents, hist_count
 
@@ -1098,7 +1093,6 @@ def image_to_pyramid_pixels(image, down_sample_ratio=config.default_ratio):
         nonzero_points = extract_nonzero_points(arr1)
     except Exception as e:
         error_handler(e)
-        pdb.set_trace()
     return nonzero_points
 
 
@@ -1107,7 +1101,7 @@ def image_to_pyramid_image(image, down_sample_ratio=config.default_ratio, debug=
         # !! input points are in Euclidean space (x,y), output points are in image space (row, column) !!
         # down sample the image
         pyramid_image = rescale_image(image, down_sample_ratio)
-        if config.data_type == np.float16:
+        if config.data_type == np.float32:
             pyramid_image = normalize(pyramid_image)
 
         if debug:
@@ -1116,7 +1110,6 @@ def image_to_pyramid_image(image, down_sample_ratio=config.default_ratio, debug=
         return pyramid_image
     except Exception as e:
         error_handler(e)
-        pdb.set_trace()
 
 
 def extract_nonzero_points(arr1):
@@ -1164,7 +1157,6 @@ def construct_car_data(car_images, hist_cars, coord_frame, resolution, down_samp
                     draw_car(car, car_images[ts], coord_frame, down_sample_ratio, resolution, pyramid_image=True)[0])
     except Exception as e:
         error_handler(e)
-        pdb.set_trace()
 
     elapsed_time = time.time() - start_time
     return car_hist_data, elapsed_time
@@ -1248,7 +1240,7 @@ def get_image_space_agent(agent, car, coord_frame, resolution, dim):
         T = np.asarray([[cos(theta), -sin(theta), agent.ped_pos.x],
                         [sin(theta), cos(theta), agent.ped_pos.y],
                         [0, 0, 1]])
-        agent_bb = np.array([T.dot(x.T) for x in agent_bb], dtype=np.float16)
+        agent_bb = np.array([T.dot(x.T) for x in agent_bb], dtype=np.float32)
 
         image_space_agent = []
         for x in agent_bb:
@@ -1281,7 +1273,6 @@ def get_image_space_agent_history(agent_history, hist_cars,  coord_frame, resolu
 
     except Exception as e:
         error_handler(e)
-        pdb.set_trace()
     finally:
         return transformed_history, is_out_map
 
