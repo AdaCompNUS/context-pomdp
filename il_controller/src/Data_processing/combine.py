@@ -230,10 +230,13 @@ def put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_norme
                           data, cart_data, cart_data_array, v_labels_array,
                           value, vel, vel_labels_array, lane, lane_labels_array):
     try:
-        if counter >= data_array.shape[0]:
-            new_shape = list(data_array.shape)
-            new_shape[0] += DATA_CHUNCK_SIZE
-            data_array = np.resize(data_array, tuple(new_shape))
+        data_array = resize_container(counter, data_array)
+        v_labels_array = resize_container(counter, v_labels_array)
+        acc_id_labels_array = resize_container(counter, acc_id_labels_array)
+        ang_normed_labels_array = resize_container(counter, ang_normed_labels_array)
+        vel_labels_array = resize_container(counter, vel_labels_array)
+        lane_labels_array = resize_container(counter, lane_labels_array)
+
         data_array[counter] = data
         # cart_data_array[counter] = cart_data
         v_labels_array[counter][0] = value
@@ -245,6 +248,14 @@ def put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_norme
     except Exception as e:
         print("counter = {}, data_array.shape = {}".format(counter, data_array.shape))
         error_handler(e)
+
+
+def resize_container(counter, numpy_array):
+    if counter >= numpy_array.shape[0]:
+        new_shape = list(numpy_array.shape)
+        new_shape[0] += DATA_CHUNCK_SIZE
+        numpy_array = np.resize(numpy_array, tuple(new_shape))
+    return numpy_array
 
 
 def allocate_containters():
