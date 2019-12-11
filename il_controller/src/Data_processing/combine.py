@@ -243,9 +243,8 @@ def put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_norme
         lane_labels_array[counter][0] = lane
 
     except Exception as e:
-        print("Investigate file")
+        print("counter = {}, data_array.shape = {}".format(counter, data_array.shape))
         error_handler(e)
-        pdb.set_trace()
 
 
 def allocate_containters():
