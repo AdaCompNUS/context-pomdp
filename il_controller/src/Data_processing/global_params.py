@@ -64,7 +64,7 @@ config.num_lane_bins = 3
 
 ''' Sampling settings '''
 import numpy as np
-downscale_count = 5
+downscale_count = 4
 config.default_ratio = 1.0 / pow(2, downscale_count)  # down sample 3 times
 config.num_samples_per_traj = 120
 config.min_samples_gap = 2

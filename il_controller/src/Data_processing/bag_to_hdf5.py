@@ -760,12 +760,12 @@ def process_maps_inner(down_sample_ratio, map_array, output_dict_entry, hist_ped
     if map_array is not None:
         map_array = rescale_image(map_array, down_sample_ratio)
         map_array = np.array(map_array, dtype=np.int32)
-        map_array = normalize(map_array)
+        map_array = normalize(map_array, config.data_type)
 
     hist_env_map = []
     for i in range(len(hist_ped_maps)):
         ped_array = rescale_image(hist_ped_maps[i], down_sample_ratio)
-        ped_array = normalize(ped_array)
+        ped_array = normalize(ped_array, config.data_type)
         if map_array is not None:
             ped_array = np.maximum(map_array, ped_array)
         hist_env_map.append(ped_array)
@@ -882,10 +882,15 @@ def process_parametric_agents_inner(output_dict_entry, hist_exo_agents, hist_car
     output_dict_entry['cart_agents'] = hist_agent_states
 
 
-def normalize(array):
+def normalize(array, data_type=np.float32):
     try:
+        scale = 1.0
+        if data_type == np.float32:
+            scale = 1.0
+        elif data_type == np.uint8:
+            scale = 255
         if np.max(array) > 0:
-            array = array / np.max(array)
+            array = (array.astype(np.float32) / np.max(array) * scale).astype(data_type)
     except Exception as e:
         error_handler(e)
     finally:
@@ -1087,7 +1092,7 @@ def image_to_pyramid_pixels(image, down_sample_ratio=config.default_ratio):
         # !! input points are in Euclidean space (x,y), output points are in image space (row, column) !!
         # down sample the image
         arr1 = rescale_image(image, down_sample_ratio)
-        arr1 = normalize(arr1)
+        arr1 = normalize(arr1, config.data_type)
         nonzero_points = extract_nonzero_points(arr1)
     except Exception as e:
         error_handler(e)
@@ -1099,8 +1104,7 @@ def image_to_pyramid_image(image, down_sample_ratio=config.default_ratio, debug=
         # !! input points are in Euclidean space (x,y), output points are in image space (row, column) !!
         # down sample the image
         pyramid_image = rescale_image(image, down_sample_ratio)
-        if config.data_type == np.float32:
-            pyramid_image = normalize(pyramid_image)
+        pyramid_image = normalize(pyramid_image, config.data_type)
 
         if debug:
             print_long('image points = {}'.format(extract_nonzero_points(pyramid_image)))
