@@ -614,8 +614,6 @@ def create_null_maps():
         if config.use_hist_channels:
             hist_car_maps.append(np.zeros((config.default_map_dim, config.default_map_dim), dtype=config.data_type))
 
-    print('hist_ped_maps[0]={}'.format(hist_ped_maps[0]))
-
     return map_array, hist_ped_maps, hist_car_maps, lane_map, obs_map, goal_map
 
 
