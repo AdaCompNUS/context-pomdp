@@ -15,6 +15,7 @@ sys.path.append(ros_path)
 
 from global_params import config
 from global_params import print_long
+
 if config.pycharm_mode:
     import pyros_setup
 
@@ -143,6 +144,8 @@ def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_rewa
     for i in range(0, config.num_hist_channels):
         hist_agents.append(peds_car_info())
 
+    num_acc = np.zeros(config.num_acc_bins)
+
     for timestamp in list(act_reward_dict.keys()):
 
         obs_ts_neareast = min(obs_dict, key=lambda x: abs(x - timestamp))
@@ -174,6 +177,10 @@ def combine_topics_in_one_dict(map_dict, plan_dict, ped_dict, car_dict, act_rewa
             'obstacles': local_obstacles,
             'lanes': local_lanes
         }
+
+        num_acc[int(action_reward_data.acceleration_id.data)] += 1
+
+    # print('Original acc distribution {}'.format(num_acc / np.sum(num_acc)))
 
     return combined_dict, map_dict
 
@@ -213,7 +220,6 @@ def trim_episode_end(combined_dict):
     except Exception as e:
         print_long('combined_dict.keys()={}'.format(list(combined_dict.keys())))
         error_handler(e)
-
 
     return combined_dict
 
@@ -329,6 +335,33 @@ def point_to_pixels_no_checking(x, y, coord_frame, resolution):
 
     return indices
 
+
+def get_length(idx_list_bins):
+    length = 0
+    for bin in idx_list_bins:
+        length += len(bin)
+    return length
+
+
+target_portions_acc = [0.3, 0.4, 0.3]
+
+
+def sample_idx(shuffled_idx, acc_list, sampled_idx_with_acc_bins, target_length, bias_sampling):
+    try:
+        idx = next(shuffled_idx)
+        # print('Proposing idx {}'.format(idx))
+        acc_id = acc_list[idx]
+
+        if bias_sampling:
+            if len(sampled_idx_with_acc_bins[acc_id]) >= target_length * target_portions_acc[acc_id]:
+                return idx, False
+        sampled_idx_with_acc_bins[acc_id].append(idx)
+        return idx, True
+    except Exception as e:
+        print(e, flush=True)
+        return None, False
+
+
 # now create data in the required format here don't forget to add random data for ped goal beliefs and history too
 # coz pedestrians are not constant, also add car dimensions for history image
 '''coordinate system should be consistent; bottom left is origin, x is 2nd dim, y is 1st dim, x increases up, 
@@ -351,21 +384,46 @@ def create_h5_data(data_dict,
     # get data for other topics
     output_dict = OrderedDict()
     timestamps = list(data_dict.keys())
+    acc_list = [int(data['action_reward'].acceleration_id.data) for ts, data in data_dict.items()]
+
+    # ts_acc_pairs = zip(data_dict.keys(), acc_list)
 
     # sample data points to h5
     # Change to sample a fixed number of points in the trajectory
 
-    sample_idx, sample_length, sample_shuffled_idx = shuffle_and_sample_indices(timestamps)
+    target_length, shuffled_idx = shuffle_and_sample_indices(timestamps)
+    sampled_idx_with_acc_bins = [[], [], []]
+    abandoned_idx = []
+    sampled_idx = []
+    bias_sampling = True
 
-    while not (len(sample_idx) == sample_length):
+    while not (len(sampled_idx) == target_length):
         old_output_dict_length = len(output_dict.keys())
 
         try:
-            idx = next(sample_shuffled_idx)
+            idx, use_idx = sample_idx(shuffled_idx, acc_list, sampled_idx_with_acc_bins, target_length, bias_sampling)
+
+            if idx is not None:
+                pass  # print('idx {}, acc{}, use? {}'.format(idx, acc_list[idx], use_idx))
+
+            if idx is None:  # list has been exhausted.
+                if len(abandoned_idx) > 0 and get_length(sampled_idx_with_acc_bins) < target_length:
+                    bias_sampling = False
+                    shuffled_idx = iter(abandoned_idx)
+                    # print('reassigning shuffled_idx: {}'.format(shuffled_idx))
+                    continue
+                else:
+                    # print('End sampling')
+                    break
+            elif not use_idx:  # skip data point
+                abandoned_idx.append(idx)
+                # print('abandon idx: {}'.format(idx))
+                continue
+
         except Exception as e:
             error_handler(e)
             print("--Sampling warning details: already sampled {}, to sample {}, total data {}".format(
-                len(sample_idx), sample_length, len(timestamps)))
+                get_length(sampled_idx_with_acc_bins), target_length, len(timestamps)))
             return dict(output_dict), False
 
         ts = timestamps[idx]
@@ -401,9 +459,9 @@ def create_h5_data(data_dict,
         process_parametric_agents(idx, output_dict, hist_exo_agents, hist_cars)
 
         if len(output_dict.keys()) > old_output_dict_length:
-            sample_idx.append(idx)
+            sampled_idx.append(idx)
 
-    process_values(data_dict, gamma, output_dict, sample_idx, timestamps)
+    process_values(data_dict, gamma, output_dict, sampled_idx, timestamps)
 
     if len(output_dict.keys()) == 0:
         print("[Investigate] Bag results in no data!")
@@ -411,22 +469,23 @@ def create_h5_data(data_dict,
         return dict(output_dict), False
     else:
         print("Creating data with %d time steps..." % len(output_dict.keys()))
+        print('Sampled acc distribution: {} {} {}'.format(
+            len(sampled_idx_with_acc_bins[0]), len(sampled_idx_with_acc_bins[1]), len(sampled_idx_with_acc_bins[2])))
 
     return dict(output_dict), True
 
 
 def shuffle_and_sample_indices(timestamps):
-    sample_idx = []
-    sample_shuffled_idx = list(range(len(timestamps)))
+    shuffled_idx = list(range(len(timestamps)))
     if learning_mode == 'rl':
-        random.shuffle(sample_shuffled_idx)
-        sample_shuffled_idx = iter(sample_shuffled_idx)
+        random.shuffle(shuffled_idx)
+        shuffled_idx = iter(shuffled_idx)
         sample_length = -1
     else:
-        random.shuffle(sample_shuffled_idx)
-        sample_shuffled_idx = iter(sample_shuffled_idx)
+        random.shuffle(shuffled_idx)
+        shuffled_idx = iter(shuffled_idx)
         sample_length = int(min(config.num_samples_per_traj, int(len(timestamps) / config.min_samples_gap)))
-    return sample_idx, sample_length, sample_shuffled_idx
+    return sample_length, shuffled_idx
 
 
 def draw_polygon_edges(points, image, intensity, intensity_scale, is_contour):
@@ -434,9 +493,9 @@ def draw_polygon_edges(points, image, intensity, intensity_scale, is_contour):
         for i, p in enumerate(points):
             r0 = int(round(p[0]))
             c0 = int(round(p[1]))
-            if i+1 < len(points):
-                r1 = int(round(points[i+1][0]))
-                c1 = int(round(points[i+1][1]))
+            if i + 1 < len(points):
+                r1 = int(round(points[i + 1][0]))
+                c1 = int(round(points[i + 1][1]))
             elif is_contour:
                 r1 = int(round(points[0][0]))
                 c1 = int(round(points[0][1]))
@@ -554,7 +613,8 @@ def draw_obstacles(obstacles, image, car, coord_frame, down_sample_ratio, resolu
         return image_to_pyramid_pixels(image, down_sample_ratio), time.time() - start_time
 
 
-def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution, down_sample_ratio=config.default_ratio,
+def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolution,
+                       down_sample_ratio=config.default_ratio,
                        coord_frame=None):
     start = time.time()
     try:
@@ -574,7 +634,7 @@ def process_exo_agents(hist_cars, hist_exo_agents, hist_env_maps, dim, resolutio
         error_handler(e)
 
     end = time.time()
-    return True, end-start
+    return True, end - start
 
 
 def create_maps(map_dict, map_ts, raw_map_array):
@@ -596,7 +656,8 @@ def create_maps_inner(map_dict_entry, raw_map_array):
     for i in range(config.num_hist_channels):
         hist_ped_maps.append(np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=config.data_type))
         if config.use_hist_channels:
-            hist_car_maps.append(np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=config.data_type))
+            hist_car_maps.append(
+                np.zeros((map_dict_entry.info.height, map_dict_entry.info.width), dtype=config.data_type))
 
     return map_array, hist_ped_maps, hist_car_maps, lane_map, obs_map, goal_map
 
@@ -740,7 +801,8 @@ def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, hist_car_im
         # parse car data
         if config.use_hist_channels:
             output_dict_entry['car']['hist'], elapsed_time = construct_car_data(hist_car_images, hist_cars,
-                                                                  coord_frame, resolution, down_sample_ratio, mode)
+                                                                                coord_frame, resolution,
+                                                                                down_sample_ratio, mode)
         if print_time:
             print("Construct car time: " + str(elapsed_time) + " s")
 
@@ -773,7 +835,7 @@ def process_maps_inner(down_sample_ratio, map_array, output_dict_entry, hist_ped
     # combine the static map and the pedestrian map
     output_dict_entry['maps'] = hist_env_map
     end = time.time()
-    return end-start
+    return end - start
 
 
 def process_obstacles(data_idx, ts, output_dict, data_dict, cur_car, obs_image, down_sample_ratio, resolution,
@@ -788,10 +850,10 @@ def process_obstacles_inner(output_dict_entry, data_dict_entry, cur_car, obs_ima
 
     if mode == 'offline':
         output_dict_entry['obs'], _ = draw_obstacles(obstacles, obs_image, cur_car, coord_frame, down_sample_ratio,
-                                                  resolution, pyramid_points=True)
+                                                     resolution, pyramid_points=True)
     elif mode == 'online':
         output_dict_entry['obs'], _ = draw_obstacles(obstacles, obs_image, cur_car, coord_frame, down_sample_ratio,
-                                                  resolution, pyramid_image=True)
+                                                     resolution, pyramid_image=True)
 
 
 def process_lanes(data_idx, ts, output_dict, data_dict, cur_car, lane_image, down_sample_ratio, resolution,
@@ -806,11 +868,13 @@ def process_lanes_inner(output_dict_entry, data_dict_entry, cur_car, lane_image,
     lanes = data_dict_entry['lanes']
 
     if mode == 'offline':
-        output_dict_entry['lane'], _ = draw_lanes(lanes, lane_image, cur_car, coord_frame, down_sample_ratio, resolution,
-                                               pyramid_points=True)
+        output_dict_entry['lane'], _ = draw_lanes(lanes, lane_image, cur_car, coord_frame, down_sample_ratio,
+                                                  resolution,
+                                                  pyramid_points=True)
     elif mode == 'online':
-        output_dict_entry['lane'], _ = draw_lanes(lanes, lane_image, cur_car, coord_frame, down_sample_ratio, resolution,
-                                               pyramid_image=True)
+        output_dict_entry['lane'], _ = draw_lanes(lanes, lane_image, cur_car, coord_frame, down_sample_ratio,
+                                                  resolution,
+                                                  pyramid_image=True)
     end = time.time()
     return end - start
 
@@ -1255,7 +1319,7 @@ def get_image_space_agent(agent, car, coord_frame, resolution, dim):
         return image_space_agent, is_out_map
 
 
-def get_image_space_agent_history(agent_history, hist_cars,  coord_frame, resolution, dim):
+def get_image_space_agent_history(agent_history, hist_cars, coord_frame, resolution, dim):
     is_out_map = True
     transformed_history = []
     try:

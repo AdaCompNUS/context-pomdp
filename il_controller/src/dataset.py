@@ -295,8 +295,9 @@ class DrivingData(data.Dataset):
 
         v_label = self.encode_value(self.data['v_labels'][data_index])
 
-        # print_long('input shape={}'.format(input_data.shape))
+        # print_long('input max={}'.format(np.max(input_data)))
         # print_long('steer_label shape={}'.format(steer_label.shape))
+
 
         return input_data, v_label, acc_id_label, steer_label, vel_label, lane_label
 
