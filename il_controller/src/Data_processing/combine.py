@@ -83,6 +83,8 @@ def save(files, filename, flag=-1):
         points_num = []
 
         visualization_done = False
+        acc_distribution = np.zeros(config.num_acc_bins)
+
         for file in files:
             if "train" not in file and "val" not in file and "test" not in file:
 
@@ -96,6 +98,8 @@ def save(files, filename, flag=-1):
                 step_in_file = 0
                 for key in d.keys():  # key is the original index in separate h5 files
                     data, cart_data, value, acc_id, ang_normalized, vel, lane = populate_images(d[key], False)
+
+                    acc_distribution[acc_id] += 1
 
                     data_array = resize_container(counter, data_array)
                     v_labels_array = resize_container(counter, v_labels_array)
@@ -125,6 +129,7 @@ def save(files, filename, flag=-1):
                     continue  # return
 
         print("Saving data...")
+        print("Acc distribution {}".format(acc_distribution/np.sum(acc_distribution)))
         time.sleep(3)
 
         save_dataset_to_h5_compact(acc_id_labels_array, ang_normed_labels_array, counter, data_array, cart_data_array,

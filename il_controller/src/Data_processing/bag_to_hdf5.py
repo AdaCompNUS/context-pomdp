@@ -358,7 +358,7 @@ def sample_idx(shuffled_idx, acc_list, sampled_idx_with_acc_bins, target_length,
         sampled_idx_with_acc_bins[acc_id].append(idx)
         return idx, True
     except Exception as e:
-        print(e, flush=True)
+        # print(e, flush=True)
         return None, False
 
 
