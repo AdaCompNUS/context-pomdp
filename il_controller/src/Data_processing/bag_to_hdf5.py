@@ -395,7 +395,7 @@ def create_h5_data(data_dict,
     sampled_idx_with_acc_bins = [[], [], []]
     abandoned_idx = []
     sampled_idx = []
-    bias_sampling = True
+    bias_sampling = config.data_balancing
 
     while not (len(sampled_idx) == target_length):
         old_output_dict_length = len(output_dict.keys())

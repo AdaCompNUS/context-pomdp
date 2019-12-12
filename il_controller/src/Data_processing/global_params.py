@@ -72,6 +72,7 @@ config.num_agents_in_map = 20
 config.buffer_mode = 'full'  # full or replay
 config.sample_mode = 'random'  # hierarchical or random
 config.data_type = np.uint8  # np.uint8, np.float32
+config.data_balancing = True
 ''' Sampling settings '''
 
 
