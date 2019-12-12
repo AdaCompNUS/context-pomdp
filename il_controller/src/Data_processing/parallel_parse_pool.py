@@ -1,15 +1,17 @@
-# from Data_processing import global_params
-from global_params import config
+import sys
+
+# sys.path.append('./Data_processing/')
+# sys.path.append('../')
+sys.path.append('./')
+
+from Data_processing import global_params
+
+config = global_params.config
 
 if config.pycharm_mode:
     import pyros_setup
     pyros_setup.configurable_import().configure('mysetup.cfg').activate()
 
-import sys
-
-sys.path.append('./Data_processing/')
-sys.path.append('../')
-sys.path.append('./')
 
 import glob
 import deepdish as dd
@@ -22,10 +24,6 @@ import pdb
 import h5py
 
 from Data_processing import bag_to_hdf5
-import global_params, bag_to_hdf5
-from global_params import config
-
-config = global_params.config
 
 import multiprocessing
 

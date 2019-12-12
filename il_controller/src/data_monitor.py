@@ -71,7 +71,8 @@ class DataMonitor(data.Dataset):
             'lane': None,
             'car': {
                 'goal': None,
-                'hist': None
+                'hist': None,
+                'semantic': None
             },
         }
 
@@ -82,7 +83,8 @@ class DataMonitor(data.Dataset):
             'true_vel': None,
             'true_lane': None,
             'nn_input': np.zeros(
-                (1, 1, config.total_num_channels, imsize, imsize), dtype=global_config.data_type)
+                (1, 1, config.total_num_channels, imsize, imsize), dtype=global_config.data_type),
+            'nn_semantic_input': None
         }
 
         # register callback functions
@@ -363,6 +365,9 @@ class DataMonitor(data.Dataset):
                                 self.output_dict[agent_flag]['hist'][c]
                         else:
                             self.cur_data['nn_input'][0, 0, config.channel_hist[c], ...] = 0.0
+
+                if self.output_dict[agent_flag]['semantic'] is not None:
+                    self.cur_data['nn_semantic_input'] = self.output_dict[agent_flag]['semantic']
 
         except Exception as e:
             error_handler(e)

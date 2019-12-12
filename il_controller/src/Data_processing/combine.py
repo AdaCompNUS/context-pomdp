@@ -64,7 +64,7 @@ def save(files, filename, flag=-1):
 
     with h5py.File(filename, 'a') as f:
         # open extendible dataset
-        acc_id_labels_array, ang_normed_labels_array, data_array, cart_data_array, \
+        acc_id_labels_array, ang_normed_labels_array, data_array, semantic_array, \
         v_labels_array, vel_labels_array, lane_labels_array = \
             allocate_containters()
         # dont discretize angular labels
@@ -86,9 +86,10 @@ def save(files, filename, flag=-1):
                 points_num.append(file_data['data_count'])
                 old_counter = counter
                 step_in_file = 0
-                for data, cart_data, value, acc_id, ang_normalized, vel, lane in file_data['data']:
+                for data, semantic_data, value, acc_id, ang_normalized, vel, lane in file_data['data']:
                     acc_distribution[acc_id] += 1
                     data_array = resize_container(counter, data_array)
+                    semantic_array = resize_container(counter, semantic_array)
                     v_labels_array = resize_container(counter, v_labels_array)
                     acc_id_labels_array = resize_container(counter, acc_id_labels_array)
                     ang_normed_labels_array = resize_container(counter, ang_normed_labels_array)
@@ -96,14 +97,14 @@ def save(files, filename, flag=-1):
                     lane_labels_array = resize_container(counter, lane_labels_array)
 
                     put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_normed_labels_array, counter,
-                                          data_array, data, cart_data, cart_data_array,
+                                          data_array, data, semantic_data, semantic_array,
                                           v_labels_array, value, vel, vel_labels_array, lane, lane_labels_array)
 
                     file_base_name = os.path.basename(file)
                     file_base_name = os.path.splitext(file_base_name)[0][29:]
                     visualization_done = visualize_images(step_in_file, data, visualization_done,
                                                           file_flag=file_base_name)
-                    visualization_done = visualize_cart_images(step_in_file, cart_data, data, visualization_done,
+                    visualization_done = visualize_cart_images(step_in_file, semantic_data, data, visualization_done,
                                                                file_flag=file_base_name)
 
                     step_in_file += 1
@@ -118,11 +119,11 @@ def save(files, filename, flag=-1):
         print("Acc distribution {}".format(acc_distribution/np.sum(acc_distribution)))
         time.sleep(3)
 
-        save_dataset_to_h5_compact(acc_id_labels_array, ang_normed_labels_array, counter, data_array, cart_data_array,
+        save_dataset_to_h5_compact(acc_id_labels_array, ang_normed_labels_array, counter, data_array, semantic_array,
                                    f, v_labels_array, vel_labels_array, lane_labels_array, traj_num, points_num)
 
     print("Collection memory garbages")
-    del data_array, cart_data_array, acc_id_labels_array, vel_labels_array, ang_normed_labels_array, \
+    del data_array, semantic_array, acc_id_labels_array, vel_labels_array, ang_normed_labels_array, \
         v_labels_array, lane_labels_array
     gc.collect()
 
@@ -162,7 +163,7 @@ def save_dataset_to_h5(acc_id_labels_array, ang_normalized_labels_array, counter
 
 
 def save_dataset_to_h5_compact(acc_id_labels_array, ang_normalized_labels_array, counter, data_array,
-                               cart_data_array, f, v_labels_array, vel_labels_array, lane_labels_array,
+                               semantic_array, f, v_labels_array, vel_labels_array, lane_labels_array,
                                traj_num, points_num):
     try:
         print("data shape: {}".format(data_array[0].shape))
@@ -171,11 +172,11 @@ def save_dataset_to_h5_compact(acc_id_labels_array, ang_normalized_labels_array,
         f.create_dataset('data',
                          data=data_array[0:counter], dtype=config.data_type)
 
-        print("Saving cart data...")
-        print("data shape: {}".format(cart_data_array[0].shape))
+        print("Saving semantic data...")
+        print("data shape: {}".format(semantic_array[0].shape))
 
-        f.create_dataset('cart_data',
-                         data=cart_data_array[0:counter], dtype=np.float32)
+        f.create_dataset('semantic_data',
+                         data=semantic_array[0:counter], dtype=np.float32)
 
         print("Saving labels...")
         f.create_dataset('v_labels', data=v_labels_array[0:counter], dtype=np.float32)
@@ -226,12 +227,13 @@ def visualize_cart_images(counter, cart_data, data, visualization_done, file_fla
 
 
 def put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_normed_labels_array, counter, data_array,
-                          data, cart_data, cart_data_array, v_labels_array,
+                          data, semantic_data, semantic_array, v_labels_array,
                           value, vel, vel_labels_array, lane, lane_labels_array):
     try:
 
         data_array[counter] = data
         # cart_data_array[counter] = cart_data
+        semantic_array[counter] = semantic_data
         v_labels_array[counter][0] = value
         acc_id_labels_array[counter][0] = acc_id
         ang_normed_labels_array[counter][0] = ang_normalized
@@ -253,16 +255,16 @@ def resize_container(counter, numpy_array):
 
 def allocate_containters():
     data_array = np.zeros((DATA_CHUNCK_SIZE, num_agents, config.total_num_channels, imsize, imsize), dtype=config.data_type)
-    cart_data_array = np.zeros((DATA_CHUNCK_SIZE, 2 * (1 + config.num_agents_in_map) * config.num_hist_channels),
-                               dtype=np.float32)
-
+    # cart_data_array = np.zeros((DATA_CHUNCK_SIZE, 2 * (1 + config.num_agents_in_map) * config.num_hist_channels),
+                               # dtype=np.float32)
+    semantic_array = np.zeros((DATA_CHUNCK_SIZE, config.num_hist_channels), dtype=np.float32)
     v_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float32)
     acc_id_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float32)
     ang_normalized_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float32)
     vel_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float32)
     lane_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float32)
 
-    return acc_id_labels_array, ang_normalized_labels_array, data_array, cart_data_array, \
+    return acc_id_labels_array, ang_normalized_labels_array, data_array, semantic_array, \
            v_labels_array, vel_labels_array, lane_labels_array
 
 

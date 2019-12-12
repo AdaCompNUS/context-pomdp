@@ -119,10 +119,11 @@ def train():
                     visualize_data = True
 
                 # Get input batch
-                input_images, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = data_mini_batch
-                input_images, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = input_images.to(
-                    device), value_labels.to(device), acc_labels.to(device), ang_labels.to(
-                    device), velocity_labels.to(device), lane_labels.to(device)
+                input_images, semantic_data, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = \
+                    data_mini_batch
+                input_images, semantic_data, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = \
+                    input_images.to(device), semantic_data.to(device), value_labels.to(device), acc_labels.to(device), \
+                    ang_labels.to(device), velocity_labels.to(device), lane_labels.to(device)
 
                 # Zero the parameter gradients
                 optimizer.zero_grad()
@@ -130,11 +131,11 @@ def train():
                 if global_config.head_mode == "mdn":
                     # Forward pass
                     acc_pi, acc_mu, acc_sigma, ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, lane_logits, value = \
-                        forward_pass(input_images, print_time=visualize_data, image_flag=train_flag, step=epoch)
+                        forward_pass(input_images, semantic_data, step=epoch, print_time=visualize_data, image_flag=train_flag)
 
                     visualize_mdn_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_mu, ang_pi, ang_sigma,
                                               ang_labels, vel_mu, vel_pi, vel_sigma, velocity_labels, lane_logits,
-                                              lane_labels, visualize_data, train_flag, )
+                                              lane_labels, visualize_data, sm, train_flag)
 
                     # Loss
                     acc_loss, ang_loss, vel_loss, lane_loss, v_loss = \
@@ -162,10 +163,9 @@ def train():
                     # Forward pass
                     acc_pi, acc_mu, acc_sigma, \
                     ang_logits, \
-                    vel_pi, vel_mu, vel_sigma, lane_logits, value = forward_pass(input_images,
-                                                                                 print_time=visualize_data,
-                                                                                 image_flag=train_flag,
-                                                                                 step=epoch)  # epoch
+                    vel_pi, vel_mu, vel_sigma, lane_logits, value = \
+                        forward_pass(input_images, semantic_data, step=epoch, print_time=visualize_data,
+                                                                                 image_flag=train_flag)  # epoch
 
                     # epoch -> i
                     visualize_hybrid_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_logits, ang_labels,
@@ -196,10 +196,8 @@ def train():
 
                 else:
                     # Forward pass
-                    acc_logits, ang_logits, vel_logits, lane_logits, value = forward_pass(input_images,
-                                                                                          print_time=visualize_data,
-                                                                                          image_flag=train_flag,
-                                                                                          step=epoch)
+                    acc_logits, ang_logits, vel_logits, lane_logits, value = \
+                        forward_pass(input_images, semantic_data, step=epoch, print_time=visualize_data, image_flag=train_flag)
                     # print("lane_logits = {}".format(lane_logits))
 
                     visualize_predictions(epoch, acc_logits, acc_labels, ang_logits, ang_labels, vel_logits,
@@ -270,23 +268,20 @@ def evaluate(last_train_loss, epoch):
 
         with torch.no_grad():
             # Get input batch
-            input_images, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = mini_batch
+            input_images, semantic_data, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = mini_batch
             if global_config.visualize_val_data:
                 debug_data(input_images[1])
-            input_images, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = input_images.to(
-                device), value_labels.to(
-                device), acc_labels.to(device), ang_labels.to(device), \
-                                                                                               velocity_labels.to(
-                                                                                                   device), lane_labels.to(
-                device)
+            input_images, semantic_data, value_labels, acc_labels, ang_labels, velocity_labels, lane_labels = \
+                input_images.to(device), semantic_data.to(device), value_labels.to(device), acc_labels.to(device), \
+                ang_labels.to(device), velocity_labels.to(device), lane_labels.to(device)
 
             if global_config.head_mode == "mdn":
                 # Forward pass
                 acc_pi, acc_mu, acc_sigma, \
                 ang_pi, ang_mu, ang_sigma, \
                 vel_pi, vel_mu, vel_sigma, \
-                lane_logits, value = forward_pass(input_images, print_time=visualize_data, image_flag=val_flag,
-                                                  step=epoch)
+                lane_logits, value = forward_pass(input_images, semantic_data, step=epoch, print_time=visualize_data,
+                                                  image_flag=val_flag)
 
                 visualize_mdn_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_mu, ang_pi, ang_sigma,
                                           ang_labels, vel_mu, vel_pi, vel_sigma, velocity_labels, lane_labels,
@@ -319,8 +314,7 @@ def evaluate(last_train_loss, epoch):
                 acc_pi, acc_mu, acc_sigma, \
                 ang_logits, \
                 vel_pi, vel_mu, vel_sigma, lane_logits, value = \
-                    forward_pass(input_images, print_time=visualize_data, image_flag=val_flag,
-                                 step=epoch)
+                    forward_pass(input_images, semantic_data, step=epoch, print_time=visualize_data, image_flag=val_flag)
 
                 visualize_hybrid_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_logits, ang_labels,
                                              velocity_labels, lane_logits, lane_labels, value, value_labels,
@@ -349,9 +343,8 @@ def evaluate(last_train_loss, epoch):
 
             else:
                 # Forward pass
-                acc_logits, ang_logits, vel_logits, lane_logits, value = forward_pass(input_images,
-                                                                                      print_time=visualize_data,
-                                                                                      image_flag=val_flag, step=epoch)
+                acc_logits, ang_logits, vel_logits, lane_logits, value = \
+                    forward_pass(input_images, semantic_data, step=epoch, print_time=visualize_data, image_flag=val_flag)
 
                 visualize_predictions(epoch, acc_logits, acc_labels, ang_logits, ang_labels, vel_logits,
                                       velocity_labels, lane_logits, lane_labels, visualize_data, sm, val_flag)
@@ -558,7 +551,8 @@ def alloc_recorders():
     return accuracy_recorders, loss_recorders
 
 
-def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, image_flag=''):
+def forward_pass(input_images, semantic_input, step=0, drive_net=None, cmd_config=None, print_time=False,
+                 image_flag=''):
     start_time = time.time()
 
     if drive_net is None:
@@ -571,7 +565,7 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
     if global_config.head_mode == "mdn":
         value, acc_pi, acc_mu, acc_sigma, \
         ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, lane_logits, \
-        car_gppn_out, res_image = drive_net.forward(X, cmd_config)
+        car_gppn_out, res_image = drive_net.forward(input_images, semantic_input, cmd_config)
         if global_config.print_preds:
             print("predicted angle:")
             print(ang_pi, ang_mu, ang_sigma)
@@ -580,7 +574,7 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
 
         if print_time:
             print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
+            visualize_input_output(input_images, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
         return acc_pi, acc_mu, acc_sigma, ang_pi, ang_mu, ang_sigma, \
                vel_pi, vel_mu, vel_sigma, lane_logits, value
@@ -588,7 +582,7 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
     elif global_config.head_mode == "hybrid":
         value, acc_pi, acc_mu, acc_sigma, \
         ang_logits, vel_pi, vel_mu, vel_sigma, lane_logits, car_gppn_out, res_image = \
-            drive_net.forward(X, cmd_config)
+            drive_net.forward(input_images, semantic_input, cmd_config)
 
         if global_config.print_preds:
             print("predicted angle logits:")
@@ -597,14 +591,14 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
         elapsed_time = time.time() - start_time
         if print_time and config.visualize_inter_data:
             print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
+            visualize_input_output(input_images, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
         return acc_pi, acc_mu, acc_sigma, \
                ang_logits, vel_pi, vel_mu, vel_sigma, lane_logits, value
 
     else:
         value, acc_logits, ang_logits, vel_logits, lane_logits, \
-        car_gppn_out, res_image = drive_net.forward(X, cmd_config)
+        car_gppn_out, res_image = drive_net.forward(input_images, semantic_input, cmd_config)
         if global_config.print_preds:
             print("predicted angle:")
             print(ang_logits)
@@ -612,7 +606,7 @@ def forward_pass(X, step=0, drive_net=None, cmd_config=None, print_time=False, i
         elapsed_time = time.time() - start_time
         if print_time:
             print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(X, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
+            visualize_input_output(input_images, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
         return acc_logits, ang_logits, vel_logits, lane_logits, value
 

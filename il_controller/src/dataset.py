@@ -283,6 +283,8 @@ class DrivingData(data.Dataset):
         input_data, steer_degree, lane = self.get_augmented_data(transform_idx, input_data, steer_degree, lane)
         input_data = self.encode_input(input_data)
 
+        semantic_data = self.data['semantic_data'][data_index]
+
         steer_label = self.encode_steer_from_degree(steer_degree)  # this returns only the index of the non zero bin
         # print("raw data {}, degree {}, bin_idx {}".format(steer_normalized[0], steer_degree[0], steer_label), flush=True)
         acc_id_label = self.encode_acc_from_id(self.data['acc_id_labels'][data_index])
@@ -298,8 +300,7 @@ class DrivingData(data.Dataset):
         # print_long('input max={}'.format(np.max(input_data)))
         # print_long('steer_label shape={}'.format(steer_label.shape))
 
-
-        return input_data, v_label, acc_id_label, steer_label, vel_label, lane_label
+        return input_data, semantic_data, v_label, acc_id_label, steer_label, vel_label, lane_label
 
     def get_train_item(self, global_index):
 

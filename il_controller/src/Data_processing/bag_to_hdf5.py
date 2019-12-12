@@ -783,8 +783,10 @@ def process_car(data_idx, ts, output_dict, data_dict, hist_cars, hist_car_images
 def process_car_inner(output_dict_entry, data_dict_entry, hist_cars, hist_car_images, goal_image,
                       dim, down_sample_ratio, coord_frame, resolution, mode='offline'):
     start = time.time()
-    output_dict_entry['car'] = {'goal': None, 'hist': None}
+    output_dict_entry['car'] = {'goal': None, 'hist': None, 'semantic': None}
     try:
+        output_dict_entry['car']['semantic'] = [car.car_speed for car in hist_cars]
+
         elapsed_time = 0.0
         path = data_dict_entry['plan']
 
@@ -1068,6 +1070,7 @@ def create_dict_entry(idx, output_dict):
         'car': {
             'goal': None,
             'hist': None,
+            'semantic': None,
         },
         'cart_agents': None,
         'vel': None,

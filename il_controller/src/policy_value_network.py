@@ -38,7 +38,7 @@ class EmptyValueHead(nn.Module):
     def __init__(self, ):
         super(EmptyValueHead, self).__init__()
 
-    def forward(self, x):
+    def forward(self, x, x1):
         return None
 
 
@@ -46,7 +46,7 @@ class EmptyActionHead(nn.Module):
     def __init__(self, ):
         super(EmptyActionHead, self).__init__()
 
-    def forward(self, x):
+    def forward(self, x, x1):
         return None
 
 
@@ -54,7 +54,7 @@ class EmptyMdnActionHead(nn.Module):
     def __init__(self, ):
         super(EmptyMdnActionHead, self).__init__()
 
-    def forward(self, x):
+    def forward(self, x, x1):
         return None, None, None
 
 
@@ -73,11 +73,11 @@ class ActionHead(nn.Module):
             self.relu = nn.LeakyReLU(global_config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
-        self.fc = nn.Linear(in_features=imsize * imsize * outplanes,
+        self.fc = nn.Linear(in_features=imsize * imsize * outplanes + global_config.num_hist_channels,
                             out_features=num_classes,
                             bias=True)
 
-    def forward(self, x):
+    def forward(self, x, x1):
         if global_config.do_dropout:
             x = self.drop_o_2d(x)
         out = self.conv(x)
@@ -85,6 +85,7 @@ class ActionHead(nn.Module):
             out = self.bn(out)
         out = self.relu(out)
         out = out.view(out.size(0), -1)
+        out = torch.cat((out, x1), 1)
         out = self.fc(out)
         return out
 
@@ -103,7 +104,7 @@ class LargeActionHead(nn.Module):
             self.relu = nn.LeakyReLU(global_config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
-        self.fc = nn.Linear(in_features=imsize * imsize * outplanes,
+        self.fc = nn.Linear(in_features=imsize * imsize * outplanes + global_config.num_hist_channels,
                             out_features=128,
                             bias=True)
         if global_config.use_leaky_relu:
@@ -114,7 +115,7 @@ class LargeActionHead(nn.Module):
                              out_features=num_classes,
                              bias=True)
 
-    def forward(self, x):
+    def forward(self, x, x1):
         if global_config.do_dropout:
             x = self.drop_o_2d(x)
         out = self.conv(x)
@@ -122,6 +123,7 @@ class LargeActionHead(nn.Module):
             out = self.bn(out)
         out = self.relu(out)
         out = out.view(out.size(0), -1)
+        out = torch.cat((out, x1), 1)
         out = self.fc(out)
         out = self.relu1(out)
         out = self.fc1(out)
@@ -142,15 +144,16 @@ class ActionMdnHead(nn.Module):
         else:
             self.relu = nn.ReLU(inplace=True)
 
-        self.mdn = mdn.MDN(in_features=imsize * imsize * outplanes, out_features=1,
+        self.mdn = mdn.MDN(in_features=imsize * imsize * outplanes + global_config.num_hist_channels, out_features=1,
                            num_gaussians=num_modes)
 
-    def forward(self, x):
+    def forward(self, x, x1):
         x = self.conv(x)
         if not global_config.disable_bn_in_resnet:
             x = self.bn(x)
         x = self.relu(x)
         x = x.view(x.size(0), -1)
+        x = torch.cat((x, x1), 1)
         pi, sigma, mu = self.mdn(x)
         return pi, sigma, mu
 
@@ -168,11 +171,11 @@ class ValueHead(nn.Module):
             self.relu = nn.LeakyReLU(global_config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
-        self.fc = nn.Linear(in_features=imsize * imsize * outplanes,
+        self.fc = nn.Linear(in_features=imsize * imsize * outplanes + global_config.num_hist_channels,
                             out_features=1,
                             bias=True)
 
-    def forward(self, x):
+    def forward(self, x, x1):
         if global_config.do_dropout:
             x = self.drop_o_2d(x)
         out = self.conv(x)
@@ -180,6 +183,7 @@ class ValueHead(nn.Module):
             out = self.bn(out)
         out = self.relu(out)
         out = out.view(out.size(0), -1)
+        out = torch.cat((out, x1), 1)
         out = self.fc(out)
         return out
 
@@ -351,13 +355,13 @@ class PolicyValueNet(nn.Module):
                     if param.requires_grad:
                         print("{}:{}".format(name, param.requires_grad), end=',')
 
-    def forward(self, X, config):
+    def forward(self, input_images, semantic_input, config):
         # Input Tensor is of the form ==> batch_size * 1 * map/goal/hist * Width * height
         # switches batch and agent dim in order to iterate over the agent dim
         self.check_grad_state()
 
-        batch_size = X.size(0)
-        car_input = X.contiguous()
+        batch_size = input_images.size(0)
+        car_input = input_images.contiguous()
 
         reshape_car_input = car_input.view(batch_size, global_config.total_num_channels, config.imsize,
                                            config.imsize).contiguous()
@@ -397,9 +401,9 @@ class PolicyValueNet(nn.Module):
         if global_config.do_dropout and global_config.head_mode == 'categorical':
             res_images = self.drop_o_2d(res_images)
 
-        return self.value_head(res_images), self.acc_head(res_images), self.ang_head(res_images), \
-               self.vel_head(res_images), self.lane_head(res_images), \
-                   car_values[0], res_images[0]
+        return self.value_head(res_images, semantic_input), self.acc_head(res_images, semantic_input), \
+               self.ang_head(res_images, semantic_input), self.vel_head(res_images, semantic_input), \
+               self.lane_head(res_images, semantic_input), car_values[0], res_images[0]
 
 
 def print_model_size(model):

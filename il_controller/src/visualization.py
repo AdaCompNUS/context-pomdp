@@ -689,8 +689,8 @@ if __name__ == '__main__':
                 # Forward pass
                 acc_pi_test, acc_mu_test, acc_sigma_test, \
                 ang_test, vel_pi_test, vel_mu_test, vel_sigma_test, lane_test, value_test = \
-                    forward_pass(X, drive_net=net, cmd_config=cmd_args,
-                                 print_time=visualize_results, image_flag='load/', step=i)
+                    forward_pass(X, None, step=i, drive_net=net, cmd_config=cmd_args, print_time=visualize_results,
+                                 image_flag='load/')
 
                 visualize_hybrid_predictions(i, acc_mu_test, acc_pi_test, acc_sigma_test, acc_labels_test, ang_test,
                                              ang_labels_test, vel_labels_test, lane_test, lane_labels_test,

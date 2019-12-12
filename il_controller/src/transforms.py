@@ -83,9 +83,9 @@ class PopulateImages(object):
                                                   acc_id_labels,
                                                   root='Data_processing/',
                                                   subfolder='h5_overlay_image')
-        cart_dat_arr = self.get_cart_data(sample)
-
-        return output_arr, cart_dat_arr, v_labels, acc_id_labels, ang_norm_labels, vel_labels, lane_labels
+        # cart_dat_arr = self.get_cart_data(sample)
+        semantic_arr = self.get_semantic_data(sample)
+        return output_arr, semantic_arr, v_labels, acc_id_labels, ang_norm_labels, vel_labels, lane_labels
 
     def get_labels(self, sample):
         try:
@@ -101,6 +101,9 @@ class PopulateImages(object):
 
     def get_cart_data(self, sample):
         return sample['cart_agents']
+
+    def get_semantic_data(self, sample):
+        return sample['car']['semantic']
 
     def populate_lane(self, i, output_arr, sample):
         try:

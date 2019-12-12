@@ -709,11 +709,12 @@ class DriveController(nn.Module):
         print_long("[inference] ")
         try:
             with torch.no_grad():
-                X = self.get_current_data()
+                input_images, semantic_input = self.get_current_data()
                 if config.model_type is "pytorch":
-                    return forward_pass(X, self.count, self.drive_net, cmd_args, print_time=True, image_flag='test/')
+                    return forward_pass(input_images, semantic_input, self.count, self.drive_net, cmd_args,
+                                        print_time=True, image_flag='test/')
                 elif config.model_type is "jit":
-                    return forward_pass_jit(X, self.count, self.drive_net, cmd_args, print_time=False,
+                    return forward_pass_jit(input_images, self.count, self.drive_net, cmd_args, print_time=False,
                                             image_flag='test/')
         except Exception as e:
             error_handler(e)
@@ -729,6 +730,9 @@ class DriveController(nn.Module):
                 pass
             input_tensor = input_tensor.to(device)
 
+            semantic_input_np = np.asarray(self.data_monitor.cur_data['nn_semantic_input'])
+            semantic_input_tensor = torch.from_numpy(semantic_input_np).to(device)
+
             if True:
                 input_msg = InputImages()
                 input_msg.lane = \
@@ -742,7 +746,7 @@ class DriveController(nn.Module):
                 input_msg.hist3 = \
                     CvBridge().cv2_to_imgmsg(cvim=input_images_np[0, 0, config.channel_map[3], ...])
                 self.input_pub.publish(input_msg)
-            return input_tensor
+            return input_tensor, semantic_input_tensor
         except Exception as e:
             error_handler(e)
 

@@ -133,6 +133,7 @@ config.do_prob = 0.5
 config.l2_reg_weight = 0  # 1e-3
 # toggle batch norm
 config.disable_bn_in_resnet = False
+config.norm_mode = 'instance'
 config.track_running_stats = True
 config.label_smoothing = False
 # set default num epochs
