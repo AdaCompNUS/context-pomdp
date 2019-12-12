@@ -96,6 +96,14 @@ def save(files, filename, flag=-1):
                 step_in_file = 0
                 for key in d.keys():  # key is the original index in separate h5 files
                     data, cart_data, value, acc_id, ang_normalized, vel, lane = populate_images(d[key], False)
+
+                    data_array = resize_container(counter, data_array)
+                    v_labels_array = resize_container(counter, v_labels_array)
+                    acc_id_labels_array = resize_container(counter, acc_id_labels_array)
+                    ang_normed_labels_array = resize_container(counter, ang_normed_labels_array)
+                    vel_labels_array = resize_container(counter, vel_labels_array)
+                    lane_labels_array = resize_container(counter, lane_labels_array)
+
                     put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_normed_labels_array, counter,
                                           data_array, data, cart_data, cart_data_array,
                                           v_labels_array, value, vel, vel_labels_array, lane, lane_labels_array)
@@ -230,12 +238,6 @@ def put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_norme
                           data, cart_data, cart_data_array, v_labels_array,
                           value, vel, vel_labels_array, lane, lane_labels_array):
     try:
-        data_array = resize_container(counter, data_array)
-        v_labels_array = resize_container(counter, v_labels_array)
-        acc_id_labels_array = resize_container(counter, acc_id_labels_array)
-        ang_normed_labels_array = resize_container(counter, ang_normed_labels_array)
-        vel_labels_array = resize_container(counter, vel_labels_array)
-        lane_labels_array = resize_container(counter, lane_labels_array)
 
         data_array[counter] = data
         # cart_data_array[counter] = cart_data
