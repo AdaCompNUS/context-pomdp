@@ -12,12 +12,12 @@ sys.path.append('../')
 
 import glob
 import deepdish as dd
-# import ipdb as pdb
+# import pdb
 import fnmatch
 import os
 import argparse
 import random
-import ipdb as pdb
+import pdb
 import h5py
 
 from Data_processing import bag_to_hdf5

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.nn.parameter import Parameter
-import ipdb as pdb
+import pdb
 from Components import *
 #from VIN import *
 #from resnet import *

@@ -4,7 +4,7 @@ import torch
 import torch.utils.data as data
 import numpy as np
 import deepdish as dd
-import ipdb as pdb
+import pdb
 from transforms import *
 from Data_processing import global_params
 import random

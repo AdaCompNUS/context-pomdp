@@ -1,39 +1,30 @@
-from global_params import config
-
-if config.pycharm_mode:
-    import pyros_setup
-
-    pyros_setup.configurable_import().configure('mysetup.cfg').activate()
-
 import sys
 
 sys.path.append('./')
 
 print(sys.path)
-
+#
 import deepdish as dd
 import fnmatch
-import os
 import argparse
-from transforms import *
-from visualization import *
-import global_params
 import h5py
+import numpy as np
+#
 import time
-import multiprocessing
+import gc, os, pdb, random
 
-from multiprocessing import Process, Queue
-
-import gc
-
-config = global_params.config
+import Data_processing.global_params
+from Data_processing.global_params import error_handler
+from transforms import PopulateImages
+#
+import visualization
+#
+config = Data_processing.global_params.config
 imsize = config.imsize
 num_agents = 1 + 0
 DATA_CHUNCK_SIZE = 100000
 # LARGE_NO = 3000
 populate_images = PopulateImages()
-
-num_threads = 1
 
 
 def INPUT(out_str):
@@ -85,22 +76,18 @@ def save(files, filename, flag=-1):
         visualization_done = False
         acc_distribution = np.zeros(config.num_acc_bins)
 
-        for file in files:
+        p = Pool(num_threads)
+        data_in_files = p.map(parse_h5, files)
+
+        for file_data in data_in_files:
+            file = file_data['file']
             if "train" not in file and "val" not in file and "test" not in file:
-
-                d, skip_file = load_file(file)
-
-                if skip_file:
-                    continue  # skip the file
-                traj_num += 1
+                traj_num += file_data['traj_count']
+                points_num.append(file_data['data_count'])
                 old_counter = counter
-                points_num.append(len(d.keys()))
                 step_in_file = 0
-                for key in d.keys():  # key is the original index in separate h5 files
-                    data, cart_data, value, acc_id, ang_normalized, vel, lane = populate_images(d[key], False)
-
+                for data, cart_data, value, acc_id, ang_normalized, vel, lane in file_data['data']:
                     acc_distribution[acc_id] += 1
-
                     data_array = resize_container(counter, data_array)
                     v_labels_array = resize_container(counter, v_labels_array)
                     acc_id_labels_array = resize_container(counter, acc_id_labels_array)
@@ -125,8 +112,7 @@ def save(files, filename, flag=-1):
                     print("counter value increased to %d" % counter)
                 else:
                     print("counter unchanged: num_keys=%d" % len(d.keys()))
-                    # pdb.set_trace()
-                    continue  # return
+                    continue
 
         print("Saving data...")
         print("Acc distribution {}".format(acc_distribution/np.sum(acc_distribution)))
@@ -218,7 +204,7 @@ max_vis_traj = 1
 
 def visualize_images(counter, data, visualization_done, file_flag=''):
     if not visualization_done:
-        visualize(data, 'combine/' + file_flag + '_' + str(counter), root="Data_processing/")
+        visualization.visualize(data, 'combine/' + file_flag + '_' + str(counter), root="Data_processing/")
 
         if file_flag not in new_file_flags:
             new_file_flags.append(file_flag)
@@ -229,7 +215,7 @@ def visualize_images(counter, data, visualization_done, file_flag=''):
 
 def visualize_cart_images(counter, cart_data, data, visualization_done, file_flag=''):
     if not visualization_done:
-        visualize_both_agent_inputs(cart_data, data, 'combine/' + file_flag + '_cart_' + str(counter),
+        visualization.visualize_both_agent_inputs(cart_data, data, 'combine/' + file_flag + '_cart_' + str(counter),
                                     root="Data_processing/")
 
         if file_flag not in new_file_flags:
@@ -299,25 +285,6 @@ def load_file(file):
     return d, skip_file
 
 
-class Combiner(Process):
-    def __init__(self, id, queue):
-        Process.__init__(self)
-        self.queue = queue
-        self.id = id
-
-    def run(self):
-        while True:
-            files, h5_name = self.queue.get()
-
-            if files:
-                save(files, h5_name)
-
-            if self.queue.empty():
-                break
-
-        print("Thread %d finished saving %s" % (self.id, h5_name))
-
-
 def parse_cmd_args():
     global config
     # parse command line arguments
@@ -372,7 +339,7 @@ def collect_h5_files(bag_root_path, suffix='.h5'):
         Args:
         bag_root_path: path of the folder containg all scenarios folder
         suffix:        default: '.h5'
-    
+
         Return:
         dict_h5:       a dict, key: sceneario folder path, value: full path of the files with suffix
         dict_h5_num:   a dict, key: sceneario folder path, value: num of the files with suffix
@@ -467,32 +434,6 @@ def file_exist(filename):
         return False
 
 
-def combine_files_into_datasets_parallel(train_files, test_files, val_files):
-    # use threads to combine training, validation, and test thread simultaneously
-    queue = Queue()
-    workers = []
-    i = 0
-    for x in range(num_threads):
-        worker = Combiner(i, queue)
-        # Setting daemon to True will let the main thread exit even though the workers are blocking
-        worker.daemon = True
-        worker.start()
-        workers.append(worker)
-        i += 1
-    if not file_exist(train_filename):
-        queue.put((train_files, train_filename))
-    val_filename = 'val.h5'
-    if not file_exist(val_filename):
-        queue.put((val_files, val_filename))
-    test_filename = 'test.h5'
-    if len(test_files) > 0 and not file_exist(test_filename):
-        queue.put((test_files, test_filename))
-
-    # Causes the main thread to wait for the queue to finish processing all the
-    for worker in workers:
-        worker.join()
-
-
 def combine_files_into_datasets_serial(train_files, test_files, val_files):
     val_filename = 'val.h5'
     test_filename = 'test.h5'
@@ -525,9 +466,36 @@ def combine_files_into_datasets_serial(train_files, test_files, val_files):
     print("All data sets saved")
 
 
-if __name__ == "__main__":
+
+import multiprocessing
+from multiprocessing import Pool
+num_threads = multiprocessing.cpu_count() - 1
+
+
+def parse_h5(file):
+    data_dict = {'data': [],
+                 'file': file,
+                 'data_count': 0,
+                 'traj_count': 0}
+
+    if "train" not in file and "val" not in file and "test" not in file:
+
+        d, skip_file = load_file(file)
+
+        if skip_file:
+            return data_dict  # skip the file
+
+        data_dict['traj_count'] = 1
+        data_dict['data_count'] = len(d.keys())
+        for key in d.keys():  # key is the original index in separate h5 files
+            data_dict['data'].append(populate_images(d[key], False))
+
+    return data_dict
+
+
+if __name__ == '__main__':
     bagspath, train_filename = parse_cmd_args()
-    clear_png_files("Data_processing/", subfolder='visualize', remove_flag='')
+    visualization.clear_png_files("Data_processing/", subfolder='visualize', remove_flag='')
 
     if config.sample_mode == 'hierarchical':
         dict_h5, dict_h5_num = collect_h5_files(bagspath, suffix='.h5')
