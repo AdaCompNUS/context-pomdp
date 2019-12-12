@@ -9,6 +9,7 @@ import sys
 
 sys.path.append('./Data_processing/')
 sys.path.append('../')
+sys.path.append('./')
 
 import glob
 import deepdish as dd
