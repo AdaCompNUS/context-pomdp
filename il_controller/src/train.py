@@ -17,6 +17,8 @@ from Components.nan_police import *
 from visualization import *
 from Components.max_ent_loss import CELossWithMaxEntRegularizer
 
+from gamma_dataset import GammaDataset
+
 global_config = global_params.config
 
 model_device_id = global_config.GPU_devices[0]
@@ -1382,6 +1384,9 @@ if __name__ == '__main__':
         best_val_loss = None
 
     # Define Dataset
+    gamma_train = GammaDataset(filename=cmd_args.train, start=0.0, end=0.1)
+    exit(-1)
+
     train_set = DrivingData(filename=cmd_args.train, flag="Training")
     val_set = DrivingData(filename=cmd_args.val, flag="Validation")
     # Create Dataloader
