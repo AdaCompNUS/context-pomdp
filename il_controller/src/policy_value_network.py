@@ -76,6 +76,8 @@ class ActionHead(nn.Module):
         self.fc = nn.Linear(in_features=imsize * imsize * outplanes + global_config.num_semantic_inputs,
                             out_features=num_classes,
                             bias=True)
+        
+        print('fc in_features={}'.format(imsize * imsize * outplanes + global_config.num_semantic_inputs))
 
     def forward(self, x, x1):
         if global_config.do_dropout:
@@ -86,6 +88,8 @@ class ActionHead(nn.Module):
         out = self.relu(out)
         out = out.view(out.size(0), -1)
         out = torch.cat((out, x1), 1)
+
+        print('out.shape={}'.format(out.shape))
         out = self.fc(out)
         return out
 
