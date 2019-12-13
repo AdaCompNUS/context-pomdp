@@ -25,6 +25,8 @@ class GammaDataset(Dataset):
         config.fit_action = False
         config.fit_all = False
         config.fit_val = False
+        config.fit_vel = True
+        config.fit_steer = True
 
     def __len__(self):
         return self.end - self.start
