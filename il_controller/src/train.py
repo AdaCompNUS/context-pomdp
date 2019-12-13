@@ -17,7 +17,7 @@ from Components.nan_police import *
 from visualization import *
 from Components.max_ent_loss import CELossWithMaxEntRegularizer
 
-from gamma_dataset import GammaDataset
+from gamma_dataset import GammaDataset, reset_global_params_for_dataset
 
 global_config = global_params.config
 
@@ -1120,6 +1120,8 @@ def update_global_config(cmd_args):
     config.do_prob = cmd_args.do_p
 
     set_fit_mode_bools(cmd_args)
+
+    reset_global_params_for_dataset()
 
     print("Fitting " + cmd_args.fit)
 

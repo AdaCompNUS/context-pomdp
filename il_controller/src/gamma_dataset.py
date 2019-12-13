@@ -10,20 +10,46 @@ from transforms import ang_transform_normalized_to_degree
 sys.path.append('.')
 import numpy as np
 
-config.fit_acc = False
-config.fit_lane = False
-config.fit_action = False
-config.fit_all = False
-config.fit_val = False
-config.fit_vel = True
-config.fit_ang = True
 
-config.use_vel_head = True
-config.vel_max = 1.0
-config.imsize = 100
-config.num_hist_channels = 2
+def reset_global_params_for_dataset():
+    config.fit_acc = False
+    config.fit_lane = False
+    config.fit_action = False
+    config.fit_all = False
+    config.fit_val = False
+    config.fit_vel = True
+    config.fit_ang = True
 
-print("======== resetting global parameters for the gamma dataset =========")
+    config.use_vel_head = True
+    config.vel_max = 1.0
+    config.imsize = 100
+    config.num_hist_channels = 2
+
+    ''' Channel codes '''
+    # channel 0-3, exo history 1-4
+    config.channel_map = []
+    for i in range(config.num_hist_channels):
+        config.channel_map.append(i)
+    # channel 4, lanes
+    config.channel_lane = config.num_hist_channels
+    if not config.use_goal_channel:
+        config.gppn_input_end = config.channel_lane + 1
+    # channel 5, goal path
+    config.channel_goal = config.num_hist_channels + 1
+    if config.use_goal_channel:
+        config.gppn_input_end = config.channel_goal + 1
+    # channel 6-9, ego history 1-4
+    config.channel_hist = []
+    for i in range(config.num_hist_channels):
+        config.channel_hist.append(i + config.gppn_input_end)
+    # total number of channels
+    if config.use_hist_channels:
+        config.total_num_channels = config.channel_hist[-1] + 1
+    else:
+        config.total_num_channels = config.gppn_input_end
+    ''' Channel codes '''
+
+    print("======== resetting global parameters for the gamma dataset =========")
 
 
 class GammaDataset(Dataset):
