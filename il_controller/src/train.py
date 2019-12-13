@@ -532,18 +532,18 @@ def alloc_recorders():
             flags = flags + ['steer', 'acc', 'vel', 'lane', 'val']
         else:
             flags = flags + ['steer', 'acc', 'lane', 'val']
-    elif global_config.fit_action:
+    if global_config.fit_action:
         if config.use_vel_head:
             flags = flags + ['steer', 'acc', 'vel', 'lane']
         else:
             flags = flags + ['steer', 'acc', 'lane']
-    elif global_config.fit_acc:
+    if global_config.fit_acc:
         flags = flags + ['acc']
-    elif global_config.fit_ang:
+    if global_config.fit_ang:
         flags = flags + ['steer']
-    elif global_config.fit_vel:
+    if global_config.fit_vel:
         flags = flags + ['vel']
-    elif global_config.fit_lane:
+    if global_config.fit_lane:
         flags = flags + ['lane']
 
     for flag in flags:
@@ -859,13 +859,13 @@ def choose_loss(acc_loss, ang_loss, vel_loss, lane_loss, v_loss, config):
         'val': (0.0, 0.0),
     }
     if config.fit_ang or config.fit_action or config.fit_all:
-        print('recording steer loss')
+        # print('recording steer loss')
         loss_dict['steer'] = (ang_loss, config.ang_scale)
     if config.fit_acc or config.fit_action or config.fit_all:
         loss_dict['acc'] = (acc_loss, config.acc_scale)
     if config.use_vel_head and (config.fit_vel or config.fit_action or config.fit_all):
         loss_dict['vel'] = (vel_loss, config.vel_scale)
-        print('recording vel loss')
+        # print('recording vel loss')
     if config.fit_lane or config.fit_action or config.fit_all:
         loss_dict['lane'] = (lane_loss, config.lane_scale)
     if config.fit_val or config.fit_all:
@@ -1390,7 +1390,7 @@ if __name__ == '__main__':
         best_val_loss = None
 
     # Define Dataset
-    if '.fast' in cmd_args.train:
+    if 'stateactions.h5' in cmd_args.train:
         train_set = GammaDataset(filename=cmd_args.train, start=0.0, end=0.7)
         val_set = GammaDataset(filename=cmd_args.train, start=0.7, end=1.0)
     else:

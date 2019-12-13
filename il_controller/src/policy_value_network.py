@@ -60,9 +60,11 @@ class EmptyMdnActionHead(nn.Module):
 
 class ActionHead(nn.Module):
 
-    def __init__(self, inplanes=64, imsize=int(global_config.imsize/2), num_classes=global_config.num_steering_bins):
+    def __init__(self, inplanes=64, imsize=None, num_classes=global_config.num_steering_bins):
         super(ActionHead, self).__init__()
         outplanes = 4
+        if imsize is None:
+            imsize = int(global_config.imsize / 2)
 
         self.drop_o_2d = nn.Dropout2d(p=global_config.do_prob)
         self.conv = conv1x1(inplanes, outplanes, stride=1)
@@ -76,10 +78,12 @@ class ActionHead(nn.Module):
         self.fc = nn.Linear(in_features=imsize * imsize * outplanes + global_config.num_semantic_inputs,
                             out_features=num_classes,
                             bias=True)
-        
-        print('fc in_features={}'.format(imsize * imsize * outplanes + global_config.num_semantic_inputs))
+
+        print('fc in_features={} {} {}'.format(imsize, global_config.imsize,
+                                               imsize * imsize * outplanes + global_config.num_semantic_inputs))
 
     def forward(self, x, x1):
+        # print('forward in action head', flush=True)
         if global_config.do_dropout:
             x = self.drop_o_2d(x)
         out = self.conv(x)
@@ -89,7 +93,7 @@ class ActionHead(nn.Module):
         out = out.view(out.size(0), -1)
         out = torch.cat((out, x1), 1)
 
-        print('out.shape={}'.format(out.shape))
+        # print('out.shape={}'.format(out.shape), flush=True)
         out = self.fc(out)
         return out
 
