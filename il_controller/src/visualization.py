@@ -534,23 +534,23 @@ def visualize_hybrid_output_with_labels(count, acc_mu, acc_pi, acc_sigma, ang_pr
     # print("\n[visualize_hybrid_output_with_labels] ")
     if config.fit_ang or config.fit_action or config.fit_all:
         # print('steer')
-        visualize_distribution(ang_probs, encoded_ang_label, count, 'steering')
+        visualize_distribution(ang_probs, encoded_ang_label, count, 'steering_hybrid')
     if config.fit_acc or config.fit_action or config.fit_all:
         if draw_truth:
-            visualize_guassian_mixture(acc_pi, acc_mu, acc_sigma, encoded_acc_label, count, 'acc',
+            visualize_guassian_mixture(acc_pi, acc_mu, acc_sigma, encoded_acc_label, count, 'acc_hybrid',
                                        draw_truth, show_axis)
         else:
-            visualize_guassian_mixture(acc_pi, acc_mu, acc_sigma, accelaration, count, 'acc',
+            visualize_guassian_mixture(acc_pi, acc_mu, acc_sigma, accelaration, count, 'acc_hybrid',
                                        draw_truth, show_axis)
     if config.fit_vel or config.fit_action or config.fit_all:
         if config.use_vel_head:
             # print('vel')
-            visualize_guassian_mixture(vel_pi, vel_mu, vel_sigma, encoded_vel_label, count, 'vel')
+            visualize_guassian_mixture(vel_pi, vel_mu, vel_sigma, encoded_vel_label, count, 'vel_hybrid')
     if config.fit_val or config.fit_all:
         if encoded_value_label is not None:
-            export_prediction(value, encoded_value_label, count, 'value')
+            export_prediction(value, encoded_value_label, count, 'value_hybrid')
     if config.fit_lane or config.fit_action or config.fit_all:
-        visualize_distribution(lane_probs, encoded_lane_label, count, 'lane')
+        visualize_distribution(lane_probs, encoded_lane_label, count, 'lane_hybrid')
 
 
 def visualize_mdn_output_with_labels(count, acc_mu, acc_pi, acc_sigma, ang_mu, ang_pi, ang_sigma,
@@ -559,14 +559,14 @@ def visualize_mdn_output_with_labels(count, acc_mu, acc_pi, acc_sigma, ang_mu, a
     print('')
     # print("\n[visualize_mdn_output_with_labels] ")
     if config.fit_ang or config.fit_action or config.fit_all:
-        visualize_guassian_mixture(ang_pi, ang_mu, ang_sigma, encoded_ang_label, count, 'steering')
+        visualize_guassian_mixture(ang_pi, ang_mu, ang_sigma, encoded_ang_label, count, 'steering_mdn')
     if config.fit_acc or config.fit_action or config.fit_all:
-        visualize_guassian_mixture(acc_pi, acc_mu, acc_sigma, encoded_acc_label, count, 'acc')
+        visualize_guassian_mixture(acc_pi, acc_mu, acc_sigma, encoded_acc_label, count, 'acc_mdn')
     if config.fit_vel or config.fit_action or config.fit_all:
         if config.use_vel_head:
-            visualize_guassian_mixture(vel_pi, vel_mu, vel_sigma, encoded_vel_label, count, 'vel')
+            visualize_guassian_mixture(vel_pi, vel_mu, vel_sigma, encoded_vel_label, count, 'vel_mdn')
     if config.fit_lane or config.fit_action or config.fit_all:
-        visualize_distribution(lane_probs, encoded_lane_label, count, 'lane')
+        visualize_distribution(lane_probs, encoded_lane_label, count, 'lane_mdn')
 
 
 def visualize_output_with_labels(count, acc_probs, ang_probs, vel_probs, lane_probs,
