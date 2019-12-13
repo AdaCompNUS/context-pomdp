@@ -155,7 +155,7 @@ config.fit_all = True
 
 ''' NN settings '''
 config.default_map_dim = 1024
-config.imsize = int(config.default_map_dim / pow(2, downscale_count))
+config.imsize = 100  # int(config.default_map_dim / pow(2, downscale_count))
 config.image_half_size_meters = 20.0
 config.lstm_mode = 'gppn'  # 'gppn' or 'convlstm'
 config.vanilla_resnet = False
