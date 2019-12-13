@@ -10,6 +10,21 @@ from transforms import ang_transform_normalized_to_degree
 sys.path.append('.')
 import numpy as np
 
+config.fit_acc = False
+config.fit_lane = False
+config.fit_action = False
+config.fit_all = False
+config.fit_val = False
+config.fit_vel = True
+config.fit_ang = True
+
+config.use_vel_head = True
+config.vel_max = 1.0
+config.imsize = 100
+config.num_hist_channels = 2
+
+print("======== resetting global parameters for the gamma dataset =========")
+
 
 class GammaDataset(Dataset):
     def __init__(self, filename, start, end):  # start and end are in terms of percentage
@@ -24,18 +39,9 @@ class GammaDataset(Dataset):
         print('controls {}'.format(self.data['controls'][0]))
         self.controls_table = self.data['controls']
 
-        config.vel_max = 1.0
-
         self.encode_steer_from_degree, self.encode_acc_from_id, self.encode_vel_from_raw, self.encode_lane_from_int = \
             set_encoders()
 
-        config.fit_acc = False
-        config.fit_lane = False
-        config.fit_action = False
-        config.fit_all = False
-        config.fit_val = False
-        config.fit_vel = True
-        config.fit_steer = True
 
     def __len__(self):
         return self.end - self.start

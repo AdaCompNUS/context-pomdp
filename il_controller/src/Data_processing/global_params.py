@@ -94,7 +94,7 @@ config.steer_normalized_limit = 0.7
 
 
 ''' Channel codes '''
-config.num_hist_channels = 2
+config.num_hist_channels = 4
 config.use_goal_channel = False
 # channel 0-3, exo history 1-4
 config.channel_map = []
@@ -155,7 +155,7 @@ config.fit_all = True
 
 ''' NN settings '''
 config.default_map_dim = 1024
-config.imsize = 100  # int(config.default_map_dim / pow(2, downscale_count))
+config.imsize = int(config.default_map_dim / pow(2, downscale_count))
 config.image_half_size_meters = 20.0
 config.lstm_mode = 'gppn'  # 'gppn' or 'convlstm'
 config.vanilla_resnet = False
@@ -173,7 +173,7 @@ config.resblock_in_layers = [1, 1, 1, 2]
 config.resnet_width = 32
 # heads params
 config.head_mode = "categorical"  # "categorical", "hybrid", "mdn"
-config.use_vel_head = True
+config.use_vel_head = False
 config.sigma_smoothing = 0.03
 config.num_guassians_in_heads = 5
 ''' NN settings '''
