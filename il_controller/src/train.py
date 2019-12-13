@@ -16,6 +16,7 @@ import torch.nn.functional as F
 from Components.nan_police import *
 from visualization import *
 from Components.max_ent_loss import CELossWithMaxEntRegularizer
+from Components import mdn
 
 from gamma_dataset import GammaDataset, reset_global_params_for_dataset
 
@@ -171,7 +172,8 @@ def train():
 
                     # epoch -> i
                     visualize_hybrid_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_logits, ang_labels,
-                                                 velocity_labels, lane_logits, lane_labels, value, value_labels,
+                                                 vel_mu, vel_pi, vel_sigma, velocity_labels,
+                                                 lane_logits, lane_labels, value, value_labels,
                                                  visualize_data, sm, train_flag)
 
                     # Loss
@@ -565,9 +567,11 @@ def forward_pass(input_images, semantic_input, step=0, drive_net=None, cmd_confi
     ped_gppn_out, car_gppn_out, res_out, res_image = \
         torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0)
     if global_config.head_mode == "mdn":
-        value, acc_pi, acc_mu, acc_sigma, \
-        ang_pi, ang_mu, ang_sigma, vel_pi, vel_mu, vel_sigma, lane_logits, \
+        value, acc_output, ang_output, vel_output, lane_logits, \
         car_gppn_out, res_image = drive_net.forward(input_images, semantic_input, cmd_config)
+        acc_pi, acc_mu, acc_sigma = acc_output
+        vel_pi, vel_mu, vel_sigma = vel_output
+        ang_pi, ang_mu, ang_sigma = ang_output
         if global_config.print_preds:
             print("predicted angle:")
             print(ang_pi, ang_mu, ang_sigma)
@@ -582,10 +586,10 @@ def forward_pass(input_images, semantic_input, step=0, drive_net=None, cmd_confi
                vel_pi, vel_mu, vel_sigma, lane_logits, value
 
     elif global_config.head_mode == "hybrid":
-        value, acc_pi, acc_mu, acc_sigma, \
-        ang_logits, vel_pi, vel_mu, vel_sigma, lane_logits, car_gppn_out, res_image = \
+        value, acc_output, ang_logits, vel_output, lane_logits, car_gppn_out, res_image = \
             drive_net.forward(input_images, semantic_input, cmd_config)
-
+        acc_pi, acc_mu, acc_sigma = acc_output
+        vel_pi, vel_mu, vel_sigma = vel_output
         if global_config.print_preds:
             print("predicted angle logits:")
             print(ang_logits)
@@ -808,14 +812,15 @@ def calculate_mdn_accuracy(acc_pi, acc_mu, acc_sigma, acc_labels,
                            ang_pi, ang_mu, ang_sigma, ang_labels,
                            vel_pi, vel_mu, vel_sigma, velocity_labels,
                            lane, lane_labels):
-    vel_accuracy, ang_accuracy, acc_accuracy = None, None, None
+    vel_accuracy, acc_accuracy, ang_accuracy, lane_accuracy = None, None, None, None
     if ang_pi is not None:
         ang_accuracy = mdn.mdn_accuracy(ang_pi, ang_sigma, ang_mu, ang_labels)
     if acc_pi is not None:
         acc_accuracy = mdn.mdn_accuracy(acc_pi, acc_sigma, acc_mu, acc_labels)
     if global_config.use_vel_head:
         vel_accuracy = mdn.mdn_accuracy(vel_pi, vel_sigma, vel_mu, velocity_labels)
-    lane_accuracy = get_accuracy(lane, lane_labels, topk=(1,))[0]
+    if config.fit_lane or config.fit_action or config.fit_all:
+        lane_accuracy = get_accuracy(lane, lane_labels, topk=(1,))[0]
 
     return ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy
 
@@ -824,14 +829,15 @@ def calculate_hybrid_accuracy(acc_pi, acc_mu, acc_sigma, acc_labels,
                               ang, ang_labels,
                               vel_pi, vel_mu, vel_sigma, velocity_labels,
                               lane, lane_labels):
-    vel_accuracy, ang_accuracy, acc_accuracy = None, None, None
+    vel_accuracy, acc_accuracy, ang_accuracy, lane_accuracy = None, None, None, None
     if ang is not None:
         ang_accuracy = get_accuracy(ang, ang_labels, topk=(1, 2))[1]
     if acc_pi is not None:
         acc_accuracy = mdn.mdn_accuracy(acc_pi, acc_sigma, acc_mu, acc_labels)
     if global_config.use_vel_head:
         vel_accuracy = mdn.mdn_accuracy(vel_pi, vel_sigma, vel_mu, velocity_labels)
-    lane_accuracy = get_accuracy(lane, lane_labels, topk=(1,))[0]
+    if config.fit_lane or config.fit_action or config.fit_all:
+        lane_accuracy = get_accuracy(lane, lane_labels, topk=(1,))[0]
 
     return ang_accuracy, acc_accuracy, vel_accuracy, lane_accuracy
 

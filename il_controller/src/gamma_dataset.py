@@ -72,7 +72,6 @@ class GammaDataset(Dataset):
         self.encode_steer_from_degree, self.encode_acc_from_id, self.encode_vel_from_raw, self.encode_lane_from_int = \
             set_encoders()
 
-
     def __len__(self):
         return self.end - self.start
 

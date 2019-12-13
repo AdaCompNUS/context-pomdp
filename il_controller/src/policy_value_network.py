@@ -79,8 +79,8 @@ class ActionHead(nn.Module):
                             out_features=num_classes,
                             bias=True)
 
-        print('fc in_features={} {} {}'.format(imsize, global_config.imsize,
-                                               imsize * imsize * outplanes + global_config.num_semantic_inputs))
+        # print('fc in_features={} {} {}'.format(imsize, global_config.imsize,
+        #                                        imsize * imsize * outplanes + global_config.num_semantic_inputs))
 
     def forward(self, x, x1):
         # print('forward in action head', flush=True)
@@ -100,9 +100,12 @@ class ActionHead(nn.Module):
 
 class LargeActionHead(nn.Module):
 
-    def __init__(self, inplanes=64, imsize=int(global_config.imsize/2), num_classes=global_config.num_steering_bins):
+    def __init__(self, inplanes=64, imsize=None, num_classes=global_config.num_steering_bins):
         super(LargeActionHead, self).__init__()
         outplanes = 4
+
+        if imsize is None:
+            imsize = int(global_config.imsize / 2)
 
         self.drop_o_2d = nn.Dropout2d(p=global_config.do_prob)
         self.conv = conv1x1(inplanes, outplanes, stride=1)
@@ -140,8 +143,10 @@ class LargeActionHead(nn.Module):
 
 class ActionMdnHead(nn.Module):
 
-    def __init__(self, inplanes=64, imsize=int(global_config.imsize/2), num_modes=global_config.num_guassians_in_heads):
+    def __init__(self, inplanes=64, imsize=None, num_modes=global_config.num_guassians_in_heads):
         super(ActionMdnHead, self).__init__()
+        if imsize is None:
+            imsize = int(global_config.imsize / 2)
 
         outplanes = 4
         self.conv = conv1x1(inplanes, outplanes, stride=1)
@@ -168,9 +173,13 @@ class ActionMdnHead(nn.Module):
 
 class ValueHead(nn.Module):
 
-    def __init__(self, inplanes=64, imsize=int(global_config.imsize/2)):
+    def __init__(self, inplanes=64, imsize=None):
         super(ValueHead, self).__init__()
         outplanes = 4
+
+        if imsize is None:
+            imsize = int(global_config.imsize / 2)
+
         self.drop_o_2d = nn.Dropout2d()
         self.conv = conv1x1(inplanes, outplanes, stride=1)
         if not global_config.disable_bn_in_resnet:
@@ -243,6 +252,8 @@ class PolicyValueNet(nn.Module):
             self.heads = self.construct_hybrid_heads()
         else:
             self.heads = self.construct_categorical_heads()
+
+        # print('heads: {}'.format(self.heads))
 
         for head in self.heads:
             self.fc_modules_size += get_module_size(head)
