@@ -73,7 +73,7 @@ class ActionHead(nn.Module):
             self.relu = nn.LeakyReLU(global_config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
-        self.fc = nn.Linear(in_features=imsize * imsize * outplanes + global_config.num_hist_channels,
+        self.fc = nn.Linear(in_features=imsize * imsize * outplanes + global_config.num_semantic_inputs,
                             out_features=num_classes,
                             bias=True)
 
@@ -104,7 +104,7 @@ class LargeActionHead(nn.Module):
             self.relu = nn.LeakyReLU(global_config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
-        self.fc = nn.Linear(in_features=imsize * imsize * outplanes + global_config.num_hist_channels,
+        self.fc = nn.Linear(in_features=imsize * imsize * outplanes + global_config.num_semantic_inputs,
                             out_features=128,
                             bias=True)
         if global_config.use_leaky_relu:
@@ -144,7 +144,7 @@ class ActionMdnHead(nn.Module):
         else:
             self.relu = nn.ReLU(inplace=True)
 
-        self.mdn = mdn.MDN(in_features=imsize * imsize * outplanes + global_config.num_hist_channels, out_features=1,
+        self.mdn = mdn.MDN(in_features=imsize * imsize * outplanes + global_config.num_semantic_inputs, out_features=1,
                            num_gaussians=num_modes)
 
     def forward(self, x, x1):
@@ -171,7 +171,7 @@ class ValueHead(nn.Module):
             self.relu = nn.LeakyReLU(global_config.leaky_factor, inplace=True)
         else:
             self.relu = nn.ReLU(inplace=True)
-        self.fc = nn.Linear(in_features=imsize * imsize * outplanes + global_config.num_hist_channels,
+        self.fc = nn.Linear(in_features=imsize * imsize * outplanes + global_config.num_semantic_inputs,
                             out_features=1,
                             bias=True)
 

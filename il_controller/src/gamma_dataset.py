@@ -51,6 +51,7 @@ def reset_global_params_for_dataset(cmd_args):
     ''' Channel codes '''
 
     config.num_gppn_inputs = config.channel_hist[0]
+    config.num_semantic_inputs = 2
 
     print("======== resetting global parameters for the gamma dataset =========")
 

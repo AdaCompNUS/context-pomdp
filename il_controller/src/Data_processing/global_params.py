@@ -118,6 +118,9 @@ if config.use_hist_channels:
     config.total_num_channels = config.channel_hist[-1] + 1
 else:
     config.total_num_channels = config.gppn_input_end
+
+config.num_semantic_inputs = config.num_hist_channels
+config.num_gppn_inputs = config.channel_hist[0]
 ''' Channel codes '''
 
 
@@ -160,7 +163,6 @@ config.image_half_size_meters = 20.0
 config.lstm_mode = 'gppn'  # 'gppn' or 'convlstm'
 config.vanilla_resnet = False
 # GPPN params
-config.num_gppn_inputs = config.channel_hist[0]
 config.num_gppn_hidden_channels = 2  # 50
 config.num_gppn_iterations = 5  # 10
 config.gppn_kernelsize = 7  # 9
