@@ -1121,7 +1121,7 @@ def update_global_config(cmd_args):
 
     set_fit_mode_bools(cmd_args)
 
-    reset_global_params_for_dataset()
+    reset_global_params_for_dataset(cmd_args)
 
     print("Fitting " + cmd_args.fit)
 

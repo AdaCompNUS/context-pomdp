@@ -11,7 +11,7 @@ sys.path.append('.')
 import numpy as np
 
 
-def reset_global_params_for_dataset():
+def reset_global_params_for_dataset(cmd_args):
     config.fit_acc = False
     config.fit_lane = False
     config.fit_action = False
@@ -23,6 +23,7 @@ def reset_global_params_for_dataset():
     config.use_vel_head = True
     config.vel_max = 1.0
     config.imsize = 100
+    cmd_args.imsize = config.imsize
     config.num_hist_channels = 2
 
     ''' Channel codes '''
