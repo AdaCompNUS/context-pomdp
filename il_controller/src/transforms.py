@@ -237,7 +237,7 @@ def acc_transform_id_to_normalized(acc_id):
 
 def vel_transform_raw_to_normalized(vel):
     if vel > config.vel_max:
-        print('Warning: encoded vel > config.vel_max')
+        print('Warning: encoded vel {} > config.vel_max {}'.format(vel, config.vel_max))
     vel = max(0.0, min(vel, config.vel_max - 0.0001))  # at max vel the bin index will be out of range
     vel = vel / config.vel_max
     return vel
