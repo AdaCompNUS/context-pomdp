@@ -173,7 +173,7 @@ config.resblock_in_layers = [1, 1, 1, 2]
 config.resnet_width = 32
 # heads params
 config.head_mode = "categorical"  # "categorical", "hybrid", "mdn"
-config.use_vel_head = False
+config.use_vel_head = True
 config.sigma_smoothing = 0.03
 config.num_guassians_in_heads = 5
 ''' NN settings '''

@@ -654,9 +654,11 @@ def calculate_loss(acc, acc_labels, ang, ang_labels, vel, velocity_labels, lane,
         acc_loss = cel_criterion(acc, acc_labels)
     if config.fit_ang or config.fit_action or config.fit_all:
         ang_loss = cel_criterion(ang, ang_labels)
+        print('ang_loss = {}'.format(ang_loss))
     if config.fit_vel or config.fit_action or config.fit_all:
         if config.use_vel_head:
             vel_loss = cel_criterion(vel, velocity_labels)
+            print('vel_loss = {}'.format(ang_loss))
     if config.fit_lane or config.fit_action or config.fit_all:
         lane_loss = cel_criterion(lane, lane_labels)
     if config.fit_val or config.fit_all:
@@ -857,11 +859,13 @@ def choose_loss(acc_loss, ang_loss, vel_loss, lane_loss, v_loss, config):
         'val': (0.0, 0.0),
     }
     if config.fit_ang or config.fit_action or config.fit_all:
+        print('recording steer loss')
         loss_dict['steer'] = (ang_loss, config.ang_scale)
     if config.fit_acc or config.fit_action or config.fit_all:
         loss_dict['acc'] = (acc_loss, config.acc_scale)
     if config.use_vel_head and (config.fit_vel or config.fit_action or config.fit_all):
         loss_dict['vel'] = (vel_loss, config.vel_scale)
+        print('recording vel loss')
     if config.fit_lane or config.fit_action or config.fit_all:
         loss_dict['lane'] = (lane_loss, config.lane_scale)
     if config.fit_val or config.fit_all:
