@@ -1384,11 +1384,12 @@ if __name__ == '__main__':
         best_val_loss = None
 
     # Define Dataset
-    gamma_train = GammaDataset(filename=cmd_args.train, start=0.0, end=0.1)
-    exit(-1)
-
-    train_set = DrivingData(filename=cmd_args.train, flag="Training")
-    val_set = DrivingData(filename=cmd_args.val, flag="Validation")
+    if '.fast' in cmd_args.train:
+        train_set = GammaDataset(filename=cmd_args.train, start=0.0, end=0.7)
+        val_set = GammaDataset(filename=cmd_args.train, start=0.7, end=1.0)
+    else:
+        train_set = DrivingData(filename=cmd_args.train, flag="Training")
+        val_set = DrivingData(filename=cmd_args.val, flag="Validation")
     # Create Dataloader
     do_shuffle_training = False
     if config.sample_mode == 'hierarchical':
