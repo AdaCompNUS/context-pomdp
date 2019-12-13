@@ -5,6 +5,7 @@ import deepdish as dd
 from Data_processing.global_params import config
 
 sys.path.append('.')
+import numpy as np
 
 
 class GammaDataset(Dataset):
@@ -38,7 +39,8 @@ class GammaDataset(Dataset):
         print('getting item {} {} {} {} {} {} {}'.format(
             input_data.shape, semantic_data, v_label, acc_id_label, steer_label, vel_label, lane_label))
 
-        return input_data, semantic_data, v_label, acc_id_label, steer_label, vel_label, lane_label
+        return input_data.astype(np.float32), \
+               semantic_data, v_label, acc_id_label, steer_label, vel_label, lane_label
 
 
 if __name__ == '__main__':
