@@ -90,7 +90,7 @@ class GammaDataset(Dataset):
         input_data = self.state_frames_table[self.start + data_index]
         semantic_data = self.state_prev_controls_table[self.start + data_index]
         vel_label = self.controls_table[self.start + data_index][0]
-        steer_normalized = self.controls_table[self.start + data_index][0]
+        steer_normalized = self.controls_table[self.start + data_index][1]
 
         steer_degree = ang_transform_normalized_to_degree(steer_normalized)
         input_data, steer_degree, _ = self.get_augmented_data(
