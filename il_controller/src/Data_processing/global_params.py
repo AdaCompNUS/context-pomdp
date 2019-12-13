@@ -94,7 +94,7 @@ config.steer_normalized_limit = 0.7
 
 
 ''' Channel codes '''
-config.num_hist_channels = 4
+config.num_hist_channels = 2
 config.use_goal_channel = False
 # channel 0-3, exo history 1-4
 config.channel_map = []
