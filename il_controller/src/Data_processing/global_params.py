@@ -55,7 +55,7 @@ config.num_acc_bins = 3
 config.acc_resolution = 2.0 / config.num_acc_bins
 config.max_acc = 3.0  # in degrees
 
-config.num_vel_bins = 8
+config.num_vel_bins = 14
 config.vel_max = 8.0
 
 config.num_lane_bins = 3
@@ -174,7 +174,7 @@ config.num_resnet_output = 256 * 4
 config.resblock_in_layers = [1, 1, 1, 2]
 config.resnet_width = 32
 # heads params
-config.head_mode = "hybrid"  # "categorical", "hybrid", "mdn"
+config.head_mode = "categorical"  # "categorical", "hybrid", "mdn"
 config.use_vel_head = False
 config.sigma_smoothing = 0.03
 config.num_guassians_in_heads = 1
