@@ -13,10 +13,11 @@ class GammaDataset(Dataset):
         self.start = int((start * self.data['state_frames'].shape[0]))
         self.end = int((end * self.data['state_frames'].shape[0]))
 
+        print('state_frames shape {}'.format(self.data['state_frames'][0].shape))
         self.state_frames_table = self.data['state_frames']
-        # print('state_prev_controls {}'.format(self.data['state_prev_controls'][0]))
+        print('state_prev_controls {}'.format(self.data['state_prev_controls'][0]))
         self.state_prev_controls_table = self.data['state_prev_controls']
-        # print('controls {}'.format(self.data['controls'][0]))
+        print('controls {}'.format(self.data['controls'][0]))
         self.controls_table = self.data['controls']
         config.fit_acc = False
         config.fit_lane = False
