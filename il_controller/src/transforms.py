@@ -330,7 +330,7 @@ class InputEncoder(object):
             input_data = self.normalize(input_data)
             return input_data
         elif config.data_type == np.uint8:
-            return input_data.astype(np.float32)
+            return self.normalize(input_data.astype(np.float32))
 
 
 class SteerEncoderDegreeToOnehot(object):
