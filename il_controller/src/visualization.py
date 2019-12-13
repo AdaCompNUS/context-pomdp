@@ -121,20 +121,20 @@ def visualize_distribution(p, true_p, step, flag):
         max_val = config.max_steering_degree
         resolution = config.steering_resolution
 
-        if flag == "steering":
+        if "steering" in flag:
             num_bins = config.num_steering_bins
-        elif flag == "acc":
+        elif "acc" in flag:
             min_val = -config.max_acc
             max_val = config.max_acc
             num_bins = config.num_acc_bins
             resolution = (max_val - min_val) / num_bins
-        elif flag == "vel":
+        elif "vel" in flag:
             # print("plotting velocity...")
             max_val = config.vel_max
             min_val = 0
             num_bins = config.num_vel_bins
             resolution = (max_val - min_val) / num_bins
-        elif flag == "lane":
+        elif "lane" in flag:
             min_val = -1.0
             max_val = 1.0
             num_bins = config.num_lane_bins
@@ -530,7 +530,7 @@ def visualize_hybrid_output_with_labels(count, acc_mu, acc_pi, acc_sigma, ang_pr
                                         encoded_acc_label, encoded_ang_label, encoded_vel_label, encoded_lane_label,
                                         encoded_value_label,
                                         accelaration=None, draw_truth=True, show_axis=True):
-    print('')
+    # print('')
     # print("\n[visualize_hybrid_output_with_labels] ")
     if config.fit_ang or config.fit_action or config.fit_all:
         # print('steer')
@@ -556,7 +556,7 @@ def visualize_hybrid_output_with_labels(count, acc_mu, acc_pi, acc_sigma, ang_pr
 def visualize_mdn_output_with_labels(count, acc_mu, acc_pi, acc_sigma, ang_mu, ang_pi, ang_sigma,
                                      vel_mu, vel_pi, vel_sigma, lane_probs,
                                      encoded_acc_label, encoded_ang_label, encoded_vel_label, encoded_lane_label):
-    print('')
+    # print('')
     # print("\n[visualize_mdn_output_with_labels] ")
     if config.fit_ang or config.fit_action or config.fit_all:
         visualize_guassian_mixture(ang_pi, ang_mu, ang_sigma, encoded_ang_label, count, 'steering_mdn')

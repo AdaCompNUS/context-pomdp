@@ -390,6 +390,7 @@ def visualize_mdn_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_
                               vel_mu, vel_pi, vel_sigma, velocity_labels, lane, lane_labels, visualize_data, sm, flag):
     if visualize_data:
         try:
+            print('')
             lane_probs = None
             if lane is not None:
                 lane_probs = sm(lane)
@@ -448,6 +449,7 @@ def visualize_hybrid_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, a
                                  lane, lane_labels, value, value_labels,
                                  visualize_data, sm, flag):
     if visualize_data:
+        print('')
         ang_probs, lane_probs = None, None
         if ang is not None:
             ang_probs = sm(ang)
@@ -490,6 +492,7 @@ def visualize_hybrid_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, a
 def visualize_predictions(epoch, acc, acc_labels, ang, ang_labels, vel, velocity_labels, lane, lane_labels,
                           visualize_data, sm, flag):
     if visualize_data:
+        print('')
         acc_probs, ang_probs, vel_probs, lane_probs = None, None, None, None
         if acc is not None:
             acc_probs = sm(acc)
