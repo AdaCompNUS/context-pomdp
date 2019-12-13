@@ -33,7 +33,7 @@ class GammaDataset(Dataset):
         semantic_data = self.state_prev_controls_table[self.start + idx]
         vel_label = self.controls_table[self.start + idx][0]
         steer_label = self.controls_table[self.start + idx][0]
-        acc_id_label, v_label, lane_label = None, None, None
+        acc_id_label, v_label, lane_label = 0, 0.0, 0
 
         return input_data, semantic_data, v_label, acc_id_label, steer_label, vel_label, lane_label
 
