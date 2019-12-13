@@ -35,6 +35,9 @@ class GammaDataset(Dataset):
         steer_label = self.controls_table[self.start + idx][0]
         acc_id_label, v_label, lane_label = 0, 0.0, 0
 
+        print('getting item {} {} {} {} {} {} {}'.format(
+            input_data.shape, semantic_data, v_label, acc_id_label, steer_label, vel_label, lane_label))
+
         return input_data, semantic_data, v_label, acc_id_label, steer_label, vel_label, lane_label
 
 
