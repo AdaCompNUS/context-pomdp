@@ -795,7 +795,7 @@ def calculate_accuracy(acc, acc_labels, ang, ang_labels, vel, velocity_labels, l
         ang_accuracy = get_accuracy(ang, ang_labels, topk=(1, 2))[1]
     if global_config.use_vel_head:
         if config.fit_vel or config.fit_action or config.fit_all:
-            vel_accuracy = get_accuracy(vel, velocity_labels, topk=(1, 2))[1]
+            vel_accuracy = get_accuracy(vel, velocity_labels, topk=(1,))[0]
     # print("lane: {}, lane_labels: {}".format(lane, lane_labels), flush=True)
 
     if config.fit_lane or config.fit_action or config.fit_all:
@@ -894,6 +894,7 @@ def choose_accuracy(acc_accuracy, ang_accuracy, vel_accuracy, lane_accuracy, con
         'vel': (0.0, 0.0),
         'lane': (0.0, 0.0),
     }
+
     if config.fit_ang or config.fit_action or config.fit_all:
         accuracy_dict['steer'] = (ang_accuracy, config.ang_scale)
     if config.fit_acc or config.fit_action or config.fit_all:

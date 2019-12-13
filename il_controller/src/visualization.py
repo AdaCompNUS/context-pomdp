@@ -129,7 +129,7 @@ def visualize_distribution(p, true_p, step, flag):
             num_bins = config.num_acc_bins
             resolution = (max_val - min_val) / num_bins
         elif flag == "vel":
-            print("plotting velocity...")
+            # print("plotting velocity...")
             max_val = config.vel_max
             min_val = 0
             num_bins = config.num_vel_bins
