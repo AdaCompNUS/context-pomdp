@@ -649,16 +649,17 @@ def forward_pass_jit(X, step=0, drive_net=None, cmd_config=None, print_time=Fals
 
 def calculate_loss(acc, acc_labels, ang, ang_labels, vel, velocity_labels, lane, lane_labels, value, value_labels):
     vel_loss, acc_loss, ang_loss, lane_loss, v_loss = None, None, None, None, None
+    # print('[calculate_loss]')
 
     if config.fit_acc or config.fit_action or config.fit_all:
         acc_loss = cel_criterion(acc, acc_labels)
     if config.fit_ang or config.fit_action or config.fit_all:
         ang_loss = cel_criterion(ang, ang_labels)
-        print('ang_loss = {}'.format(ang_loss))
+        # print('ang_loss = {}'.format(ang_loss))
     if config.fit_vel or config.fit_action or config.fit_all:
         if config.use_vel_head:
             vel_loss = cel_criterion(vel, velocity_labels)
-            print('vel_loss = {}'.format(ang_loss))
+            # print('vel_loss = {}'.format(vel_loss))
     if config.fit_lane or config.fit_action or config.fit_all:
         lane_loss = cel_criterion(lane, lane_labels)
     if config.fit_val or config.fit_all:
