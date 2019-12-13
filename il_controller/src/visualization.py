@@ -235,14 +235,14 @@ def visualize_guassian_mixture(pi_list, mu_list, sigma_list, label, step, flag, 
             plt.plot([label, label], [0, height], color='b', alpha=0.75)
 
         plt.xlim(-1.2, 1.2)
-        plt.ylim(0, max_height * 1.2)
+        plt.ylim(0, max(max_height * 1.2, 0.1))
         plt.title(flag + ' distribution', loc=title_loc)
 
         if draw_ground_truth:
             plt.subplot(212)
             plt.plot([label, label], [0, max_height], color='r', alpha=0.75)
             plt.xlim(-1.2, 1.2)
-            plt.ylim(0, max_height * 1.2)
+            plt.ylim(0, max(max_height * 1.2, 0.1))
             plt.title(flag + 'ground-truth', loc=title_loc)
 
         if not show_axis:

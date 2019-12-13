@@ -5,7 +5,7 @@ import deepdish as dd
 from Data_processing.global_params import config
 from dataset import set_encoders
 
-from transforms import ang_transform_normalized_to_degree
+from transforms import ang_transform_normalized_to_degree, Identity, Fliplr
 
 sys.path.append('.')
 import numpy as np
@@ -61,6 +61,7 @@ class GammaDataset(Dataset):
         self.data = dd.io.load(filename)
         self.start = int((start * self.data['state_frames'].shape[0]))
         self.end = int((end * self.data['state_frames'].shape[0]))
+        self.data_len = self.end - self.start
 
         print('state_frames shape {}'.format(self.data['state_frames'][0].shape))
         self.state_frames_table = self.data['state_frames']
@@ -72,18 +73,29 @@ class GammaDataset(Dataset):
         self.encode_steer_from_degree, self.encode_acc_from_id, self.encode_vel_from_raw, self.encode_lane_from_int = \
             set_encoders()
 
+        self.transform_list = [Identity(), Fliplr()]
+
     def __len__(self):
-        return self.end - self.start
+        return len(self.transform_list) * self.data_len
+
+    def get_augmented_data(self, transform_idx, input_data, steer, lane=0):
+        return self.transform_list[transform_idx](input_data, steer, lane)
 
     def __getitem__(self, idx):
+
+        data_index = idx % self.data_len
+        transform_idx = idx // self.data_len
         acc_id_label, v_label, lane_label = 0, 0.0, 0
 
-        input_data = self.state_frames_table[self.start + idx]
-        semantic_data = self.state_prev_controls_table[self.start + idx]
-        vel_label = self.controls_table[self.start + idx][0]
-        steer_normalized = self.controls_table[self.start + idx][0]
+        input_data = self.state_frames_table[self.start + data_index]
+        semantic_data = self.state_prev_controls_table[self.start + data_index]
+        vel_label = self.controls_table[self.start + data_index][0]
+        steer_normalized = self.controls_table[self.start + data_index][0]
 
         steer_degree = ang_transform_normalized_to_degree(steer_normalized)
+        input_data, steer_degree, _ = self.get_augmented_data(
+            transform_idx, np.expand_dims(input_data, axis=0), steer_degree)
+
         steer_label = self.encode_steer_from_degree(steer_degree)  # this returns only the index of the non zero bin
         vel_label = self.encode_vel_from_raw(vel_label)
 
