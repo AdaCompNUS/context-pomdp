@@ -21,7 +21,7 @@ def reset_global_params_for_dataset(cmd_args):
     config.fit_ang = True
 
     config.use_vel_head = True
-    config.vel_max = 1.0
+    config.vel_max = 1.5
     config.imsize = 100
     cmd_args.imsize = config.imsize
     config.num_hist_channels = 2

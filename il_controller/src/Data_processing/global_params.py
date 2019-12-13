@@ -55,7 +55,7 @@ config.num_acc_bins = 3
 config.acc_resolution = 2.0 / config.num_acc_bins
 config.max_acc = 3.0  # in degrees
 
-config.num_vel_bins = 14
+config.num_vel_bins = 15
 config.vel_max = 8.0
 
 config.num_lane_bins = 3
