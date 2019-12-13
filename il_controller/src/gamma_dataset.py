@@ -24,6 +24,8 @@ class GammaDataset(Dataset):
         print('controls {}'.format(self.data['controls'][0]))
         self.controls_table = self.data['controls']
 
+        config.vel_max = 1.0
+
         self.encode_steer_from_degree, self.encode_acc_from_id, self.encode_vel_from_raw, self.encode_lane_from_int = \
             set_encoders()
 
@@ -50,8 +52,8 @@ class GammaDataset(Dataset):
         steer_label = self.encode_steer_from_degree(steer_degree)  # this returns only the index of the non zero bin
         vel_label = self.encode_vel_from_raw(vel_label)
 
-        print('getting item {} {} {} {} {} {} {}'.format(
-            input_data.shape, semantic_data, v_label, acc_id_label, steer_label, vel_label, lane_label))
+        # print('getting item {} {} {} {} {} {} {}'.format(
+        #     input_data.shape, semantic_data, v_label, acc_id_label, steer_label, vel_label, lane_label))
 
         return input_data.astype(np.float32), \
                semantic_data, v_label, acc_id_label, steer_label, vel_label, lane_label
