@@ -18,7 +18,8 @@ from visualization import *
 from Components.max_ent_loss import CELossWithMaxEntRegularizer
 from Components import mdn
 
-from gamma_dataset import GammaDataset, reset_global_params_for_dataset
+from gamma_dataset import GammaDataset, reset_global_params_for_gamma_dataset
+from dataset import reset_global_params_for_pomdp_dataset
 
 global_config = global_params.config
 
@@ -1134,7 +1135,9 @@ def update_global_config(cmd_args):
     set_fit_mode_bools(cmd_args)
 
     if 'stateactions.h5' in cmd_args.train:
-        reset_global_params_for_dataset(cmd_args)
+        reset_global_params_for_gamma_dataset(cmd_args)
+    elif 'train.h5' in cmd_args.train:
+        reset_global_params_for_pomdp_dataset(cmd_args)
 
     print("Fitting " + cmd_args.fit)
 

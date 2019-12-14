@@ -11,7 +11,7 @@ sys.path.append('.')
 import numpy as np
 
 
-def reset_global_params_for_dataset(cmd_args):
+def reset_global_params_for_gamma_dataset(cmd_args):
     config.fit_acc = False
     config.fit_lane = False
     config.fit_action = False
