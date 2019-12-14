@@ -18,12 +18,12 @@ config = global_params.config
 
 
 def reset_global_params_for_pomdp_dataset(cmd_args):
-    config.fit_acc = False
     config.fit_lane = False
     config.fit_action = False
     config.fit_all = False
     config.fit_val = False
     config.fit_vel = True
+    config.fit_acc = True
     config.fit_ang = True
     config.use_vel_head = True
     config.num_vel_bins = 8
