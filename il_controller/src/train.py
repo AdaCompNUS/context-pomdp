@@ -574,9 +574,9 @@ def forward_pass(input_images, semantic_input, step=0, drive_net=None, cmd_confi
     if global_config.head_mode == "mdn":
         value, acc_output, ang_output, vel_output, lane_logits, \
         car_gppn_out, res_image = drive_net.forward(input_images, semantic_input, cmd_config)
-        acc_pi, acc_mu, acc_sigma = acc_output
-        vel_pi, vel_mu, vel_sigma = vel_output
-        ang_pi, ang_mu, ang_sigma = ang_output
+        acc_pi, acc_sigma, acc_mu = acc_output
+        vel_pi, vel_sigma, vel_mu = vel_output
+        ang_pi, ang_sigma, ang_mu = ang_output
         if global_config.print_preds:
             print("predicted angle:")
             print(ang_pi, ang_mu, ang_sigma)
@@ -593,8 +593,8 @@ def forward_pass(input_images, semantic_input, step=0, drive_net=None, cmd_confi
     elif global_config.head_mode == "hybrid":
         value, acc_output, ang_logits, vel_output, lane_logits, car_gppn_out, res_image = \
             drive_net.forward(input_images, semantic_input, cmd_config)
-        acc_pi, acc_mu, acc_sigma = acc_output
-        vel_pi, vel_mu, vel_sigma = vel_output
+        acc_pi, acc_sigma, acc_mu = acc_output
+        vel_pi, vel_sigma, vel_mu = vel_output
         if global_config.print_preds:
             print("predicted angle logits:")
             print(ang_logits)
@@ -633,7 +633,7 @@ def forward_pass_jit(X, step=0, drive_net=None, cmd_config=None, print_time=Fals
         torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0)
 
     if global_config.head_mode == "hybrid":
-        value, acc_pi, acc_mu, acc_sigma, \
+        value, acc_pi, acc_sigma, acc_mu, \
         ang_logits, lane_logits, car_gppn_out, res_image = drive_net.forward(X.squeeze(0))
 
         if global_config.print_preds:
@@ -705,6 +705,10 @@ def calculate_hybrid_loss(acc_pi, acc_mu, acc_sigma, acc_labels, ang, ang_labels
     if config.fit_vel or config.fit_action or config.fit_all:
         if config.use_vel_head:
             vel_loss = calculate_mdn_loss_action(vel_pi, vel_mu, vel_sigma, velocity_labels)
+            if vel_loss != vel_loss:
+                print('vel loss {}, pi {}, mu {}, sigma {}, label {}'.format(vel_loss,
+                    vel_pi.cpu().detach().numpy()[0], vel_mu.cpu().detach().numpy()[0], vel_sigma.cpu().detach().numpy()[0],
+                    velocity_labels.cpu().detach().numpy()[0]))
     if config.fit_ang or config.fit_action or config.fit_all:
         ang_loss = cel_criterion(ang, ang_labels)
     if config.fit_lane or config.fit_action or config.fit_all:
