@@ -1177,6 +1177,7 @@ def set_fit_mode_bools(cmd_args):
         config.fit_val = False
         config.fit_lane = False
         config.fit_all = False
+        config.use_vel_head = True
     elif cmd_args.fit == 'lane':
         config.fit_action = False
         config.fit_vel = False
