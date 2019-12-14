@@ -321,7 +321,8 @@ def evaluate(last_train_loss, epoch):
                     forward_pass(input_images, semantic_data, step=epoch, print_time=visualize_data, image_flag=val_flag)
 
                 visualize_hybrid_predictions(epoch, acc_mu, acc_pi, acc_sigma, acc_labels, ang_logits, ang_labels,
-                                             velocity_labels, lane_logits, lane_labels, value, value_labels,
+                                             vel_mu, vel_pi, vel_sigma, velocity_labels,
+                                             lane_logits, lane_labels, value, value_labels,
                                              visualize_data, sm, val_flag)
 
                 # Loss
