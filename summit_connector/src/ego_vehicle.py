@@ -38,11 +38,14 @@ class EgoVehicle(Summit):
         # Initialize fields.
         self.gamma_cmd_accel = 0
         self.gamma_cmd_steer = 0
+        self.gamma_cmd_speed = 0
         self.imitation_cmd_accel = 0
         self.imitation_cmd_steer = 0
+        self.imitation_cmd_speed = 0
         self.pp_cmd_steer = 0
         self.pomdp_cmd_accel = 0
         self.pomdp_cmd_steer = 0
+        self.pomdp_cmd_speed = 0
         self.lane_decision = 0
 
         self.start_time = None
@@ -50,21 +53,20 @@ class EgoVehicle(Summit):
 
         # ROS stuff.
         self.control_mode = rospy.get_param('~control_mode', 'gamma')
+        self.speed_control_mode = rospy.get_param('~speed_control', 'acc')
+
         print('Ego_vehicle control mode: {}'.format(self.control_mode))
         sys.stdout.flush()
 
-        self.pomdp_cmd_accel_sub = rospy.Subscriber('/pomdp_cmd_accel', Float32,
-                                                    self.pomdp_cmd_accel_callback, queue_size=1)
-        self.pomdp_cmd_steer_sub = rospy.Subscriber('/pomdp_cmd_steer', Float32,
-                                                    self.pomdp_cmd_steer_callback, queue_size=1)
-        self.gamma_cmd_accel_sub = rospy.Subscriber('/gamma_cmd_accel', Float32,
-                                                    self.gamma_cmd_accel_callback, queue_size=1)
-        self.gamma_cmd_steer_sub = rospy.Subscriber('/gamma_cmd_steer', Float32,
-                                                    self.gamma_cmd_steer_callback, queue_size=1)
-        self.imitation_cmd_accel_sub = rospy.Subscriber('/imitation_cmd_accel',
-                                                        Float32, self.imitation_cmd_accel_callback, queue_size=1)
-        self.imitation_cmd_steer_sub = rospy.Subscriber('/imitation_cmd_steer',
-                                                        Float32, self.imitation_cmd_steer_callback, queue_size=1)
+        rospy.Subscriber('/pomdp_cmd_accel', Float32, self.pomdp_cmd_accel_callback, queue_size=1)
+        rospy.Subscriber('/pomdp_cmd_steer', Float32, self.pomdp_cmd_steer_callback, queue_size=1)
+        rospy.Subscriber('/gamma_cmd_accel', Float32, self.gamma_cmd_accel_callback, queue_size=1)
+        rospy.Subscriber('/gamma_cmd_steer', Float32, self.gamma_cmd_steer_callback, queue_size=1)
+        rospy.Subscriber('/imitation_cmd_accel', Float32, self.imitation_cmd_accel_callback, queue_size=1)
+        rospy.Subscriber('/imitation_cmd_steer', Float32, self.imitation_cmd_steer_callback, queue_size=1)
+        rospy.Subscriber('/pomdp_cmd_speed', Float32, self.pomdp_cmd_speed_callback, queue_size=1)
+        rospy.Subscriber('/gamma_cmd_speed', Float32, self.gamma_cmd_speed_callback, queue_size=1)
+        rospy.Subscriber('/imitation_cmd_speed', Float32, self.imitation_cmd_speed_callback, queue_size=1)
 
         self.pp_cmd_accel_sub = rospy.Subscriber('/purepursuit_cmd_steer',
                                                  Float32, self.pp_cmd_steer_callback, queue_size=1)
@@ -111,6 +113,9 @@ class EgoVehicle(Summit):
             #    self.actor.set_collision_enabled(True)
 
         self.world.wait_for_tick(1.0)  # Wait for collision to be applied.
+        actor_physics_control = self.actor.get_physics_control()
+        self.steer_angle_range = \
+            (actor_physics_control.wheels[0].max_steer_angle + actor_physics_control.wheels[1].max_steer_angle) / 2
 
         time.sleep(1)  # wait for the vehicle to drop
         self.publish_odom()
@@ -276,6 +281,7 @@ class EgoVehicle(Summit):
         speed = np.vdot(forward, v_2d)
         self.speed = speed
 
+        car_info_msg.id = self.actor.id
         car_info_msg.car_pos.x = pos.x
         car_info_msg.car_pos.y = pos.y
         car_info_msg.car_pos.z = pos.z
@@ -364,6 +370,15 @@ class EgoVehicle(Summit):
     def imitation_cmd_steer_callback(self, steer):
         self.imitation_cmd_steer = steer.data
 
+    def pomdp_cmd_speed_callback(self, speed):
+        self.pomdp_cmd_speed = speed.data
+
+    def gamma_cmd_speed_callback(self, speed):
+        self.gamma_cmd_speed = speed.data
+
+    def imitation_cmd_speed_callback(self, speed):
+        self.imitation_cmd_speed = speed.data
+
     def pp_cmd_steer_callback(self, steer):
         self.pp_cmd_steer = steer.data
 
@@ -391,7 +406,64 @@ class EgoVehicle(Summit):
                                            color=carla.Color(color_i, color_i, 0, 0))
             last_loc = carla.Location(pos.x, pos.y, 0.1)
 
-    def send_control(self):
+    def send_control_from_vel(self):
+        control = self.actor.get_control()
+        if self.control_mode == 'gamma':
+            cmd_speed = self.gamma_cmd_speed
+            cmd_steer = self.gamma_cmd_steer
+        elif self.control_mode == 'imitation':
+            cmd_speed = self.imitation_cmd_speed
+            # cmd_steer = self.imitation_cmd_steer
+            cmd_steer = self.pp_cmd_steer
+        else:
+            cmd_speed = self.pomdp_cmd_speed
+            cmd_steer = self.pomdp_cmd_steer
+
+        cur_speed = self.actor.get_velocity()
+        cur_speed = (cur_speed.x ** 2 + cur_speed.y ** 2) ** 0.5
+
+        if cmd_speed < 1e-5 and cur_speed < 0.5:
+            control.throttle = 0
+            control.brake = 1.0
+            control.hand_brake = True
+
+            self.speed_control_last_update = None
+            self.speed_control_integral = 0.0
+            self.speed_control_last_error = 0.0
+        else:
+            cur_time = rospy.Time.now()
+
+            if self.speed_control_last_update is None:
+                dt = 0.0
+            else:
+                dt = (cur_time - self.speed_control_last_update).to_sec()
+            speed_error = cmd_speed - cur_speed
+            self.speed_control_integral += speed_error * dt
+
+            speed_control = 0.3 * speed_error + 0.1 * self.speed_control_integral
+            if self.speed_control_last_update is not None:
+                speed_control += 0.005 * (speed_error - self.speed_control_last_error) / dt
+
+            self.speed_control_last_update = cur_time
+            self.speed_control_last_error = speed_error
+
+            if speed_control >= 0:
+                control.throttle = speed_control
+                control.brake = 0.0
+                control.hand_brake = False
+            else:
+                control.throttle = 0.0
+                control.brake = -speed_control
+                control.hand_brake = False
+
+        control.steer = np.clip(cmd_steer * 45.0 / self.steer_angle_range, -1.0, 1.0)
+
+        control.manual_gear_shift = True
+        control.gear = 1
+
+        self.actor.apply_control(control)
+
+    def send_control_from_acc(self):
         # Calculate control and send to CARLA.
         # print("controlling vehicle with acc={} cur_vel={}".format(self.cmd_accel, self.speed))
         control = self.actor.get_control()
@@ -474,7 +546,11 @@ class EgoVehicle(Summit):
                 self.ego_dead_pub.publish(True)
                 return
 
-        self.send_control()
+        if self.speed_control_mode == 'acc':
+            self.send_control_from_acc()
+        elif self.speed_control_mode == 'vel':
+            self.send_control_from_vel()
+
         # self.draw_path(self.path)
         self.publish_odom()
         self.publish_il_car_info()

@@ -3,6 +3,7 @@
   <arg name="port" default="2000" />
   <arg name="map_location" default="meskel_square" />
   <arg name="ego_control_mode" default="gamma" />
+  <arg name="ego_speed_control" default="acc" />
   <arg name="random_seed" default="0" />
 
   <param name="address" type="string" value="$(arg address)" />
@@ -24,6 +25,7 @@
  
   <node name="ego_vehicle" pkg="summit_connector" type="ego_vehicle.py" output="screen">
     <param name="control_mode" value="$(arg ego_control_mode)"/>
+    <param name="speed_control" value="$(arg ego_speed_control)"/>
   </node>
 
   <node name="purepursuit_controller" pkg="summit_connector" type="purepursuit_controller.py" output="screen"/>
@@ -53,7 +55,5 @@
   <!--
   <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
   -->
-  <!--
   <node name="visualize_live" pkg="summit_connector" type="visualize_live.py" output="screen"/>
-  -->
 </launch>

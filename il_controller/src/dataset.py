@@ -23,8 +23,9 @@ def reset_global_params_for_pomdp_dataset(cmd_args):
     config.fit_all = False
     config.fit_val = False
     config.fit_vel = True
-    config.fit_acc = True
+    # config.fit_acc = True
     config.fit_ang = True
+    config.fit_lane = True
     config.use_vel_head = True
     config.num_vel_bins = 8
     print("======== resetting global parameters for the pomdp dataset =========")

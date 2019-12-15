@@ -562,65 +562,68 @@ def alloc_recorders():
 
 def forward_pass(input_images, semantic_input, step=0, drive_net=None, cmd_config=None, print_time=False,
                  image_flag=''):
-    start_time = time.time()
+    try:
+        start_time = time.time()
 
-    if drive_net is None:
-        drive_net = net
-    if cmd_config is None:
-        cmd_config = cmd_args
+        if drive_net is None:
+            drive_net = net
+        if cmd_config is None:
+            cmd_config = cmd_args
 
-    ped_gppn_out, car_gppn_out, res_out, res_image = \
-        torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0)
-    if global_config.head_mode == "mdn":
-        value, acc_output, ang_output, vel_output, lane_logits, \
-        car_gppn_out, res_image = drive_net.forward(input_images, semantic_input, cmd_config)
-        acc_pi, acc_sigma, acc_mu = acc_output
-        vel_pi, vel_sigma, vel_mu = vel_output
-        ang_pi, ang_sigma, ang_mu = ang_output
-        if global_config.print_preds:
-            print("predicted angle:")
-            print(ang_pi, ang_mu, ang_sigma)
+        ped_gppn_out, car_gppn_out, res_out, res_image = \
+            torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0), torch.zeros(0, 0)
+        if global_config.head_mode == "mdn":
+            value, acc_output, ang_output, vel_output, lane_logits, \
+            car_gppn_out, res_image = drive_net.forward(input_images, semantic_input, cmd_config)
+            acc_pi, acc_sigma, acc_mu = acc_output
+            vel_pi, vel_sigma, vel_mu = vel_output
+            ang_pi, ang_sigma, ang_mu = ang_output
+            if global_config.print_preds:
+                print("predicted angle:")
+                print(ang_pi, ang_mu, ang_sigma)
 
-        elapsed_time = time.time() - start_time
+            elapsed_time = time.time() - start_time
 
-        if print_time:
-            print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(input_images, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
+            if print_time:
+                print("Inference time: " + str(elapsed_time) + " s")
+                visualize_input_output(input_images, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
-        return acc_pi, acc_mu, acc_sigma, ang_pi, ang_mu, ang_sigma, \
-               vel_pi, vel_mu, vel_sigma, lane_logits, value
+            return acc_pi, acc_mu, acc_sigma, ang_pi, ang_mu, ang_sigma, \
+                   vel_pi, vel_mu, vel_sigma, lane_logits, value
 
-    elif global_config.head_mode == "hybrid":
-        value, acc_output, ang_logits, vel_output, lane_logits, car_gppn_out, res_image = \
-            drive_net.forward(input_images, semantic_input, cmd_config)
-        acc_pi, acc_sigma, acc_mu = acc_output
-        vel_pi, vel_sigma, vel_mu = vel_output
-        if global_config.print_preds:
-            print("predicted angle logits:")
-            print(ang_logits)
+        elif global_config.head_mode == "hybrid":
+            value, acc_output, ang_logits, vel_output, lane_logits, car_gppn_out, res_image = \
+                drive_net.forward(input_images, semantic_input, cmd_config)
+            acc_pi, acc_sigma, acc_mu = acc_output
+            vel_pi, vel_sigma, vel_mu = vel_output
+            if global_config.print_preds:
+                print("predicted angle logits:")
+                print(ang_logits)
 
-        elapsed_time = time.time() - start_time
-        if print_time and config.visualize_inter_data:
-            print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(input_images, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
+            elapsed_time = time.time() - start_time
+            if print_time and config.visualize_inter_data:
+                print("Inference time: " + str(elapsed_time) + " s")
+                visualize_input_output(input_images, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
-        return acc_pi, acc_mu, acc_sigma, \
-               ang_logits, vel_pi, vel_mu, vel_sigma, lane_logits, value
+            return acc_pi, acc_mu, acc_sigma, \
+                   ang_logits, vel_pi, vel_mu, vel_sigma, lane_logits, value
 
-    else:
-        value, acc_logits, ang_logits, vel_logits, lane_logits, \
-        car_gppn_out, res_image = drive_net.forward(input_images, semantic_input, cmd_config)
-        if global_config.print_preds:
-            print("predicted angle:")
-            print(ang_logits)
+        else:
+            print('input sizes {} {}'.format(input_images.size(), semantic_input.size()))
+            value, acc_logits, ang_logits, vel_logits, lane_logits, \
+            car_gppn_out, res_image = drive_net.forward(input_images, semantic_input, cmd_config)
+            if global_config.print_preds:
+                print("predicted angle:")
+                print(ang_logits)
 
-        elapsed_time = time.time() - start_time
-        if print_time:
-            print("Inference time: " + str(elapsed_time) + " s")
-            visualize_input_output(input_images, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
+            elapsed_time = time.time() - start_time
+            if print_time:
+                print("Inference time: " + str(elapsed_time) + " s")
+                visualize_input_output(input_images, ped_gppn_out, car_gppn_out, res_image, step, image_flag)
 
-        return acc_logits, ang_logits, vel_logits, lane_logits, value
-
+            return acc_logits, ang_logits, vel_logits, lane_logits, value
+    except Exception as e:
+        error_handler(e)
 
 def forward_pass_jit(X, step=0, drive_net=None, cmd_config=None, print_time=False, image_flag=''):
     start_time = time.time()
@@ -1097,6 +1100,10 @@ def parse_cmd_args():
                         type=str,
                         default="torchscript_version.pt",
                         help='[model conversion] Output model in pt format')
+    parser.add_argument('--monitor',
+                        type=str,
+                        default="data_monitor",
+                        help='which data monitor to use: data_monitor or summit_dql')
 
     return parser.parse_args()
 
@@ -1130,18 +1137,26 @@ def update_global_config(cmd_args):
 
     config.car_goal[0] = float(cmd_args.goalx)
     config.car_goal[1] = float(cmd_args.goaly)
-
     config.val_scale = cmd_args.v_scale
     config.ang_scale = cmd_args.ang_scale
-
     config.do_prob = cmd_args.do_p
 
     set_fit_mode_bools(cmd_args)
 
-    if 'stateactions.h5' in cmd_args.train:
-        reset_global_params_for_gamma_dataset(cmd_args)
-    elif 'train.h5' in cmd_args.train:
-        reset_global_params_for_pomdp_dataset(cmd_args)
+    if cmd_args.train:
+        if 'stateactions.h5' in cmd_args.train:
+            reset_global_params_for_gamma_dataset(cmd_args)
+        elif 'train.h5' in cmd_args.train:
+            reset_global_params_for_pomdp_dataset(cmd_args)
+    else: # test.py
+        if cmd_args.monitor == 'data_monitor':
+            reset_global_params_for_pomdp_dataset(cmd_args)
+        elif cmd_args.monitor == 'summit_dql':
+            reset_global_params_for_gamma_dataset(cmd_args)
+            config.data_type = np.uint8
+            config.control_freq = 10
+        else:
+            error_handler("unsupported data monitor")
 
     print("Fitting " + cmd_args.fit)
 

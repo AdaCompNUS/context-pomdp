@@ -172,7 +172,9 @@ def parse_cmd_args():
                         help='Use drive net for control: 0 no / 1 imitation / 2 lets_drive')
     parser.add_argument('--model',
                         type=str,
-                        default='trained_models/cate_action.pth',
+                        # default='trained_models/cate_action.pth',
+                        # default='trained_models/gamma_hybrid.pth',
+                        default='trained_models/pomdp_cate.pth',
                         help='Drive net model name')
     parser.add_argument('--val_model',
                         type=str,
@@ -210,6 +212,10 @@ def parse_cmd_args():
                         type=float,
                         default=70.0,
                         help='Length of episodes in terms of seconds')
+    parser.add_argument('--monitor',
+                        type=str,
+                        default="data_monitor",
+                        help='which data monitor to use: data_monitor or summit_dql')
 
     return parser.parse_args()
 
@@ -257,6 +263,7 @@ def update_global_config(cmd_args):
         exit(-1)
 
     config.model = cmd_args.model
+    config.monitor = cmd_args.monitor
     config.val_model = cmd_args.val_model
     config.time_scale = float(cmd_args.t_scale)
     config.test_mode = bool(cmd_args.test)
@@ -1083,7 +1090,7 @@ def launch_carla_simulator(round, run, case):
     	shell_cmd = shell_cmd + ' ego_control_mode:=gamma'
     elif "imitation" in cmd_args.baseline:
     	print("launching connector with imitation controller...")
-    	shell_cmd = shell_cmd + ' ego_control_mode:=imitation'
+    	shell_cmd = shell_cmd + ' ego_control_mode:=imitation' + ' ego_speed_control:=vel'
     else:
     	shell_cmd = shell_cmd + ' ego_control_mode:=other'
 
@@ -1230,11 +1237,9 @@ def launch_drive_net(round, run, case):
     global drive_net_proc_link
     if config.use_drive_net_mode == IMITATION:
 
-        print("=========================1==========================")
-
         global shell_cmd
-        shell_cmd = config.ros_pref + 'python3 test.py --batch_size 128 --lr 0.0001 ' + \
-                    ' --modelfile ' + config.model
+        shell_cmd = config.ros_pref + 'python3 test.py --batch_size 128 --lr'+ \
+            ' 0.0001 --modelfile ' + config.model + ' --monitor ' + config.monitor
 
         # action_hybrid_unicorn_newdata
 

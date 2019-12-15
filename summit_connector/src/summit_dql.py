@@ -12,7 +12,8 @@ from std_msgs.msg import Float32, Int32
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from msg_builder.msg import InputImages
-import sys, traceback
+import sys, traceback, os
+from inspect import getframeinfo
 
 
 def error_handler(e):
@@ -21,6 +22,12 @@ def error_handler(e):
         type(e).__name__, e)
     sys.stdout.flush()
     exit(-1)
+
+
+def print_long(msg):
+    frameinfo = getframeinfo(sys._getframe(1))
+    print('[{}:{}:{}] {}.'.format(os.path.basename(frameinfo.filename), frameinfo.function, frameinfo.lineno, msg))
+    sys.stdout.flush()
 
 
 def get_position(actor):
@@ -63,7 +70,8 @@ class SummitDQL(Summit):
         self.network_agents = []
         self.sidewalk_agents = []
         self.imitation_cmd_accel, self.imitation_cmd_steer, self.imitation_cmd_lane = None, None, None
-        self.imitation_acc_probs, self.imitation_steer_probs, self.imitation_lane_probs = None, None, None
+        self.imitation_acc_probs, self.imitation_steer_probs, self.imitation_lane_probs, self.imitation_vel_probs = \
+            None, None, None, None
         self.imitation_lane_image = None
         self.imitation_hist_image, self.imitation_hist1_image, self.imitation_hist2_image, self.imitation_hist3_image \
             = None, None, None, None
@@ -140,32 +148,48 @@ class SummitDQL(Summit):
         self.imitation_acc_probs = action_probs.acc_probs
         self.imitation_steer_probs = action_probs.steer_probs
         self.imitation_lane_probs = action_probs.lane_probs
+        self.imitation_vel_probs = action_probs.vel_probs
 
     def imitation_image_callback(self, images):
         try:
             # print('images received of type {}'.format(images.lane.encoding))
-            self.imitation_lane_image = self.process_image(images.lane.data, images.lane.height, images.lane.width)
-            self.imitation_hist_image = self.process_image(images.hist0.data, images.hist0.height, images.hist0.width)
-            self.imitation_hist1_image = self.process_image(images.hist1.data, images.hist1.height, images.hist1.width)
-            self.imitation_hist2_image = self.process_image(images.hist2.data, images.hist2.height, images.hist2.width)
-            self.imitation_hist3_image = self.process_image(images.hist3.data, images.hist3.height, images.hist3.width)
+            self.imitation_lane_image = self.process_image(images.lane)
+            self.imitation_hist_image = self.process_image(images.hist0)
+            self.imitation_hist1_image = self.process_image(images.hist1)
+            if images.lane.encoding == '32FC1':
+                self.imitation_hist2_image = self.process_image(images.hist2)
+                self.imitation_hist3_image = self.process_image(images.hist3)
         except Exception as e:
             error_handler(e)
 
-    def process_image(self, image, height, width):
-        up_scale = 5
-        border = 2
-        image = (255 * np.ndarray((height, width), dtype=np.float32, buffer=image)).astype(np.uint8)
-        image = cv2.resize(image, (up_scale * image.shape[0], up_scale * image.shape[1]), interpolation=cv2.INTER_AREA)
-        return cv2.copyMakeBorder(image, border, border, border, border, cv2.BORDER_CONSTANT, value=255)
+    def process_image(self, image_msg):
+        try:
+            image = image_msg.data
+            height = image_msg.height
+            width = image_msg.width
+            encoding = image_msg.encoding
+            border = 2
+            # print('(height, width)={}, image={}'.format((height, width), image))
+            if encoding == '32FC1':
+                image = (255 * np.ndarray((height, width), dtype=np.float32, buffer=image)).astype(np.uint8)
+                up_scale = 2
+                image = cv2.resize(image, (up_scale * image.shape[0], up_scale * image.shape[1]),
+                                   interpolation=cv2.INTER_AREA)
+            elif encoding == '8UC1':
+                image = np.ndarray((height, width), dtype=np.uint8, buffer=image)
+            return cv2.copyMakeBorder(image, border, border, border, border, cv2.BORDER_CONSTANT, value=255)
+        except Exception as e:
+            print_long(e)
+            raise e
 
     def draw_input_images(self):
         frame = self.create_frame()
         self.draw_image(frame, self.imitation_lane_image, 25.0, -28.0)
         self.draw_image(frame, self.imitation_hist_image, 25.0, -9.0)
         self.draw_image(frame, self.imitation_hist1_image, 25.0, 10.0)
-        self.draw_image(frame, self.imitation_hist2_image, 5.0, -28.0)
-        self.draw_image(frame, self.imitation_hist3_image, 5.0, -9.0)
+        if self.imitation_hist2_image is not None:
+            self.draw_image(frame, self.imitation_hist2_image, 5.0, -28.0)
+            self.draw_image(frame, self.imitation_hist3_image, 5.0, -9.0)
         return frame
 
     def draw_image(self, frame, image, pos_x, pos_y):
@@ -211,15 +235,22 @@ class SummitDQL(Summit):
         bar_gap = 0.2
         if self.ego_state is not None:
             bar_anchor_x, bar_anchor_y = 9.0, 0.0
-            self.draw_probs(frame, self.imitation_acc_probs, 'Acc_probs', (255, 0, 0), bar_anchor_x, bar_anchor_y,
+            if self.imitation_acc_probs is not None and len(self.imitation_acc_probs) > 0:
+                self.draw_probs(frame, self.imitation_acc_probs, 'Acc_probs', (255, 0, 0), bar_anchor_x, bar_anchor_y,
                             bar_gap, bar_width)
-            bar_anchor_x -= 3.0
-            self.draw_probs(frame, self.imitation_steer_probs, 'Ang_probs', (0, 255, 0), bar_anchor_x, bar_anchor_y,
+                bar_anchor_x -= 3.0
+            if self.imitation_steer_probs is not None and len(self.imitation_steer_probs) > 0:
+                self.draw_probs(frame, self.imitation_steer_probs, 'Ang_probs', (0, 255, 0), bar_anchor_x, bar_anchor_y,
                             bar_gap, bar_width)
-            bar_anchor_x -= 3.0
-            self.draw_probs(frame, self.imitation_lane_probs, 'Lane_probs', (0, 0, 255), bar_anchor_x, bar_anchor_y,
+                bar_anchor_x -= 3.0
+            if self.imitation_lane_probs is not None and len(self.imitation_lane_probs) > 0:
+                self.draw_probs(frame, self.imitation_lane_probs, 'Lane_probs', (0, 0, 255), bar_anchor_x, bar_anchor_y,
                             bar_gap, bar_width)
-
+                bar_anchor_x -= 3.0
+            if self.imitation_vel_probs is not None and len(self.imitation_vel_probs) > 0:
+                self.draw_probs(frame, self.imitation_vel_probs, 'Vel_probs', (0, 0, 255), bar_anchor_x, bar_anchor_y,
+                            bar_gap, bar_width)
+                bar_anchor_x -= 3.0
         return frame
 
     def draw_probs(self, frame, probs, text, color, bar_anchor_x, bar_anchor_y, bar_gap, bar_width):
