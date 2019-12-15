@@ -609,7 +609,7 @@ def forward_pass(input_images, semantic_input, step=0, drive_net=None, cmd_confi
                    ang_logits, vel_pi, vel_mu, vel_sigma, lane_logits, value
 
         else:
-            print('input sizes {} {}'.format(input_images.size(), semantic_input.size()))
+            # print('input sizes {} {}'.format(input_images.size(), semantic_input.size()))
             value, acc_logits, ang_logits, vel_logits, lane_logits, \
             car_gppn_out, res_image = drive_net.forward(input_images, semantic_input, cmd_config)
             if global_config.print_preds:
@@ -1296,7 +1296,7 @@ def resume_model():
         resume_partial_model(checkpoint['state_dict'], net)
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cmd_args.lr,
                                weight_decay=config.l2_reg_weight)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, threshold=1e-2, factor=lr_factor,
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=2, threshold=1e-2, factor=lr_factor,
                                                          verbose=True)
 
         print("=> loaded checkpoint '{}' (epoch {})"
@@ -1417,7 +1417,7 @@ if __name__ == '__main__':
     # Optimizer: weight_decay is the scaling factor for L2 regularization
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cmd_args.lr,
                            weight_decay=config.l2_reg_weight)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, threshold=1e-2, factor=lr_factor,
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=2, threshold=1e-2, factor=lr_factor,
                                                      verbose=True)
 
     if cmd_args.resume:
