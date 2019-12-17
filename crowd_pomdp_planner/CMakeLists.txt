@@ -38,7 +38,8 @@ find_package(OpenCV 4.1.0 REQUIRED)
 
 catkin_package(
   CATKIN_DEPENDS geometry_msgs msg_builder car_hyp_despot  roscpp
-  DEPENDS TORCH OpenCV CUDA
+  # DEPENDS TORCH OpenCV CUDA
+  DEPENDS OpenCV CUDA
 )
 
 
