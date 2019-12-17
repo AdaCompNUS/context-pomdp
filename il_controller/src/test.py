@@ -521,19 +521,25 @@ class DriveController(nn.Module):
     def sample_from_hybrid_distribution(self, acc_pi, acc_mu, acc_sigma,
                                         ang_probs,
                                         vel_pi, vel_mu, vel_sigma, lane_probs):
+        acceleration, steering_bin, velocity, lane_bin = 0.0, 0, 0.0, 1
         # steering_bin = self.sample_categorical(probs=ang_probs)
-        steering_bin = self.sample_categorical(probs=ang_probs)
+        if ang_probs is not None:
+            steering_bin = self.sample_categorical(probs=ang_probs)
 
         # sample_mode = 'default'
         # if np.random.uniform(0.0, 1.0) > max(1.0 - float(self.count)/(20.0*config.control_freq), 0.1):
         #     sample_mode = 'ml'
-        sample_mode = 'ml'
-        acceleration = self.sample_guassian_mixture(acc_pi, acc_mu, acc_sigma, sample_mode)
+
+        if acc_pi is not None:
+            acceleration = self.sample_guassian_mixture(acc_pi, acc_mu, acc_sigma, mode='ml', component='acc')
 
         velocity = None
-        if config.use_vel_head:
-            velocity = self.sample_guassian_mixture(vel_pi, vel_mu, vel_sigma)
-        lane_bin = self.sample_categorical(probs=lane_probs)
+        if vel_pi is not None and config.use_vel_head:
+            velocity = self.sample_guassian_mixture(vel_pi, vel_mu, vel_sigma, mode='ml', component='vel')
+            print('vel_mu={}, velocity={}'.format(vel_mu, velocity))
+
+        if lane_probs is not None:
+            lane_bin = self.sample_categorical(probs=lane_probs)
 
         return acceleration, steering_bin, velocity, lane_bin
 

@@ -31,8 +31,8 @@
   <node name="purepursuit_controller" pkg="summit_connector" type="purepursuit_controller.py" output="screen"/>
 
   <node name="gamma_crowd_controller" pkg="summit_connector" type="gamma_crowd_controller.py" output="screen">
-    <param name="num_network_car_agents" value="75"/>
-    <param name="num_network_bike_agents" value="25"/>
+    <param name="num_network_car_agents" value="65"/>
+    <param name="num_network_bike_agents" value="15"/>
     <param name="num_sidewalk_agents" value="10"/>
     <param name="spawn_clearance_vehicle" value="3.0"/>
     <param name="spawn_clearance_person" value="0.25"/>
@@ -52,8 +52,8 @@
   -->
 
   <node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen"/>
-  <!--
   <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
-  -->
+  <!--
   <node name="visualize_live" pkg="summit_connector" type="visualize_live.py" output="screen"/>
+  -->
 </launch>

@@ -514,7 +514,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 		steer = 0;
 		action = static_cast<PedPomdp*>(model_)->GetActionID(steer, acc);
 
-		ERR("Termination of episode due to coll.");
+		DEBUG("Termination of episode due to coll.");
 	}
 
 	/* Publish action and step reward */

@@ -524,7 +524,6 @@ class GammaCrowdController(Summit):
             return
 
         forward_vec = carla.Vector2D(math.cos(self.ego_car_info.car_yaw), math.sin(self.ego_car_info.car_yaw))
-
         sidewalk_vec = forward_vec.rotate(np.deg2rad(90))  # rotate clockwise by 90 degree
 
         ego_veh_pos = carla.Vector2D(

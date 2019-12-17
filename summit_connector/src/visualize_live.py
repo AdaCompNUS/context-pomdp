@@ -38,7 +38,7 @@ class VisualizeLive(SummitDQL):
     def update(self, tick):
         global frame_array, frame_width, frame_height
         frame_array[:, 0:frame_height, :] = self.draw_info_frame()
-        frame_array[:, frame_width:2*frame_height, :] = self.draw_state_frame()
+        frame_array[:, frame_height:2*frame_height, :] = self.draw_state_frame()
         cv2.imshow('frame', frame_array)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     # global frame_height, frame_width
     frame_width = int(2 * visualize_live.range / visualize_live.resolution)
     frame_height = int(2 * visualize_live.range / visualize_live.resolution)
-    frame_array = np.zeros((frame_width, 2 * frame_height, 3), np.uint8)
+    frame_array = np.zeros((frame_width, 2*frame_height, 3), np.uint8)
 
     if record_video:
         datetime_object = datetime.datetime.now()

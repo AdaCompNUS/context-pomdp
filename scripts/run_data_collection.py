@@ -174,7 +174,8 @@ def parse_cmd_args():
                         type=str,
                         # default='trained_models/cate_action.pth',
                         # default='trained_models/gamma_hybrid.pth',
-                        default='trained_models/pomdp_cate.pth',
+                        default='trained_models/pomdp_cate1.pth',
+                        # default='trained_models/pomdp_hybrid1.pth',
                         help='Drive net model name')
     parser.add_argument('--val_model',
                         type=str,

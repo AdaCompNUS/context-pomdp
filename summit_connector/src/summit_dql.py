@@ -69,7 +69,8 @@ class SummitDQL(Summit):
         self.ego_path = []
         self.network_agents = []
         self.sidewalk_agents = []
-        self.imitation_cmd_accel, self.imitation_cmd_steer, self.imitation_cmd_lane = None, None, None
+        self.imitation_cmd_accel, self.imitation_cmd_vel, self.imitation_cmd_steer, self.imitation_cmd_lane = \
+            None, None, None, None
         self.imitation_acc_probs, self.imitation_steer_probs, self.imitation_lane_probs, self.imitation_vel_probs = \
             None, None, None, None
         self.imitation_lane_image = None
@@ -94,16 +95,12 @@ class SummitDQL(Summit):
             '/crowd/sidewalk_agents', msg_builder.msg.CrowdSidewalkAgentArray,
             self.sidewalk_agents_callback, queue_size=1)
 
-        self.imitation_accel_sub = rospy.Subscriber('/imitation_cmd_accel',
-                                                    Float32, self.imitation_cmd_accel_callback, queue_size=1)
-        self.imitation_steer_sub = rospy.Subscriber('/imitation_cmd_steer',
-                                                    Float32, self.imitation_cmd_steer_callback, queue_size=1)
-        self.imitation_lane_sub = rospy.Subscriber('/imitation_lane_decision', Int32,
-                                                   self.imitation_cmd_lane_callback, queue_size=1)
-        self.imitation_probs_sub = rospy.Subscriber('/imitation_action_distribs', ActionDistrib,
-                                                    self.imitation_probs_callback, queue_size=1)
-        self.imitation_input_sub = rospy.Subscriber("/imitation_input_images", InputImages,
-                                                    self.imitation_image_callback)
+        rospy.Subscriber('/imitation_cmd_accel', Float32, self.imitation_cmd_accel_callback, queue_size=1)
+        rospy.Subscriber('/imitation_cmd_speed', Float32, self.imitation_cmd_vel_callback, queue_size=1)
+        rospy.Subscriber('/imitation_cmd_steer', Float32, self.imitation_cmd_steer_callback, queue_size=1)
+        rospy.Subscriber('/imitation_lane_decision', Int32, self.imitation_cmd_lane_callback, queue_size=1)
+        rospy.Subscriber('/imitation_action_distribs', ActionDistrib, self.imitation_probs_callback, queue_size=1)
+        rospy.Subscriber("/imitation_input_images", InputImages, self.imitation_image_callback)
 
     def dispose(self):
         pass
@@ -137,6 +134,9 @@ class SummitDQL(Summit):
 
     def imitation_cmd_accel_callback(self, accel):
         self.imitation_cmd_accel = accel.data
+
+    def imitation_cmd_vel_callback(self, vel):
+        self.imitation_cmd_vel = vel.data
 
     def imitation_cmd_steer_callback(self, steer):
         self.imitation_cmd_steer = steer.data
@@ -217,6 +217,12 @@ class SummitDQL(Summit):
                 self.draw_text(frame, 'Acc', bar_anchor_x, bar_anchor_y, txt_shift_x=0.0)
                 bar_anchor_y += 5.0
                 self.draw_bar(frame, bar_anchor_x, bar_anchor_y, (255, 0, 0), bar_width, self.imitation_cmd_accel)
+            if self.imitation_cmd_vel is not None:
+                bar_anchor_y += bar_width + bar_gap
+                self.draw_text(frame, 'Vel', bar_anchor_x, bar_anchor_y, txt_shift_x=0.0)
+                bar_anchor_y += 5.0
+                self.draw_bar(frame, bar_anchor_x, bar_anchor_y, (255, 255, 0),
+                        bar_width, self.imitation_cmd_vel/5.0)
             if self.imitation_cmd_steer is not None:
                 bar_anchor_y += bar_width + bar_gap
                 self.draw_text(frame, 'Ang', bar_anchor_x, bar_anchor_y, txt_shift_x=0.0)
@@ -248,7 +254,8 @@ class SummitDQL(Summit):
                             bar_gap, bar_width)
                 bar_anchor_x -= 3.0
             if self.imitation_vel_probs is not None and len(self.imitation_vel_probs) > 0:
-                self.draw_probs(frame, self.imitation_vel_probs, 'Vel_probs', (0, 0, 255), bar_anchor_x, bar_anchor_y,
+                self.draw_probs(frame, self.imitation_vel_probs, 'Vel_probs',
+                        (255, 255, 0), bar_anchor_x, bar_anchor_y,
                             bar_gap, bar_width)
                 bar_anchor_x -= 3.0
         return frame

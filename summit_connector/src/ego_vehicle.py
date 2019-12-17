@@ -383,6 +383,8 @@ class EgoVehicle(Summit):
         self.pp_cmd_steer = steer.data
 
     def gamma_lane_change_decision_callback(self, decision):
+        # print('lane decision {}'.format(decision.data))
+        sys.stdout.flush()
 
         self.lane_decision = int(decision.data)
         if self.lane_decision == self.last_decision:
@@ -422,39 +424,43 @@ class EgoVehicle(Summit):
         cur_speed = self.actor.get_velocity()
         cur_speed = (cur_speed.x ** 2 + cur_speed.y ** 2) ** 0.5
 
-        if cmd_speed < 1e-5 and cur_speed < 0.5:
+        if False: # cmd_speed < cur_speed - 0.05:
             control.throttle = 0
-            control.brake = 1.0
-            control.hand_brake = True
-
-            self.speed_control_last_update = None
-            self.speed_control_integral = 0.0
-            self.speed_control_last_error = 0.0
+            control.brake = 0.4
         else:
-            cur_time = rospy.Time.now()
+            if cmd_speed < 1e-5 and cur_speed < 0.5:
+                control.throttle = 0
+                control.brake = 1.0
+                control.hand_brake = True
 
-            if self.speed_control_last_update is None:
-                dt = 0.0
+                self.speed_control_last_update = None
+                self.speed_control_integral = 0.0
+                self.speed_control_last_error = 0.0
             else:
-                dt = (cur_time - self.speed_control_last_update).to_sec()
-            speed_error = cmd_speed - cur_speed
-            self.speed_control_integral += speed_error * dt
+                cur_time = rospy.Time.now()
 
-            speed_control = 0.3 * speed_error + 0.1 * self.speed_control_integral
-            if self.speed_control_last_update is not None:
-                speed_control += 0.005 * (speed_error - self.speed_control_last_error) / dt
+                if self.speed_control_last_update is None:
+                    dt = 0.0
+                else:
+                    dt = (cur_time - self.speed_control_last_update).to_sec()
+                speed_error = cmd_speed - cur_speed
+                self.speed_control_integral += speed_error * dt
 
-            self.speed_control_last_update = cur_time
-            self.speed_control_last_error = speed_error
+                speed_control = 0.3 * speed_error + 0.1 * self.speed_control_integral
+                if self.speed_control_last_update is not None:
+                    speed_control += 0.005 * (speed_error - self.speed_control_last_error) / dt
 
-            if speed_control >= 0:
-                control.throttle = speed_control
-                control.brake = 0.0
-                control.hand_brake = False
-            else:
-                control.throttle = 0.0
-                control.brake = -speed_control
-                control.hand_brake = False
+                self.speed_control_last_update = cur_time
+                self.speed_control_last_error = speed_error
+
+                if speed_control >= 0:
+                    control.throttle = speed_control
+                    control.brake = 0.0
+                    control.hand_brake = False
+                else:
+                    control.throttle = 0.0
+                    control.brake = -speed_control
+                    control.hand_brake = False
 
         control.steer = np.clip(cmd_steer * 45.0 / self.steer_angle_range, -1.0, 1.0)
 

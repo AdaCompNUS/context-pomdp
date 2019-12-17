@@ -367,6 +367,9 @@ def sample_mdn_ml(pi, sigma, mu, component="acc"):
         elif component is "steer":
             for i, idx in enumerate(pis):
                 sample = float(mu[i, idx])
+        else:
+            for i, idx in enumerate(pis):
+                sample = float(mu[i, idx])
 
         print('mdn_ml sample:', sample)
 

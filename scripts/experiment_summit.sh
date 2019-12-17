@@ -18,7 +18,10 @@ maploc=meskel_square
 mode=imitation
 # mode=gamma
 # mode=lets-drive
-rands=-1
+# rands=4592987
+# rands=604234
+rands=4156662
+# rands=9475
 eps_len=120.0
 
 echo "User: $USER"
