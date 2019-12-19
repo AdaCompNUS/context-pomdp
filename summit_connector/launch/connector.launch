@@ -1,9 +1,15 @@
 <launch>
   <arg name="address" default="127.0.0.1" />
   <arg name="port" default="2000" />
+  <arg name="map_location" default="meskel_square" />
+  <arg name="ego_control_mode" default="gamma" />
+  <arg name="ego_speed_control" default="acc" />
+  <arg name="random_seed" default="0" />
 
   <param name="address" type="string" value="$(arg address)" />
   <param name="port" type="int" value="$(arg port)" />
+  <param name="map_location" type="string" value="$(arg map_location)" />
+  <param name="random_seed" type="int" value="$(arg random_seed)" />
   
   <node name="map_server" pkg="map_server" type="map_server" args="$(find summit_connector)/launch/map.yaml" />
 
@@ -12,18 +18,27 @@
         name="static_transform_publisher" 
         args="0.0 0.0 0.0 0.0 0.0 0.0 /base_link /laser_frame 10" />
 
-  <node name="spawn_meshes" pkg="summit_connector" type="spawn_meshes.py" output="screen"/>
+  <node name="spawn_meshes" pkg="summit_connector" type="spawn_meshes.py" output="screen">
+    <param name="spawn_imagery" value="false"/>
+    <param name="spawn_landmarks" value="false"/>
+  </node>
  
-  <node name="ego_vehicle" pkg="summit_connector" type="ego_vehicle.py" output="screen"/>
-  
+  <node name="ego_vehicle" pkg="summit_connector" type="ego_vehicle.py" output="screen">
+    <param name="control_mode" value="$(arg ego_control_mode)"/>
+    <param name="speed_control" value="$(arg ego_speed_control)"/>
+  </node>
+
   <node name="purepursuit_controller" pkg="summit_connector" type="purepursuit_controller.py" output="screen"/>
 
   <node name="gamma_crowd_controller" pkg="summit_connector" type="gamma_crowd_controller.py" output="screen">
-    <param name="num_network_car_agents" value="70"/>
-    <param name="num_network_bike_agents" value="25"/>
+    <param name="num_network_car_agents" value="65"/>
+    <param name="num_network_bike_agents" value="15"/>
     <param name="num_sidewalk_agents" value="10"/>
+    <param name="spawn_clearance_vehicle" value="3.0"/>
+    <param name="spawn_clearance_person" value="0.25"/>
     <param name="path_min_points" value="20"/>
     <param name="path_interval" value="1.0"/>
+    <param name="lane_change_probability" value="0.10"/>
   </node>
   
   <!--
@@ -36,7 +51,9 @@
   </node>
   -->
 
-  
   <node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen"/>
-  <!-- <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>-->
+  <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
+  <!--
+  <node name="visualize_live" pkg="summit_connector" type="visualize_live.py" output="screen"/>
+  -->
 </launch>

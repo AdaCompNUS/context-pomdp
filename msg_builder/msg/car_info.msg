@@ -1,3 +1,4 @@
+int32 id
 float32 max_steer_angle
 
 geometry_msgs/Point32 car_pos

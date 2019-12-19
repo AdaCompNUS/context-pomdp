@@ -33,10 +33,21 @@ class BasicBlock(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(BasicBlock, self).__init__()
         self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes, track_running_stats=config.track_running_stats)
-        self.relu = nn.ReLU(inplace=True)
+        if config.norm_mode == 'batch':
+            self.bn1 = nn.BatchNorm2d(planes, track_running_stats=config.track_running_stats)
+        elif config.norm_mode == 'instance':
+            self.bn1 = nn.InstanceNorm2d(planes)
+
+        if config.use_leaky_relu:
+            self.relu = nn.LeakyReLU(config.leaky_factor, inplace=True)
+        else:
+            self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes, track_running_stats=config.track_running_stats)
+        if config.norm_mode == 'batch':
+            self.bn2 = nn.BatchNorm2d(planes, track_running_stats=config.track_running_stats)
+        elif config.norm_mode == 'instance':
+            self.bn2 = nn.InstanceNorm2d(planes)
+
         self.downsample = downsample
         self.stride = stride
 
@@ -63,13 +74,25 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes, track_running_stats=config.track_running_stats)
+        if config.norm_mode == 'batch':
+            self.bn1 = nn.BatchNorm2d(planes, track_running_stats=config.track_running_stats)
+        elif config.norm_mode == 'instance':
+            self.bn1 = nn.InstanceNorm2d(planes, track_running_stats=config.track_running_stats)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
                                padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes, track_running_stats=config.track_running_stats)
+        if config.norm_mode == 'batch':
+            self.bn2 = nn.BatchNorm2d(planes, track_running_stats=config.track_running_stats)
+        elif config.norm_mode == 'instance':
+            self.bn2 = nn.InstanceNorm2d(planes, track_running_stats=config.track_running_stats)
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * 4, track_running_stats=config.track_running_stats)
-        self.relu = nn.ReLU(inplace=True)
+        if config.norm_mode == 'batch':
+            self.bn3 = nn.BatchNorm2d(planes * 4, track_running_stats=config.track_running_stats)
+        elif config.norm_mode == 'instance':
+            self.bn3 = nn.InstanceNorm2d(planes * 4, track_running_stats=config.track_running_stats)
+        if config.use_leaky_relu:
+            self.relu = nn.LeakyReLU(config.leaky_factor, inplace=True)
+        else:
+            self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
 
@@ -105,10 +128,15 @@ class ResNetModified(nn.Module):
 
         self.conv1 = nn.Conv2d(ip_channels, self.in_planes, kernel_size=7, stride=2, padding=3,  # changing stride from 2 to 1
                                    bias=False)  # changing no of input channels (originally 3 in resnet)
+        if config.norm_mode == 'batch':
+            self.bn1 = nn.BatchNorm2d(self.in_planes, track_running_stats=config.track_running_stats)
+        elif config.norm_mode == 'instance':
+            self.bn1 = nn.InstanceNorm2d(self.in_planes)
 
-        self.bn1 = nn.BatchNorm2d(self.in_planes, track_running_stats=config.track_running_stats)
-
-        self.relu = nn.ReLU(inplace=True)
+        if config.use_leaky_relu:
+            self.relu = nn.LeakyReLU(config.leaky_factor, inplace=True)
+        else:
+            self.relu = nn.ReLU(inplace=True)
 
         self.layer1 = self._make_layer(block, self.in_planes, layers[0])
         self.layer2 = self._make_layer(block, self.in_planes, layers[1])
@@ -121,7 +149,7 @@ class ResNetModified(nn.Module):
         if self.num_layers == 4:
             self.layer4 = self._make_layer(block, self.in_planes, layers[3])
 
-        self.num_outfeatures = self.in_planes
+        self.num_out_features = self.in_planes
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -137,11 +165,18 @@ class ResNetModified(nn.Module):
         downsample = None
         if stride != 1 or self.in_planes != planes * block.expansion:
             if not config.disable_bn_in_resnet:
-                downsample = nn.Sequential(
-                    nn.Conv2d(self.in_planes, planes * block.expansion,
-                              kernel_size=1, stride=stride, bias=False),
-                    nn.BatchNorm2d(planes * block.expansion, track_running_stats=config.track_running_stats),
-                )
+                if config.norm_mode == 'batch':
+                    downsample = nn.Sequential(
+                        nn.Conv2d(self.in_planes, planes * block.expansion,
+                                  kernel_size=1, stride=stride, bias=False),
+                        nn.BatchNorm2d(planes * block.expansion, track_running_stats=config.track_running_stats),
+                    )
+                elif config.norm_mode == 'instance':
+                    downsample = nn.Sequential(
+                        nn.Conv2d(self.in_planes, planes * block.expansion,
+                                  kernel_size=1, stride=stride, bias=False),
+                        nn.InstanceNorm2d(planes * block.expansion),
+                    )
             else:
                 downsample = nn.Sequential(
                     nn.Conv2d(self.in_planes, planes * block.expansion,

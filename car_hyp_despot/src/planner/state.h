@@ -30,11 +30,11 @@ struct AgentStruct {
     	mode = 1;//PED_DIS;
 	}
 	
-	AgentStruct(COORD a, int b, int c, float speed) {
+	AgentStruct(COORD a, int b, int c, float _speed) {
 		pos = a;
 		intention = b;
 		id = c;
-		speed = speed;
+		speed = _speed;
     	mode = 1;//PED_DIS;
 	}
 
@@ -50,6 +50,21 @@ struct AgentStruct {
     // std::vector<COORD> bb;
     double heading_dir;
     double bb_extent_x, bb_extent_y;
+
+    void text(std::ostream& out) const {
+    	out << "agent: id / pos / speed / vel / intention / dist2car / infront =  "
+			<< id << " / "
+			<< "(" << pos.x << ", " << pos.y << ") / "
+			<< speed << " / "
+			<< "(" << vel.x << ", " << vel.y << ") / "
+			<< intention << " / "
+			<< " (mode) " << mode
+			<< " (type) " << type
+			<< " (bb) " << bb_extent_x
+			<< " " << bb_extent_y
+			<< " (cross) " << cross_dir
+			<< " (heading) " << heading_dir << endl;
+    }
 };
 
 
@@ -72,6 +87,7 @@ public:
 	COORD vel;
 	int id;   //each pedestrian has a unique identity
 	double time_stamp;
+	double ros_time_stamp;
 	// double last_update;
 
 	bool reset_intention;

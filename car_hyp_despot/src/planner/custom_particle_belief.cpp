@@ -84,7 +84,7 @@ PedPomdpBelief::PedPomdpBelief(vector<State*> particles, const DSPOMDP* model):
 
 	stateTracker = SimulatorBase::stateTracker;
 	beliefTracker = new WorldBeliefTracker(SimulatorBase::worldModel, *stateTracker);
-//	logd << "[PedPomdpBelief::PedPomdpBelief] Belief tracker initialized: " << beliefTracker << endl;
+//	logv << "[PedPomdpBelief::PedPomdpBelief] Belief tracker initialized: " << beliefTracker << endl;
 
 	agentPredictionPub_ = nh.advertise<sensor_msgs::PointCloud>("ped_prediction", 1);
 	markers_pub = nh.advertise<visualization_msgs::MarkerArray>("pomdp_belief",1);
@@ -224,7 +224,7 @@ bool PedPomdpBelief::DeepUpdate(const State* cur_state){
 
 void PedPomdpBelief::ResampleParticles(const PedPomdp* model, bool do_prediction){
 
-	logd << "[PedPomdpBelief::ResampleParticles] Sample from belief tracker " 
+	logv << "[PedPomdpBelief::ResampleParticles] Sample from belief tracker " 
 		<< beliefTracker << endl;
 
 	assert(beliefTracker);
@@ -234,14 +234,14 @@ void PedPomdpBelief::ResampleParticles(const PedPomdp* model, bool do_prediction
 	vector<PomdpState> samples = beliefTracker->sample(
 		max(2000,5*Globals::config.num_scenarios), do_prediction, use_att_mode);
 
-	logd << "[PedPomdpBelief::ResampleParticles] Construct raw particles" << endl;
+	logv << "[PedPomdpBelief::ResampleParticles] Construct raw particles" << endl;
 
 	vector<State*> particles = model->ConstructParticles(samples);
 
 	if(DESPOT::Debug_mode)
 		std::srand(0);
 
-	logd << "[PedPomdpBelief::ResampleParticles] Construct final particles" << endl;
+	logv << "[PedPomdpBelief::ResampleParticles] Construct final particles" << endl;
 
 	// TODO: free old particles
 	for (int i = 0; i < particles_.size(); i++)

@@ -117,7 +117,7 @@ void ParticleBelief::Update(ACT_TYPE action, OBS_TYPE obs) {
 		}
 	}
 
-	logd << "[ParticleBelief::Update] " << updated.size()
+	logv << "[ParticleBelief::Update] " << updated.size()
 		<< " particles survived among " << particles_.size() << endl;
 	particles_ = updated;
 
@@ -231,7 +231,7 @@ vector<State*> ParticleBelief::Sample(int num, vector<State*> particles,
 
 	random_shuffle(sample.begin(), sample.end());
 
-	logd << "[ParticleBelief::Sample] Sampled " << sample.size() << " particles"
+	logv << "[ParticleBelief::Sample] Sampled " << sample.size() << " particles"
 		<< endl;
 	for (int i = 0; i < sample.size(); i++) {
 		logv << " " << i << " = " << *sample[i] << endl;
@@ -315,7 +315,7 @@ vector<State*> ParticleBelief::Resample(int num, const vector<State*>& belief,
 		sample[i]->weight = sample[i]->weight / total_weight;
 	}
 
-	logd << "[Belief::Resample] Resampled " << sample.size() << " particles"
+	logv << "[Belief::Resample] Resampled " << sample.size() << " particles"
 		<< endl;
 	for (int i = 0; i < sample.size(); i++) {
 		logv << " " << i << " = " << *sample[i] << endl;
@@ -419,7 +419,7 @@ vector<State*> ParticleBelief::Resample(int num, const Belief& belief, History h
 		sample[i]->weight = sample[i]->weight / total_weight;
 	}
 
-	logd << "[Belief::Resample] Resampled " << sample.size() << " particles"
+	logv << "[Belief::Resample] Resampled " << sample.size() << " particles"
 		<< endl;
 	for (int i = 0; i < sample.size(); i++) {
 		logv << " " << i << " = " << *sample[i] << endl;

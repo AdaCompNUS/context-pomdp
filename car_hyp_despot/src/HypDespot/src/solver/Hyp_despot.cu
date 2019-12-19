@@ -359,9 +359,9 @@ void DESPOT::CalExplorationValue(Shared_QNode* node){
 //			cout << "cal bonus 2 " << endl;
 
 
-			logd << "PUCT for qnode at level " << node->parent()->depth() << endl;
+			logv << "PUCT for qnode at level " << node->parent()->depth() << endl;
 
-			logd << "PUCT for qnode " << node << " c_o=" << Globals::config.exploration_constant <<
+			logv << "PUCT for qnode " << node << " c_o=" << Globals::config.exploration_constant <<
 					" parent visit " << static_cast<Shared_VNode*>(((QNode*)node)->parent())->visit_count_ <<
 					" visit " << node->visit_count_ <<
 					" parent num_particles " << max(((QNode*)node)->parent()->Weight()*Globals::config.num_scenarios,1.1) <<
@@ -993,10 +993,10 @@ void DESPOT::MCSimulation(VNode* vnode, int ThreadID,
 	ThreadDim.x = threadx;
 	ThreadDim.y = model->ParallelismInStep();
 
-	logd << "[DESPOT::MCSimulation] Step GPU particles "<< endl;
+	logv << "[DESPOT::MCSimulation] Step GPU particles "<< endl;
 
 
-	logd << "vnode->GetGPUparticles() = "<< vnode->GetGPUparticles() << 
+	logv << "vnode->GetGPUparticles() = "<< vnode->GetGPUparticles() << 
 		 "Dvc_r_all_a = "<< Dvc_r_all_a <<
 		 " Dvc_obs_int_all_a_and_p = "<< Dvc_obs_int_all_a_and_p<<
 		 " Dvc_stepped_particles_all_a = " << Dvc_stepped_particles_all_a <<
@@ -1005,7 +1005,7 @@ void DESPOT::MCSimulation(VNode* vnode, int ThreadID,
 		 " Dvc_particleIDs_long = " << Dvc_particleIDs_long <<
 		 endl;
 
-	logd << "vnode->GetGPUparticles() = "<< vnode->GetGPUparticles() <<
+	logv << "vnode->GetGPUparticles() = "<< vnode->GetGPUparticles() <<
 		 " Dvc_r_all_a[ThreadID] = "<< Dvc_r_all_a[ThreadID] <<
 		 " Dvc_obs_int_all_a_and_p[ThreadID] = "<< Dvc_obs_int_all_a_and_p[ThreadID]<<
 		 " Dvc_stepped_particles_all_a[ThreadID] = " << Dvc_stepped_particles_all_a[ThreadID] <<
@@ -1329,7 +1329,7 @@ void DESPOT::GPU_Expand_Action(VNode* vnode, ScenarioLowerBound* lb,
 		for (std::map<OBS_TYPE, std::vector<State*> >::iterator it =
 				partitions.begin(); it != partitions.end(); it++) {
 			OBS_TYPE obs = it->first;
-			logd << " Creating node for obs " << obs << endl;
+			logv << " Creating node for obs " << obs << endl;
 
 			VNode* child_vnode;
 
@@ -1352,7 +1352,7 @@ void DESPOT::GPU_Expand_Action(VNode* vnode, ScenarioLowerBound* lb,
 			/*Create GPU particles for the new v-node*/
 			child_vnode->weight_=partitions[obs].size()/((float)NumScenarios);
 
-			logd << " New node created!" << endl;
+			logv << " New node created!" << endl;
 			children[obs] = child_vnode;
 
 			/*Calculate initial bounds*/
@@ -1380,7 +1380,7 @@ void DESPOT::GPU_Expand_Action(VNode* vnode, ScenarioLowerBound* lb,
 					ValuedAction(
 							Hst_lb_all_a_p[ThreadID][first_particle].action,
 							vnode_lower_bound));
-			logd << " New node's bounds: (" << child_vnode->lower_bound()
+			logv << " New node's bounds: (" << child_vnode->lower_bound()
 					<< ", " << child_vnode->upper_bound() << ")" << endl;
 
 			if (child_vnode->upper_bound() < child_vnode->lower_bound()
@@ -1470,7 +1470,7 @@ void DESPOT::ReadBackData(int ThreadID) {
 						MC_DataSize, cudaMemcpyDeviceToHost,
 						Globals::GetThreadCUDAStream(ThreadID)));
 
-		logd << "Hst_MC_Data[ThreadID]" << Hst_MC_Data[ThreadID] <<"Dvc_MC_Data[ThreadID]" << Dvc_MC_Data[ThreadID] << endl;
+		logv << "Hst_MC_Data[ThreadID]" << Hst_MC_Data[ThreadID] <<"Dvc_MC_Data[ThreadID]" << Dvc_MC_Data[ThreadID] << endl;
 		HANDLE_ERROR(cudaStreamSynchronize(Globals::GetThreadCUDAStream(ThreadID)));
 	} else {
 		HANDLE_ERROR(

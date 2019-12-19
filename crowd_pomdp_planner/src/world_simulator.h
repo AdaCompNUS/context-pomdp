@@ -9,33 +9,21 @@
 #include <sensor_msgs/LaserScan.h>
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/PointCloud.h>
-//#include <sensing_on_road/pedestrian_laser_batch.h>
-//#include <dataAssoc_experimental/PedDataAssoc_vector.h>
-//#include <dataAssoc_experimental/PedDataAssoc.h>
-
-//#include <msg_builder/peds_believes.h>
-
 
 #include <rosgraph_msgs/Clock.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/PoseStamped.h>
-//#include "executer.h"
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/PoseArray.h>
-//#include "pedestrian_changelane.h"
-//#include "mcts.h"
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 #include "param.h"
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
-//#include <pomdp_path_planner/GetPomdpPath.h>
-//#include <pomdp_path_planner/PomdpPath.h>
 #include <nav_msgs/GetPlan.h>
-
 
 
 #include <msg_builder/ped_local_frame.h>
@@ -45,6 +33,7 @@
 #include <msg_builder/peds_info.h>
 
 #include "std_msgs/Float32.h"
+#include <std_msgs/Bool.h>
 
 #include "simulator_base.h"
 
@@ -57,7 +46,8 @@ class WorldSimulator: public SimulatorBase, public World {
 
 
 public:
-	WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model, unsigned seed, bool pathplan_ahead, std::string obstacle_file_name, COORD car_goal);
+	WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model, unsigned seed, bool pathplan_ahead,
+			std::string obstacle_file_name, std::string map_location, int carla_port, COORD car_goal);
 	~WorldSimulator();
 
 public:
@@ -66,6 +56,9 @@ public:
 	 * Establish connection to simulator or system
 	 */
 	bool Connect();
+
+	// for carla
+	void Connect_Carla();
 
 	/**
 	 * [Essential]
@@ -99,6 +92,8 @@ public:
     void speedCallback(nav_msgs::Odometry odo);
     void moveSpeedCallback(geometry_msgs::Twist speed);
     void cmdSteerCallback(const std_msgs::Float32::ConstPtr steer);
+    void lane_change_Callback(const std_msgs::Int32::ConstPtr data);
+    void ego_car_dead_callback(std_msgs::Bool::ConstPtr data);
 	void publishPath();
 
 
@@ -138,7 +133,8 @@ public:
 	ros::Publisher pa_pub;
 	ros::Publisher cmdPub_, actionPub_, actionPubPlot_;
 
-    ros::Subscriber speedSub_, agentSub_, agentpathSub_, mapSub_, scanSub_, move_base_speed_, steerSub_;
+    ros::Subscriber speedSub_, laneSub_, obsSub_, agentSub_, agentpathSub_,
+    	mapSub_, scanSub_, move_base_speed_, steerSub_, lane_change_Sub_;
 
     ros::Timer timer_speed;
     ros::Timer timer_cmd_update;
@@ -146,6 +142,10 @@ public:
     tf::TransformListener tf_;
 
 	PomdpStateWorld current_state;
+
+private:
+	std::string map_location_;
+	int carla_port_;
 
 public:
 
@@ -164,5 +164,9 @@ public:
 	void Debug_action();
 
 	void setCarGoal(COORD);
+
+public:
+	void updateLanes(COORD car_pos);
+	void updateObs(COORD car_pos);
 };
 

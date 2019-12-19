@@ -16,7 +16,7 @@ using namespace chrono;
 // Functions for hashing data structs
 namespace std {
 	template<class T>
-	inline void hash_combine(size_t& seed, const T& v) {
+	inline void hypdespot_hash_combine(size_t& seed, const T& v) {
 		std::hash<T> hasher;
 		seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
@@ -25,8 +25,8 @@ namespace std {
 	struct hash<pair<S, T>> {
 		inline size_t operator()(const pair<S, T>& v) const {
 			size_t seed = 0;
-			::hash_combine(seed, v.first);
-			::hash_combine(seed, v.second);
+			::hypdespot_hash_combine(seed, v.first);
+			::hypdespot_hash_combine(seed, v.second);
 			return seed;
 		}
 	};
@@ -36,7 +36,7 @@ namespace std {
 		inline size_t operator()(const vector<T>& v) const {
 			size_t seed = 0;
 			for (const T& ele : v) {
-				::hash_combine(seed, ele);
+				::hypdespot_hash_combine(seed, ele);
 			}
 			return seed;
 		}

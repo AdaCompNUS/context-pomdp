@@ -1,250 +1,39 @@
 #
-# LeTS-Drive with SUMMIT simulator integration
+# Crowd driving with collision-avoidance controllers, POMDP planners, and LeTS-Drive in the SUMMIT simulator
 
-Simulation and driving in SUMMIT: [![Watch the driving video](https://img.youtube.com/vi/bQjcd-NBdIg/0.jpg)](https://youtu.be/wrR1VQUTUEE)
+Simulation and driving in SUMMIT (click to see video): 
+
+[![Watch the driving video](https://img.youtube.com/vi/bQjcd-NBdIg/0.jpg)](https://youtu.be/wrR1VQUTUEE "Watch the driving video")
 
 ## Overview
-This repository contains all algorithmic elements for reproducing LeTS-Drive [(paper)](https://arxiv.org/abs/1905.12197) in heterogenous traffic simulated by the SUMMIT simulator [(paper)](https://www.dropbox.com/s/fs0e9j4o0r80e82/SUMMIT.pdf?dl=0).
-* Even though this repository implements the full LeTS-Drive pipeline, you can easily down-grade it to perform stand-alone imitation learning or POMDP planning.
-* The current repository is in progress of migrating from the Unity pedestrian simulator to SUMMIT. Some modules like the neural networks learner package is still for the old Unity simulator. For now, one can use the [existing pedestrain datasets](https://www.dropbox.com/s/bl093sneceu40fe/ped_datasets.zip?dl=0) to test imitation learning.
+This repository contains all algorithmic elements for reproducing **LeTS-Drive** [(paper)](https://arxiv.org/abs/1905.12197) in heterogenous traffic simulated by the **SUMMIT simulator** [(paper)](https://www.dropbox.com/s/fs0e9j4o0r80e82/SUMMIT.pdf?dl=0).
 
-Here is the list of ROS packages marked with the simulator they support:
-* (SUMMIT) __summit_connector__: A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information. summit_connector publishes the following ROS topics to driving algorithms: 
-    * /odom: Odometry of the exo-vehicle;
-    * /ego_state: State of the exo_vehicle;
-    * /plan: Reference path of the ego-vehicle;
-    * /agent_array: State and intended paths of exo-agents.
-* (SUMMIT) __car_hyp_despot__: The core POMDP planner performing guided tree search using HyP-DESPOT and policy/value networks. It contains the following source folders:
-    * HypDespot: The HyP-DESPOT POMDP solver.
-    * planner: The POMDP model for the driving problem.
-    * Porca: The PORCA motion model for predicting agent's motion.
-* (SUMMIT) __crowd_pomdp_planner__: A wrapping over the POMDP planner. It receives information from the simulator and run belief tracking and POMDP planning. Key files in the package include:
-    * PedPomdpNode.cpp: A ROS node host which also receives ROS parameters.
-    * controller.cpp: A class that launches the planning loop.
-    * world_simulator.cpp: A class that maintains world state.
-    * VelPublisher.cpp: A velocity controller that converts accelaration output by POMDP planning to command velocities. It publishes the following ROS topics:
-        * \cmd_vel: command velocity for the ego-vehicle converted from accelaration and the current velocity.
-        * \cmd_accel: command accelaration given by the POMDP planner if one wish to directly apply it.
-* (Unity) __il_controller__: The neural network learner for imitation learning. The key files include:
-    * data_processing.sh: Script for executing the data_processing pipeline given a folder path of recorded rosbags;
-    * policy_value_network.py: The neural network architectures for the policy and the value networks.
-    * train.py: Script for training the neural networks using the processed dataset in hdf5 (.h5) format;
-    * test.py: Script for using the learned neural network to directly drive a car in the simulator.
+### The SUMMIT Simulator
+Existing driving simulators do not capture the full complexity of real-world, unregulated, densely-crowded urban environments, such as complex road structures and traffic behaviors, and are thus insufficient for testing or training robust driving algorithms. SUMMIT aim to fill this gap.  It is a high-fidelity simulator that facilitates the development and testing of crowd-driving algorithm extending CARLA to support the following additional features:
 
-The repository also contains two utility folders:
-* __setup__: Bash scripts for setting up the environment.
-* __scripts__: Scripts for performing driving in simulators. Main files include:
-   * run_data_collection.py: launch the simulator and driving algorithms for data collection or evaluation purposes. One can use the following modes to be set via the `--baseline` argument:
-      * imitation (Unity): drive a car directly using a trained policy network.
-      * pomdp (?): drive a car using Decoupled-Action POMDP and Hybrid A*.
-      * joint_pomdp (SUMMIT): drive a car using Joint-Action POMDP.
-      * lets-drive (?): drive a car using guided belief tree search.
-      
-      This script will automatically compile the entire project.
-   * experiment_summit.sh: Script for executing repetitive experiments by calling run_data_collection.py.
+1. _Real-World Maps:_ generates real-world maps from online open sources (e.g. OpenStreetMap) to provide a virtually unlimited source of complex environments. 
 
-## 1. Setup
-### 1.0 (optional) Using the environment readily available in Docker
-If you don't want to setup the environment in your local machine, you can download and use this docker image with the full environment setup:
-```
-docker pull cppmayo/melodic_cuda10_1_cudnn7_libtorch_opencv4_ws
-```
+2. _Unregulated Behaviors:_ agents may demonstrate variable behavioral types (e.g. demonstrating aggressive or distracted driving) and violate simple rule-based traffic assumptions (e.g. stopping at a stop sign). 
 
-A docker container can be launched using [launch_docker.py](./scripts/launch_docker.py).
-This script will mount two folders to the docker container:
-* `~/catkin_ws`: for accessing your catkin workspace inside the docker container.
-* `~/driving_data`: for outputing driving data (txt records and ros bag files) to the external system. (This directory should exist before mounting).
+3. _Dense Traffic:_  controllable parameter for the density of heterogenous agents such as pedestrians, buses, bicycles, and motorcycles.
 
-You can then [compile the catkin_ws](#fetchrepo) inside the docker container.
+4. _Realistic Visuals and Sensors:_ extending off CARLA there is support for a rich set of sensors such as cameras, Lidar, depth cameras, semantic segmentation etc. 
 
-Note that here you need to set `launch_summit = False` in [run_data_collection.py](./scripts/run_data_collection.py), and manually launch the summit simulator outside the docker container. 
-I have provided a [server_pipline.py](./scripts/server_pipline.py) for this purpose. Just run:
-```
-cd ~/catkin_ws/src/scripts
-python server_pipline.py --port <summit_port, e.g. 2000> --sport <summit_stream_port, e.g. 2001>
-```
-It will run the simulator and launch the docker container. Now you can run experiments inside the container:
-```
-cd src/scripts
-bash experiment_summit.sh <gpu_id> <start_run> <end_run_inclusive> <summit_port>
-```
-The recorded data will appear in `~/driving_data` on your machine.
+### Architecture and Components
 
-The rest of processures are for setting up the envirnoment in your PC or server.
+The repository structure has the following conceptual architecture:
 
-### 1.1 Pre-requisites
-1. Install [CUDA 10.0](https://developer.nvidia.com/cuda-10.0-download-archive) (Note: you need to follow the [official guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) for a successful installation.)
-2. Install [CUDNN 7](https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html)
+<a href="https://docs.google.com/drawings/d/e/2PACX-1vR__3TWU8FzVXUJf2J8QxnrqaTkhlEjEd9OMxWbRAwE37swNKLNegU3CaTXAZFK7Uar2qOdDDdnYqv_/pub?w=900&h=360"><img src="https://docs.google.com/drawings/d/e/2PACX-1vR__3TWU8FzVXUJf2J8QxnrqaTkhlEjEd9OMxWbRAwE37swNKLNegU3CaTXAZFK7Uar2qOdDDdnYqv_/pub?w=900&h=360" style="width: 500px; max-width: 100%; height: auto" title="SUMMIT Architecture" /></a>
 
-### 1.2 Setup Dependencies
-Download all bash scripts in the [setup](./setup) folder (note: not the full repo). Then, go through the following steps to set up the dependencies:
-#### 1.2.0 Check your apt-get
-Make sure that your apt-get functions properly. Run:
-```
-sudo apt-get update
-```
-If you see an error like "The following signatures couldn't be verified because the public key is not available: NO_PUBKEY 6ED91CA3AC1160CD". It is the Nvidia-docker2 apt key expired. You will need to run the following line to reactivate the key:
-```
-curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | \
-  sudo apt-key add -
-```
-#### 1.2.1 Install ros-melodic
-To install ROS Melodic, run
-```
-bash install_ros_melodic.sh
-```
-Then add the following line to the end of `~/.bashrc`:
-```
-source /opt/ros/melodic/setup.bash
-```
-Logout and login again into your account. Then type `roscd` to validate the installation. The command should navigate you to `/opt/ros/melodic/`.
-#### 1.2.2 Build and install the lastest libtorch (the CPP frontend of Pytorch)
-Run
-```
-bash install_torch.sh
-```
-The script might prompt for sudo privilege.
+To briefly explain the core sub-systems: 
 
-Run 
-```ls -alh ~/libtorch```
-to validate the installation. You are expected to see the following directories:
-```include  lib  share```
+* **Summit Server** SUMMIT server for rendering environment.
 
-An additional step here is to validate the CMake installation:
-```
-cmake --version
-```
-The output version should be `3.14.1`. If not, logout and login again to your account. 
+* [**Summit Connector**](summit_connector/) A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information.
 
-If the output version is still not correct. Redo the CMake installation lines in `install_torch.sh`, then re-login to your account.
-#### 1.2.3 Build and install OpenCV 4.1.0
-Run
-```
-bash install_opencv4.sh 
-```
-The script might prompt for sudo privilege.
-#### 1.2.4 Prepare the catkin workspace
-Run
-```
-cd && mkdir -p catkin_ws/src
-cd catkin_ws
-catkin config --merge-devel
-catkin build
-```
-#### 1.2.5 Fetch the full repository
-Run
-```
-cd ~/catkin_ws/src
-git clone https://github.com/AdaCompNUS/LeTS-Drive-SUMMIT.git
-mv LeTS-Drive-SUMMIT/* .
-mv LeTS-Drive-SUMMIT/.git .
-rm -r LeTS-Drive-SUMMIT
-```
-Now all ROS packages should be in `~/catkin_ws/src`.
+* [**Crowd Pomdp Controller**](crowd_pomdp_planner) A wrapping over the POMDP planner. It receives information from the simulator and run belief tracking and POMDP planning.
 
-#### <a name="fetchrepo"></a>1.2.6 Compile the repository
-Compile packages in the workspace:
-```
-cd ~/catkin_ws
-catkin config --merge-devel
-catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
-```
-Then, add the following line to the end of `~/.bashrc`:
-```
-source ~/catkin_ws/devel/setup.bash
-```
-#### 1.2.7 Install dependent python packages
-(Optional) Set up a python virtualenv for an isolated setup of python packages which do not interfere with global python packages.
-```
-cd
-virtualenv --system-site-packages lets_drive 
-source ~/lets_drive/bin/activate
-```
-You can append the source ~/lets_drive... line to ~/.bashrc. Also, to deactivate the current virtual environment, just type.
-```
-deactivate
-```
-(Compulsory) To install python dependencies, run
-```
-roscd il_controller/src && pip install -r requirements.txt
-```
-### 1.3 Setup the SUMMIT simulator
-Download the [SUMMIT simultator release package](https://www.dropbox.com/s/3cnjktij8vtfn56/summit.zip?dl=0), and unzip it to `~/summit`. 
-Or you can download the [source code](https://github.com/AdaCompNUS/carla.git) from github and compile from source.
-For now the code explicitly uses this `~/summit` to find the simulator. So stick to the path for SUMMIT installation.
+* [**IL Controller**](il_controller) The neural network learner for imitation learning (dashed lines denote that once trained these networks can be used to control the driver).
 
-## 2. <a name="runcode"></a>Run the System
-### 2.1 Launch the SUMMIT Simulator
-```
-export SDL_VIDEODRIVER=offscreen
-LinuxNoEditor/CarlaUE4.sh -carla-rpc-port=2000 -carla-streaming-port=2001
-```
-You can change 2000 and 2001 to any unused port you like.
-
-Note: this is only required when launching the simulator and the planner in different environments, like local/remote, local/docker. For this, you also need to block the cooresponding launching code in run_data_collection.py:
-```
-launch_summit = True # change to False to avoid automatic launching of SUMMIT before the planner.
-```
-### 2.2 Launch the Planner
-```
-cd ~/catkin_ws/src/scripts
-./experiment_summit.sh [gpu_id] [start_round] [end_round(inclusive)] [carla_portal, e.g. 2000 as set before]
-```
-Step 2.1 is not required if `launch_summit = True` in `run_data_collection.py`. In this case, `experiment_summit.sh` will launch the simulator before running the planner.
-
-experiment_summit.sh does not record bags by default. To enable rosbag recording, change the following variable to 1 in `experiment_summit.sh`:
-```
-record_bags=0
-```
-## 3. Process ROS Bags to HDF5 Datasets
-Convert bags into h5 files using multiple threads:
-```
-roscd il_controller && cd src
-python3 Data_processing/parallel_parse_pool.py --bagspath [rosbag/path/] --peds_goal_path ../../Maps/
-```
-or using a single thread:
-```
-python3 Data_processing/bag_to_hdf5.py --bagspath [rosbag/path/] --peds_goal_path ../../Maps/
-```
-combine bag_h5 files into training, validation, and test sets:
-```
-python3 Data_processing/combine.py --bagspath [rosbag/path/]
-```
-## 4. IL Training
-Start training and open tensorboard port
-```
-python3 train.py --batch_size 128 --lr 0.0001 --train train.h5 --val val.h5
-tensorboard --logdir runs --port=6001
-```
-If your system cannot find tensorboard, use `pip install tensorboard` to install it.
-
-If the port is unfortunately taken by some other process, you can choose another port or free up the port using
-```
-netstat -anp|grep 6001
-```
-to check the PID of the process using the port, and kill the process:
-```
-kill -9 <the PID>
-```
-[Optional] If you are running a learning section on the server, to check the learning curve, run the following line on your local machine to bind the log port:
-```
-ssh -4 -N -f -L localhost:6001:localhost:6001 [remote address, e.g. panpan@unicorn4.d2.comp.nus.edu.sg]
-```
-Then, on your local browser, visit http://localhost:6001/
-
-**Main Arguments**:
-- `train`: The path to the train dataset.
-- `val`: The path to the validation dataset.
-- `lr`: Learning rate.
-- `batch_size`: Batch size. 
-- `epochs`: Number of epochs to train. Default: 50.
-- `modelfile`: Name of the model file to be saved. Time flag will be appended for the actual save name. To specify the exact name, set `exactname` to be True.
-- `resume`: The model file you want to load and retrain.
-- `k`: Number of Value Iterations in GPPN. Default: 5.
-- `f`: GPPN Conv kernel size. Default: 7
-- `l_h`: Number of hidden layers in GPPN. Default: 2, as used in LeTS-Drive.
-- `nres`: Number of resnet layers.
-- `w`: Width of the resnet (image size).
-- `do_p`: Probability of dropping out features output by the resnet.
-- `ssm`: Sigma smoothing factor for Guassian Mixture heads. If set, the learned variance will be at least the ssm value. Default: 0.03.
-- `v_scale`: Scaling factor of the value loss when added to the composite loss.
+## Getting Started
+**Information on the Installation Steps or Technical User Guide of SUMMIT can be located on our [wiki](https://github.com/AdaCompNUS/LeTS-Drive-SUMMIT/wiki).**

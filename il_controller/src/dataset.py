@@ -4,7 +4,7 @@ import torch
 import torch.utils.data as data
 import numpy as np
 import deepdish as dd
-import ipdb as pdb
+import pdb
 from transforms import *
 from Data_processing import global_params
 import random
@@ -17,21 +17,36 @@ import cycler
 config = global_params.config
 
 
+def reset_global_params_for_pomdp_dataset(cmd_args):
+    config.fit_lane = False
+    config.fit_action = False
+    config.fit_all = False
+    config.fit_val = False
+    config.fit_vel = True
+    # config.fit_acc = True
+    config.fit_ang = True
+    config.fit_lane = True
+    config.use_vel_head = True
+    config.num_vel_bins = 8
+    print("======== resetting global parameters for the pomdp dataset =========")
+
+
 # child class of pytorch data.Dataset
 def set_encoders():
     if config.head_mode == "mdn":
-        encode_steer = MdnSteerEncoder()  # conversion from id to normalized steering
-        encode_acc = MdnAccEncoder()  # conversion from id to normalized acceleration
-        encode_vel = MdnVelEncoder()  # conversion from id to normalized command velocity
+        encode_steer_from_degree = MdnSteerEncoderDegree2Normalized()  # conversion from id to normalized steering
+        encode_acc_from_id = MdnAccEncoderID2Normalized()  # conversion from id to normalized acceleration
+        encode_vel_from_raw = MdnVelEncoderRaw2Normalized()  # conversion from id to normalized command velocity
     elif config.head_mode == "hybrid":
-        encode_steer = SteerEncoder()  # one-hot vector of steering
-        encode_acc = MdnAccEncoder()  # conversion from id to normalized acceleration
-        encode_vel = MdnVelEncoder()  # conversion from id to normalized command velocity
+        encode_steer_from_degree = SteerEncoderDegreeToOnehot()  # one-hot vector of steering
+        encode_acc_from_id = MdnAccEncoderID2Normalized()  # conversion from id to normalized acceleration
+        encode_vel_from_raw = MdnVelEncoderRaw2Normalized()  # conversion from id to normalized command velocity
     else:
-        encode_steer = SteerEncoder()  # one-hot vector of steering
-        encode_acc = AccEncoder()  # one-hot vector of acceleration
-        encode_vel = VelEncoder()  # one-hot vector of command velocity
-    return encode_steer, encode_acc, encode_vel
+        encode_steer_from_degree = SteerEncoderDegreeToOnehot()  # one-hot vector of steering
+        encode_acc_from_id = AccEncoderIDToOnehot()  # one-hot vector of acceleration
+        encode_vel_from_raw = VelEncoderRaw2Onehot()  # one-hot vector of command velocity
+    encode_lane_from_int = LaneEncoderIntToOnehot()
+    return encode_steer_from_degree, encode_acc_from_id, encode_vel_from_raw, encode_lane_from_int
 
 
 class IdxLooper:
@@ -97,7 +112,6 @@ class IdxLooper:
         # TODO: sample from active list only
         return self.active_indices[self.iter_pos]
 
-
     def get_count(self):
         return sum(self.visit_count)
 
@@ -149,7 +163,7 @@ class IdxIterator:
         self.iter_pos = -1
 
 
-class Ped_data(data.Dataset):
+class DrivingData(data.Dataset):
     def __init__(self, filename=None, flag=None):
         self.data = None
         self.data_len = None
@@ -162,18 +176,20 @@ class Ped_data(data.Dataset):
         self.shuffled_traj_indices = {}  # used for train set, key: folder, value: [No. of traj, num of traj]
         self.shuffled_data_indices = {}
         self.trans_idx = {}
-        self.transform_list = [Identity(), Rot(1), Rot(2), Rot(3), Flipud(), FlipRot(1), FlipRot(2), FlipRot(3)]
+        # self.transform_list = [Identity(), Rot(1), Rot(2), Rot(3), Flipud(), FlipRot(1), FlipRot(2), FlipRot(3)]
+        self.transform_list = [Identity(), Flipud()]
 
         if self.flag == 'Training' and config.sample_mode == 'hierarchical':
             self.load_train_dataset_from_h5(filename, flag)
         else:
             self.load_dataset_from_h5(filename, flag)
 
-        self.encode_value = ValueEncoder()  # rescale value
+        self.encode_value = ValueEncoderRaw2Normalized()  # rescale value
 
         self.encode_input = InputEncoder()  # normalize input images
 
-        self.encode_steer, self.encode_acc, self.encode_vel = set_encoders()
+        self.encode_steer_from_degree, self.encode_acc_from_id, self.encode_vel_from_raw, self.encode_lane_from_int = \
+            set_encoders()
 
     def load_dataset_from_h5(self, file, flag):
         try:
@@ -262,32 +278,43 @@ class Ped_data(data.Dataset):
     def get_datalen(self, scene):
         return self.accumulated_data_length[str(scene)][-1]
 
-    def get_augmented_data(self, transform_idx, input_data, steer):
-        return self.transform_list[transform_idx](input_data, steer)
+    def get_augmented_data(self, transform_idx, input_data, steer, lane):
+        return self.transform_list[transform_idx](input_data, steer, lane)
 
     def get_item(self, global_index):
+
         data_index = global_index % self.data_len
         transform_idx = global_index // self.data_len
         if not config.augment_data:  # no data augmentation
             transform_idx = 0  # Identity transformation
         # take the steering in radians, convert to degrees
-        steer = np.degrees(self.data['ang_labels'][data_index])
+        steer_normalized = self.data['ang_normalized_labels'][data_index]
+        steer_degree = ang_transform_normalized_to_degree(steer_normalized)
         input_data = self.data['data'][data_index]
 
+        lane = self.data['lane_labels'][data_index]
         # validate_map(input_data, "DataSet __getitem__")
-        input_data, steer = self.get_augmented_data(transform_idx, input_data, steer)
+        input_data, steer_degree, lane = self.get_augmented_data(transform_idx, input_data, steer_degree, lane)
         input_data = self.encode_input(input_data)
 
-        steer_label = self.encode_steer(steer)  # this returns only the index of the non zero bin
-        acc_label, _ = self.encode_acc(self.data['acc_labels'][data_index])
+        semantic_data = self.data['semantic_data'][data_index]
+
+        steer_label = self.encode_steer_from_degree(steer_degree)  # this returns only the index of the non zero bin
+        # print("raw data {}, degree {}, bin_idx {}".format(steer_normalized[0], steer_degree[0], steer_label), flush=True)
+        acc_id_label = self.encode_acc_from_id(self.data['acc_id_labels'][data_index])
         vel = 0.0
         if config.fit_vel or config.fit_action or config.fit_all:
             vel = self.data['vel_labels'][data_index]
-        vel_label, _ = self.encode_vel(vel)
+        vel_label = self.encode_vel_from_raw(vel)
+
+        lane_label = self.encode_lane_from_int(lane)
+
         v_label = self.encode_value(self.data['v_labels'][data_index])
 
-        # print("value label", v_label)
-        return input_data, v_label, acc_label, steer_label, vel_label
+        # print_long('input max={}'.format(np.max(input_data)))
+        # print_long('steer_label shape={}'.format(steer_label.shape))
+
+        return input_data, semantic_data, v_label, acc_id_label, steer_label, vel_label, lane_label
 
     def get_train_item(self, global_index):
 
@@ -302,12 +329,7 @@ class Ped_data(data.Dataset):
         traj_index = next(iter(self.shuffled_traj_indices[scene_str]))
 
         data_index_in_traj = next(iter(self.shuffled_data_indices[scene_str][traj_index]))
-  
-        # data_index_in_traj = self.shuffled_data_indices[scene_str][traj_index].__next__()
-        # if data_index_in_traj is None:
-        #     raise Exception("Data exaulsted !!!!!")
-        # print(str(scene_index) + ' ' + str(traj_index) + ' ' + str(data_index_in_traj))
-        
+
         transform_idx = 0  # default for no augmentation
         if config.augment_data:  # data augmentation
             transform_idx = data_index_in_traj % len(self.transform_list)
@@ -315,26 +337,31 @@ class Ped_data(data.Dataset):
 
         data_index_in_dataset = self.get_start_data_pos(scene_index, traj_index) + data_index_in_traj
 
-        steer = np.degrees(self.data[scene_index]['ang_labels'][data_index_in_dataset])
+        steer_normalized = self.data[scene_index]['ang_normalized_labels'][data_index_in_dataset]
+        steer_degree = ang_transform_normalized_to_degree(steer_normalized)
+
         input_data = self.data[scene_index]['data'][data_index_in_dataset]
 
-        input_data, steer = self.get_augmented_data(transform_idx, input_data, steer)
+        lane = self.data[scene_index]['lane_labels'][data_index_in_dataset]
+        input_data, steer_degree, lane = self.get_augmented_data(transform_idx, input_data, steer_degree, lane)
 
         input_data = self.encode_input(input_data)
 
-        steer_label = self.encode_steer(steer)  # this returns only the index of the non zero bin
+        steer_label = self.encode_steer_from_degree(steer_degree)  # this returns only the index of the non zero bin
 
-        acc_label, _ = self.encode_acc(self.data[scene_index]['acc_labels'][data_index_in_dataset])
+        acc_label = self.encode_acc_from_id(self.data[scene_index]['acc_id_labels'][data_index_in_dataset])
 
         vel = 0.0
         if config.fit_vel or config.fit_action or config.fit_all:
             vel = self.data[scene_index]['vel_labels'][data_index_in_dataset]
 
-        vel_label, _ = self.encode_vel(vel)
+        vel_label = self.encode_vel_from_raw(vel)
+
+        lane_label = self.encode_lane_from_int(lane)
 
         v_label = self.encode_value(self.data[scene_index]['v_labels'][data_index_in_dataset])
 
-        return input_data, v_label, acc_label, steer_label, vel_label
+        return input_data, v_label, acc_label, steer_label, vel_label, lane_label
 
     def reset_data_indices_recursive(self):
         print('\nTraining Data Set Exaulsted, Reset Now ...\n')

@@ -7,7 +7,7 @@ import torch.nn as nn
 import math
 import numpy as np
 import sys
-from PyTorch_to_C import global_params
+from Data_processing import global_params
 global_config = global_params.config
 
 
@@ -55,8 +55,10 @@ class MDN(torch.jit.ScriptModule):
             nn.Linear(self.in_features, self.num_gaussians),
             nn.Softmax(dim = 1)),
             torch.randn(1, self.in_features))
-        self.sigma = torch.jit.trace(nn.Linear(self.in_features, 
-            self.out_features*self.num_gaussians),
+        self.sigma = torch.jit.trace(
+            nn.Sequential(nn.Linear(in_features,
+                                    out_features*num_gaussians),
+                                    nn.ELU(True)),
             torch.randn(1, self.in_features))
         self.mu = torch.jit.trace(nn.Linear(self.in_features, 
             self.out_features*self.num_gaussians),
@@ -67,9 +69,11 @@ class MDN(torch.jit.ScriptModule):
         pi = self.pi(minibatch)
         sigma = self.sigma(minibatch)
         mu = self.mu(minibatch)
-       
-        sigma = torch.exp(sigma)
-        sigma = torch.add(sigma, self.sigma_smoothing)
+
+        # scalar = sigma.zeros(sigma.shape).fill_(1.0 + self.sigma_smoothing)
+        sigma = torch.add(sigma, self.sigma_smoothing + 1.0)
+
+        # sigma = sigma + scalar
 
         sigma = sigma.view(-1, self.num_gaussians, self.out_features)
 

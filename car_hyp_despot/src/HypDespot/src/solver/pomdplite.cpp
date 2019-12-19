@@ -280,9 +280,9 @@ double POMDPLite::Simulate(Ext_VNode* vnode, RandomStreams& streams, SolverPrior
 	ACT_TYPE action = OptimalAction(vnode, true).action;
 	Ext_QNode* qnode = static_cast<Ext_QNode*>(vnode->Child(action));
 	map<OBS_TYPE, VNode*>& vnodes = qnode->children();
-	//logd << *vnode->observable_state() << endl;
-	//logd << "depth = " << vnode->depth() << "; action = " << action << "; " << endl;
-	logd << "[Traversal @Simulate] Traverse to q-node with action " << qnode->edge()
+	//logv << *vnode->observable_state() << endl;
+	//logv << "depth = " << vnode->depth() << "; action = " << action << "; " << endl;
+	logv << "[Traversal @Simulate] Traverse to q-node with action " << qnode->edge()
 			<<" at depth "<< vnode->depth()+1<< endl;
 
 
@@ -307,7 +307,7 @@ double POMDPLite::Simulate(Ext_VNode* vnode, RandomStreams& streams, SolverPrior
 		/*Normal q-node: sample a child belief node using mean transition information*/
 		next=qnode->SampleMeanTrans();
 		assert(next);
-		logd << "[Traversal @Simulate] Traverse to v-node with obs " << next->edge()
+		logv << "[Traversal @Simulate] Traverse to v-node with obs " << next->edge()
 			<<" at depth "<< vnode->depth()+1<< endl;
 
 		if (statistics != NULL) {
@@ -343,7 +343,7 @@ double POMDPLite::Simulate(Ext_VNode* vnode, RandomStreams& streams, SolverPrior
 
 		start=clock();
 		/*Leaf q-node: expand the q-node and create children belief nodes*/
-		logd << "[Expand @Simulate] Initializing q-node for action " << action <<" at depth "<< vnode->depth()+1 << endl;
+		logv << "[Expand @Simulate] Initializing q-node for action " << action <<" at depth "<< vnode->depth()+1 << endl;
 
 		map<OBS_TYPE, vector<State*> > partitions;
 		map<OBS_TYPE, vector<int> > partition_scenarios;
@@ -367,7 +367,7 @@ double POMDPLite::Simulate(Ext_VNode* vnode, RandomStreams& streams, SolverPrior
 				bool fast_step=model->InitMeanStep(*current_state/*, action*/);
 				assert(fast_step);
 				vnode->faststep_ready(fast_step);
-				logd << "   [Expand @Simulate] Initialized v-node fast-step info! "<< endl;
+				logv << "   [Expand @Simulate] Initialized v-node fast-step info! "<< endl;
 			}
 
 			/*Sample next state for the scenario*/
@@ -411,13 +411,13 @@ double POMDPLite::Simulate(Ext_VNode* vnode, RandomStreams& streams, SolverPrior
 			prior->Add_in_search(action, state);
 			streams.Advance();
 
-			logd << "   [Expand @Simulate] Creating v-node" <<" at depth "<< vnode->depth()+1<< endl;
+			logv << "   [Expand @Simulate] Creating v-node" <<" at depth "<< vnode->depth()+1<< endl;
 			Ext_VNode* child_vnode = CreateVNode(vnode->depth() + 1,vnode->belief()/*doesn't update belief*/,
 					state, streams, prior, model, vnode->scenarios(),
 					partition_scenarios[obs],qnode, obs);
 			//Doesn't include roll-out in simulation count
 			//child_vnode->count(partitions[obs].size());
-			logd << "   [Expand @Simulate] New v-node created!" << endl;
+			logv << "   [Expand @Simulate] New v-node created!" << endl;
 
 			streams.Back();
 			prior->PopLast(true);
@@ -444,8 +444,8 @@ double POMDPLite::Simulate(Ext_VNode* vnode, RandomStreams& streams, SolverPrior
 		qnode->Add(AccumReward);
 		//vnode->Add(AccumReward);
 
-		logd << "   q-node initialized:";
-		logd << " (reward, value, count)=" <<
+		logv << "   q-node initialized:";
+		logv << " (reward, value, count)=" <<
 				"("<<qnode->internal_reward()<<","<<qnode->value()<<","<<qnode->count()<<")" << endl;
 
 		/*q-node is ready for future traversal*/
@@ -456,19 +456,19 @@ double POMDPLite::Simulate(Ext_VNode* vnode, RandomStreams& streams, SolverPrior
 
 	if(next!=NULL) {// internal node
 		qnode->Add(AccumReward);
-		logd << "[Update @Simulate] Update q-node with action " << qnode->edge()
+		logv << "[Update @Simulate] Update q-node with action " << qnode->edge()
 			<<" at depth "<< vnode->depth()+1
 			<<" (reward, value, count)=" << "("<<qnode->internal_reward()<<","
 			<<qnode->value()<<","<<qnode->count()<<")"
 			<< endl;
 	}
 	vnode->Add(AccumReward);
-	logd << "[Update @Simulate] Update v-node";
+	logv << "[Update @Simulate] Update v-node";
 	if(vnode->edge()==0)
-		logd << " at root";
+		logv << " at root";
 	else
 		logd /*<< " with obs " << vnode->edge() */<< " at depth "<< vnode->depth();
-	logd <<" (value, count)=" << "("<<vnode->value()<<","<<vnode->count()<<")"
+	logv <<" (value, count)=" << "("<<vnode->value()<<","<<vnode->count()<<")"
 		<< endl;
 
 	if (statistics != NULL) {
@@ -523,10 +523,10 @@ Ext_VNode* POMDPLite::CreateVNode(int depth, Belief* belief, State* state,
 	//Dosen't include roll-out in simulation count
 	//vnode->count( rollout_scenarios.size() );
 	if(edge==0)// root
-		logd << "[CreateVNode] root-node info: (value, count)=" <<
+		logv << "[CreateVNode] root-node info: (value, count)=" <<
 				"("<<vnode->value()<<","<<vnode->count()<<")" << endl;
 	else
-		logd << "      [CreateVNode] v-node info: (value, count)=" <<
+		logv << "      [CreateVNode] v-node info: (value, count)=" <<
 				"("<<vnode->value()<<","<<vnode->count()<<")" << endl;
 
 	/*Create children q-nodes for the belief node*/

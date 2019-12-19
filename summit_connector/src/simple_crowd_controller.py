@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-from drunc import Drunc
+from summit import Summit
 import carla
 
 import math
@@ -232,7 +232,7 @@ class CrowdSidewalkAgent(CrowdAgent):
                 carla.Vector3D(velocity.x, velocity.y, 0),
                 1.0, False)
 
-class SimpleCrowdController(Drunc):
+class SimpleCrowdController(Summit):
     def __init__(self):
         super(SimpleCrowdController, self).__init__()
         self.network_car_agents = []
@@ -365,7 +365,7 @@ class SimpleCrowdController(Drunc):
             delete = False
             if not delete and not self.check_bounds(crowd_agent.get_position(), bounds_min, bounds_max):
                 delete = True
-            if not delete and crowd_agent.get_position3D().z < -10:
+            if not delete and crowd_agent.get_position_3d().z < -10:
                 delete = True
             if not delete and (type(crowd_agent) is not CrowdSidewalkAgent and \
                     not self.network_occupancy_map.contains(crowd_agent.get_position())):

@@ -38,6 +38,7 @@
 
 #include <ros/ros.h>
 #include <msg_builder/TensorData.h>
+#include <msg_builder/TensorDataHybrid.h>
 
 using namespace cv;
 
@@ -50,12 +51,21 @@ class PedNeuralSolverPrior:public SolverPrior{
 //	cuda::GpuMat gImage;
 
 	COORD point_to_indices(COORD pos, COORD origin, double resolution, int dim) const;
+	COORD point_to_indices_unbounded(COORD pos, COORD origin, double resolution) const;
 	void add_in_map(cv::Mat map_tensor, COORD indices, double map_intensity, double map_intensity_scale);
-	std::vector<COORD> get_transformed_car(const CarStruct car, COORD origin, double resolution);
+	std::vector<COORD> get_image_space_car(const CarStruct car, COORD origin, double resolution);
+	std::vector<COORD> get_image_space_agent(const AgentStruct agent, COORD origin, double resolution, double dim);
+
 	void Process_states(std::vector<despot::VNode*> nodes, const vector<PomdpState*>& hist_states, const vector<int> hist_ids);
 
-	void Process_map(cv::Mat& src_image, at::Tensor& des_tensor, std::string flag);
-
+	void Process_image_to_tensor(cv::Mat& src_image, at::Tensor& des_tensor, std::string flag);
+	void Process_exo_agent_images(const vector<PomdpState*>& hist_states,
+			const vector<int>& hist_ids);
+	void Process_ego_car_images(const vector<PomdpState*>& hist_states,
+			const vector<int>& hist_ids);
+	void Compute_pref(torch::Tensor input_tensor, const PedPomdp* ped_model, vector<despot::VNode*>& vnodes);
+	void Compute_pref_hybrid(torch::Tensor input_tensor, const PedPomdp* ped_model, vector<despot::VNode*>& vnodes);
+	void Compute_val(torch::Tensor input_tensor, const PedPomdp* ped_model, vector<despot::VNode*>& vnodes);
 	enum UPDATE_MODES { FULL=0, PARTIAL=1 };
 
 	enum {
@@ -80,19 +90,21 @@ private:
 	at::Tensor map_tensor_;
 	std::vector<at::Tensor> map_hist_tensor_;
 	std::vector<at::Tensor> car_hist_tensor_;
-	at::Tensor goal_tensor;
+	at::Tensor path_tensor;
+	at::Tensor lane_tensor;
 
 	std::vector<const despot::VNode*> map_hist_links;
 	std::vector<const despot::VNode*> car_hist_links;
 	std::vector<double> hist_time_stamps;
 
-	const despot::VNode* goal_link;
+	const despot::VNode* goal_link, *lane_link;
 
 	cv::Mat map_image_;
 	cv::Mat rescaled_map_;
 	std::vector<cv::Mat> map_hist_images_;
 	std::vector<cv::Mat> car_hist_images_;
-	cv::Mat goal_image_;
+	cv::Mat path_image_;
+	cv::Mat lane_image_;
 
 	vector<cv::Point3f> car_shape;
 
@@ -112,8 +124,14 @@ public:
 		root_car_pos_.y = y;
 	}
 
-	at::Tensor Process_state_to_map_tensor(const State* s);
-	at::Tensor Process_state_to_car_tensor(const State* s);
+	void Process_path_image(const PomdpState*);
+	void Process_lane_image(const PomdpState*);
+
+	at::Tensor Process_track_state_to_map_tensor(const State* s);
+	at::Tensor Process_tracked_state_to_car_tensor(const State* s);
+	at::Tensor Process_tracked_state_to_lane_tensor(const State* s);
+
+	at::Tensor Process_lane_tensor(const State* s);
 	at::Tensor Process_path_tensor(const State* s);
 
 	at::Tensor last_car_tensor(){
@@ -181,12 +199,15 @@ public:
 	void Clear_hist_timestamps();
 
 	void Test_model(std::string);
-	void Test_all_srv(int batchsize, int num_guassian_modes, int num_steer_bins);
+	void Test_all_srv(int batchsize, int num_acc_bins, int num_steer_bins);
+	void Test_all_srv_hybrid(int batchsize, int num_guassian_modes, int num_steer_bins);
 	void Test_val_srv(int batchsize, int num_guassian_modes, int num_steer_bins);
 	void Test_all_libtorch(int batchsize, int num_guassian_modes, int num_steer_bins);
 	void Test_val_libtorch(int batchsize, int num_guassian_modes, int num_steer_bins);
 
-	bool query_srv(int batchsize, at::Tensor images, at::Tensor& t_value, at::Tensor& t_acc_pi,
+	bool query_srv(int batchsize, at::Tensor images, at::Tensor& t_value, at::Tensor& t_acc, at::Tensor& t_ang);
+
+	bool query_srv_hybrid(int batchsize, at::Tensor images, at::Tensor& t_value, at::Tensor& t_acc_pi,
 			at::Tensor& t_acc_mu, at::Tensor& t_acc_sigma, at::Tensor& t_ang);
 
 
@@ -210,6 +231,11 @@ public:
 	void Check_force_steer(double car_heading, double path_heading, double car_vel);
 
 	bool Check_high_uncertainty(despot::VNode* node);
+
+public:
+	void update_ego_car_shape(vector<geometry_msgs::Point32> points);
+
+	void update_map_origin(const PomdpState* agent_state);
 
 public:
 	int num_hist_channels;

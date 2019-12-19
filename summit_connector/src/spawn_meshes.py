@@ -9,7 +9,7 @@ import time
 import rospy
 import struct
 
-from drunc import Drunc
+from summit import Summit, summit_root
 import carla
 
 from std_msgs.msg import Bool
@@ -67,58 +67,22 @@ WALL_MAT = [
         '/Game/Carla/Static/Walls/WallTunnel01/M_WallTunnel01',
         '/Game/Carla/Static/Walls/Wall15/T_Wall15']
 
-class SpawnMeshes(Drunc):
+class SpawnMeshes(Summit):
     def __init__(self):
         super(SpawnMeshes, self).__init__()
 
+        self.reload_world()
+
+        self.spawn_imagery = rospy.get_param('~spawn_imagery', True)
+        self.spawn_landmarks = rospy.get_param('~spawn_landmarks', True)
         self.meshes_spawned_pub = rospy.Publisher('/meshes_spawned', Bool, queue_size=1, latch=True) 
 
         print('Spawning meshes...')
 
         self.mesh_ids = []
 
-        def spawn_tiles(zoom, (min_lat, min_lon), (max_lat, max_lon)):
-            bottom_left_id = deg2num(zoom, min_lat, min_lon)
-            top_right_id = deg2num(zoom, max_lat, max_lon)
-            top_left_id = (zoom, top_right_id[1], bottom_left_id[2])
-            bottom_right_id = (zoom, bottom_left_id[1], top_right_id[2])
-
-            if bottom_right_id[1] >= top_left_id[1]:
-                height = bottom_right_id[1] - top_left_id[1] + 1
-            else:
-                height = (top_left_id[1] + 1) + (2**zoom - bottom_right_id[1])
-
-            if bottom_right_id[2] >= top_left_id[2]:
-                width = bottom_right_id[2] - top_left_id[2] + 1
-            else:
-                width = (top_left_id[2] + 1) + (2**zoom - bottom_right_id[2])
-
-            for row in range(top_left_id[1], bottom_right_id[1] + 1):
-                for column in range(top_left_id[2], bottom_right_id[2] + 1):
-                    path = os.path.join(os.path.expanduser('~/summit/Data/imagery'), 
-                        "{}/{}_{}.jpeg".format(zoom, row, column))
-                    sys.stdout.flush()
-                    if not os.path.exists(path):
-                        continue
-
-                    data = []
-                    with open(path, "rb") as f:
-                        byte = f.read(1)
-                        while byte != "":
-                            data += [ord(byte)]
-                            byte = f.read(1)
-                    
-                    bounds_min = project(num2deg(zoom, row + 1, column)) + self.network.offset
-                    bounds_max = project(num2deg(zoom, row, column + 1)) + self.network.offset
-
-                    self.mesh_ids.append(self.world.spawn_dynamic_tile_mesh(bounds_min, bounds_max, data))
-
-        for zoom in range(18, 19):
-            spawn_tiles(zoom, self.geo_min, self.geo_max)
-
-        time.sleep(1)
-
         commands = []
+
         # Roadmark occupancy map.
         if self.roadmark_occupancy_map is not None:
             commands.append(carla.command.SpawnDynamicMesh(
@@ -139,11 +103,56 @@ class SpawnMeshes(Drunc):
         
         results = self.client.apply_batch_sync(commands)
         self.mesh_ids.extend(result.actor_id for result in results)
-        time.sleep(1)
 
-        commands = []
+        # Imagery.
+        if self.spawn_imagery:
+            def spawn_tiles(zoom, min_geo, max_geo):
+                (min_lat, min_lon) = min_geo
+                (max_lat, max_lon) = max_geo
+                bottom_left_id = deg2num(zoom, min_lat, min_lon)
+                top_right_id = deg2num(zoom, max_lat, max_lon)
+                top_left_id = (zoom, top_right_id[1], bottom_left_id[2])
+                bottom_right_id = (zoom, bottom_left_id[1], top_right_id[2])
+
+                if bottom_right_id[1] >= top_left_id[1]:
+                    height = bottom_right_id[1] - top_left_id[1] + 1
+                else:
+                    height = (top_left_id[1] + 1) + (2 ** zoom - bottom_right_id[1])
+
+                if bottom_right_id[2] >= top_left_id[2]:
+                    width = bottom_right_id[2] - top_left_id[2] + 1
+                else:
+                    width = (top_left_id[2] + 1) + (2 ** zoom - bottom_right_id[2])
+
+                for row in range(top_left_id[1], bottom_right_id[1] + 1):
+                    for column in range(top_left_id[2], bottom_right_id[2] + 1):
+
+                        path = os.path.join(os.path.expanduser(summit_root+ 'Data/imagery'),
+                                            "{}/{}_{}.jpeg".format(zoom, row, column))
+                        sys.stdout.flush()
+                        if not os.path.exists(path):
+                            print("{} for row {} column {} missing in {}Data/imagery".format(path, row, column, summit_root))
+                            continue
+
+                        data = []
+                        with open(path, "rb") as f:
+                            byte = f.read(1)
+                            while byte != "":
+                                data += [ord(byte)]
+                                byte = f.read(1)
+
+                        bounds_min = project(num2deg(zoom, row + 1, column)) + self.network.offset
+                        bounds_min = carla.Vector3D(bounds_min.x, bounds_min.y, 0)
+                        bounds_max = project(num2deg(zoom, row, column + 1)) + self.network.offset
+                        bounds_max = carla.Vector3D(bounds_max.x, bounds_max.y, 0)
+
+                        self.mesh_ids.append(self.world.spawn_dynamic_tile_mesh(bounds_min, bounds_max, data))
+
+            spawn_tiles(18, self.geo_min, self.geo_max)
+
         # Landmarks.
-        if self.landmarks is not None:
+        commands = []
+        if self.spawn_landmarks and self.landmarks is not None:
             for l in self.landmarks:
                 commands.append(carla.command.SpawnDynamicMesh(
                     l.get_mesh_triangles(20),
@@ -154,9 +163,8 @@ class SpawnMeshes(Drunc):
                 commands.append(carla.command.SpawnDynamicMesh(
                     l.get_wall_mesh_triangles(20),
                     random.choice(WALL_MAT)))
-
-        results = self.client.apply_batch_sync(commands)
-        self.mesh_ids.extend(result.actor_id for result in results)
+            results = self.client.apply_batch_sync(commands)
+            self.mesh_ids.extend(result.actor_id for result in results)
 
         self.meshes_spawned_pub.publish(True)
 

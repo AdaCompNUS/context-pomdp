@@ -712,13 +712,11 @@ void POMDPSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_T
 	// action for publish
 	geometry_msgs::Twist p_action_reward;
 
-    p_IL_data.action_reward.linear.y=reward;
-    p_IL_data.action_reward.linear.z=cmd_vel;
+    p_IL_data.action_reward.step_reward.data=reward;
+    p_IL_data.action_reward.target_speed.data=cmd_vel;
 
-
-    p_IL_data.action_reward.linear.x = static_cast<PedPomdp*>(model_)->GetAcceleration(safeAction);
-	p_IL_data.action_reward.angular.x = static_cast<PedPomdp*>(model_)->GetSteering(safeAction);
-
+    p_IL_data.action_reward.acceleration_id.data = static_cast<PedPomdp*>(model_)->GetAccelerationID(safeAction);
+	p_IL_data.action_reward.steering_normalized.data = static_cast<PedPomdp*>(model_)->GetSteeringNoramlized(safeAction);
 
     IL_pub.publish(p_IL_data);
 

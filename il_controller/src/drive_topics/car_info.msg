@@ -1,4 +1,0 @@
-geometry_msgs/Point32 car_pos
-float32 car_yaw
-float32 car_speed
-float32 car_steer

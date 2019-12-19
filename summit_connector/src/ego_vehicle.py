@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-from drunc import Drunc
+from summit import Summit
 import carla
 
 import random
@@ -13,10 +13,10 @@ import tf
 from geometry_msgs.msg import Twist, Pose, Point, Quaternion, Vector3, Polygon, Point32, PoseStamped
 from nav_msgs.msg import Odometry
 from nav_msgs.msg import Path as NavPath
-from std_msgs.msg import Float32, Bool
+from std_msgs.msg import Float32, Bool, Int32
 
 from network_agent_path import NetworkAgentPath
-from msg_builder.msg import car_info as CarInfo # panpan
+from msg_builder.msg import car_info as CarInfo  # panpan
 from util import *
 
 import tf2_geometry_msgs
@@ -26,14 +26,57 @@ import time
 from tf import TransformListener
 import tf.transformations as tftrans
 
-class EgoVehicle(Drunc):
+change_left = -1
+remain = 0
+change_right = 1
+
+
+class EgoVehicle(Summit):
     def __init__(self):
         super(EgoVehicle, self).__init__()
-        
+
+        # Initialize fields.
+        self.gamma_cmd_accel = 0
+        self.gamma_cmd_steer = 0
+        self.gamma_cmd_speed = 0
+        self.imitation_cmd_accel = 0
+        self.imitation_cmd_steer = 0
+        self.imitation_cmd_speed = 0
+        self.pp_cmd_steer = 0
+        self.pomdp_cmd_accel = 0
+        self.pomdp_cmd_steer = 0
+        self.pomdp_cmd_speed = 0
+        self.lane_decision = 0
+
+        self.start_time = None
+        self.last_decision = remain
+
         # ROS stuff.
-        self.cmd_speed_sub = rospy.Subscriber('/cmd_speed', Float32, self.cmd_speed_callback, queue_size=1)
-        self.cmd_accel_sub = rospy.Subscriber('/cmd_accel', Float32, self.cmd_accel_callback, queue_size=1)
-        self.cmd_steer_sub = rospy.Subscriber('/cmd_steer', Float32, self.cmd_steer_callback, queue_size=1)
+        self.control_mode = rospy.get_param('~control_mode', 'gamma')
+        self.speed_control_mode = rospy.get_param('~speed_control', 'acc')
+
+        print('Ego_vehicle control mode: {}'.format(self.control_mode))
+        sys.stdout.flush()
+
+        rospy.Subscriber('/pomdp_cmd_accel', Float32, self.pomdp_cmd_accel_callback, queue_size=1)
+        rospy.Subscriber('/pomdp_cmd_steer', Float32, self.pomdp_cmd_steer_callback, queue_size=1)
+        rospy.Subscriber('/gamma_cmd_accel', Float32, self.gamma_cmd_accel_callback, queue_size=1)
+        rospy.Subscriber('/gamma_cmd_steer', Float32, self.gamma_cmd_steer_callback, queue_size=1)
+        rospy.Subscriber('/imitation_cmd_accel', Float32, self.imitation_cmd_accel_callback, queue_size=1)
+        rospy.Subscriber('/imitation_cmd_steer', Float32, self.imitation_cmd_steer_callback, queue_size=1)
+        rospy.Subscriber('/pomdp_cmd_speed', Float32, self.pomdp_cmd_speed_callback, queue_size=1)
+        rospy.Subscriber('/gamma_cmd_speed', Float32, self.gamma_cmd_speed_callback, queue_size=1)
+        rospy.Subscriber('/imitation_cmd_speed', Float32, self.imitation_cmd_speed_callback, queue_size=1)
+
+        self.pp_cmd_accel_sub = rospy.Subscriber('/purepursuit_cmd_steer',
+                                                 Float32, self.pp_cmd_steer_callback, queue_size=1)
+
+        if self.control_mode == 'imitation':
+            self.imitation_lane_decision_sub = rospy.Subscriber('/imitation_lane_decision', Int32,
+                                                        self.gamma_lane_change_decision_callback, queue_size=1)
+        else:
+            self.gamma_lane_decision_sub = rospy.Subscriber('/gamma_lane_decision', Int32,
+                                                        self.gamma_lane_change_decision_callback, queue_size=1)
 
         self.odom_broadcaster = tf.TransformBroadcaster()
         self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=1)
@@ -45,14 +88,15 @@ class EgoVehicle(Drunc):
         self.actor = None
         self.speed = 0.0
         while self.actor is None:
+            scenario_segment_map = self.network_segment_map.intersection(
+                carla.OccupancyMap(self.scenario_min, self.scenario_max))
+            # scenario_segment_map = self.network_segment_map.intersection(
+            #     carla.OccupancyMap(carla.Vector2D(400, 454), carla.Vector2D(402, 456)))
+            scenario_segment_map.seed_rand(self.rng.getrandbits(32))
+            self.path = NetworkAgentPath.rand_path(self, 20, 1.0, scenario_segment_map, min_safe_points=100,
+                                                   rng=self.rng)
 
-            scale=1.0
-            shift_x= 0.0
-            shift_y= 0.0
-
-            self.path = NetworkAgentPath.rand_path(self, 20, 1.0, 100,
-                    self.network_segment_map.intersection(carla.OccupancyMap(self.scenario_min, self.scenario_max)))
-            vehicle_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.audi.etron'))
+            vehicle_bp = self.rng.choice(self.world.get_blueprint_library().filter('vehicle.mini.cooperst'))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')
             spawn_position = self.path.get_position()
             spawn_trans = carla.Transform()
@@ -65,25 +109,28 @@ class EgoVehicle(Drunc):
 
             self.actor = self.world.try_spawn_actor(vehicle_bp, spawn_trans)
 
-            if self.actor:
-                self.actor.set_collision_enabled(False)
+            # if self.actor:
+            #    self.actor.set_collision_enabled(True)
 
-        time.sleep(1) # wait for the vehicle to drop
+        self.world.wait_for_tick(1.0)  # Wait for collision to be applied.
+        actor_physics_control = self.actor.get_physics_control()
+        self.steer_angle_range = \
+            (actor_physics_control.wheels[0].max_steer_angle + actor_physics_control.wheels[1].max_steer_angle) / 2
+
+        time.sleep(1)  # wait for the vehicle to drop
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()
-        rospy.wait_for_message("/agents_ready", Bool) # wait for agents to initialize
-
-        self.cmd_speed = 0
-        self.cmd_accel = 0
-        self.cmd_steer = 0
-
+        rospy.wait_for_message("/agents_ready", Bool)  # wait for agents to initialize
 
         self.broadcaster = None
         self.publish_odom_transform()
         self.transformer = TransformListener()
 
+        self.update_timer = rospy.Timer(rospy.Duration(1.0 / 20), self.update)
+
     def dispose(self):
+        self.update_timer.shutdown()
         self.actor.destroy()
 
     def get_position(self):
@@ -92,43 +139,43 @@ class EgoVehicle(Drunc):
 
     def get_cur_ros_pose(self):
         cur_pose = geometry_msgs.msg.PoseStamped()
-   
+
         cur_pose.header.stamp = rospy.Time.now()
         cur_pose.header.frame_id = "/map"
-  
+
         cur_pose.pose.position.x = self.actor.get_location().x
         cur_pose.pose.position.y = self.actor.get_location().y
         cur_pose.pose.position.z = self.actor.get_location().z
-  
+
         quat = tf.transformations.quaternion_from_euler(
-                float(0),float(0),float(np.deg2rad(self.actor.get_transform().rotation.yaw)))
+            float(0), float(0), float(np.deg2rad(self.actor.get_transform().rotation.yaw)))
         cur_pose.pose.orientation.x = quat[0]
         cur_pose.pose.orientation.y = quat[1]
         cur_pose.pose.orientation.z = quat[2]
         cur_pose.pose.orientation.w = quat[3]
 
         return cur_pose
-    
+
     def get_cur_ros_transform(self):
         transformStamped = geometry_msgs.msg.TransformStamped()
-   
+
         transformStamped.header.stamp = rospy.Time.now()
         transformStamped.header.frame_id = "map"
         transformStamped.child_frame_id = 'odom'
-  
+
         transformStamped.transform.translation.x = self.actor.get_location().x
         transformStamped.transform.translation.y = self.actor.get_location().y
         transformStamped.transform.translation.z = self.actor.get_location().z
-  
+
         quat = tf.transformations.quaternion_from_euler(
-                float(0),float(0),float(
-                    np.deg2rad(self.actor.get_transform().rotation.yaw)))
+            float(0), float(0), float(
+                np.deg2rad(self.actor.get_transform().rotation.yaw)))
         transformStamped.transform.rotation.x = quat[0]
         transformStamped.transform.rotation.y = quat[1]
         transformStamped.transform.rotation.z = quat[2]
         transformStamped.transform.rotation.w = quat[3]
 
-        return transformStamped    
+        return transformStamped
 
     def publish_odom_transform(self):
         self.broadcaster = tf2_ros.StaticTransformBroadcaster()
@@ -161,16 +208,16 @@ class EgoVehicle(Drunc):
 
         cur_transform_wrt_odom = tf2_geometry_msgs.do_transform_pose(
             cur_pose, transformStamped)
-        
+
         translation = cur_transform_wrt_odom.pose.position
 
         quaternion = (
-                cur_transform_wrt_odom.pose.orientation.x,
-                cur_transform_wrt_odom.pose.orientation.y,
-                cur_transform_wrt_odom.pose.orientation.z,
-                cur_transform_wrt_odom.pose.orientation.w)
+            cur_transform_wrt_odom.pose.orientation.x,
+            cur_transform_wrt_odom.pose.orientation.y,
+            cur_transform_wrt_odom.pose.orientation.z,
+            cur_transform_wrt_odom.pose.orientation.w)
 
-        _, _, yaw = tf.transformations.euler_from_quaternion(quaternion)   
+        _, _, yaw = tf.transformations.euler_from_quaternion(quaternion)
 
         return translation, yaw
 
@@ -180,8 +227,8 @@ class EgoVehicle(Drunc):
         if result is None:
             return
 
-        current_time = rospy.Time.now() 
-        
+        current_time = rospy.Time.now()
+
         frame_id = "odom"
         child_frame_id = "base_link"
 
@@ -194,7 +241,7 @@ class EgoVehicle(Drunc):
         odom_quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
         w_yaw = self.actor.get_angular_velocity().z
 
-        pi_2 = 2*3.1415926
+        pi_2 = 2 * 3.1415926
         print_yaw = yaw
         if yaw < 0:
             print_yaw = yaw + pi_2
@@ -221,7 +268,7 @@ class EgoVehicle(Drunc):
         odom.child_frame_id = child_frame_id
         odom.twist.twist = Twist(Vector3(vel.x, vel.y, vel.z), Vector3(0, 0, w_yaw))
         self.odom_pub.publish(odom)
-    
+
     def publish_il_car_info(self):
         car_info_msg = CarInfo()
 
@@ -233,17 +280,28 @@ class EgoVehicle(Drunc):
         forward = np.array([math.cos(yaw), math.sin(yaw), 0])
         speed = np.vdot(forward, v_2d)
         self.speed = speed
-        
+
+        car_info_msg.id = self.actor.id
         car_info_msg.car_pos.x = pos.x
         car_info_msg.car_pos.y = pos.y
         car_info_msg.car_pos.z = pos.z
         car_info_msg.car_yaw = yaw
         car_info_msg.car_speed = speed
-        car_info_msg.car_steer = self.actor.get_control().steer             
+        car_info_msg.car_steer = self.actor.get_control().steer
         car_info_msg.car_vel.x = vel.x
         car_info_msg.car_vel.y = vel.y
         car_info_msg.car_vel.z = vel.z
-            
+
+        # WARNING: this section is hardcoded against the internals of gamma controller.
+        # GAMMA assumes these calculations, and is required for controlling ego vehicle
+        # using GAMMA. When not controlling using GAMMA, pref_vel is practically not used,
+        # since the other crowd agents calculate their velocities without knowledge of the
+        # ego vehicle's pref_vel anyway.
+        target_position = self.path.get_position(5)
+        pref_vel = 6.0 * (target_position - pos2D).make_unit_vector()
+        car_info_msg.car_pref_vel.x = pref_vel.x
+        car_info_msg.car_pref_vel.y = pref_vel.y
+
         car_info_msg.car_bbox = Polygon()
         corners = get_bounding_box_corners(self.actor)
         for corner in corners:
@@ -256,7 +314,7 @@ class EgoVehicle(Drunc):
 
         front_axle_center = (wheel_positions[0] + wheel_positions[1]) / 2
         rear_axle_center = (wheel_positions[2] + wheel_positions[3]) / 2
-        
+
         car_info_msg.front_axle_center.x = front_axle_center.x
         car_info_msg.front_axle_center.y = front_axle_center.y
         car_info_msg.front_axle_center.z = front_axle_center.z
@@ -274,8 +332,8 @@ class EgoVehicle(Drunc):
         gui_path.header.frame_id = 'map'
         gui_path.header.stamp = current_time
 
-        
-        values = [(carla.Vector2D(self.actor.get_location().x, self.actor.get_location().y), self.actor.get_transform().rotation.yaw)]
+        values = [(carla.Vector2D(self.actor.get_location().x, self.actor.get_location().y),
+                   self.actor.get_transform().rotation.yaw)]
         # Exclude last point because no yaw information.
         values += [(self.path.get_position(i), self.path.get_yaw(i)) for i in range(len(self.path.route_points) - 1)]
         for (position, yaw) in values:
@@ -291,22 +349,53 @@ class EgoVehicle(Drunc):
             pose.pose.orientation.z = quaternion[2]
             pose.pose.orientation.w = quaternion[3]
             gui_path.poses.append(pose)
-        
+
         self.plan_pub.publish(gui_path)
 
-    def cmd_speed_callback(self, speed):
-        self.cmd_speed = speed.data
+    def pomdp_cmd_accel_callback(self, accel):
+        self.pomdp_cmd_accel = accel.data
 
-    def cmd_accel_callback(self, accel):
-        self.cmd_accel = accel.data
-        end_time = rospy.Time.now()
-        elapsed = (end_time - init_time).to_sec()
-        # print('agent_array update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
-        # print('cmd_acc received at {}'.format(elapsed))
-        # sys.stdout.flush()
+    def pomdp_cmd_steer_callback(self, steer):
+        self.pomdp_cmd_steer = steer.data
 
-    def cmd_steer_callback(self, steer):
-        self.cmd_steer = steer.data
+    def gamma_cmd_accel_callback(self, accel):
+        self.gamma_cmd_accel = accel.data
+
+    def gamma_cmd_steer_callback(self, steer):
+        self.gamma_cmd_steer = steer.data
+
+    def imitation_cmd_accel_callback(self, accel):
+        self.imitation_cmd_accel = accel.data
+
+    def imitation_cmd_steer_callback(self, steer):
+        self.imitation_cmd_steer = steer.data
+
+    def pomdp_cmd_speed_callback(self, speed):
+        self.pomdp_cmd_speed = speed.data
+
+    def gamma_cmd_speed_callback(self, speed):
+        self.gamma_cmd_speed = speed.data
+
+    def imitation_cmd_speed_callback(self, speed):
+        self.imitation_cmd_speed = speed.data
+
+    def pp_cmd_steer_callback(self, steer):
+        self.pp_cmd_steer = steer.data
+
+    def gamma_lane_change_decision_callback(self, decision):
+        # print('lane decision {}'.format(decision.data))
+        sys.stdout.flush()
+
+        self.lane_decision = int(decision.data)
+        if self.lane_decision == self.last_decision:
+            return
+        if self.lane_decision * self.last_decision == -1:
+            self.last_decision = self.lane_decision
+            return
+        print('change lane decision {}'.format(self.lane_decision))
+        sys.stdout.flush()
+        self.last_decision = self.lane_decision
+        self.update_path(self.lane_decision)
 
     def draw_path(self, path):
         color_i = 255
@@ -315,33 +404,104 @@ class EgoVehicle(Drunc):
             pos = path.get_position(i)
             loc = carla.Location(pos.x, pos.y, 0.1)
             if last_loc is not None:
-                self.world.debug.draw_line(last_loc,loc,life_time = 0.1, 
-                    color = carla.Color(color_i,color_i,0,0))
+                self.world.debug.draw_line(last_loc, loc, life_time=0.1,
+                                           color=carla.Color(color_i, color_i, 0, 0))
             last_loc = carla.Location(pos.x, pos.y, 0.1)
 
-    def update(self):
+    def send_control_from_vel(self):
+        control = self.actor.get_control()
+        if self.control_mode == 'gamma':
+            cmd_speed = self.gamma_cmd_speed
+            cmd_steer = self.gamma_cmd_steer
+        elif self.control_mode == 'imitation':
+            cmd_speed = self.imitation_cmd_speed
+            # cmd_steer = self.imitation_cmd_steer
+            cmd_steer = self.pp_cmd_steer
+        else:
+            cmd_speed = self.pomdp_cmd_speed
+            cmd_steer = self.pomdp_cmd_steer
+
+        cur_speed = self.actor.get_velocity()
+        cur_speed = (cur_speed.x ** 2 + cur_speed.y ** 2) ** 0.5
+
+        if False: # cmd_speed < cur_speed - 0.05:
+            control.throttle = 0
+            control.brake = 0.4
+        else:
+            if cmd_speed < 1e-5 and cur_speed < 0.5:
+                control.throttle = 0
+                control.brake = 1.0
+                control.hand_brake = True
+
+                self.speed_control_last_update = None
+                self.speed_control_integral = 0.0
+                self.speed_control_last_error = 0.0
+            else:
+                cur_time = rospy.Time.now()
+
+                if self.speed_control_last_update is None:
+                    dt = 0.0
+                else:
+                    dt = (cur_time - self.speed_control_last_update).to_sec()
+                speed_error = cmd_speed - cur_speed
+                self.speed_control_integral += speed_error * dt
+
+                speed_control = 0.3 * speed_error + 0.1 * self.speed_control_integral
+                if self.speed_control_last_update is not None:
+                    speed_control += 0.005 * (speed_error - self.speed_control_last_error) / dt
+
+                self.speed_control_last_update = cur_time
+                self.speed_control_last_error = speed_error
+
+                if speed_control >= 0:
+                    control.throttle = speed_control
+                    control.brake = 0.0
+                    control.hand_brake = False
+                else:
+                    control.throttle = 0.0
+                    control.brake = -speed_control
+                    control.hand_brake = False
+
+        control.steer = np.clip(cmd_steer * 45.0 / self.steer_angle_range, -1.0, 1.0)
+
+        control.manual_gear_shift = True
+        control.gear = 1
+
+        self.actor.apply_control(control)
+
+    def send_control_from_acc(self):
         # Calculate control and send to CARLA.
         # print("controlling vehicle with acc={} cur_vel={}".format(self.cmd_accel, self.speed))
         control = self.actor.get_control()
-        control.gear = 1
-        control.steer = self.cmd_steer
-        if self.cmd_accel > 0:
-            control.throttle = self.cmd_accel
+
+        if self.control_mode == 'gamma':
+            cmd_accel = self.gamma_cmd_accel
+            cmd_steer = self.gamma_cmd_steer
+        elif self.control_mode == 'imitation':
+            cmd_accel = self.imitation_cmd_accel
+            # cmd_steer = self.imitation_cmd_steer
+            cmd_steer = self.pp_cmd_steer
+            # print('Publishing imitation cmd ({}, {}, {})'.format(cmd_accel, self.lane_decision, cmd_steer))
+            # sys.stdout.flush()
+        elif self.control_mode == 'joint_pomdp':
+            cmd_accel = self.pomdp_cmd_accel
+            cmd_steer = self.pomdp_cmd_steer
+        elif self.control_mode == 'other':
+            cmd_accel = self.pomdp_cmd_accel
+            cmd_steer = self.pp_cmd_steer
+
+        control.steer = cmd_steer
+        if cmd_accel > 0:
+            control.throttle = cmd_accel
             control.brake = 0.0
-            control.reverse = False
-        elif self.cmd_accel == 0:
+        elif cmd_accel == 0:
             control.throttle = 0.0
             control.brake = 0.0
-            control.reverse = False
         else:
-            if self.speed <= 1.5: # no reverse
-                control.throttle = 0                
-                control.brake = 1.0
-                control.reverse = False
-            else:
-                control.throttle = -self.cmd_accel
-                control.brake = 0.0
-                control.reverse = True
+            control.throttle = 0
+            control.brake = 1.0
+        control.manual_gear_shift = True
+        control.gear = 1
 
         # debugging freezing the robot
         # control.throttle = 0                
@@ -349,6 +509,38 @@ class EgoVehicle(Drunc):
         # control.reverse = False 
 
         self.actor.apply_control(control)
+
+    def update_path(self, lane_decision):
+        if lane_decision == remain:
+            return
+
+        pos = self.actor.get_location()
+        ego_veh_pos = carla.Vector2D(pos.x, pos.y)
+        yaw = np.deg2rad(self.actor.get_transform().rotation.yaw)
+
+        forward_vec = carla.Vector2D(math.cos(yaw), math.sin(yaw))
+        sidewalk_vec = forward_vec.rotate(np.deg2rad(90))  # rotate clockwise by 90 degree
+
+        ego_veh_pos_in_new_lane = None
+        if lane_decision == change_left:
+            ego_veh_pos_in_new_lane = ego_veh_pos - 4.0 * sidewalk_vec
+        else:
+            ego_veh_pos_in_new_lane = ego_veh_pos + 4.0 * sidewalk_vec
+
+        cur_route_point = self.network.get_nearest_route_point(
+            self.path.get_position(0))  # self.network.get_nearest_route_point(ego_veh_pos)
+        new_route_point = self.network.get_nearest_route_point(ego_veh_pos_in_new_lane)
+
+        lane_change_probability = 1.0
+        if new_route_point.edge == cur_route_point.edge and new_route_point.lane != cur_route_point.lane:
+            if self.rng.uniform(0.0, 1.0) <= lane_change_probability:
+                new_path_candidates = self.network.get_next_route_paths(new_route_point, self.path.min_points - 1,
+                                                                        self.path.interval)
+                new_path = NetworkAgentPath(self, self.path.min_points, self.path.interval)
+                new_path.route_points = self.rng.choice(new_path_candidates)[0:self.path.min_points]
+                self.path = new_path
+
+    def update(self, event):
 
         # Publish info.
         if not self.path.resize():
@@ -359,11 +551,17 @@ class EgoVehicle(Drunc):
             if not self.path.resize():
                 self.ego_dead_pub.publish(True)
                 return
-                
+
+        if self.speed_control_mode == 'acc':
+            self.send_control_from_acc()
+        elif self.speed_control_mode == 'vel':
+            self.send_control_from_vel()
+
         # self.draw_path(self.path)
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()
+
 
 if __name__ == '__main__':
     rospy.init_node('ego_vehicle')
@@ -371,10 +569,5 @@ if __name__ == '__main__':
 
     rospy.wait_for_message("/meshes_spawned", Bool)
     ego_vehicle = EgoVehicle()
-
-    rate = rospy.Rate(100)
-    while not rospy.is_shutdown():
-        ego_vehicle.update()
-        rate.sleep()
-
-    ego_vehicle.dispose()
+    rospy.on_shutdown(ego_vehicle.dispose)
+    rospy.spin()

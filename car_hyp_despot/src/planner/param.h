@@ -90,6 +90,5 @@ namespace ModelParams {
 #define PED_SIZE 0.25f
 #define CAR_EXPAND_SIZE 0.0f
 
-
 #endif
 

@@ -6,7 +6,7 @@ from flask import Flask
 sio = socketio.Server()
 app = Flask(__name__)
 
-from PyTorch_to_C import global_params
+from Data_processing import global_params
 
 
 global_config = global_params.config

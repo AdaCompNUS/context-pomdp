@@ -1,38 +1,30 @@
-from global_params import config
-
-if config.pycharm_mode:
-    import pyros_setup
-    pyros_setup.configurable_import().configure('mysetup.cfg').activate()
-
 import sys
 
 sys.path.append('./')
 
 print(sys.path)
-
+#
 import deepdish as dd
 import fnmatch
-import os
 import argparse
-from transforms import *
-from visualization import *
-import global_params
 import h5py
+import numpy as np
+#
 import time
-import multiprocessing
+import gc, os, pdb, random
 
-from multiprocessing import Process, Queue
-
-import gc
-
-config = global_params.config
+import Data_processing.global_params
+from Data_processing.global_params import error_handler
+from transforms import PopulateImages
+#
+import visualization
+#
+config = Data_processing.global_params.config
 imsize = config.imsize
-num_agents = 1 + config.num_peds_in_NN
-num_steering_bins = config.num_steering_bins
-LARGE_NO = 300000
+num_agents = 1 + 0
+DATA_CHUNCK_SIZE = 100000
+# LARGE_NO = 3000
 populate_images = PopulateImages()
-
-num_threads = 1
 
 
 def INPUT(out_str):
@@ -72,7 +64,8 @@ def save(files, filename, flag=-1):
 
     with h5py.File(filename, 'a') as f:
         # open extendible dataset
-        acc_labels_array, ang_labels_array, data_array, cart_data_array, v_labels_array, vel_labels_array = \
+        acc_id_labels_array, ang_normed_labels_array, data_array, semantic_array, \
+        v_labels_array, vel_labels_array, lane_labels_array = \
             allocate_containters()
         # dont discretize angular labels
         print("total files %d" % len(files))
@@ -81,29 +74,37 @@ def save(files, filename, flag=-1):
         points_num = []
 
         visualization_done = False
-        for file in files:
+        acc_distribution = np.zeros(config.num_acc_bins)
 
+        p = Pool(num_threads)
+        data_in_files = p.map(parse_h5, files)
+
+        for file_data in data_in_files:
+            file = file_data['file']
             if "train" not in file and "val" not in file and "test" not in file:
-
-                d, skip_file = load_file(file)
-
-                if skip_file:
-                    continue  # skip the file
-                traj_num += 1
+                traj_num += file_data['traj_count']
+                points_num.append(file_data['data_count'])
                 old_counter = counter
-                points_num.append(len(d.keys()))
                 step_in_file = 0
-                for key in d.keys():  # key is the original index in separate h5 files
-                    data, cart_data, value, acc, ang, vel = populate_images(d[key], False)
-                    put_images_in_dataset(acc, acc_labels_array, ang, ang_labels_array, counter,
-                                          data_array, data, cart_data, cart_data_array,
-                                          v_labels_array, value, vel, vel_labels_array)
+                for data, semantic_data, value, acc_id, ang_normalized, vel, lane in file_data['data']:
+                    acc_distribution[acc_id] += 1
+                    data_array = resize_container(counter, data_array)
+                    semantic_array = resize_container(counter, semantic_array)
+                    v_labels_array = resize_container(counter, v_labels_array)
+                    acc_id_labels_array = resize_container(counter, acc_id_labels_array)
+                    ang_normed_labels_array = resize_container(counter, ang_normed_labels_array)
+                    vel_labels_array = resize_container(counter, vel_labels_array)
+                    lane_labels_array = resize_container(counter, lane_labels_array)
+
+                    put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_normed_labels_array, counter,
+                                          data_array, data, semantic_data, semantic_array,
+                                          v_labels_array, value, vel, vel_labels_array, lane, lane_labels_array)
 
                     file_base_name = os.path.basename(file)
                     file_base_name = os.path.splitext(file_base_name)[0][29:]
                     visualization_done = visualize_images(step_in_file, data, visualization_done,
                                                           file_flag=file_base_name)
-                    visualization_done = visualize_cart_images(step_in_file, cart_data, data, visualization_done,
+                    visualization_done = visualize_cart_images(step_in_file, semantic_data, data, visualization_done,
                                                                file_flag=file_base_name)
 
                     step_in_file += 1
@@ -112,43 +113,82 @@ def save(files, filename, flag=-1):
                     print("counter value increased to %d" % counter)
                 else:
                     print("counter unchanged: num_keys=%d" % len(d.keys()))
-                    # pdb.set_trace()
-                    continue #return
+                    continue
 
         print("Saving data...")
+        print("Acc distribution {}".format(acc_distribution/np.sum(acc_distribution)))
         time.sleep(3)
 
-        save_dataset_to_h5(acc_labels_array, ang_labels_array, counter, data_array, cart_data_array, f,
-                           v_labels_array, vel_labels_array, traj_num, points_num)
-
+        save_dataset_to_h5_compact(acc_id_labels_array, ang_normed_labels_array, counter, data_array, semantic_array,
+                                   f, v_labels_array, vel_labels_array, lane_labels_array, traj_num, points_num)
 
     print("Collection memory garbages")
-    del data_array, cart_data_array, acc_labels_array, vel_labels_array, ang_labels_array, v_labels_array
+    del data_array, semantic_array, acc_id_labels_array, vel_labels_array, ang_normed_labels_array, \
+        v_labels_array, lane_labels_array
     gc.collect()
 
     print("%s saved with %d data points" % (filename, counter))
 
 
-def save_dataset_to_h5(acc_labels_array, ang_labels_array, counter, data_array, cart_data_array, f,
-                       v_labels_array, vel_labels_array, traj_num, points_num):
+def save_dataset_to_h5(acc_id_labels_array, ang_normalized_labels_array, counter, data_array, cart_data_array, f,
+                       v_labels_array, vel_labels_array, lane_labels_array, traj_num, points_num):
     try:
         print("data shape: {}".format(data_array[0].shape))
-        f.create_dataset('data', maxshape=(None, num_agents, config.num_channels, imsize, imsize),
+        f.create_dataset('data', maxshape=(None, num_agents, config.total_num_channels, imsize, imsize),
                          data=data_array[0:counter], dtype='f4')
 
         print("Saving cart data...")
         print("data shape: {}".format(cart_data_array[0].shape))
-        f.create_dataset('cart_data', maxshape=(None, 2 * (1 + config.num_peds_in_map) * config.num_hist_channels),
+        f.create_dataset('cart_data', maxshape=(None, 2 * (1 + config.num_agents_in_map) * config.num_hist_channels),
                          data=cart_data_array[0:counter], dtype='f4')
 
         print("Saving labels...")
         f.create_dataset('v_labels', maxshape=(None, 1), data=v_labels_array[0:counter], dtype='f4')
-        f.create_dataset('acc_labels', maxshape=(None, 1), data=acc_labels_array[0:counter],
+        f.create_dataset('acc_id_labels', maxshape=(None, 1), data=acc_id_labels_array[0:counter],
                          dtype='f4')
-        f.create_dataset('ang_labels', maxshape=(None, 1), data=ang_labels_array[0:counter],
+        f.create_dataset('ang_normalized_labels', maxshape=(None, 1), data=ang_normalized_labels_array[0:counter],
                          dtype='f4')
         f.create_dataset('vel_labels', maxshape=(None, 1), data=vel_labels_array[0:counter],
                          dtype='f4')
+        f.create_dataset('lane_labels', maxshape=(None, 1), data=lane_labels_array[0:counter],
+                         dtype='f4')
+
+        if config.sample_mode == 'hierarchical':
+            f.create_dataset('traj_num', data=traj_num, dtype='int32')
+            f.create_dataset('points_num', data=points_num, dtype='int32')
+    except Exception as e:
+        print("Investigate table")
+        error_handler(e)
+        pdb.set_trace()
+
+
+def save_dataset_to_h5_compact(acc_id_labels_array, ang_normalized_labels_array, counter, data_array,
+                               semantic_array, f, v_labels_array, vel_labels_array, lane_labels_array,
+                               traj_num, points_num):
+    try:
+        print("data shape: {}".format(data_array[0].shape))
+        print("data type: {}".format(config.data_type))
+
+        f.create_dataset('data',
+                         data=data_array[0:counter], dtype=config.data_type)
+
+        print("Saving semantic data...")
+        print("data shape: {}".format(semantic_array[0].shape))
+
+        f.create_dataset('semantic_data',
+                         data=semantic_array[0:counter], dtype=np.float32)
+
+        print("Saving labels...")
+        f.create_dataset('v_labels', data=v_labels_array[0:counter], dtype=np.float32)
+        f.create_dataset('acc_id_labels', data=acc_id_labels_array[0:counter],
+                         dtype=np.float32)
+        f.create_dataset('ang_normalized_labels',
+                         data=ang_normalized_labels_array[0:counter],
+                         dtype=np.float32)
+        f.create_dataset('vel_labels', data=vel_labels_array[0:counter],
+                         dtype=np.float32)
+        f.create_dataset('lane_labels', data=lane_labels_array[0:counter],
+                         dtype=np.float32)
 
         if config.sample_mode == 'hierarchical':
             f.create_dataset('traj_num', data=traj_num, dtype='int32')
@@ -165,7 +205,7 @@ max_vis_traj = 1
 
 def visualize_images(counter, data, visualization_done, file_flag=''):
     if not visualization_done:
-        visualize(data, 'combine/' + file_flag + '_' + str(counter), root="Data_processing/")
+        visualization.visualize(data, 'combine/' + file_flag + '_' + str(counter), root="Data_processing/")
 
         if file_flag not in new_file_flags:
             new_file_flags.append(file_flag)
@@ -176,7 +216,8 @@ def visualize_images(counter, data, visualization_done, file_flag=''):
 
 def visualize_cart_images(counter, cart_data, data, visualization_done, file_flag=''):
     if not visualization_done:
-        visualize_both_agent_inputs(cart_data, data, 'combine/' + file_flag + '_cart_' + str(counter), root="Data_processing/")
+        visualization.visualize_both_agent_inputs(cart_data, data, 'combine/' + file_flag + '_cart_' + str(counter),
+                                    root="Data_processing/")
 
         if file_flag not in new_file_flags:
             new_file_flags.append(file_flag)
@@ -185,33 +226,46 @@ def visualize_cart_images(counter, cart_data, data, visualization_done, file_fla
     return visualization_done
 
 
-def put_images_in_dataset(acc, acc_labels_array, ang, ang_labels_array, counter, data_array, data,
-                          cart_data, cart_data_array,  v_labels_array,
-                          value, vel, vel_labels_array):
+def put_images_in_dataset(acc_id, acc_id_labels_array, ang_normalized, ang_normed_labels_array, counter, data_array,
+                          data, semantic_data, semantic_array, v_labels_array,
+                          value, vel, vel_labels_array, lane, lane_labels_array):
     try:
+
         data_array[counter] = data
-        cart_data_array[counter] = cart_data
+        # cart_data_array[counter] = cart_data
+        semantic_array[counter] = semantic_data
         v_labels_array[counter][0] = value
-        acc_labels_array[counter][0] = acc
-        ang_labels_array[counter][0] = ang
+        acc_id_labels_array[counter][0] = acc_id
+        ang_normed_labels_array[counter][0] = ang_normalized
         vel_labels_array[counter][0] = vel
+        lane_labels_array[counter][0] = lane
 
     except Exception as e:
-        print("Investigate file")
+        print("counter = {}, data_array.shape = {}".format(counter, data_array.shape))
         error_handler(e)
-        pdb.set_trace()
+
+
+def resize_container(counter, numpy_array):
+    if counter >= numpy_array.shape[0]:
+        new_shape = list(numpy_array.shape)
+        new_shape[0] += DATA_CHUNCK_SIZE
+        numpy_array = np.resize(numpy_array, tuple(new_shape))
+    return numpy_array
 
 
 def allocate_containters():
+    data_array = np.zeros((DATA_CHUNCK_SIZE, num_agents, config.total_num_channels, imsize, imsize), dtype=config.data_type)
+    # cart_data_array = np.zeros((DATA_CHUNCK_SIZE, 2 * (1 + config.num_agents_in_map) * config.num_hist_channels),
+                               # dtype=np.float32)
+    semantic_array = np.zeros((DATA_CHUNCK_SIZE, config.num_hist_channels), dtype=np.float32)
+    v_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float32)
+    acc_id_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float32)
+    ang_normalized_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float32)
+    vel_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float32)
+    lane_labels_array = np.zeros((DATA_CHUNCK_SIZE, 1), dtype=np.float32)
 
-    data_array = np.zeros((LARGE_NO, num_agents, config.num_channels, imsize, imsize), dtype=np.float32)
-    cart_data_array = np.zeros((LARGE_NO, 2*(1 + config.num_peds_in_map) * config.num_hist_channels), dtype=np.float32)
-
-    v_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
-    acc_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
-    ang_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
-    vel_labels_array = np.zeros((LARGE_NO, 1), dtype=np.float32)
-    return acc_labels_array, ang_labels_array, data_array, cart_data_array, v_labels_array, vel_labels_array
+    return acc_id_labels_array, ang_normalized_labels_array, data_array, semantic_array, \
+           v_labels_array, vel_labels_array, lane_labels_array
 
 
 def load_file(file):
@@ -231,25 +285,6 @@ def load_file(file):
         else:
             print(file + " skipped")
     return d, skip_file
-
-
-class Combiner(Process):
-    def __init__(self, id, queue):
-        Process.__init__(self)
-        self.queue = queue
-        self.id = id
-
-    def run(self):
-        while True:
-            files, h5_name = self.queue.get()
-
-            if files:
-                save(files, h5_name)
-
-            if self.queue.empty():
-                break
-
-        print("Thread %d finished saving %s" % (self.id, h5_name))
 
 
 def parse_cmd_args():
@@ -275,11 +310,10 @@ def parse_cmd_args():
     parser.add_argument(
         '--nped',
         type=int,
-        default=config.num_peds_in_NN,
+        default=0,
         help='Number of neighbouring peds to consider')
     bagspath = parser.parse_args().bagspath
     train_filename = parser.parse_args().outfile
-    config.num_peds_in_NN = parser.parse_args().nped
     config.sample_mode = parser.parse_args().samplemode
     config.train_set_path = parser.parse_args().outfolder
     config.out_path = parser.parse_args().outpath
@@ -291,7 +325,7 @@ def parse_cmd_args():
     print("===================== cmd_args ======================")
     print("bagspath: ", bagspath)
     print("train_filename: ", train_filename)
-    print("config.num_peds_in_NN: ", config.num_peds_in_NN)
+    print("0: ", 0)
     print("config.sample_mode: ", config.sample_mode)
     print("config.train_set_path: ", config.train_set_path)
     print("===================== cmd_args ======================")
@@ -307,7 +341,7 @@ def collect_h5_files(bag_root_path, suffix='.h5'):
         Args:
         bag_root_path: path of the folder containg all scenarios folder
         suffix:        default: '.h5'
-    
+
         Return:
         dict_h5:       a dict, key: sceneario folder path, value: full path of the files with suffix
         dict_h5_num:   a dict, key: sceneario folder path, value: num of the files with suffix
@@ -377,8 +411,8 @@ def split_h5_files(files=[], file_dict=None, file_num_dict=None):
         print("Data split: train %.0f%%, validation %.0f%%, test %.0f%%" % (
             config.train_split * 100, config.val_split * 100, config.test_split * 100))
         train_files = files[0:int(round(config.train_split * len(files)))]
-        test_files = None
-        val_files = None
+        test_files = []
+        val_files = []
         if (config.test_split > 0.0):
             test_files = files[int(round(config.train_split * len(files))):int(
                 round((config.train_split + config.test_split) * len(files)))]
@@ -400,32 +434,6 @@ def file_exist(filename):
             return True  # skip the file
     else:
         return False
-
-
-def combine_files_into_datasets_parallel(train_files, test_files, val_files):
-    # use threads to combine training, validation, and test thread simultaneously
-    queue = Queue()
-    workers = []
-    i = 0
-    for x in range(num_threads):
-        worker = Combiner(i, queue)
-        # Setting daemon to True will let the main thread exit even though the workers are blocking
-        worker.daemon = True
-        worker.start()
-        workers.append(worker)
-        i += 1
-    if not file_exist(train_filename):
-        queue.put((train_files, train_filename))
-    val_filename = 'val.h5'
-    if not file_exist(val_filename):
-        queue.put((val_files, val_filename))
-    test_filename = 'test.h5'
-    if len(test_files) > 0 and not file_exist(test_filename):
-        queue.put((test_files, test_filename))
-
-    # Causes the main thread to wait for the queue to finish processing all the
-    for worker in workers:
-        worker.join()
 
 
 def combine_files_into_datasets_serial(train_files, test_files, val_files):
@@ -458,11 +466,38 @@ def combine_files_into_datasets_serial(train_files, test_files, val_files):
         save(test_files, test_filename)
 
     print("All data sets saved")
-    
 
-if __name__ == "__main__":
+
+
+import multiprocessing
+from multiprocessing import Pool
+num_threads = multiprocessing.cpu_count() - 1
+
+
+def parse_h5(file):
+    data_dict = {'data': [],
+                 'file': file,
+                 'data_count': 0,
+                 'traj_count': 0}
+
+    if "train" not in file and "val" not in file and "test" not in file:
+
+        d, skip_file = load_file(file)
+
+        if skip_file:
+            return data_dict  # skip the file
+
+        data_dict['traj_count'] = 1
+        data_dict['data_count'] = len(d.keys())
+        for key in d.keys():  # key is the original index in separate h5 files
+            data_dict['data'].append(populate_images(d[key], False))
+
+    return data_dict
+
+
+if __name__ == '__main__':
     bagspath, train_filename = parse_cmd_args()
-    clear_png_files("Data_processing/", subfolder='visualize', remove_flag='')
+    visualization.clear_png_files("Data_processing/", subfolder='visualize', remove_flag='')
 
     if config.sample_mode == 'hierarchical':
         dict_h5, dict_h5_num = collect_h5_files(bagspath, suffix='.h5')

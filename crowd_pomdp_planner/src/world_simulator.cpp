@@ -2,6 +2,8 @@
 #include "WorldModel.h"
 #include "ped_pomdp.h"
 
+#include <std_msgs/Int32.h>
+
 #include <msg_builder/StartGoal.h>
 #include <msg_builder/car_info.h>
 #include <msg_builder/peds_info.h>
@@ -13,8 +15,22 @@
 #include <std_msgs/Bool.h>
 #include <msg_builder/TrafficAgentArray.h>
 #include <msg_builder/AgentPathArray.h>
+#include <msg_builder/Lanes.h>
+#include <msg_builder/Obstacles.h>
 
 #include "neural_prior.h"
+
+#include "carla/client/Client.h"
+#include "carla/geom/Vector2D.h"
+#include "carla/sumonetwork/SumoNetwork.h"
+#include "carla/occupancy/OccupancyMap.h"
+#include "carla/segments/SegmentMap.h"
+
+namespace cc = carla::client;
+namespace cg = carla::geom;
+namespace sumo = carla::sumonetwork;
+namespace occu = carla::occupancy;
+namespace segm = carla::segments;
 
 #undef LOG
 #define LOG(lv) \
@@ -28,9 +44,19 @@ WorldModel SimulatorBase::worldModel;
 bool SimulatorBase::agents_data_ready = false;
 bool SimulatorBase::agents_path_data_ready = false;
 
+static sumo::SumoNetwork network_;
+static occu::OccupancyMap network_occupancy_map_;
+static segm::SegmentMap network_segment_map_;
+
+static nav_msgs::OccupancyGrid raw_map_;
+
 double pub_frequency = 9.0;
 
 void pedPoseCallback(msg_builder::ped_local_frame_vector);
+
+//void laneCallback(msg_builder::Lanes data);
+
+//void obstacleCallback(msg_builder::Obstacles data);
 
 void agentArrayCallback(msg_builder::TrafficAgentArray);
 
@@ -67,10 +93,14 @@ double navposeToHeadingDir(const geometry_msgs::Pose & msg) {
 }
 
 WorldSimulator::WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model,
-		unsigned seed, bool pathplan_ahead, std::string obstacle_file_name,
+		unsigned seed, bool pathplan_ahead, std::string obstacle_file_name, std::string map_location,
+		int carla_port,
 		COORD car_goal) :
 		SimulatorBase(_nh, obstacle_file_name), pathplan_ahead_(pathplan_ahead), model_(
 				model), World() {
+
+	map_location_ = map_location;
+	carla_port_ = carla_port;
 
 	global_frame_id = ModelParams::rosns + "/map";
 
@@ -94,6 +124,75 @@ WorldSimulator::~WorldSimulator() {
 	cmd.linear.x = 0;
 	cmdPub_.publish(cmd);
 }
+
+
+void WorldSimulator::Connect_Carla(){
+	// Connect with CARLA server
+	logi << "Connecting with carla world at port " << carla_port_ << endl;
+    auto client = cc::Client("127.0.0.1", carla_port_);
+    client.SetTimeout(10s);
+    auto world = client.GetWorld();
+
+    // Define bounds.
+    cg::Vector2D scenario_center, scenario_min, scenario_max, geo_min, geo_max;
+	if (map_location_ == "map"){
+		scenario_center = cg::Vector2D(825, 1500);
+		scenario_min = cg::Vector2D(450, 1100);
+		scenario_max = cg::Vector2D(1200, 1900);
+		geo_min = cg::Vector2D(1.2894000, 103.7669000);
+		geo_max = cg::Vector2D(1.3088000, 103.7853000);
+	}
+	else if (map_location_ == "meskel_square"){
+		scenario_center = cg::Vector2D(450, 400);
+		scenario_min = cg::Vector2D(350, 300);
+		scenario_max = cg::Vector2D(550, 500);
+		geo_min = cg::Vector2D(9.00802, 38.76009);
+		geo_max = cg::Vector2D(9.01391, 38.76603);
+	}
+	else if (map_location_ == "magic"){
+		scenario_center = cg::Vector2D(180, 220);
+		scenario_min = cg::Vector2D(80, 120);
+		scenario_max = cg::Vector2D(280, 320);
+		geo_min = cg::Vector2D(51.5621800, -1.7729100);
+		geo_max = cg::Vector2D(51.5633900, -1.7697300);
+	}
+	else if (map_location_ == "highway"){
+		scenario_center = cg::Vector2D(100, 400);
+		scenario_min = cg::Vector2D(0, 300);
+		scenario_max = cg::Vector2D(200, 500);
+		geo_min = cg::Vector2D(1.2983800, 103.7777000);
+		geo_max = cg::Vector2D(1.3003700, 103.7814900);
+	}
+	else if (map_location_ == "chandni_chowk"){
+		scenario_center = cg::Vector2D(380, 250);
+		scenario_min = cg::Vector2D(260, 830);
+		scenario_max = cg::Vector2D(500, 1150);
+		geo_min = cg::Vector2D(28.653888, 77.223296);
+		geo_max = cg::Vector2D(28.660295, 77.236850);
+	}
+	else if (map_location_ == "shi_men_er_lu"){
+		scenario_center = cg::Vector2D(1010, 1900);
+		scenario_min = cg::Vector2D(780, 1700);
+		scenario_max = cg::Vector2D(1250, 2100);
+		geo_min = cg::Vector2D(31.229828, 121.438702);
+		geo_max = cg::Vector2D(31.242810, 121.464944);
+	}
+	else if (map_location_ == "beijing"){
+		scenario_center = cg::Vector2D(2080, 1860);
+		scenario_min = cg::Vector2D(490, 1730);
+		scenario_max = cg::Vector2D(3680, 2000);
+		geo_min = cg::Vector2D(39.8992818, 116.4099687);
+		geo_max = cg::Vector2D(39.9476116, 116.4438916);
+	}
+
+    std::string homedir = getenv("HOME");
+	auto summit_root = homedir + "/summit/";
+
+	network_ = sumo::SumoNetwork::Load(summit_root + "Data/" + map_location_ + ".net.xml");
+	network_occupancy_map_ = occu::OccupancyMap::Load(summit_root + "Data/" + map_location_ + ".wkt");
+	network_segment_map_ = network_.CreateSegmentMap();
+}
+
 /**
  * [Essential]
  * Establish connection to simulator or system
@@ -110,44 +209,89 @@ bool WorldSimulator::Connect() {
 	goal_pub = nh.advertise<visualization_msgs::MarkerArray>("pomdp_goals", 1);
 	IL_pub = nh.advertise<msg_builder::imitation_data>("il_data", 1);
 
+	mapSub_ = nh.subscribe("map", 1, receive_map_callback); // nav_msgs::OccupancyGrid
+
 	speedSub_ = nh.subscribe("odom", 1, &WorldSimulator::speedCallback, this);
 	// pedSub_ = nh.subscribe("ped_local_frame_vector", 1, pedPoseCallback);
-	mapSub_ = nh.subscribe("map", 1, receive_map_callback); // nav_msgs::OccupancyGrid
 
 	carSub_ = nh.subscribe("ego_state", 1, &WorldSimulator::update_il_car,
 			this);
+
+    egodeadSub_ = nh.subscribe("ego_dead", 1, &WorldSimulator::ego_car_dead_callback, this); //Bool
 
 
 	agentSub_ = nh.subscribe("agent_array", 1, agentArrayCallback);
 	agentpathSub_ = nh.subscribe("agent_path_array", 1, agentPathArrayCallback);
 
-	steerSub_ = nh.subscribe("cmd_steer", 1, &WorldSimulator::cmdSteerCallback, this);
+//	laneSub_ = nh.subscribe("local_lanes", 1, laneCallback);
+//	obsSub_ = nh.subscribe("local_obstacles", 1, obstacleCallback);
 
+	steerSub_ = nh.subscribe("purepursuit_cmd_steer", 1, &WorldSimulator::cmdSteerCallback, this);
+	lane_change_Sub_ = nh.subscribe("gamma_lane_decision", 1, &WorldSimulator::lane_change_Callback, this);
 
 	logi << "Subscribers and Publishers created at the "
 			<< SolverPrior::get_timestamp() << "th second" << endl;
 
-	auto odom_data = ros::topic::waitForMessage<nav_msgs::Odometry>("odom");
-	logi << "odom get at the " << SolverPrior::get_timestamp() << "th second"
-			<< endl;
+	auto path_data =
+				ros::topic::waitForMessage<nav_msgs::Path>(
+						"plan", ros::Duration(300));
 
-	auto car_data = ros::topic::waitForMessage<msg_builder::car_info>(
-			"ego_state");
-	logi << "ego_state get at the " << SolverPrior::get_timestamp()
-			<< "th second" << endl;
+	logi << "plan get at the " << SolverPrior::get_timestamp()
+				<< "th second" << endl;
 
-	auto agent_ready_bool =
-			ros::topic::waitForMessage<std_msgs::Bool>(
-					"agents_ready", ros::Duration(30));
+	Connect_Carla();
 
-	auto agent_data =
-			ros::topic::waitForMessage<msg_builder::TrafficAgentArray>(
-					"agent_array", ros::Duration(30));
+	ros::spinOnce();
 
-	logi << "agent_array get at the " << SolverPrior::get_timestamp()
-			<< "th second" << endl;
+	int tick = 0;
+	bool agent_data_ok=false, odom_data_ok=false, car_data_ok=false, agent_flag_ok=false;
+	while(tick < 28){
+		auto agent_data =
+					ros::topic::waitForMessage<msg_builder::TrafficAgentArray>(
+							"agent_array", ros::Duration(3));
 
-	if (agent_data == NULL)
+		if (agent_data && !agent_data_ok){
+			logi << "agent_array get at the " << SolverPrior::get_timestamp()
+				<< "th second" << endl;
+			agent_data_ok = true;
+		}
+		ros::spinOnce();
+
+		auto odom_data = ros::topic::waitForMessage<nav_msgs::Odometry>(
+				"odom", ros::Duration(1));
+		if (odom_data && !odom_data_ok){
+			logi << "odom get at the " << SolverPrior::get_timestamp() << "th second"
+				<< endl;
+			odom_data_ok = true;
+		}
+		ros::spinOnce();
+
+		auto car_data = ros::topic::waitForMessage<msg_builder::car_info>(
+				"ego_state", ros::Duration(1));
+		if (car_data && !car_data_ok){
+			logi << "ego_state get at the " << SolverPrior::get_timestamp()
+				<< "th second" << endl;
+			car_data_ok = true;
+		}
+		ros::spinOnce();
+
+		auto agent_ready_bool =
+				ros::topic::waitForMessage<std_msgs::Bool>(
+						"agents_ready", ros::Duration(1));
+		if (agent_ready_bool && !agent_flag_ok){
+			logi << "agents ready at get at the " << SolverPrior::get_timestamp()
+				<< "th second" << endl;
+			agent_flag_ok = true;
+		}
+		ros::spinOnce();
+
+		if (agent_data_ok && odom_data_ok && car_data_ok && agent_flag_ok)
+			tick = 100000;
+		else
+			tick++;
+	}
+
+	if (tick == 28)
 		ERR("No agent array messages received after 30 seconds.");
 
 	return true;
@@ -159,7 +303,7 @@ bool WorldSimulator::Connect() {
  */
 State* WorldSimulator::Initialize() {
 
-	cerr << "DEBUG: Initializing world" << endl;
+	cerr << "DEBUG: Initializing world in WorldSimulator::Initialize" << endl;
 
 	safeAction = 2;
 	target_speed_ = 0.0;
@@ -167,6 +311,39 @@ State* WorldSimulator::Initialize() {
 	goal_reached = false;
 	last_acc_ = 0;
 	b_update_il = true;
+
+	if(SolverPrior::nn_priors.size() == 0){
+		ERR("No nn_prior exist");
+	}
+
+	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
+		PedNeuralSolverPrior * nn_prior =
+				static_cast<PedNeuralSolverPrior *>(SolverPrior::nn_priors[i]);
+		nn_prior->raw_map_ = raw_map_;
+		nn_prior->map_received = true;
+		nn_prior->Init();
+	}
+
+//	ros::spinOnce();
+//
+//	int tick = 0;
+//	bool map_data_ok = false;
+//	while (tick < 20) {
+//		auto map_data = ros::topic::waitForMessage<nav_msgs::OccupancyGrid>(
+//						"map", ros::Duration(1));
+//		if (map_data && !map_data_ok){
+//			logi << "map get at the " << SolverPrior::get_timestamp() << "th second"
+//				<< endl;
+//			map_data_ok = true;
+//		}
+//		ros::spinOnce();
+//
+//		logi << "Waiting for map..." << endl;
+//		tick++;
+//	}
+//
+//	if (!map_data_ok)
+//		ERR("Map message missing");
 
 	return NULL;
 }
@@ -178,8 +355,8 @@ tf::Stamped<tf::Pose> WorldSimulator::GetBaseLinkPose() {
 	in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
 
 	while (!getObjectPose(global_frame_id, in_pose, out_pose)) {
-		cerr << "transform error within GetCurrentState" << endl;
-		cout << "laser frame " << in_pose.frame_id_ << endl;
+		logv << "transform error within GetCurrentState" << endl;
+		logv << "laser frame " << in_pose.frame_id_ << endl;
 		ros::Rate err_retry_rate(10);
 		err_retry_rate.sleep();
 	}
@@ -192,6 +369,8 @@ tf::Stamped<tf::Pose> WorldSimulator::GetBaseLinkPose() {
  * To help construct initial belief to print debug informations in Logger
  */
 State* WorldSimulator::GetCurrentState() {
+
+	stateTracker->check_world_status();
 
 	/* Get current car coordinates */
 
@@ -209,7 +388,10 @@ State* WorldSimulator::GetCurrentState() {
 	coord = poseToCoord(out_pose);
 	//}
 
-	cout << "======transformed pose = " << coord.x << " " << coord.y << endl;
+	if(!network_occupancy_map_.Contains(cg::Vector2D(coord.x, coord.y)))
+		ERR("Ego-vehicle going out of bound !");
+
+	logv << "======transformed pose = " << coord.x << " " << coord.y << endl;
 
 	updated_car.pos = coord;
 	updated_car.vel = real_speed_;
@@ -217,6 +399,8 @@ State* WorldSimulator::GetCurrentState() {
 
 	// DEBUG("update");
 	stateTracker->updateCar(updated_car);
+	updateLanes(coord);
+	updateObs(coord);
 	// stateTracker->cleanAgents();
 
 	// DEBUG("state");
@@ -224,12 +408,14 @@ State* WorldSimulator::GetCurrentState() {
 
 	current_state.assign(state);
 
-	if (logging::level() >= 4)
+	if (logging::level() >= logging::VERBOSE){
+		printf("GetCurrentState start");
 		static_cast<PedPomdp*>(model_)->PrintWorldState(current_state);
-
+		printf("GetCurrentState end");
+	}
 	current_state.time_stamp = SolverPrior::get_timestamp();
 
-	logi << " current state time stamp " << current_state.time_stamp << endl;
+	logv << " current state time stamp " << current_state.time_stamp << endl;
 
 	// logi << "&current_state " << &current_state << endl;
 	return static_cast<State*>(&current_state);
@@ -286,7 +472,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	PomdpStateWorld* curr_state =
 			static_cast<PomdpStateWorld*>(GetCurrentState());
 
-	if (logging::level() >= 3)
+	if (logging::level() >= logging::INFO)
 		static_cast<PedPomdp*>(model_)->PrintWorldState(*curr_state);
 
 	double acc;
@@ -327,13 +513,15 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 				PedPomdp::ACT_DEC);
 		steer = 0;
 		action = static_cast<PedPomdp*>(model_)->GetActionID(steer, acc);
+
+		DEBUG("Termination of episode due to coll.");
 	}
 
 	/* Publish action and step reward */
 
-//	logd << "[WorldSimulator::"<<__FUNCTION__<<"] Publish action (for data collection)"<<endl;
+//	logv << "[WorldSimulator::"<<__FUNCTION__<<"] Publish action (for data collection)"<<endl;
 //	publishAction(action, step_reward);
-	logd << "[WorldSimulator::" << __FUNCTION__
+	logv << "[WorldSimulator::" << __FUNCTION__
 			<< "] Update steering and target speed" << endl;
 
 	/* Publish steering and target velocity to Unity */
@@ -398,7 +586,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	 * Caution: obs info is not up-to-date here. Don't use it
 	 */
 
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Generate obs" << endl;
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Generate obs" << endl;
 	obs = static_cast<PedPomdp*>(model_)->StateToIndex(GetCurrentState());
 
 	//worldModel.traffic_agent_sim_[0] -> OutputTime();
@@ -711,7 +899,7 @@ extern double marker_colors[20][3];
 void WorldSimulator::publishAction(int action, double reward) {
 	if (action == -1)
 		return;
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers" << endl;
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers" << endl;
 
 	uint32_t shape = visualization_msgs::Marker::CUBE;
 	visualization_msgs::Marker marker;
@@ -722,7 +910,7 @@ void WorldSimulator::publishAction(int action, double reward) {
 	marker.id = 0;
 	marker.type = shape;
 	marker.action = visualization_msgs::Marker::ADD;
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers check 1"
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers check 1"
 			<< endl;
 	double px, py;
 	px = stateTracker->carpos.x;
@@ -734,7 +922,7 @@ void WorldSimulator::publishAction(int action, double reward) {
 	marker.pose.orientation.y = 0.0;
 	marker.pose.orientation.z = 0.0;
 	marker.pose.orientation.w = 1.0;
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers check 2"
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Prepare markers check 2"
 			<< endl;
 
 	// Set the scale of the marker in meters
@@ -744,7 +932,7 @@ void WorldSimulator::publishAction(int action, double reward) {
 
 	int aid = action;
 	aid = max(aid, 0) % 3;
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] color id" << aid
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] color id" << aid
 			<< " action " << action << endl;
 
 	marker.color.r = marker_colors[action_map[aid]][0];
@@ -753,10 +941,10 @@ void WorldSimulator::publishAction(int action, double reward) {
 	marker.color.a = 1.0;
 
 	ros::Duration d(1 / ModelParams::control_freq);
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Publish marker" << endl;
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Publish marker" << endl;
 	marker.lifetime = d;
 	actionPub_.publish(marker);
-	logd << "[WorldSimulator::" << __FUNCTION__ << "] Publish action comand"
+	logv << "[WorldSimulator::" << __FUNCTION__ << "] Publish action comand"
 			<< endl;
 	geometry_msgs::Twist action_cmd;
 	action_cmd.linear.x = action;
@@ -768,9 +956,9 @@ bool WorldSimulator::getObjectPose(string target_frame,
 		tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const {
 	out_pose.setIdentity();
 
-	cout << "laser frame " << in_pose.frame_id_ << endl;
+	logv << "laser frame " << in_pose.frame_id_ << endl;
 
-	cout << "getting transform of frame " << target_frame << endl;
+	logv << "getting transform of frame " << target_frame << endl;
 
 	try {
 		tf_.transformPose(target_frame, in_pose, out_pose);
@@ -790,6 +978,9 @@ bool WorldSimulator::getObjectPose(string target_frame,
 //=============== from pedpomdpnode ==============
 
 void WorldSimulator::speedCallback(nav_msgs::Odometry odo) {
+
+//	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
+
 	odom_vel_ = COORD(odo.twist.twist.linear.x, odo.twist.twist.linear.y);
 	// real_speed_=sqrt(odo.twist.twist.linear.x * odo.twist.twist.linear.x + 
 	// odo.twist.twist.linear.y * odo.twist.twist.linear.y);
@@ -813,18 +1004,35 @@ bool sortFn(Pedestrian p1, Pedestrian p2) {
 	return p1.id < p2.id;
 }
 
+
+//void laneCallback(msg_builder::Lanes data){
+//	double data_time_sec = SolverPrior::get_timestamp();
+//	DEBUG(
+//			string_sprintf("receive %d lanes at time %f",
+//					data.lane_segments.size(), SolverPrior::get_timestamp()));
+//}
+//
+//void obstacleCallback(msg_builder::Obstacles data){
+//	double data_time_sec = SolverPrior::get_timestamp();
+//	DEBUG(
+//			string_sprintf("receive %d obstacle contours at time %f",
+//					data.contours.size(), SolverPrior::get_timestamp()));
+//}
+
 void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 	double data_sec = data.header.stamp.sec;  // std_msgs::time
 	double data_nsec = data.header.stamp.nsec;
 
-	double data_time_sec = data_sec + data_nsec * 1e-9;
+	double data_ros_time_sec = data_sec + data_nsec * 1e-9;
+
+	double data_time_sec = SolverPrior::get_timestamp();
 
 	WorldSimulator::stateTracker->latest_time_stamp = data_time_sec;
 
 	DEBUG(
-			string_sprintf("receive agent num %d at time %f \n",
-					data.agents.size(), data_time_sec));
+			string_sprintf("receive agent num %d at time %f",
+					data.agents.size(), SolverPrior::get_timestamp()));
 
 	vector<Pedestrian> ped_list;
 	vector<Vehicle> veh_list;
@@ -837,6 +1045,7 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 			Vehicle world_veh;
 
 			world_veh.time_stamp = data_time_sec;
+			world_veh.ros_time_stamp = data_ros_time_sec;
 			world_veh.id = agent.id;
 			world_veh.w = agent.pose.position.x;
 			world_veh.h = agent.pose.position.y;
@@ -851,6 +1060,7 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 			Pedestrian world_ped;
 
 			world_ped.time_stamp = data_time_sec;
+			world_ped.ros_time_stamp = data_ros_time_sec;
 			world_ped.id = agent.id;
 			world_ped.w = agent.pose.position.x;
 			world_ped.h = agent.pose.position.y;
@@ -871,7 +1081,9 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 	WorldSimulator::stateTracker->cleanAgents();
 
-	DEBUG("Finish agent update");
+//	DEBUG(
+//				string_sprintf("Finish agent update at time %f",
+//						SolverPrior::get_timestamp()));
 
 	WorldSimulator::stateTracker->model.print_path_map();
 
@@ -880,8 +1092,8 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 	// DEBUG(string_sprintf("ped_list len %d", ped_list.size()));
 	// DEBUG(string_sprintf("veh_list len %d", veh_list.size()));
-	logd << "====================[ agentArrayCallback end ]================="
-			<< endl;
+//	logv << "====================[ agentArrayCallback end ]================="
+//			<< endl;
 
 	SimulatorBase::agents_data_ready = true;
 }
@@ -895,8 +1107,8 @@ void agentPathArrayCallback(msg_builder::AgentPathArray data) {
 	WorldSimulator::stateTracker->latest_path_time_stamp = data_time_sec;
 
 	DEBUG(
-			string_sprintf("receive agent num %d at time %f \n",
-					data.agents.size(), data_time_sec));
+			string_sprintf("receive agent num %d at time %f",
+					data.agents.size(), SolverPrior::get_timestamp()));
 
 	vector<Pedestrian> ped_list;
 	vector<Vehicle> veh_list;
@@ -951,16 +1163,15 @@ void agentPathArrayCallback(msg_builder::AgentPathArray data) {
 		WorldSimulator::stateTracker->updateVehPaths(veh);
 	}
 
-	DEBUG("Finish agent paths update");
-
-		logd << "====================[ agentPathArrayCallback end ]================="
-			<< endl;
+//	DEBUG(
+//			string_sprintf("Finish agent paths update at time %f",
+//					SolverPrior::get_timestamp()));
 
 	SimulatorBase::agents_path_data_ready = true;
 }
 
 void pedPoseCallback(msg_builder::ped_local_frame_vector lPedLocal) {
-	logd << "======================[ pedPoseCallback ]= ts "
+	logv << "======================[ pedPoseCallback ]= ts "
 			<< Globals::ElapsedTime() << " ==================" << endl;
 
 	DEBUG(string_sprintf("receive peds num %d", lPedLocal.ped_local.size()));
@@ -982,15 +1193,16 @@ void pedPoseCallback(msg_builder::ped_local_frame_vector lPedLocal) {
 		WorldSimulator::stateTracker->updatePed(ped_list[i]);
 	}
 
-	logd << "====================[ pedPoseCallback end ]================="
+	logv << "====================[ pedPoseCallback end ]================="
 			<< endl;
 
 	SimulatorBase::agents_data_ready = true;
 }
 
 void receive_map_callback(nav_msgs::OccupancyGrid map) {
-	logi << "[receive_map_callback] " << endl;
+	logi << "[receive_map_callback] ts: " << SolverPrior::get_timestamp() << endl;
 
+	raw_map_ = map;
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 		PedNeuralSolverPrior * nn_prior =
 				static_cast<PedNeuralSolverPrior *>(SolverPrior::nn_priors[i]);
@@ -999,13 +1211,22 @@ void receive_map_callback(nav_msgs::OccupancyGrid map) {
 		nn_prior->Init();
 	}
 
-	logi << "[receive_map_callback] end " << endl;
+	logi << "[receive_map_callback] end ts: " << SolverPrior::get_timestamp() << endl;
 }
 
+void WorldSimulator::ego_car_dead_callback(std_msgs::Bool::ConstPtr data){
+
+	ERR("Ego car is dead, reached the edge of the current map");
+}
+
+void WorldSimulator::lane_change_Callback(const std_msgs::Int32::ConstPtr lane_decision){
+	p_IL_data.action_reward.lane_change.data = int(lane_decision->data);
+}
 
 void WorldSimulator::cmdSteerCallback(const std_msgs::Float32::ConstPtr steer){
+//	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
 	// receive steering in rad
-	p_IL_data.action_reward.angular.x = float(steer->data);
+	p_IL_data.action_reward.steering_normalized.data = float(steer->data);
 }
 
 
@@ -1048,6 +1269,8 @@ double xylength(geometry_msgs::Point32 p) {
 bool car_data_ready = false;
 
 void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
+//	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
+
 	if (b_update_il == true) {
 		p_IL_data.cur_car = *car;
 	}
@@ -1067,20 +1290,17 @@ void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
 		ModelParams::CAR_LENGTH = 0;
 		float car_yaw = ego_car.car_yaw;
 
-		if (fabs(car_yaw - odom_heading_) > 0.4
-				&& fabs(car_yaw - odom_heading_) < 2 * M_PI - 0.4)
+		if (fabs(car_yaw - odom_heading_) > 0.6
+				&& fabs(car_yaw - odom_heading_) < 2 * M_PI - 0.6)
 			if (odom_heading_ != 0)
-				ERR(
-						string_sprintf(
-								"Il topic car_yaw incorrect: %f , truth %f",
-								car_yaw, odom_heading_));
+				DEBUG(string_sprintf(
+						"Il topic car_yaw incorrect: %f , truth %f",
+						car_yaw, odom_heading_));
 
 		COORD tan_dir(-sin(car_yaw), cos(car_yaw));
 		COORD along_dir(cos(car_yaw), sin(car_yaw));
 		for (auto& point : ego_car.car_bbox.points) {
-			// fprintf(stderr,"car bb point: (%f, %f)\n", point.x, point.y);
 			COORD p(point.x - ego_car.car_pos.x, point.y - ego_car.car_pos.y);
-			// fprintf(stderr,"car bb point dir: (%f, %f)\n", p.x, p.y);
 			double proj = p.dot(tan_dir);
 			ModelParams::CAR_WIDTH = max(ModelParams::CAR_WIDTH, fabs(proj));
 			proj = p.dot(along_dir);
@@ -1089,10 +1309,13 @@ void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
 		ModelParams::CAR_WIDTH = ModelParams::CAR_WIDTH * 2;
 		ModelParams::CAR_LENGTH = ModelParams::CAR_LENGTH * 2;
 		ModelParams::CAR_FRONT = ModelParams::CAR_LENGTH / 2.0;
-		// DEBUG(string_sprintf("car dimension: font = %f , rear = %f, width = %f\n",
-		// ModelParams::CAR_FRONT, ModelParams::CAR_REAR, ModelParams::CAR_WIDTH));
 
-		static_cast<const PedPomdp*>(model_)->InitGPUCarParams();
+		if (Globals::config.useGPU)
+			static_cast<const PedPomdp*>(model_)->InitGPUCarParams();
+
+		for (auto& n_prior: SolverPrior::nn_priors)
+			static_cast<PedNeuralSolverPrior*>(n_prior)->update_ego_car_shape(
+					ego_car.car_bbox.points);
 
 		car_data_ready = true;
 	}
@@ -1123,10 +1346,11 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state,
 	// action for publish
 	geometry_msgs::Twist p_action_reward;
 
-	p_IL_data.action_reward.linear.y = reward;
-	p_IL_data.action_reward.linear.z = cmd_vel;
+	p_IL_data.action_reward.step_reward.data = reward;
+	p_IL_data.action_reward.cur_speed.data = real_speed_;
+	p_IL_data.action_reward.target_speed.data = cmd_vel;
 
-	p_IL_data.action_reward.linear.x =
+	p_IL_data.action_reward.acceleration_id.data =
 			static_cast<PedPomdp*>(model_)->GetAccelerationID(safeAction);
 	// steering come from ROS topic
     // p_IL_data.action_reward.angular.x = static_cast<PedPomdp*>(model_)->GetSteering(safeAction);
@@ -1148,4 +1372,48 @@ void WorldSimulator::Debug_action() {
 
 void WorldSimulator::setCarGoal(COORD car_goal) {
 	worldModel.car_goal = car_goal;
+}
+
+float publish_map_rad = 100.0;
+
+void WorldSimulator::updateLanes(COORD car_pos){
+	auto OM_bound = occu::OccupancyMap(
+	            cg::Vector2D(car_pos.x - publish_map_rad, car_pos.y - publish_map_rad),
+	            cg::Vector2D(car_pos.x + publish_map_rad, car_pos.y + publish_map_rad));
+
+	auto local_lanes = network_segment_map_.Intersection(OM_bound);
+
+	worldModel.local_lane_segments_.resize(0);
+
+	for (auto& lane_seg : local_lanes.GetSegments()){
+		msg_builder::LaneSeg lane_seg_tmp;
+		lane_seg_tmp.start.x = lane_seg.start.x;
+		lane_seg_tmp.start.y = lane_seg.start.y;
+		lane_seg_tmp.end.x = lane_seg.end.x;
+		lane_seg_tmp.end.y = lane_seg.end.y;
+
+		worldModel.local_lane_segments_.push_back(lane_seg_tmp);
+	}
+}
+
+void WorldSimulator::updateObs(COORD car_pos){
+	auto OM_bound = occu::OccupancyMap(
+		            cg::Vector2D(car_pos.x - publish_map_rad, car_pos.y - publish_map_rad),
+		            cg::Vector2D(car_pos.x + publish_map_rad, car_pos.y + publish_map_rad));
+
+	auto local_obstacles = OM_bound.Difference(network_occupancy_map_);
+	worldModel.local_obs_contours_.resize(0);
+
+	for (auto& polygon : local_obstacles.GetPolygons()){
+		geometry_msgs::Polygon polygon_tmp;
+		auto& outer_contour = polygon[0];
+		for (auto& point: outer_contour){
+			geometry_msgs::Point32 tmp;
+			tmp.x = point.x;
+			tmp.y = point.y;
+			tmp.z = 0.0;
+			polygon_tmp.points.push_back(tmp);
+		}
+		worldModel.local_obs_contours_.push_back(polygon_tmp);
+	}
 }

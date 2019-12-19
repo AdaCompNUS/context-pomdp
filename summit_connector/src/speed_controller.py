@@ -43,7 +43,7 @@ class SpeedController(object):
         self.proximity = 10000000
 
         for ped_pos in self.peds_pos:
-            if infront(player_pos, player_yaw, ped_pos):
+            if in_front(player_pos, player_yaw, ped_pos):
                 dist = distance(player_pos, ped_pos)
                 if dist < self.proximity:
                     self.proximity = dist

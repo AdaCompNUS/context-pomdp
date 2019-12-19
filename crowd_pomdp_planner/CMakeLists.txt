@@ -5,12 +5,12 @@ set(CUDA_SDK_ROOT_DIR "/usr/local/cuda/samples")
 project(crowd_pomdp_planner CXX CUDA)
 
 if(NOT DEFINED CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 11)
+  set(CMAKE_CXX_STANDARD 14)
   set(CMAKE_CXX_STANDARD_REQUIRED True)
 endif()
 
 if(NOT DEFINED CMAKE_CUDA_STANDARD)
-  set(CMAKE_CUDA_STANDARD 11)
+  set(CMAKE_CUDA_STANDARD 14)
   set(CMAKE_CUDA_STANDARD_REQUIRED True)
 endif()
 
@@ -20,7 +20,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_PREFIX_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
 add_definitions(-std=c++0x -O3)
 
-find_package(car_hyp_despot REQUIRED)
+# find_package(car_hyp_despot REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
@@ -38,7 +38,8 @@ find_package(OpenCV 4.1.0 REQUIRED)
 
 catkin_package(
   CATKIN_DEPENDS geometry_msgs msg_builder car_hyp_despot  roscpp
-  DEPENDS TORCH OpenCV CUDA
+  # DEPENDS TORCH OpenCV CUDA
+  DEPENDS OpenCV CUDA
 )
 
 
@@ -51,7 +52,11 @@ include_directories(
   ../car_hyp_despot/src/planner/
   ../car_hyp_despot/src/HypDespot/include/
   ../car_hyp_despot/src/HypDespot/include/despot
+  ../crowd_pomdp_planner/src/carla/
+  ../crowd_pomdp_planner/src/
 )
+
+# message("===================== ${CATKIN_DEVEL_PREFIX} ==================")
 
 add_library(car_hyp_despot STATIC IMPORTED)
 set_target_properties(car_hyp_despot PROPERTIES
@@ -77,6 +82,26 @@ target_link_libraries(ped_pomdp
   ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
 )
+
+# file (GLOB all_carla_libs ${CMAKE_SOURCE_DIR}/libcarla/*.a)
+
+# foreach (carla_lib ${all_carla_libs})
+#	message("===================== ${carla_lib} ==================")
+# endforeach()
+
+list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/libcarla_client.a)
+list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/libDetour.a)
+list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/libDetourCrowd.a)
+list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/librpc.a)
+list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/libRecast.a)
+list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/libDebugUtils.a)
+
+foreach (carla_lib ${carla_libs})
+    target_link_libraries(ped_pomdp ${carla_lib})
+endforeach()
+   
+
+# target_link_libraries(ped_pomdp ${carla_libs})
 
 target_link_libraries(local_frame
   car_hyp_despot

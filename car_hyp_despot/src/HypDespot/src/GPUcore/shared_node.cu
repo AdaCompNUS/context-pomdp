@@ -12,7 +12,7 @@ MsgQueque<Shared_VNode> Expand_queue, Print_queue;
 Shared_VNode::Shared_VNode(vector<State*>& particles,std::vector<int> particleIDs, int depth, Shared_QNode* parent,
 	OBS_TYPE edge)
 {
-	logd << "[Shared_VNode::Shared_VNode] "<< endl;
+	logv << "[Shared_VNode::Shared_VNode] "<< endl;
 	lock_guard<mutex> lck(_mutex);
 	particles_=particles;
 	particleIDs_=particleIDs;
@@ -24,7 +24,7 @@ Shared_VNode::Shared_VNode(vector<State*>& particles,std::vector<int> particleID
 	edge_=edge;
 	vstar=this;
 	likelihood=1;
-	logd << "Constructed Shared_VNode with " << particles_.size() << " particles"
+	logv << "Constructed Shared_VNode with " << particles_.size() << " particles"
 		<< endl;
 	/*for (int i = 0; i < particles_.size(); i++) {
 		logd << " " << i << " = " <<"("<< particleIDs_[i]<<")"<< *particles_[i] << endl;

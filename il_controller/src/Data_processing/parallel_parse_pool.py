@@ -1,30 +1,29 @@
-# from Data_processing import global_params
-from global_params import config
+import sys
+
+# sys.path.append('./Data_processing/')
+# sys.path.append('../')
+sys.path.append('./')
+
+from Data_processing import global_params
+
+config = global_params.config
 
 if config.pycharm_mode:
     import pyros_setup
     pyros_setup.configurable_import().configure('mysetup.cfg').activate()
 
-import sys
-
-sys.path.append('./Data_processing/')
-sys.path.append('../')
 
 import glob
 import deepdish as dd
-# import ipdb as pdb
+# import pdb
 import fnmatch
 import os
 import argparse
 import random
-import ipdb as pdb
+import pdb
 import h5py
 
 from Data_processing import bag_to_hdf5
-import global_params, bag_to_hdf5
-from global_params import config
-
-config = global_params.config
 
 import multiprocessing
 
@@ -47,7 +46,7 @@ class Parser(Process):
             folder, start, end = self.queue.get()
             # print (self, self.is_alive())
             # Get the work from the queue and expand the tuple
-            bag_to_hdf5.main(folder, peds_goal_path, config.num_peds_in_NN, start, end, self.id)
+            bag_to_hdf5.main(folder, 0, start, end, self.id)
 
             print("Thread %d finished work %s (%d to %d)" % (self.id, folder, start, end))
 
@@ -87,7 +86,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--nped',
         type=int,
-        default=config.num_peds_in_NN,
+        default=0,
         help='Number of neighbouring peds to consider')
 
     parser.add_argument(
@@ -98,7 +97,6 @@ if __name__ == "__main__":
 
     bagspath = parser.parse_args().bagspath
     peds_goal_path = parser.parse_args().peds_goal_path
-    config.num_peds_in_NN = parser.parse_args().nped
     config.num_samples_per_traj = parser.parse_args().nsample
 
     folders = list([])
@@ -130,7 +128,7 @@ if __name__ == "__main__":
         i += 1
 
     # Put the tasks into the queue as a tuple
-    chunk = 100
+    chunk = 50
     for i in range(0, file_count//chunk + 1):
         for folder in folders:
             queue.put((folder, i * chunk, (i + 1) * chunk))

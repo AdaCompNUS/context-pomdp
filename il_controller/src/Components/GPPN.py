@@ -12,13 +12,10 @@ class GPPN(nn.Module):
     """
     Implementation of the Gated Path Planning Network.
     """
-    def __init__(self, args, l_i=None):
+    def __init__(self, args, l_i=None, out_planes=config.gppn_out_channels):
         super(GPPN, self).__init__()
 
-        if config.vanilla_resnet:  # In this case VIN will be disabled.
-            self.output_channels = args.l_i 
-        else:    
-            self.output_channels = config.vin_out_channels # 1
+        self.output_channels = out_planes  # 1
 
         if l_i is not None:
             self.l_i = l_i
@@ -86,7 +83,7 @@ class GPPN(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def forward(self, X, config):
+    def forward(self, X):
         maze_size = X.size()[2] # image size
 
         hid = self.hid(X)

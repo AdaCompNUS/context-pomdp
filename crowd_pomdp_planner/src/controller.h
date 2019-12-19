@@ -151,9 +151,11 @@ public:
 public: // lets_drive
 	static int b_use_drive_net_;
 	static int gpu_id_;
+	static int carla_port_;
     static float time_scale_; // scale down the speed of time, value < 1.0
     static std::string model_file_;
     static std::string value_model_file_;
+    static std::string map_location_;
 private:
 
 	SolverPrior* prior_;

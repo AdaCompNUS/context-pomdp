@@ -23,10 +23,10 @@ VNode::VNode(vector<State*>& particles,std::vector<int> particleIDs, int depth, 
 	vstar(this),
 	likelihood(1),
 	prior_value_(DUMMY_VALUE){
-	logd << "Constructed vnode with " << particles_.size() << " particles"
+	logv << "Constructed vnode with " << particles_.size() << " particles"
 		<< endl;
 	for (int i = 0; i < particles_.size(); i++) {
-		logd << " " << i << " = " <<"("<< particleIDs_[i]<<")"<< *particles_[i] << endl;
+		logv << " " << i << " = " <<"("<< particleIDs_[i]<<")"<< *particles_[i] << endl;
 	}
 	weight_=0;
 	prior_initialized_ = false;
@@ -160,9 +160,9 @@ int VNode::Size() const {
 //	for (int a = 0; a < children_.size(); a++) {
 	for (int a : legal_actions_) {
 		if (a < children_.size()) {
-//			logd << "[VNode::Size] vnode " << this << " legal action " << a <<
+//			logv << "[VNode::Size] vnode " << this << " legal action " << a <<
 //					" with " << children_.size() << " children"<< endl;
-//			logd << "[VNode::Size] qnode " << children_[a] << endl;
+//			logv << "[VNode::Size] qnode " << children_[a] << endl;
 			size += children_[a]->Size();
 		}
 	}

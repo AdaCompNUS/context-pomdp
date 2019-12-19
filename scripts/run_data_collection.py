@@ -9,6 +9,8 @@ import time
 import signal
 from os.path import expanduser
 from clear_process import clear_process, clear_nodes
+import copy
+from timeit import default_timer as timer
 
 sim_mode = "carla"  # "unity"
 
@@ -48,10 +50,14 @@ monitor_worker = None
 
 Timeout_inner_monitor_pid, Timeout_monitor_pid = None, None
 
+search_log_name = None 
+open_search_log = False
+
 NO_NET = 0
 IMITATION = 1
 LETS_DRIVE = 2
 JOINT_POMDP = 3
+ROLL_OUT = 4
 
 class SubprocessMonitor(Process):
     def __init__(self, queue, id):
@@ -166,11 +172,14 @@ def parse_cmd_args():
                         help='Use drive net for control: 0 no / 1 imitation / 2 lets_drive')
     parser.add_argument('--model',
                         type=str,
-                        default='trained_models/hybrid_unicorn.pth',
+                        # default='trained_models/cate_action.pth',
+                        # default='trained_models/gamma_hybrid.pth',
+                        default='trained_models/pomdp_cate1.pth',
+                        # default='trained_models/pomdp_hybrid1.pth',
                         help='Drive net model name')
     parser.add_argument('--val_model',
                         type=str,
-                        default='model_val.pth',
+                        default=os.path.join(home, nn_folder) + '/trained_models/test_model_val.pt',
                         help='Drive net value model name')
     parser.add_argument('--t_scale',
                         type=float,
@@ -188,6 +197,26 @@ def parse_cmd_args():
                         type=int,
                         default=2000,
                         help='carla_port')
+    parser.add_argument('--maploc',
+                        type=str,
+                        default="random",
+                        help='map location in summit simulator')
+    parser.add_argument('--rands',
+                        type=int,
+                        default=0,
+                        help='random seed in summit simulator')
+    parser.add_argument('--launch_sim',
+                        type=int,
+                        default=1,
+                        help='choose whether to launch the summit simulator')
+    parser.add_argument('--eps_len',
+                        type=float,
+                        default=70.0,
+                        help='Length of episodes in terms of seconds')
+    parser.add_argument('--monitor',
+                        type=str,
+                        default="data_monitor",
+                        help='which data monitor to use: data_monitor or summit_dql')
 
     return parser.parse_args()
 
@@ -204,12 +233,22 @@ def update_global_config(cmd_args):
     config.record_bag = bool(cmd_args.record)
     config.gpu_id = int(cmd_args.gpu_id)
     config.port = int(cmd_args.port)
-    print(config.port)
     config.ros_port = config.port + 111
-    print(config.ros_port)
     config.ros_master_url = "http://localhost:{}".format(config.ros_port)
     config.ros_pref = "ROS_MASTER_URI=http://localhost:{} ".format(config.ros_port)
-    print(config.ros_pref)
+    if 'random' in cmd_args.maploc:
+    	# config.summit_maploc = random.choice(['meskel_square', 'magic', 'highway'])
+        # config.summit_maploc = random.choice(['meskel_square', 'magic', 'highway', 'chandni_chowk', 'shi_men_er_lu', 'beijing'])
+        config.summit_maploc = random.choice(['meskel_square', 'magic', 'highway', 'chandni_chowk', 'shi_men_er_lu'])
+    else:
+        config.summit_maploc = cmd_args.maploc
+    config.random_seed = cmd_args.rands
+    if cmd_args.rands == -1:
+    	config.random_seed = random.randint(0, 10000000)
+
+    config.launch_summit = bool(cmd_args.launch_sim)
+    config.eps_length = cmd_args.eps_len
+
     if "no" in cmd_args.net:
         config.use_drive_net_mode = NO_NET
     elif "imitation" in cmd_args.net:
@@ -218,11 +257,14 @@ def update_global_config(cmd_args):
         config.use_drive_net_mode = LETS_DRIVE
     elif "joint_pomdp" in cmd_args.net:
         config.use_drive_net_mode = JOINT_POMDP
+    elif "rollout" in cmd_args.net:
+        config.use_drive_net_mode = ROLL_OUT
     else:
         print("CAUTION: unsupported drive net mode")
         exit(-1)
 
     config.model = cmd_args.model
+    config.monitor = cmd_args.monitor
     config.val_model = cmd_args.val_model
     config.time_scale = float(cmd_args.t_scale)
     config.test_mode = bool(cmd_args.test)
@@ -250,7 +292,11 @@ def update_global_config(cmd_args):
 
     if "joint_pomdp" in cmd_args.baseline:
         config.use_drive_net_mode = JOINT_POMDP
-        # config.record_bag = 0 
+        # config.record_bag = 0
+    elif "gamma" in cmd_args.baseline:
+        config.use_drive_net_mode = JOINT_POMDP
+    elif "rollout" in cmd_args.baseline:
+        config.use_drive_net_mode = ROLL_OUT
     elif "imitation" in cmd_args.baseline:
         config.use_drive_net_mode = IMITATION
         # config.record_bag = 0
@@ -273,6 +319,14 @@ def update_global_config(cmd_args):
         cmd_args.record = config.record_bag
 
     print('============== cmd_args ==============')
+    print("port={}".format(config.port))
+    print("ros_port={}".format(config.ros_port))
+    print("ros command prefix: {}".format(config.ros_pref))
+
+    print("summit map location: {}".format(config.summit_maploc))
+    print("summit random seed: {}".format(config.random_seed))
+    print("launch summit: {}".format(config.launch_summit))
+
     print("start_round: " + str(cmd_args.sround))
     print("end_round: " + str(cmd_args.eround))
     print("timeout: " + str(config.timeout))
@@ -374,7 +428,7 @@ def get_bag_file_name(round, run, case):
     dir = result_subfolder
 
     file_name = problem_flag + '_case_' + goal_flag + '_sample-' + \
-                str(round) + '-' + str(run) + '-' + str(case)
+                str(round) + '-' + str(run) + '-' + str(case) + '_pid-'+ str(os.getpid()) + '_r-'+ str(config.random_seed)
 
     existing_bags = glob.glob(dir + "*.bag")
 
@@ -396,7 +450,7 @@ def get_bag_file_name(round, run, case):
 
 
 def get_txt_file_name(round, run, case):
-    # rand = random.randint(0,10000000)
+
     return get_bag_file_name(round, run, case) + '.txt'
 
 def choose_problem(run, batch):
@@ -870,7 +924,8 @@ def init_case_dirs():
 
     global subfolder, obstacle_file, goal_file, result_subfolder
 
-    subfolder = 'map_' + problem_flag + '_case_' + goal_flag
+    # subfolder = 'map_' + problem_flag + '_case_' + goal_flag
+    subfolder = config.summit_maploc
 
     if cmd_args.baseline is not "":
         result_subfolder = path.join(root_path, 'result', cmd_args.baseline + '_baseline', subfolder)
@@ -1013,12 +1068,11 @@ def launch_python_scripts(round, run, case):
     return odom_proc, connector_proc, pursuit_proc, odom_out, connector_out, pursuit_out
 
 def launch_carla_simulator(round, run, case):
-    global shell_cmd
+    global shell_cmd 
     
-    launch_summit = False 
-    
-    if launch_summit:
+    if config.launch_summit:
         shell_cmd = 'DISPLAY= ./CarlaUE4.sh -opengl'
+        # shell_cmd = './CarlaUE4.sh -opengl'
         if config.verbosity > 0:
             print('')
             print(shell_cmd)
@@ -1026,9 +1080,21 @@ def launch_carla_simulator(round, run, case):
         carla_proc = subprocess.Popen(shell_cmd, cwd=os.path.join(home, "summit/LinuxNoEditor"), shell = True)
 
         wait_for(config.max_launch_wait, carla_proc, '[launch] carla_engine')
-        time.sleep(1)   
+        time.sleep(3)   
 
-    shell_cmd = config.ros_pref+'roslaunch connector.launch port:=' + str(config.port)
+    shell_cmd = config.ros_pref+'roslaunch connector.launch port:=' + \
+    	str(config.port) + ' map_location:=' + str(config.summit_maploc) + \
+        ' random_seed:=' + str(config.random_seed)
+
+    if "gamma" in cmd_args.baseline:
+    	print("launching connector with GAMMA controller...")
+    	shell_cmd = shell_cmd + ' ego_control_mode:=gamma'
+    elif "imitation" in cmd_args.baseline:
+    	print("launching connector with imitation controller...")
+    	shell_cmd = shell_cmd + ' ego_control_mode:=imitation' + ' ego_speed_control:=vel'
+    else:
+    	shell_cmd = shell_cmd + ' ego_control_mode:=other'
+
     if config.verbosity > 0:
         print('')
         print(shell_cmd)
@@ -1141,7 +1207,8 @@ def launch_record_bag(round, run, case):
                         + get_bag_file_name(round, run, case) + \
                         ' __name:=bag_record'
         elif sim_mode is "carla":
-            shell_cmd = config.ros_pref+'rosbag record /il_data -o ' \
+            shell_cmd = config.ros_pref+'rosbag record /il_data ' \
+                        + '/local_obstacles /local_lanes -o ' \
                         + get_bag_file_name(round, run, case) + \
                         ' __name:=bag_record'
 
@@ -1171,12 +1238,9 @@ def launch_drive_net(round, run, case):
     global drive_net_proc_link
     if config.use_drive_net_mode == IMITATION:
 
-        print("=========================1==========================")
-
         global shell_cmd
-        shell_cmd = 'python3 test.py --batch_size 128 --lr 0.0001 --no_vin 0 --l_h 100 --vinout 28 --w 64 --fit all ' \
-                    '--ssm 0.03 --goalx ' + str(goal_x) + ' --goaly ' + str(goal_y) + \
-                    ' --modelfile ' + config.model
+        shell_cmd = config.ros_pref + 'python3 test.py --batch_size 128 --lr'+ \
+            ' 0.0001 --modelfile ' + config.model + ' --monitor ' + config.monitor
 
         # action_hybrid_unicorn_newdata
 
@@ -1187,7 +1251,7 @@ def launch_drive_net(round, run, case):
             print(shell_cmd)
             print('drive_net_log: ', get_debug_file_name('drive_net_log', round, run, case))
 
-        drive_net_proc = subprocess.Popen(shell_cmd.split(),
+        drive_net_proc = subprocess.Popen(shell_cmd, shell=True,
                                           cwd=os.path.join(home, nn_folder)
                                           , stderr=drive_net_out, stdout=drive_net_out)
         drive_net_proc_link = drive_net_proc
@@ -1245,11 +1309,11 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
     run_query_val_srvs = False
 
     query_proc, query_out, query_val_proc, query_val_out = None, None, None, None
-    if run_query_srvs:
 
-        shell_cmd = 'python3 query.py --batch_size 128 --lr 0.0001 --no_vin 0 --l_h 100 --vinout 28 --w 64 --fit all ' \
+    if run_query_srvs:
+        shell_cmd = config.ros_pref + 'python3 query.py --batch_size 128 --lr 0.0001 --no_vin 0 --l_h 2 --fit all ' \
                     '--ssm 0.03 --goalx ' + str(goal_x) + ' --goaly ' + str(goal_y) + \
-                    ' --modelfile ' + 'trained_models/hybrid_unicorn.pth'
+                    ' --modelfile ' + 'trained_models/test_model.pth'
 
         query_out = open(get_debug_file_name('query_server_',round, run, case), 'w')
 
@@ -1257,19 +1321,22 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
             print(shell_cmd)
             print(get_debug_file_name('query_server_',round, run, case))
 
-        query_proc = subprocess.Popen(shell_cmd.split(),
+        query_proc = subprocess.Popen(shell_cmd, shell=True,
                                       stdout=query_out, stderr=query_out,
                                       cwd=catkin_ws_path + 'src/query_nn/src')
+
+        global_proc_queue.append((query_proc, "query_proc", query_out))
+
     if run_query_val_srvs:
 
-        shell_cmd = "python3 query_val.py"
+        shell_cmd = config.ros_pref + "python3 query_val.py"
         query_val_out = open(get_debug_file_name('query_val_server_', round, run, case), 'w')
 
         if config.verbosity > 0:
             print(shell_cmd)
             print(get_debug_file_name('query_val_server_', round, run, case))
 
-        query_val_proc = subprocess.Popen(shell_cmd.split(),
+        query_val_proc = subprocess.Popen(shell_cmd, shell=True,
                                       stdout=query_val_out, stderr=query_val_out,
                                       cwd=catkin_ws_path + 'src/query_nn/src')
 
@@ -1278,15 +1345,20 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
                 ' obstacle_file_name:=' + obstacle_file + ' goal_file_name:=' + goal_file + \
                 ' gpu_id:=' + str(config.gpu_id) + \
                 ' net:=' + str(config.use_drive_net_mode) + \
+                ' carla_port:=' + str(config.port) + \
                 ' time_scale:=' + str.format("%.2f" % config.time_scale) + \
                 ' model_file_name:=' + config.model + \
-                ' val_model_name:=' + config.val_model
+                ' val_model_name:=' + config.val_model + \
+                ' map_location:=' + config.summit_maploc
 
     # net: 2 for lets_drive, 1 for imitation learning
 
     pomdp_out = open(get_txt_file_name(round, run, case), 'w')
 
-    print("Search log %s" % pomdp_out.name)
+    global search_log_name, open_search_log
+    search_log_name = copy.copy(pomdp_out.name)
+    open_search_log = False
+    print("Search log %s" % search_log_name)
 
     if config.verbosity > 0:
         print(shell_cmd)
@@ -1307,19 +1379,14 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
 
         if config.use_drive_net_mode >= IMITATION and 'yuanfu' in home:
             rviz_proc, rviz_out = launch_rviz(round, run, case)
-
-        # time.sleep(600)
-
+        
         if config.test_mode:
-            pomdp_proc.wait(timeout=int(120.0/config.time_scale))
+            pomdp_proc.wait(timeout=int(config.eps_length/config.time_scale))
         else:
-            pomdp_proc.wait(timeout=int(120.0/config.time_scale))
+            pomdp_proc.wait(timeout=int(config.eps_length/config.time_scale))
         print("[INFO] waiting successfully ended", flush=True)
 
         monitor_worker.terminate()
-
-        # time.sleep(180)
-
 
     except subprocess.TimeoutExpired:
 
@@ -1336,16 +1403,18 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
         if not timeout_flag:
             elapsed_time = time.time() - start_t
             print('[INFO] POMDP planner terminated normally in %f s' % elapsed_time)
+            if elapsed_time < 20:
+                pass # open_search_log = True
 
         if run_query_srvs:
             print('[INFO] Terminating the nn query server')
             if check_process(query_proc, "terminate"):
-                shell_cmd = "rosnode kill /nn_query_node"
+                shell_cmd = config.ros_pref + "rosnode kill /nn_query_node"
                 subprocess.call(shell_cmd, shell=True)
                 query_out.close()
         if run_query_val_srvs:
             if check_process(query_val_proc, "terminate"):
-                shell_cmd = "rosnode kill /val_nn_query_node"
+                shell_cmd = config.ros_pref + "rosnode kill /val_nn_query_node"
                 subprocess.call(shell_cmd, shell=True)
                 query_val_out.close()
 
@@ -1353,9 +1422,9 @@ def launch_pomdp_planner(round, run, case, drive_net_proc):
 
         check_process(record_proc, '[finally] record')
         
-        if config.use_drive_net_mode == IMITATION:
-            while check_process(drive_net_proc, "[finally] drive_net_proc"):
-                time.sleep(1)
+        # if config.use_drive_net_mode == IMITATION:
+        #     while check_process(drive_net_proc, "[finally] drive_net_proc"):
+        #         time.sleep(1)
 
         print('End waiting for drive net.')
 
@@ -1508,8 +1577,12 @@ def exit_handler():
     print('My application is ending! Clearing process...')
     kill_inner_timer(Timeout_inner_monitor_pid)
     kill_outter_timer(Timeout_monitor_pid)
+    
     clear_process(clear_outter=True, port = config.port)
-    # subprocess.call(root_path + '/clear_process.sh', shell=True)
+
+    if open_search_log and search_log_name is not None:
+        print("======== Opening search log")
+        subprocess.call(('vim ' + search_log_name).split())
 
 
 atexit.register(exit_handler)
@@ -1594,7 +1667,7 @@ if __name__ == '__main__':
                 if "imitation" in cmd_args.baseline:
                     drive_net_proc, drive_net_out = launch_drive_net(round, run, case)
 
-                if "imitation" in cmd_args.baseline or "pomdp" in cmd_args.baseline or "lets-drive" in cmd_args.baseline:
+                if "imitation" in cmd_args.baseline or "pomdp" in cmd_args.baseline or "lets-drive" in cmd_args.baseline or "gamma" in cmd_args.baseline or "rollout" in cmd_args.baseline:
                     pomdp_proc, pomdp_out = launch_pomdp_planner(round, run, case, drive_net_proc)
 
                 kill_inner_timer(Timeout_inner_monitor_pid)
@@ -1609,3 +1682,4 @@ if __name__ == '__main__':
     kill_outter_timer(Timeout_monitor_pid)
 
     clear_process(port=config.port)
+

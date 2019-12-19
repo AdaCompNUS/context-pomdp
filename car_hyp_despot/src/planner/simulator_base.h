@@ -84,7 +84,7 @@ public:
 	// for imitation learning
 	ros::NodeHandle& nh;
 
-	ros::Subscriber carSub_;
+	ros::Subscriber carSub_, egodeadSub_;
 
 	ros::Publisher IL_pub; 
 	bool b_update_il;

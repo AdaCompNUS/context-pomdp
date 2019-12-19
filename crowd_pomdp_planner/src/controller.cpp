@@ -22,10 +22,12 @@ using namespace despot;
 
 int Controller::b_use_drive_net_ = 0;
 int Controller::gpu_id_ = 0;
+int Controller::carla_port_ = 2000;
 float Controller::time_scale_ = 1.0;
+
 std::string Controller::model_file_ = "";
 std::string Controller::value_model_file_ = "";
-
+std::string Controller::map_location_ = "";
 bool path_missing = false;
 
 static DSPOMDP* ped_pomdp_model;
@@ -147,7 +149,8 @@ DSPOMDP* Controller::InitializeModel(option::Option* options) {
 }
 
 void Controller::CreateNNPriors(DSPOMDP* model) {
-	cerr << "DEBUG: Creating solver prior " << endl;
+
+	logv << "DEBUG: Creating solver prior " << endl;
 
 	if (Globals::config.use_multi_thread_) {
 		SolverPrior::nn_priors.resize(Globals::config.NUM_THREADS);
@@ -155,7 +158,7 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 		SolverPrior::nn_priors.resize(1);
 
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-		cerr << "DEBUG: Creating prior " << i << endl;
+		logv << "DEBUG: Creating prior " << i << endl;
 
 		SolverPrior::nn_priors[i] =
 				static_cast<PedPomdp*>(model)->CreateSolverPrior(
@@ -173,10 +176,8 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 	}
 
 	prior_ = SolverPrior::nn_priors[0];
-	cerr << "DEBUG: Created solver prior " << typeid(*prior_).name() << endl;
-
-//	logi << "Created solver prior " << typeid(*prior_).name() << endl;
-
+	logv << "DEBUG: Created solver prior " << typeid(*prior_).name() <<
+			"at ts " << SolverPrior::get_timestamp() << endl;
 }
 
 World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
@@ -194,7 +195,7 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
 	case UNITY:
 		world = new WorldSimulator(nh, static_cast<DSPOMDP*>(model),
 				Globals::config.root_seed/*random seed*/, pathplan_ahead_,
-				obstacle_file_name_, COORD(goalx_, goaly_));
+				obstacle_file_name_, map_location_, carla_port_,COORD(goalx_, goaly_));
 		break;
 	}
 	logi << "WorldSimulator constructed at the " << SolverPrior::get_timestamp()
@@ -204,16 +205,6 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
 		model->InitGPUModel();
 
 	logi << "InitGPUModel finished at the " << SolverPrior::get_timestamp()
-			<< "th second" << endl;
-
-	//Establish connection with external system
-	world->Connect();
-	logi << "Connect finished at the " << SolverPrior::get_timestamp()
-			<< "th second" << endl;
-
-	//Initialize the state of the external system
-	world->Initialize();
-	logi << "Initialize finished at the " << SolverPrior::get_timestamp()
 			<< "th second" << endl;
 
 	switch (simulation_mode_) {
@@ -230,8 +221,18 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
 		break;
 	}
 
+	//Establish connection with external system
+	world->Connect();
+	logi << "Connect finished at the " << SolverPrior::get_timestamp()
+			<< "th second" << endl;
+
 	CreateNNPriors(model);
 	logi << "CreateNNPriors finished at the " << SolverPrior::get_timestamp()
+			<< "th second" << endl;
+
+	//Initialize the state of the external system
+	world->Initialize();
+	logi << "Initialize finished at the " << SolverPrior::get_timestamp()
 			<< "th second" << endl;
 
 	return world;
@@ -245,9 +246,9 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.time_per_move = (1.0 / ModelParams::control_freq) * 0.9
 			/ time_scale_;
 	Globals::config.time_scale = time_scale_;
-	Globals::config.num_scenarios = 5;
+	Globals::config.num_scenarios = 1;
 	Globals::config.discount = 1.0; //0.95;
-	Globals::config.sim_len = 300/*180*//*10*/; // this is not used
+	Globals::config.sim_len = 600/*180*//*10*/; // this is not used
 
 	Globals::config.xi = 0.97;
 	//Globals::config.pruning_constant= 0.001; // passed as a ROS node param
@@ -257,9 +258,9 @@ void Controller::InitializeDefaultParameters() {
 	if (b_use_drive_net_ == LETS_DRIVE)
 		Globals::config.useGPU = false;
 
-	Globals::config.GPUid = 1; //default GPU
+	Globals::config.GPUid = gpu_id_; //default GPU
 	Globals::config.use_multi_thread_ = true;
-	Globals::config.NUM_THREADS = 10;
+	Globals::config.NUM_THREADS = 1;
 
 	Globals::config.exploration_mode = UCT;
 	Globals::config.exploration_constant = 2.0;
@@ -267,7 +268,7 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.exploration_constant_o = 1.0;
 
 	Globals::config.search_depth = 9;
-	Globals::config.max_policy_sim_len = /*Globals::config.sim_len+30*/5;
+	Globals::config.max_policy_sim_len = Globals::config.search_depth;
 
 	Globals::config.experiment_mode = true;
 
@@ -280,14 +281,17 @@ void Controller::InitializeDefaultParameters() {
 	else
 		Globals::config.use_prior = false;
 
-	if (b_use_drive_net_ == JOINT_POMDP) {
+	if (b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == ROLL_OUT) {
 		Globals::config.useGPU = false;
 		Globals::config.num_scenarios = 5;
 		Globals::config.NUM_THREADS = 10;
 		Globals::config.discount = 0.95;
 		Globals::config.search_depth = 20;
 		Globals::config.max_policy_sim_len = /*Globals::config.sim_len+30*/20;
-		Globals::config.pruning_constant = 0.001; // 100000000.0;
+		if (b_use_drive_net_ == JOINT_POMDP)
+			Globals::config.pruning_constant = 0.001;
+		else if (b_use_drive_net_ == ROLL_OUT)
+			Globals::config.pruning_constant = 100000000.0;
 		Globals::config.exploration_constant = 0.1;
 		Globals::config.silence = true;
 	}
@@ -337,16 +341,21 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 }
 
 void Controller::setGoal(const geometry_msgs::PoseStamped::ConstPtr goal) {
+	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
+
 	goalx_ = goal->pose.position.x;
 	goaly_ = goal->pose.position.y;
 }
 
 void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 
-	logi << "receive path from navfn " << path->poses.size() << endl;
+	logi << "receive path from navfn " << path->poses.size()
+			<< " at the " << SolverPrior::get_timestamp()
+			<< "th second" << endl;
 
-	if (fixed_path_ && path_from_topic.size() > 0)
+	if (fixed_path_ && path_from_topic.size() > 0){
 		return;
+	}
 
 	if (path->poses.size() == 0) {
 		path_missing = true;
@@ -357,9 +366,14 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 		path_missing = false;
 	}
 
-	if (simulation_mode_ == UNITY
-			&& unity_driving_simulator_->b_update_il == true)
-		unity_driving_simulator_->p_IL_data.plan = *path; // record to be further published for imitation learning
+	if (simulation_mode_ == UNITY && unity_driving_simulator_){
+		if (unity_driving_simulator_->b_update_il == true){
+			cout << " unity_driving_simulator_ = " << unity_driving_simulator_ << endl;
+			cout << " path = " << path << endl;
+
+			unity_driving_simulator_->p_IL_data.plan = *path; // record to be further published for imitation learning
+		}
+	}
 
 	Path p;
 	for (int i = 0; i < path->poses.size(); i++) {
@@ -369,8 +383,8 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 		p.push_back(coord);
 	}
 
-	if (p.getlength() < 18) {
-		ERR("Path length shorter than 18 meters.");
+	if (p.getlength() < 3) {
+		ERR("Path length shorter than 3 meters.");
 	}
 
 	// cout << "Path start " << p[0] << " end " << p.back() << endl;
@@ -387,7 +401,7 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 		setCarGoal(p.back());
 	}
 
-	if (b_use_drive_net_ == LETS_DRIVE || b_use_drive_net_ == JOINT_POMDP
+	if (b_use_drive_net_ == LETS_DRIVE || b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == ROLL_OUT
 			|| b_use_drive_net_ == IMITATION) {
 		pathplan_ahead_ = 0;
 	}
@@ -438,11 +452,11 @@ bool Controller::getUnityPos() {
 	in_pose.setIdentity();
 	in_pose.frame_id_ = ModelParams::rosns + "/base_link";
 	assert(unity_driving_simulator_);
-	cout << "global_frame_id: " << global_frame_id << " " << endl;
+	logv << "global_frame_id: " << global_frame_id << " " << endl;
 	if (!unity_driving_simulator_->getObjectPose(global_frame_id, in_pose,
 			out_pose)) {
 		cerr << "transform error within Controller::RunStep" << endl;
-		cout << "laser frame " << in_pose.frame_id_ << endl;
+		logv << "laser frame " << in_pose.frame_id_ << endl;
 		ros::Rate err_retry_rate(10);
 		err_retry_rate.sleep();
 		return false; // skip the current step
@@ -495,8 +509,8 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
 		for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 			if (i > 0) {
-				SolverPrior::nn_priors[i]->add_car_tensor(
-						SolverPrior::nn_priors[0]->last_car_tensor());
+//				SolverPrior::nn_priors[i]->add_car_tensor(
+//						SolverPrior::nn_priors[0]->last_car_tensor());
 				SolverPrior::nn_priors[i]->add_map_tensor(
 						SolverPrior::nn_priors[0]->last_map_tensor());
 			}
@@ -507,7 +521,7 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
 
-		logd << __FUNCTION__ << " add history search state of ts "
+		logv << __FUNCTION__ << " add history search state of ts "
 				<< static_cast<PomdpState*>(search_state)->time_stamp << endl;
 
 		SolverPrior::nn_priors[i]->record_cur_history();
@@ -576,8 +590,8 @@ void Controller::PredictPedsForSearch(State* search_state) {
 
 				for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 					if (i > 0) {
-						SolverPrior::nn_priors[i]->add_car_tensor(
-								SolverPrior::nn_priors[0]->last_car_tensor());
+//						SolverPrior::nn_priors[i]->add_car_tensor(
+//								SolverPrior::nn_priors[0]->last_car_tensor());
 						SolverPrior::nn_priors[i]->add_map_tensor(
 								SolverPrior::nn_priors[0]->last_map_tensor());
 					}
@@ -587,7 +601,7 @@ void Controller::PredictPedsForSearch(State* search_state) {
 			for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 				SolverPrior::nn_priors[i]->Add_in_search(-1, predicted_state);
 
-				logd << __FUNCTION__ << " add predicted search state of ts "
+				logv << __FUNCTION__ << " add predicted search state of ts "
 						<< predicted_state->time_stamp
 						<< " predicted from search state of ts "
 						<< static_cast<PomdpState*>(search_state)->time_stamp
@@ -607,8 +621,8 @@ void Controller::UpdatePriors(const State* cur_state, State* search_state) {
 		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
 		for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 			if (i > 0) {
-				SolverPrior::nn_priors[i]->add_car_tensor(
-						SolverPrior::nn_priors[0]->last_car_tensor());
+//				SolverPrior::nn_priors[i]->add_car_tensor(
+//						SolverPrior::nn_priors[0]->last_car_tensor());
 				SolverPrior::nn_priors[i]->add_map_tensor(
 						SolverPrior::nn_priors[0]->last_map_tensor());
 			}
@@ -621,7 +635,7 @@ void Controller::UpdatePriors(const State* cur_state, State* search_state) {
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
 
-		logd << __FUNCTION__ << " add history search state of ts "
+		logv << __FUNCTION__ << " add history search state of ts "
 				<< static_cast<PomdpState*>(search_state)->time_stamp
 				<< " hist len " << SolverPrior::nn_priors[i]->Size(true)
 				<< endl;
@@ -732,7 +746,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 			static_cast<const PedPomdp*>(ped_pomdp_model)->GetActionID(0.0,
 					0.0);
 	double step_reward;
-	if (b_use_drive_net_ == NO || b_use_drive_net_ == JOINT_POMDP) {
+	if (b_use_drive_net_ == NO || b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == ROLL_OUT) {
 		cerr << "DEBUG: Search for action using " << typeid(*solver).name()
 				<< endl;
 		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(
@@ -857,7 +871,7 @@ void Controller::CheckCurPath() {
 void Controller::TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len) {
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 		SolverPrior::nn_priors[i]->Truncate(cur_search_hist_len, true);
-		logd << __FUNCTION__ << " truncating search history length to "
+		logv << __FUNCTION__ << " truncating search history length to "
 				<< cur_search_hist_len << endl;
 		SolverPrior::nn_priors[i]->compare_history_with_recorded();
 //		SolverPrior::nn_priors[i]->DebugHistory("Trunc history");
@@ -875,17 +889,27 @@ static int wait_count = 0;
 void Controller::PlanningLoop(despot::Solver*& solver, World* world,
 		Logger* logger) {
 
+	logi << "Planning loop started at the " << SolverPrior::get_timestamp()
+					<< "th second" << endl;
+
+	unity_driving_simulator_->stateTracker->detect_time = true;
+
+	ros::spinOnce();
+
+	logi << "First ROS spin finished at the " << SolverPrior::get_timestamp()
+					<< "th second" << endl;
+
 	int pre_step_count = 0;
 	if (Globals::config.use_prior)
 		pre_step_count = 4;
 	else
 		pre_step_count = 0;
 	while (path_from_topic.size() == 0) {
-		cout << "Waiting for path" << endl;
+		cout << "Waiting for path, ts: " << SolverPrior::get_timestamp() << endl;
 		ros::spinOnce();
-		Globals::sleep_ms(1000.0 / control_freq / time_scale_);
+		Globals::sleep_ms(100.0 / control_freq / time_scale_);
 		wait_count++;
-		if (wait_count == 5) {
+		if (wait_count == 50) {
 			ros::shutdown();
 		}
 	}

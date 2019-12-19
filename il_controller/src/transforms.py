@@ -1,29 +1,48 @@
 # add all sorts of transforms here :)
+# import pdb
 import numpy as np
+
 from Data_processing import global_params
-import ipdb as pdb
+from Data_processing.global_params import error_handler
 
 config = global_params.config
 import random
-import sys, traceback
+import pdb
+
+import matplotlib.pyplot as plt
+
+counter = 0
 
 
-def error_handler(e):
-    print(
-        'Error on file {} line {}'.format(sys.exc_info()[-1].tb_frame.f_code.co_filename, sys.exc_info()[-1].tb_lineno),
-        type(e).__name__, e)
+def show_array(tensor):
+    global counter
+    try:
+        # tensor = tensor.detach().cpu().numpy()
+        fig, axarr = plt.subplots(1, 1)
+        fig.set_figheight(6)
+        fig.set_figwidth(6)
+        axarr.imshow(tensor,
+                     cmap='gray', interpolation='nearest')
+        plt.tight_layout()
+        fig.savefig("map_{}.png".format(counter), bbox_inches='tight', transparent=False)
+        plt.close(fig)
+        counter += 1
+
+    except Exception as e:
+        error_handler(e)
+        # pdb.set_trace()
 
 
 def validate_map(data, msg):
     v_max = np.max(data[0, config.channel_map])
     v_min = np.min(data[0, config.channel_map])
-    print(msg +" map values: max %f, min %f" % (v_max, v_min))
+    print(msg + " map values: max %f, min %f" % (v_max, v_min))
 
 
 def validate_map_array(map, msg):
     v_max = np.max(map)
     v_min = np.min(map)
-    print(msg +" map values: max %f, min %f" % (v_max, v_min))
+    print(msg + " map values: max %f, min %f" % (v_max, v_min))
 
 
 class PopulateImages(object):
@@ -38,62 +57,98 @@ class PopulateImages(object):
     def __call__(self, sample, doprint=False):
         # sample: 1 data point from the h5 table
         imsize = config.imsize
-        num_agents = 1 + config.num_peds_in_NN
-        output_arr = np.zeros(
-            (num_agents, config.num_channels, imsize, imsize), dtype=np.float32)
-        for i in range(num_agents):
-            self.copy_maps(i, output_arr, sample)
-            try:
-                self.populate_goal_and_hist_images(i, output_arr, sample)
+        num_agents = 1 + 0
 
+        output_arr = np.zeros(
+            (num_agents, config.total_num_channels, imsize, imsize), dtype=config.data_type)
+
+        for i in range(num_agents):
+            self.copy_maps(i, output_arr, sample)  # Exo history.
+            self.populate_lane(i, output_arr, sample)  # Lanes.
+            try:
+                self.populate_goal_and_hist_images(i, output_arr, sample)  # Goal + ego history.
             except Exception as e:
                 error_handler(e)
                 pdb.set_trace()
 
-        # output_arr: dim (num_agents, congig.num_channels, imsize, imsize)
-        acc_labels, ang_labels, v_labels, vel_labels = self.get_labels(sample)
-        cart_dat_arr = self.get_cart_data(sample)
+        # output_arr: dim (num_agents, congig.total_num_channels, imsize, imsize)
+        acc_id_labels, ang_norm_labels, v_labels, vel_labels, lane_labels = self.get_labels(sample)
 
-        return output_arr, cart_dat_arr, v_labels, acc_labels, ang_labels, vel_labels
+        if config.visualize_raw_data:
+            from visualization import visualize_overlay_image
+            visualize_overlay_image(output_arr[0, config.channel_lane],
+                                                  output_arr[0, config.channel_map[0]],
+                                                  output_arr[0, config.channel_map[3]],
+                                                  lane_labels,
+                                                  acc_id_labels,
+                                                  root='Data_processing/',
+                                                  subfolder='h5_overlay_image')
+        # cart_dat_arr = self.get_cart_data(sample)
+        semantic_arr = self.get_semantic_data(sample)
+        return output_arr, semantic_arr, v_labels, acc_id_labels, ang_norm_labels, vel_labels, lane_labels
 
     def get_labels(self, sample):
-        v_labels = sample['value'][0]
-        acc_labels = sample['acc_id'][0]
-        ang_labels = sample['vel_steer'][config.label_angular]
-        vel_labels = sample['vel_steer'][config.label_cmdvel]
-        return acc_labels, ang_labels, v_labels, vel_labels
+        try:
+            v_labels = sample['value'][0]
+            acc_id_labels = sample['acc_id'][0]
+            ang_norm_labels = sample['steer_norm'][0]
+            vel_labels = sample['vel'][config.label_cmdvel]
+            lane_labels = sample['lane_change'][0]
+            return acc_id_labels, ang_norm_labels, v_labels, vel_labels, lane_labels
+        except Exception as e:
+            print('sample={}'.format(sample))
+            error_handler(e)
 
     def get_cart_data(self, sample):
         return sample['cart_agents']
 
-    def populate_goal_and_hist_images(self, i, output_arr, sample):
+    def get_semantic_data(self, sample):
+        return sample['car']['semantic']
 
+    def populate_lane(self, i, output_arr, sample):
         try:
-            if i < config.num_peds_in_NN:  # pedestrians
+            for point in sample['lane']:
+                output_arr[i, config.channel_lane, int(
+                    point[0]), int(point[1])] = point[2]
+        except Exception as e:
+            print('sample["lane"]={}'.format(sample['lane']))
+            error_handler(e)
+
+    def populate_goal_and_hist_images(self, i, output_arr, sample):
+        try:
+            if i < 0:  # pedestrians, the number is set to 0
                 agent_key = 'ped'
                 src_entry = sample[agent_key][i]
             else:
                 agent_key = 'car'
                 src_entry = sample[agent_key]
 
-            for point in src_entry['goal']:
-                output_arr[i, config.channel_goal, int(
-                    point[0]), int(point[1])] = point[2]
-
-            for ts in range(config.num_hist_channels):
-                for point in src_entry['hist'][ts]:
-                    output_arr[i, config.channel_hist[ts], int(
+            if config.use_goal_channel:
+                for point in src_entry['goal']:
+                    output_arr[i, config.channel_goal, int(
                         point[0]), int(point[1])] = point[2]
+
+            if config.use_hist_channels:
+                for ts in range(config.num_hist_channels):
+                    for point in src_entry['hist'][ts]:
+                        output_arr[i, config.channel_hist[ts], int(
+                            point[0]), int(point[1])] = point[2]
+
         except Exception as e:
-            print(e)
+            print('sample={}'.format(sample))
+            error_handler(e)
 
     def copy_maps(self, i, output_arr, sample):
         try:
             for ts in range(config.num_hist_channels):
                 output_arr[i, config.channel_map[ts]] = sample['maps'][ts]
         except Exception as e:
-            print(e)
+            print('sample={}'.format(sample))
+            error_handler(e)
         # validate_map(output_arr, "copy_maps")
+
+    def float_to_uint8(self, output_arr):
+        return output_arr / np.max(output_arr) * 255.0
 
 
 def make_onehot(num_bins, bin_idx, prob):
@@ -104,18 +159,21 @@ def make_onehot(num_bins, bin_idx, prob):
 
 def float_to_onehot(v, v_min, v_max, num_bins):
     try:
-        onehot_labels = np.zeros((num_bins), dtype=np.float32)
-
+        if v > v_max:
+            # print("float_to_onehot warning: v > v_max, v={}".format(v), flush=True)
+            v = v_max - 0.0001
+        elif v < v_min:
+            # print("float_to_onehot warning: v < v_min, v={}".format(v), flush=True)
+            v = v_min
+        v = min(v, v_max - 0.0001)
         onehot_resolution = (v_max - v_min) / float(num_bins)
-
         bin_idx = int(np.floor(((v - v_min) / onehot_resolution)))
 
         if not config.label_smoothing:
-            onehot_labels[bin_idx] = 1  # one hot vector
-        else:
-
+            return bin_idx
+        else:  # not used
+            onehot_labels = np.zeros((num_bins), dtype=np.float32)
             eligible = 0
-
             if bin_idx + 1 < num_bins:
                 eligible += 1
             if bin_idx - 1 >= 0:
@@ -123,7 +181,6 @@ def float_to_onehot(v, v_min, v_max, num_bins):
 
             cpd = 0.8
             smoothing = 0.05
-
             onehot_labels[...] = smoothing / float(num_bins - 1 - eligible)
             onehot_labels[bin_idx] = cpd
 
@@ -131,15 +188,11 @@ def float_to_onehot(v, v_min, v_max, num_bins):
                 onehot_labels[bin_idx + 1] = (1.0 - smoothing - cpd) / float(eligible)
             if bin_idx - 1 >= 0:
                 onehot_labels[bin_idx - 1] = (1.0 - smoothing - cpd) / float(eligible)
+            return onehot_labels  # with label smoothing
 
     except Exception as e:
         error_handler(e)
         return None
-
-    if config.label_smoothing == False:
-        return bin_idx
-    else:
-        return onehot_labels  # with label smoothing
 
 
 def onehot_to_float(bin_idx, v_min, v_max, num_bins):
@@ -158,63 +211,64 @@ def onehot_to_float(bin_idx, v_min, v_max, num_bins):
     return v
 
 
-acc_dict = {0: 0.0,
-         1: config.max_acc,
-         2: -config.max_acc}
+acc_dict_id_to_raw = {0: 0.0,
+                      1: config.max_acc,
+                      2: -config.max_acc}
 
 
-def ang_transform(steer):
-    ang = max(-config.max_steering,
-              min(steer, (config.max_steering - 0.0001)))
-    ang = ang / config.max_steering
+def ang_transform_degree_to_normalized(steer):
+    ang = max(-config.max_steering_degree,
+              min(steer, (config.max_steering_degree - 0.0001)))
+    ang = ang / config.max_steering_degree
     return ang
 
 
-def acc_transform(acc):
+def acc_transform_id_to_normalized(acc_id):
     try:
-        acc = acc_dict[acc[0]]
-        acc = max(-config.max_acc, min(acc, config.max_acc - 0.0001))  # at max angle the bin index will be out of range
-        acc = acc / config.max_acc
-        return acc
+        acc_raw = acc_dict_id_to_raw[acc_id[0]]
+        acc_raw = max(-config.max_acc,
+                      min(acc_raw, config.max_acc - 0.0001))  # at max angle the bin index will be out of range
+        acc_norm = acc_raw / config.max_acc
+        return acc_norm
     except Exception as e:
         print("Exception at acc_transform")
-        print(e)
-        exit(1)
+        error_handler(e)
 
 
-def vel_transform(vel):
+def vel_transform_raw_to_normalized(vel):
+    # if vel > config.vel_max + 0.1:
+    #     print('Warning: encoded vel {} > config.vel_max {}'.format(vel, config.vel_max))
     vel = max(0.0, min(vel, config.vel_max - 0.0001))  # at max vel the bin index will be out of range
     vel = vel / config.vel_max
     return vel
 
 
-def value_transform(value):
+def value_transform_raw_to_normalized(value):
     value = value / config.value_normalizer
     return value
 
 
-def ang_transform_inverse(steer):
-    steer = steer * config.max_steering
-    steer = max(-config.max_steering,
-              min(steer, (config.max_steering - 0.0001)))
-    return steer
+def ang_transform_normalized_to_degree(steer_normalized):
+    steer_degree = steer_normalized * config.max_steering_degree
+    steer_degree = max(-config.max_steering_degree,
+                       min(steer_degree, (config.max_steering_degree - 0.0001)))
+    return steer_degree
 
 
-def acc_transform_inverse(acc):
-    acc = acc * config.max_acc
-    # acc = max(-config.max_acc, min(acc, config.max_acc - 0.0001))  # at max angle the bin index will be out of range
-    acc = max(-config.max_acc, min(acc, config.max_acc))  # at max angle the bin index will be out of range
+def acc_transform_normalized_to_raw(acc_normalized):
+    acc_raw = acc_normalized * config.max_acc
+    acc_raw = max(-config.max_acc, min(acc_raw, config.max_acc))  # at max angle the bin index will be out of range
 
-    return acc
+    return acc_raw
 
 
-def vel_transform_inverse(vel):
+def vel_transform_normalized_to_raw(vel):
     vel = vel * config.vel_max
     vel = max(0.0, min(vel, config.vel_max - 0.0001))  # at max vel the bin index will be out of range
     return vel
 
 
-def value_transform_inverse(value):
+def value_transform_normalized_to_raw(value):
     value = value * config.value_normalizer
     return value
 
@@ -227,29 +281,28 @@ def float_to_np(v):
 
     except Exception as e:
         print("Exception at float_to_np")
-        print(e)
-        exit(1)
+        error_handler(e)
 
 
-class MdnSteerEncoder(object):
-    def __call__(self, steer):
-        ang = ang_transform(steer)
+class MdnSteerEncoderDegree2Normalized(object):
+    def __call__(self, steer_degree):
+        ang = ang_transform_degree_to_normalized(steer_degree)
         return float_to_np(ang)
 
 
-class MdnAccEncoder(object):
+class MdnAccEncoderID2Normalized(object):
     def __call__(self, acc):
-        acc = acc_transform(acc)
-        return float_to_np(acc), acc
+        acc = acc_transform_id_to_normalized(acc)
+        return float_to_np(acc)
 
 
-class MdnVelEncoder(object):
+class MdnVelEncoderRaw2Normalized(object):
     def __call__(self, vel):
-        vel = vel_transform(vel)
-        return float_to_np(vel), vel
+        vel = vel_transform_raw_to_normalized(vel)
+        return float_to_np(vel)
 
 
-class ValueEncoder(object):
+class ValueEncoderRaw2Normalized(object):
     """Populates labels and outputs in desired format and shape
     Rescale value
     """
@@ -259,7 +312,7 @@ class ValueEncoder(object):
 
     def __call__(self, v_label):
         # scale down v_labels
-        v_label = value_transform(v_label)
+        v_label = value_transform_raw_to_normalized(v_label)
         return v_label
 
 
@@ -275,11 +328,14 @@ class InputEncoder(object):
     def __call__(self, input_data):
         # normalize input images
         #
-        input_data = self.normalize(input_data)
-        return input_data
+        if config.data_type == np.float32:
+            input_data = self.normalize(input_data)
+            return input_data
+        elif config.data_type == np.uint8:
+            return self.normalize(input_data.astype(np.float32))
 
 
-class SteerEncoder(object):
+class SteerEncoderDegreeToOnehot(object):
     """Populates labels and outputs in desired format and shape
     Convert steering angle from degree value to one-hot vector encoding
     """
@@ -293,15 +349,31 @@ class SteerEncoder(object):
         # input angle in degrees
         # clip ang to max_steering range
         #
-        ang = ang_transform(ang)
+        ang = ang_transform_degree_to_normalized(ang)
 
-        encodeing = float_to_onehot(v=ang, v_min=-1.0, v_max=1.0,
-                                    num_bins=self.num_steering_bins)
+        bin_idx = float_to_onehot(v=ang, v_min=-config.steer_normalized_limit, v_max=config.steer_normalized_limit,
+                                  num_bins=self.num_steering_bins)
 
-        return encodeing
+        return bin_idx
 
 
-class AccEncoder(object):
+class LaneEncoderIntToOnehot(object):
+    """Populates labels and outputs in desired format and shape
+    Convert lane change decision from (-1, 0, 1) to one-hot vector encoding
+    """
+
+    def __init__(self):
+        # steering angles are categorized into bins
+        self.num_bins = config.num_lane_bins
+        pass
+
+    def __call__(self, lane):
+        bin_idx = float_to_onehot(v=lane, v_min=-1.0, v_max=1.0,
+                                  num_bins=self.num_bins)
+        return bin_idx
+
+
+class AccEncoderIDToOnehot(object):
     """Populates labels and outputs in desired format and shape
     """
 
@@ -309,18 +381,19 @@ class AccEncoder(object):
         self.num_acc_bins = config.num_acc_bins
         pass
 
-    def __call__(self, acc):
+    def __call__(self, acc_id):
         # pdb.set_trace()
         # convert acc_id to one-hot vector
 
-        acc = acc_transform(acc)
+        # print("raw acc: {}".format(acc))
+        acc_norm = acc_transform_id_to_normalized(acc_id)
+        # print("transformed acc: {}".format(acc))
+        bin_idx = float_to_onehot(v=acc_norm, v_min=-1.0, v_max=1.0, num_bins=self.num_acc_bins)
+        # print("bin_idx: {}".format(bin_idx))
+        return bin_idx
 
-        encodeing = float_to_onehot(v=acc, v_min=-1.0, v_max=1.0, num_bins=self.num_acc_bins)
 
-        return encodeing, acc
-
-
-class VelEncoder(object):
+class VelEncoderRaw2Onehot(object):
     """Populates labels and outputs in desired format and shape
     """
 
@@ -334,32 +407,32 @@ class VelEncoder(object):
         # pdb.set_trace()
         # convert velocity to bin_index or one-hot vector        
 
-        vel = vel_transform(vel)
+        vel = vel_transform_raw_to_normalized(vel)
 
-        encoding = float_to_onehot(v=vel, v_min=0.0, v_max=1.0, num_bins=self.num_bins)
+        bin_idx = float_to_onehot(v=vel, v_min=0.0, v_max=1.0, num_bins=self.num_bins)
 
-        return encoding, vel
+        return bin_idx
 
 
-class MdnSteerDecoder(object):
+class MdnSteerDecoderNormalized2Degree(object):
     def __call__(self, ang):
-        steer = ang_transform_inverse(ang)
+        steer = ang_transform_normalized_to_degree(ang)
         return steer
 
 
-class MdnAccDecoder(object):
+class MdnAccDecoderNormalized2Raw(object):
     def __call__(self, acc):
-        acc = acc_transform_inverse(acc)
+        acc = acc_transform_normalized_to_raw(acc)
         return acc
 
 
-class MdnVelDecoder(object):
+class MdnVelDecoderNormalized2Raw(object):
     def __call__(self, vel):
-        vel = vel_transform_inverse(vel)
+        vel = vel_transform_normalized_to_raw(vel)
         return vel
 
 
-class SteerDecoder(object):
+class SteerDecoderOnehot2Normalized(object):
     """
     Convert one-hot vector encoding to steering angle from degree value
     """
@@ -374,14 +447,15 @@ class SteerDecoder(object):
         # input angle in degrees
         # clip ang to max_steering range
         #
-        steer = onehot_to_float(bin_idx=bin_idx, v_min=-1.0, v_max=1.0,
-                                    num_bins=self.num_steering_bins)
-        steer = ang_transform_inverse(steer)
+        steer = onehot_to_float(bin_idx=bin_idx,
+                                v_min=-config.steer_normalized_limit, v_max=config.steer_normalized_limit,
+                                num_bins=self.num_steering_bins)
+        # steer = ang_transform_normalized_to_degree(steer)
 
         return steer
 
 
-class AccDecoder(object):
+class AccDecoderOnehot2Raw(object):
     """Populates labels and outputs in desired format and shape
     """
 
@@ -393,12 +467,12 @@ class AccDecoder(object):
         # convert acc_id to one-hot vector
         #
         acc = onehot_to_float(bin_idx=bin_idx, v_min=-1.0, v_max=1.0, num_bins=self.num_acc_bins)
-        acc = acc_transform_inverse(acc)
+        acc = acc_transform_normalized_to_raw(acc)
 
         return acc
 
 
-class VelDecoder(object):
+class VelDecoderOnehot2Raw(object):
     """Populates labels and outputs in desired format and shape
     """
 
@@ -409,13 +483,26 @@ class VelDecoder(object):
         pass
 
     def __call__(self, bin_idx):
-        # convert velocity to bin_index or one-hot vector
-        #
         vel = onehot_to_float(bin_idx=bin_idx, v_min=0.0, v_max=1.0, num_bins=self.num_bins)
-
-        vel = vel_transform_inverse(vel)
-
+        vel = vel_transform_normalized_to_raw(vel)
         return vel
+
+
+class LaneDecoderOnehot2Int(object):
+    """Populates labels and outputs in desired format and shape
+    """
+
+    def __init__(self):
+        pass
+
+    def __call__(self, bin_idx):
+        if bin_idx == 0:
+            return -1
+        if bin_idx == 1:
+            return 0
+        if bin_idx == 2:
+            return 1
+        return None
 
 
 class Fliplr(object):
@@ -425,15 +512,15 @@ class Fliplr(object):
     def __init__(self):
         pass
 
-    def __call__(self, input, steer):
-        # input: dim (num_agents, congig.num_channels, imsize, imsize)
+    def __call__(self, input, steer, lane):
+        # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         #
-        output = np.zeros_like(input, dtype=np.float32)
-        for i in range(1 + config.num_peds_in_NN):
-            for j in range(config.num_channels):
+        output = np.zeros_like(input, dtype=config.data_type)
+        for i in range(1 + 0):
+            for j in range(config.total_num_channels):
                 output[i, j] = np.fliplr(input[i, j])
 
-        return output, -steer  # flip the steering
+        return output, -steer, -lane  # flip the steering
 
 
 class Flipud(object):
@@ -443,14 +530,14 @@ class Flipud(object):
     def __init__(self):
         pass
 
-    def __call__(self, input, steer):
-        # input: dim (num_agents, congig.num_channels, imsize, imsize)
+    def __call__(self, input, steer, lane):
+        # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
         #
-        output = np.zeros_like(input, dtype=np.float32)
-        for i in range(1 + config.num_peds_in_NN):
-            for j in range(config.num_channels):
+        output = np.zeros_like(input, dtype=config.data_type)
+        for i in range(1 + 0):
+            for j in range(config.total_num_channels):
                 output[i, j] = np.flipud(input[i, j])
-        return output, -steer  # flip the steering
+        return output, -steer, -lane  # flip the steering
 
 
 class Rot(object):
@@ -460,14 +547,14 @@ class Rot(object):
     def __init__(self, amount):
         self.amount = amount
 
-    def __call__(self, input, steer):
-        # input: dim (num_agents, congig.num_channels, imsize, imsize)
-        output = np.zeros_like(input, dtype=np.float32)
-        for i in range(1 + config.num_peds_in_NN):
-            for j in range(config.num_channels):
+    def __call__(self, input, steer, lane):
+        # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
+        output = np.zeros_like(input, dtype=config.data_type)
+        for i in range(1 + 0):
+            for j in range(config.total_num_channels):
                 output[i, j] = np.rot90(input[i, j], self.amount)
 
-        return output, steer
+        return output, steer, lane
 
 
 class FlipRot(object):
@@ -477,14 +564,14 @@ class FlipRot(object):
     def __init__(self, amount):
         self.amount = amount
 
-    def __call__(self, input, steer):
-        # input: dim (num_agents, congig.num_channels, imsize, imsize)
-        output = np.zeros_like(input, dtype=np.float32)
-        for i in range(1 + config.num_peds_in_NN):
-            for j in range(config.num_channels):
+    def __call__(self, input, steer, lane):
+        # input: dim (num_agents, congig.total_num_channels, imsize, imsize)
+        output = np.zeros_like(input, dtype=config.data_type)
+        for i in range(1 + 0):
+            for j in range(config.total_num_channels):
                 output[i, j] = np.rot90(np.flipud(input[i, j]), self.amount)
 
-        return output, -steer
+        return output, -steer, -lane
 
 
 class Identity(object):
@@ -494,8 +581,8 @@ class Identity(object):
     def __init__(self):
         pass
 
-    def __call__(self, input, steer):
-        return input, steer
+    def __call__(self, input, steer, lane):
+        return input, steer, lane
 
 
 class Normalize(object):
@@ -506,9 +593,9 @@ class Normalize(object):
         pass
 
     def __call__(self, input):
-        num_agents = 1 + config.num_peds_in_NN
+        num_agents = 1 + 0
         for i in range(num_agents):
-            for c in range(config.num_channels):
+            for c in range(config.total_num_channels):
                 maxval = np.max(input[i, c])
                 if maxval != 0:
                     input[i, c] = input[i, c] / maxval

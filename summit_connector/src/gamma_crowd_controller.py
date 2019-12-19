@@ -1,117 +1,116 @@
 #!/usr/bin/env python2
+from util import *
 
-from drunc import Drunc
 import carla
 
-import math
 import random
 import numpy as np
 import rospy
-import os
 import sys
-
-from std_msgs.msg import Bool
+from std_msgs.msg import Float32, Bool, Int32
+from geometry_msgs.msg import Twist
+import nav_msgs.msg
 from network_agent_path import NetworkAgentPath
 from sidewalk_agent_path import SidewalkAgentPath
-from util import *
 import msg_builder.msg
 from msg_builder.msg import car_info as CarInfo
 import timeit
 import time
 
-first_time = True
-prev_time = timeit.default_timer()
-
 default_agent_pos = carla.Vector2D(10000, 10000)
-default_agent_bbox = []
-default_agent_bbox.append(default_agent_pos + carla.Vector2D(1,-1))
-default_agent_bbox.append(default_agent_pos + carla.Vector2D(1,1))
-default_agent_bbox.append(default_agent_pos + carla.Vector2D(-1,1))
-default_agent_bbox.append(default_agent_pos + carla.Vector2D(-1,-1))
+default_agent_bbox = [default_agent_pos + carla.Vector2D(1, -1), default_agent_pos + carla.Vector2D(1, 1),
+                      default_agent_pos + carla.Vector2D(-1, 1), default_agent_pos + carla.Vector2D(-1, -1)]
 
-def get_position(actor):
-    pos3D = actor.get_location()
-    return carla.Vector2D(pos3D.x, pos3D.y)
-    
-def get_forward_direction(actor):
-    forward = actor.get_transform().get_forward_vector()
-    return carla.Vector2D(forward.x, forward.y)
+spawn_size_min = None
 
 class CrowdAgent(object):
-    def __init__(self, actor, preferred_speed):
+    def __init__(self, summit, actor, preferred_speed):
+        self.summit = summit
         self.actor = actor
         self.preferred_speed = preferred_speed
-        self.actor.set_collision_enabled(True) ## to check. Disable collision will generate vehicles that are overlapping
         self.stuck_time = None
-    
+        self.path = None
+
     def get_id(self):
         return self.actor.id
 
     def get_velocity(self):
         v = self.actor.get_velocity()
         return carla.Vector2D(v.x, v.y)
-    
+
     def get_transform(self):
         return self.actor.get_transform()
-    
+
     def get_bounding_box(self):
         return self.actor.bounding_box
-    
+
     def get_forward_direction(self):
         forward = self.actor.get_transform().get_forward_vector()
         return carla.Vector2D(forward.x, forward.y)
 
     def get_position(self):
-        pos3D = self.actor.get_location()
-        return carla.Vector2D(pos3D.x, pos3D.y)
-    
-    def get_position3D(self):
+        pos3d = self.actor.get_location()
+        return carla.Vector2D(pos3d.x, pos3d.y)
+
+    def get_position_3d(self):
         return self.actor.get_location()
 
-    def disable_collision(self):
-        self.actor.set_collision_enabled(False)
-    
     def get_path_occupancy(self):
         p = [self.get_position()] + [self.path.get_position(i) for i in range(self.path.min_points)]
         return carla.OccupancyMap(p, self.actor.bounding_box.extent.y * 2 + 1.0)
 
 
 class CrowdNetworkAgent(CrowdAgent):
-    def __init__(self, actor, path, preferred_speed):
-        super(CrowdNetworkAgent, self).__init__(actor, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed):
+        super(CrowdNetworkAgent, self).__init__(summit, actor, preferred_speed)
         self.path = path
 
     def get_agent_params(self):
         return carla.AgentParams.get_default('Car')
 
-    def get_bounding_box_corners(self, expand = 0.0):
+    def get_bounding_box_corners(self):
         bbox = self.actor.bounding_box
         loc = carla.Vector2D(bbox.location.x, bbox.location.y) + self.get_position()
-        forward_vec = self.get_forward_direction().make_unit_vector() # the local x direction (left-handed coordinate system)
-        sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction
+        forward_vec = self.get_forward_direction().make_unit_vector()  # the local x direction (left-handed
+        # coordinate system)
+        side_ward_vec = forward_vec.rotate(np.deg2rad(90))  # the local y direction
 
-        half_y_len = bbox.extent.y + expand
-        half_x_len = bbox.extent.x + expand
+        half_y_len = bbox.extent.y + 0.3
+        half_x_len_forward = bbox.extent.x + 1.0
+        half_x_len_backward = bbox.extent.x + 0.1
 
-        corners = []
-        corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
-        corners.append(loc + half_x_len*forward_vec + half_y_len*sideward_vec)
-        corners.append(loc + half_x_len*forward_vec - half_y_len*sideward_vec)
-        corners.append(loc - half_x_len*forward_vec - half_y_len*sideward_vec)
-        
+        corners = [loc - half_x_len_backward * forward_vec + half_y_len * side_ward_vec,
+                   loc + half_x_len_forward * forward_vec + half_y_len * side_ward_vec,
+                   loc + half_x_len_forward * forward_vec - half_y_len * side_ward_vec,
+                   loc - half_x_len_backward * forward_vec - half_y_len * side_ward_vec]
+
         return corners
-    
-    def get_preferred_velocity(self):
+
+    def get_preferred_velocity(self, lane_change_probability=0.0, rng=random):
         position = self.get_position()
 
         ## to check
         if not self.path.resize():
             return None
+
+        current_offset = self.path.get_min_offset(position)
+        nearest_route_point = self.summit.network.get_nearest_route_point(position)
+        if nearest_route_point.edge == self.path.route_points[0].edge and nearest_route_point.lane != \
+                self.path.route_points[0].lane:
+            if rng.uniform(0.0, 1.0) <= lane_change_probability:
+                new_path_candidates = self.summit.network.get_next_route_paths(nearest_route_point,
+                                                                              self.path.min_points - 1,
+                                                                              self.path.interval)
+                if len(new_path_candidates) > 0:
+                    new_path = NetworkAgentPath(self.summit, self.path.min_points, self.path.interval)
+                    new_path.route_points = rng.choice(new_path_candidates)[0:self.path.min_points]
+                    self.path = new_path
+
         self.path.cut(position)
         if not self.path.resize():
             return None
 
-        target_position = self.path.get_position(5) ## to check
+        target_position = self.path.get_position(5)  ## to check
         velocity = (target_position - position).make_unit_vector()
         return self.preferred_speed * velocity
 
@@ -127,8 +126,8 @@ class CrowdNetworkAgent(CrowdAgent):
         second_position = self.path.get_position(1)
 
         return (second_position - first_position).make_unit_vector()
-    
-    def get_control(self, velocity):
+
+    def get_control(self, velocity, k1, k2, k3):
         steer = get_signed_angle_diff(velocity, self.get_forward_direction())
         min_steering_angle = -45.0
         max_steering_angle = 45.0
@@ -137,34 +136,32 @@ class CrowdNetworkAgent(CrowdAgent):
         elif steer < min_steering_angle:
             steer = min_steering_angle
 
-        k = 1.0 # 1.0
-        steer = k * steer / (max_steering_angle - min_steering_angle) * 2.0
         desired_speed = velocity.length()
-        #steer_tmp = get_signed_angle_diff(velocity, self.get_forward_direction())
         cur_speed = self.get_velocity().length()
         control = self.actor.get_control()
 
-        # if desired_speed < 0.5:
-        #     desired_speed = 0
+        steer = k1 * steer / (max_steering_angle - min_steering_angle) * 2.0
 
-        k2 = 1.5 #1.5
-        k3 = 2.5 #2.5
-        if desired_speed - cur_speed > 0:
+        if desired_speed > cur_speed:
             control.throttle = k2 * (desired_speed - cur_speed) / desired_speed
             control.brake = 0.0
-        elif desired_speed - cur_speed == 0:
+        elif desired_speed == cur_speed:
             control.throttle = 0.0
-            control.brake = 0.0
-        else:
-            control.throttle = 0
+            control.brake = 0.00
+        elif desired_speed < cur_speed:
+            control.throttle = 0.0
             control.brake = k3 * (cur_speed - desired_speed) / cur_speed
-
         control.steer = steer
+
+        control.manual_gear_shift = True
+        control.gear = 1
+
         return control
 
+
 class CrowdNetworkCarAgent(CrowdNetworkAgent):
-    def __init__(self, actor, path, preferred_speed):
-        super(CrowdNetworkCarAgent, self).__init__(actor, path, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed):
+        super(CrowdNetworkCarAgent, self).__init__(summit, actor, path, preferred_speed)
 
     def get_agent_params(self):
         return carla.AgentParams.get_default('Car')
@@ -172,9 +169,10 @@ class CrowdNetworkCarAgent(CrowdNetworkAgent):
     def get_type(self):
         return 'car'
 
+
 class CrowdNetworkBikeAgent(CrowdNetworkAgent):
-    def __init__(self, actor, path, preferred_speed):
-        super(CrowdNetworkBikeAgent, self).__init__(actor, path, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed):
+        super(CrowdNetworkBikeAgent, self).__init__(summit, actor, path, preferred_speed)
 
     def get_agent_params(self):
         return carla.AgentParams.get_default('Bicycle')
@@ -182,19 +180,20 @@ class CrowdNetworkBikeAgent(CrowdNetworkAgent):
     def get_type(self):
         return 'bike'
 
+
 class CrowdSidewalkAgent(CrowdAgent):
-    def __init__(self, actor, path, preferred_speed):
-        super(CrowdSidewalkAgent, self).__init__(actor, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed):
+        super(CrowdSidewalkAgent, self).__init__(summit, actor, preferred_speed)
         self.path = path
-        
+
     def get_agent_params(self):
         return carla.AgentParams.get_default('People')
-    
-    def get_bounding_box_corners(self, expand=0.0):
+
+    def get_bounding_box_corners(self):
         bbox = self.actor.bounding_box
         loc = carla.Vector2D(bbox.location.x, bbox.location.y) + self.get_position()
-        forward_vec = self.get_forward_direction().make_unit_vector() # the local x direction (left-handed coordinate system)
-        sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction. (rotating clockwise by 90 deg)
+        forward_vec = self.get_forward_direction().make_unit_vector()  # the local x direction (left-handed coordinate system)
+        sideward_vec = forward_vec.rotate(np.deg2rad(90))  # the local y direction. (rotating clockwise by 90 deg)
 
         # Hardcoded values for people.
         half_y_len = 0.25
@@ -203,15 +202,14 @@ class CrowdSidewalkAgent(CrowdAgent):
         # half_y_len = bbox.extent.y
         # half_x_len = bbox.extent.x
 
-        corners = []
-        corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
-        corners.append(loc + half_x_len*forward_vec + half_y_len*sideward_vec)
-        corners.append(loc + half_x_len*forward_vec - half_y_len*sideward_vec)
-        corners.append(loc - half_x_len*forward_vec - half_y_len*sideward_vec)
-        
+        corners = [loc - half_x_len * forward_vec + half_y_len * sideward_vec,
+                   loc + half_x_len * forward_vec + half_y_len * sideward_vec,
+                   loc + half_x_len * forward_vec - half_y_len * sideward_vec,
+                   loc - half_x_len * forward_vec - half_y_len * sideward_vec]
+
         return corners
-    
-    def get_preferred_velocity(self):
+
+    def get_preferred_velocity(self, lane_change_probability=0.0, rng=random):
         position = self.get_position()
 
         if not self.path.resize():
@@ -228,96 +226,128 @@ class CrowdSidewalkAgent(CrowdAgent):
 
     def get_path_forward(self):
         return carla.Vector2D(0, 0)
-    
+
     def get_control(self, velocity):
         # velocity = velocity.make_unit_vector() * self.preferred_speed
         return carla.WalkerControl(
-                carla.Vector3D(velocity.x, velocity.y, 0),
-                1.0, False)
+            carla.Vector3D(velocity.x, velocity.y, 0),
+            1.0, False)
 
-class GammaCrowdController(Drunc):
+
+class GammaCrowdController(Summit):
     def __init__(self):
         super(GammaCrowdController, self).__init__()
+
+        self.ego_car_info = None
         self.network_car_agents = []
         self.network_bike_agents = []
         self.sidewalk_agents = []
         self.gamma = carla.RVOSimulator()
         self.ego_actor = None
         self.initialized = False
+        self.agent_controls = []
 
         self.walker_blueprints = self.world.get_blueprint_library().filter("walker.pedestrian.*")
         self.vehicles_blueprints = self.world.get_blueprint_library().filter('vehicle.*')
+
         self.cars_blueprints = [x for x in self.vehicles_blueprints if int(x.get_attribute('number_of_wheels')) == 4]
+        self.cars_blueprints = [x for x in self.cars_blueprints if x.id not in ['vehicle.mini.cooperst']]
+
         self.bikes_blueprints = [x for x in self.vehicles_blueprints if int(x.get_attribute('number_of_wheels')) == 2]
-        
+
         self.num_network_car_agents = rospy.get_param('~num_network_car_agents')
         self.num_network_bike_agents = rospy.get_param('~num_network_bike_agents')
         self.num_sidewalk_agents = rospy.get_param('~num_sidewalk_agents')
         self.path_min_points = rospy.get_param('~path_min_points')
         self.path_interval = rospy.get_param('~path_interval')
+        self.lane_change_probability = rospy.get_param('~lane_change_probability')
+        self.spawn_clearance_vehicle = rospy.get_param('~spawn_clearance_vehicle')
+        self.spawn_clearance_person = rospy.get_param('~spawn_clearance_person')
         self.network_agents_pub = rospy.Publisher(
-                '/crowd/network_agents', 
-                msg_builder.msg.CrowdNetworkAgentArray, 
-                queue_size=1)
+            '/crowd/network_agents',
+            msg_builder.msg.CrowdNetworkAgentArray,
+            queue_size=1)
         self.sidewalk_agents_pub = rospy.Publisher(
-                '/crowd/sidewalk_agents', 
-                msg_builder.msg.CrowdSidewalkAgentArray, 
-                queue_size=1)
-        self.agents_ready_pub = rospy.Publisher('/agents_ready', Bool, queue_size=1, latch=True) 
+            '/crowd/sidewalk_agents',
+            msg_builder.msg.CrowdSidewalkAgentArray,
+            queue_size=1)
+        self.agents_ready_pub = rospy.Publisher('/agents_ready', Bool, queue_size=1, latch=True)
+        self.gamma_cmd_accel_pub = rospy.Publisher('/gamma_cmd_accel', Float32, queue_size=1)
+        self.gamma_cmd_speed_pub = rospy.Publisher('/gamma_cmd_speed', Float32, queue_size=1)
+        self.gamma_cmd_steer_pub = rospy.Publisher('/gamma_cmd_steer', Float32, queue_size=1)
+        self.gamma_lane_change_pub = rospy.Publisher('/gamma_lane_decision', Int32, queue_size=1)
 
         self.il_car_info_sub = rospy.Subscriber(
-                '/ego_state',
-                CarInfo,
-                self.il_car_info_callback,
-                queue_size=1)
+            '/ego_state',
+            CarInfo,
+            self.il_car_info_callback,
+            queue_size=1)
 
         for i in range(self.num_network_car_agents):
             self.gamma.add_agent(carla.AgentParams.get_default('Car'), i)
-        
+
         for i in range(self.num_network_bike_agents):
             self.gamma.add_agent(carla.AgentParams.get_default('Bicycle'), i + self.num_network_car_agents)
-        
-        for i in range(self.num_sidewalk_agents):
-            self.gamma.add_agent(carla.AgentParams.get_default('People'), i + self.num_network_car_agents + self.num_network_bike_agents)
-        
-        # For ego vehicle.
-        self.gamma.add_agent(carla.AgentParams.get_default('Car'), self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents)
 
-        for triangle in carla.OccupancyMap(self.scenario_min, self.scenario_max).difference(self.network_occupancy_map).get_triangles():
+        for i in range(self.num_sidewalk_agents):
+            self.gamma.add_agent(carla.AgentParams.get_default('People'),
+                                 i + self.num_network_car_agents + self.num_network_bike_agents)
+
+        # For ego vehicle.
+        self.gamma.add_agent(carla.AgentParams.get_default('Car'),
+                             self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents)
+
+        for triangle in carla.OccupancyMap(self.scenario_min, self.scenario_max).difference(
+                self.network_occupancy_map).get_triangles():
             self.gamma.add_obstacle([triangle.v2, triangle.v1, triangle.v1])
         self.gamma.process_obstacles()
-        
-        self.start_time = None
-        self.stats_total_num_car = 0
-        self.stats_total_num_bike = 0
-        self.stats_total_num_ped = 0
-        self.stats_total_num_stuck_car = 0
-        self.stats_total_num_stuck_bike = 0
-        self.stats_total_num_stuck_ped = 0
-        self.log_file = open(os.path.join(os.path.expanduser('~'), 'gamma_data.txt'), 'w', buffering=0)
 
-        self.do_publish = False 
-        self.initial_stage = True
-        self.timer = rospy.Timer(rospy.Duration(0.1), self.publish_agents)
+        self.do_publish = False
+        self.publish_agents_timer = rospy.Timer(rospy.Duration(0.1), self.publish_agents)
+        self.update_agent_controls_timer = rospy.Timer(rospy.Duration(1.0 / 20), self.update_agent_controls)
+        self.update_gamma_timer = rospy.Timer(rospy.Duration(1.0 / 100), self.update_gamma)
+        self.update_lane_decision = rospy.Timer(rospy.Duration(1.0 / 1), self.make_lane_decision)
 
-    def get_bounding_box_corners(self, actor, expand = 0.0):
+    def get_aabb(self, actor):
         bbox = actor.bounding_box
         loc = carla.Vector2D(bbox.location.x, bbox.location.y) + get_position(actor)
-        forward_vec = get_forward_direction(actor).make_unit_vector() # the local x direction (left-handed coordinate system)
-        sideward_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction
+        forward_vec = get_forward_direction(
+            actor).make_unit_vector()  # the local x direction (left-handed coordinate system)
+        sideward_vec = forward_vec.rotate(np.deg2rad(90))  # the local y direction
+        corners = [loc - bbox.extent.x * forward_vec + bbox.extent.y * sideward_vec,
+                   loc + bbox.extent.x * forward_vec + bbox.extent.y * sideward_vec,
+                   loc + bbox.extent.x * forward_vec - bbox.extent.y * sideward_vec,
+                   loc - bbox.extent.x * forward_vec - bbox.extent.y * sideward_vec]
+        return carla.AABB2D(
+            carla.Vector2D(
+                min(v.x for v in corners),
+                min(v.y for v in corners)),
+            carla.Vector2D(
+                max(v.x for v in corners),
+                max(v.y for v in corners)))
 
-        half_y_len = bbox.extent.y + expand
-        half_x_len = bbox.extent.x + expand
+    def get_bounding_box_corners(self, actor):
+        bbox = actor.bounding_box
+        loc = carla.Vector2D(bbox.location.x, bbox.location.y) + get_position(actor)
+        forward_vec = get_forward_direction(
+            actor).make_unit_vector()  # the local x direction (left-handed coordinate system)
+        sideward_vec = forward_vec.rotate(np.deg2rad(90))  # the local y direction
 
-        corners = []
-        corners.append(loc - half_x_len*forward_vec + half_y_len*sideward_vec)
-        corners.append(loc + half_x_len*forward_vec + half_y_len*sideward_vec)
-        corners.append(loc + half_x_len*forward_vec - half_y_len*sideward_vec)
-        corners.append(loc - half_x_len*forward_vec - half_y_len*sideward_vec)
-        
+        half_y_len = bbox.extent.y + 0.3
+        half_x_len = bbox.extent.x + 1.0
+
+        corners = [loc - half_x_len * forward_vec + half_y_len * sideward_vec,
+                   loc + half_x_len * forward_vec + half_y_len * sideward_vec,
+                   loc + half_x_len * forward_vec - half_y_len * sideward_vec,
+                   loc - half_x_len * forward_vec - half_y_len * sideward_vec]
+
         return corners
 
     def dispose(self):
+        self.publish_agents_timer.shutdown()
+        self.update_agent_controls_timer.shutdown()
+        self.update_gamma_timer.shutdown()
+        self.update_lane_decision.shutdown()
         commands = []
         commands.extend(carla.command.DestroyActor(a.actor.id) for a in self.network_car_agents)
         commands.extend(carla.command.DestroyActor(a.actor.id) for a in self.network_bike_agents)
@@ -327,148 +357,108 @@ class GammaCrowdController(Drunc):
 
     def il_car_info_callback(self, car_info):
         self.ego_car_info = car_info
-        i = self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents
 
-        if self.ego_car_info:
-            self.gamma.set_agent_position(i, carla.Vector2D(
-                self.ego_car_info.car_pos.x,
-                self.ego_car_info.car_pos.y))
-            self.gamma.set_agent_velocity(i, carla.Vector2D(
-                self.ego_car_info.car_vel.x,
-                self.ego_car_info.car_vel.y))
-            self.gamma.set_agent_heading(i, carla.Vector2D(
-                math.cos(self.ego_car_info.car_yaw),
-                math.sin(self.ego_car_info.car_yaw)))
-            self.find_ego_actor()
-            self.gamma.set_agent_bounding_box_corners(i, self.get_bounding_box_corners(self.ego_actor, 0.2))
-            self.gamma.set_agent_pref_velocity(i, carla.Vector2D(
-                self.ego_car_info.car_pref_vel.x,
-                self.ego_car_info.car_pref_vel.y))
-        else:
-            self.gamma.set_agent_position(i, default_agent_pos)
-            self.gamma.set_agent_pref_velocity(i, carla.Vector2D(0, 0))
-            self.gamma.set_agent_velocity(i, carla.Vector2D(0, 0))
-            self.gamma.set_agent_bounding_box_corners(i, default_agent_bbox)
-    
     def det(self, vector1, vector2):
         return vector1.y * vector2.x - vector1.x * vector2.y
 
-    def left_of(self, a, b, c): ## if c is at the left side of vector ab, then return Ture, False otherwise
+    def left_of(self, a, b, c):  # if c is at the left side of vector ab, then return Ture, False otherwise
         if self.det(a - c, b - a) > 0:
             return True
         return False
+
     def in_polygon(self, position, rect):
         if len(rect) < 3:
             return False
-        for i in range(0, len(rect)-1):
-            if not self.left_of(rect[i], rect[i+1], position):
+        for i in range(0, len(rect) - 1):
+            if not self.left_of(rect[i], rect[i + 1], position):
                 return False
         if not self.left_of(rect[len(rect) - 1], rect[0], position):
             return False
 
         return True
 
-    def dot_product(self, a, b):
-        return a.x * b.x + a.y * b.y
-
-    def draw_line(self, pos, vec, color=carla.Color (255,0,0)):
+    def draw_line(self, pos, vec, color=carla.Color(255, 0, 0)):
         height = 3
-        start = carla.Vector3D(pos.x,pos.y,height)
-        end = carla.Vector3D(pos.x+vec.x,pos.y+vec.y,height)
-        self.world.debug.draw_line(start, end,  color=color, life_time=0.1)
+        start = carla.Vector3D(pos.x, pos.y, height)
+        end = carla.Vector3D(pos.x + vec.x, pos.y + vec.y, height)
+        self.world.debug.draw_line(start, end, color=color, life_time=0.1)
 
     def draw_box(self, corners):
         height = 1
-        for i in range(len(corners)-1):
-            start = carla.Vector3D(corners[i].x,corners[i].y,height)
-            end = carla.Vector3D(corners[i+1].x,corners[i+1].y,height)
-            self.world.debug.draw_line(start, end,  life_time=0.1)
+        for i in range(len(corners) - 1):
+            start = carla.Vector3D(corners[i].x, corners[i].y, height)
+            end = carla.Vector3D(corners[i + 1].x, corners[i + 1].y, height)
+            self.world.debug.draw_line(start, end, life_time=0.1)
 
-        start = carla.Vector3D(corners[len(corners)-1].x,corners[len(corners)-1].y,height)
-        end = carla.Vector3D(corners[0].x,corners[0].y,height)
-        self.world.debug.draw_line(start, end,  life_time=0.1)
-
+        start = carla.Vector3D(corners[len(corners) - 1].x, corners[len(corners) - 1].y, height)
+        end = carla.Vector3D(corners[0].x, corners[0].y, height)
+        self.world.debug.draw_line(start, end, life_time=0.1)
 
     def get_lane_constraints_by_vehicle(self, position, forward_vec):
-        sidewalk_vec = forward_vec.rotate(np.deg2rad(90)) # the local y direction. (rotating clockwise by 90 deg)
-        
+        sidewalk_vec = forward_vec.rotate(np.deg2rad(90))  # the local y direction. (rotating clockwise by 90 deg)
+
         lookahead_x = 20
         lookahead_y = 6
 
-        right_region_corners = []
-        right_region_corners.append(position)
-        right_region_corners.append(position + lookahead_y*sidewalk_vec)
-        right_region_corners.append(position + lookahead_y*sidewalk_vec + lookahead_x*forward_vec)
-        right_region_corners.append(position + lookahead_x*forward_vec)
+        right_region_corners = [position, position + lookahead_y * sidewalk_vec,
+                                position + lookahead_y * sidewalk_vec + lookahead_x * forward_vec,
+                                position + lookahead_x * forward_vec]
 
-        #self.draw_box(right_region_corners)
+        # self.draw_box(right_region_corners)
 
-        left_region_corners = []
-        left_region_corners.append(position)
-        left_region_corners.append(position + lookahead_x*forward_vec)
-        left_region_corners.append(position - lookahead_y*sidewalk_vec + lookahead_x*forward_vec)
-        left_region_corners.append(position - lookahead_y*sidewalk_vec)
-        
-        #self.draw_box(left_region_corners)
+        left_region_corners = [position, position + lookahead_x * forward_vec,
+                               position - lookahead_y * sidewalk_vec + lookahead_x * forward_vec,
+                               position - lookahead_y * sidewalk_vec]
+
+        # self.draw_box(left_region_corners)
 
         left_lane_constrained_by_vehicle = False
         right_lane_constrained_by_vehicle = False
 
-        for crowd_agent in self.network_bike_agents: # + self.sidewalk_agents:
+        for crowd_agent in self.network_bike_agents:  # + self.sidewalk_agents:
             pos_agt = crowd_agent.get_position()
-            if (not left_lane_constrained_by_vehicle) and self.in_polygon(pos_agt, left_region_corners): # if it is already constrained, then no need to check other agents
-                if self.dot_product(forward_vec, crowd_agent.get_forward_direction()) < 0:
+            if (not left_lane_constrained_by_vehicle) and self.in_polygon(pos_agt,
+                                                                          left_region_corners):  # if it is already
+                # constrained, then no need to check other agents
+                if dot_product(forward_vec, crowd_agent.get_forward_direction()) < 0:
                     left_lane_constrained_by_vehicle = True
-            if (not right_lane_constrained_by_vehicle) and self.in_polygon(pos_agt, right_region_corners): # if it is already constrained, then no need to check other agents
-                if self.dot_product(forward_vec, crowd_agent.get_forward_direction()) < 0:
+            if (not right_lane_constrained_by_vehicle) and self.in_polygon(pos_agt,
+                                                                           right_region_corners):  # if it is already
+                # constrained, then no need to check other agents
+                if dot_product(forward_vec, crowd_agent.get_forward_direction()) < 0:
                     right_lane_constrained_by_vehicle = True
 
         front_car_count = 0
-        for crowd_agent in self.network_car_agents: # + self.sidewalk_agents:
+        for crowd_agent in self.network_car_agents:  # + self.sidewalk_agents:
             pos_agt = crowd_agent.get_position()
-            if self.in_polygon(pos_agt, left_region_corners): # if it is already constrained, then no need to check other agents
+            if self.in_polygon(pos_agt,
+                               left_region_corners):  # if it is already constrained, then no need to check other agents
                 front_car_count += 1
-                if (not left_lane_constrained_by_vehicle) and self.dot_product(forward_vec, crowd_agent.get_forward_direction()) < 0:
+                if (not left_lane_constrained_by_vehicle) and dot_product(forward_vec,
+                                                                          crowd_agent.get_forward_direction()) < 0:
                     left_lane_constrained_by_vehicle = True
-            if (not right_lane_constrained_by_vehicle) and self.in_polygon(pos_agt, right_region_corners): # if it is already constrained, then no need to check other agents
-                if self.dot_product(forward_vec, crowd_agent.get_forward_direction()) < 0:
+            if (not right_lane_constrained_by_vehicle) and self.in_polygon(pos_agt,
+                                                                           right_region_corners):  # if it is already
+                # constrained, then no need to check other agents
+                if dot_product(forward_vec, crowd_agent.get_forward_direction()) < 0:
                     right_lane_constrained_by_vehicle = True
-
 
         if front_car_count > 1:
             right_lane_constrained_by_vehicle = True
 
         return left_lane_constrained_by_vehicle, right_lane_constrained_by_vehicle
-        #return False, False
+        # return False, False
 
     def get_lane_constraints(self, position, forward_vec):
-        # left_lane_constrained = False
-        # right_lane_constrained = False
-        # nearest_pos_at_sidewalk = self.sidewalk.get_nearest_route_point(position)
-        # nearest_pos_at_sidewalk = self.sidewalk.get_route_point_position(nearest_pos_at_sidewalk)
-        # dist = (nearest_pos_at_sidewalk - position).length()
-        # if dist < 1.5 + 2.0 + 0.6: ## 1.5 = sidewalk_width / 2; 2.0 = lane_width / 2; 0.6 is dist threshold
-        #     if self.left_of(position, position + forward_vec, nearest_pos_at_sidewalk):
-        #         left_lane_constrained = True
-        # return left_lane_constrained, right_lane_constrained
         left_line_end = position + (1.5 + 2.0 + 0.8) * ((forward_vec.rotate(np.deg2rad(-90))).make_unit_vector())
         right_line_end = position + (1.5 + 2.0 + 0.5) * ((forward_vec.rotate(np.deg2rad(90))).make_unit_vector())
         left_lane_constrained_by_sidewalk = self.sidewalk.intersects(position, left_line_end)
         right_lane_constrained_by_sidewalk = self.sidewalk.intersects(position, right_line_end)
-        #left_lane_constrained_by_vehicle, right_lane_constrained_by_vehicle = self.get_lane_constraints_by_vehicle(position, forward_vec)
-
-        #return True, True
-        #return left_lane_constrained_by_sidewalk or left_lane_constrained_by_vehicle, right_lane_constrained_by_sidewalk or right_lane_constrained_by_vehicle
         return left_lane_constrained_by_sidewalk, right_lane_constrained_by_sidewalk
 
-    def get_spawn_range(self, center, size):
-        spawn_min = carla.Vector2D(
-            center.x - size, 
-            center.y - size)
-        spawn_max = carla.Vector2D(
-            center.x + size,
-            center.y + size)
-        return (spawn_min, spawn_max)
+    def no_collision(self):
+        for (i, crowd_agent) in enumerate(self.network_car_agents + self.network_bike_agents + self.sidewalk_agents):
+            crowd_agent.disable_collision()
 
     def find_ego_actor(self):
         if self.ego_actor is None:
@@ -477,27 +467,141 @@ class GammaCrowdController(Drunc):
                     self.ego_actor = actor
                     break
 
-    def check_bounds(self, point, bounds_min, bounds_max):
-        return bounds_min.x <= point.x <= bounds_max.x and \
-               bounds_min.y <= point.y <= bounds_max.y
+    def update_agent_controls(self, event):
+        commands = []
+        for (crowd_agent, vel_to_exe) in self.agent_controls:
+            cur_vel = crowd_agent.actor.get_velocity()
+            cur_vel = carla.Vector2D(cur_vel.x, cur_vel.y)
 
-    def no_collision(self):
-        for (i, crowd_agent) in enumerate(self.network_car_agents + self.network_bike_agents + self.sidewalk_agents):
-            crowd_agent.disable_collision()
-         
-    def get_spawn_occupancy_map(self, center_pos, spawn_size_min, spawn_size_max):
-        return carla.OccupancyMap(
-                carla.Vector2D(center_pos.x - spawn_size_max, center_pos.y - spawn_size_max),
-                carla.Vector2D(center_pos.x + spawn_size_max, center_pos.y + spawn_size_max)) \
-            .difference(carla.OccupancyMap(
-                carla.Vector2D(center_pos.x - spawn_size_min, center_pos.y - spawn_size_min),
-                carla.Vector2D(center_pos.x + spawn_size_min, center_pos.y + spawn_size_min)))
+            angle_diff = get_signed_angle_diff(vel_to_exe, cur_vel)
+            if angle_diff > 30 or angle_diff < -30:
+                vel_to_exe = 0.5 * (vel_to_exe + cur_vel)
 
-    def update(self):
-        update_time = rospy.Time.now()
+            if type(crowd_agent) is CrowdNetworkCarAgent:
+                control = crowd_agent.get_control(vel_to_exe, k1=1.0, k2=2.0, k3=7)
+                commands.append(carla.command.ApplyVehicleControl(crowd_agent.actor.id, control))
+            elif type(crowd_agent) is CrowdNetworkBikeAgent:
+                control = crowd_agent.get_control(vel_to_exe, k1=1.0, k2=2.0, k3=5)
+                commands.append(carla.command.ApplyVehicleControl(crowd_agent.actor.id, control))
+            elif type(crowd_agent) is CrowdSidewalkAgent:
+                control = crowd_agent.get_control(vel_to_exe)
+                commands.append(carla.command.ApplyWalkerControl(crowd_agent.actor.id, control))
+        self.client.apply_batch_sync(commands)
+
+    def dist_to_nearest_agt_in_region(self, position, forward_vec, sidewalk_vec, lookahead_x=30, lookahead_y=4,
+                                      ref_point=None, consider_ped=False):
+
+        if ref_point is None:
+            ref_point = position
+
+        region_corners = [ref_point - (lookahead_y / 2.0) * sidewalk_vec,
+                          ref_point + (lookahead_y / 2.0) * sidewalk_vec,
+                          ref_point + (lookahead_y / 2.0) * sidewalk_vec + lookahead_x * forward_vec,
+                          ref_point - (lookahead_y / 2.0) * sidewalk_vec + lookahead_x * forward_vec]
+
+        min_dist = lookahead_x
+        for crowd_agent in self.network_bike_agents:
+            pos_agt = crowd_agent.get_position()
+            if self.in_polygon(pos_agt, region_corners):
+                min_dist = min(min_dist, (pos_agt - position).length())
+
+        for crowd_agent in self.network_car_agents:
+            pos_agt = crowd_agent.get_position()
+            if self.in_polygon(pos_agt, region_corners):
+                min_dist = min(min_dist, (pos_agt - position).length())
+
+        if consider_ped:
+            for crowd_agent in self.sidewalk_agents:
+                pos_agt = crowd_agent.get_position()
+                if self.in_polygon(pos_agt, region_corners):
+                    min_dist = min(min_dist, (pos_agt - position).length())
+
+        return min_dist
+
+    def gamma_lane_change_decision(self):
+
+        if not self.ego_car_info or not self.ego_actor:
+            return
+
+        forward_vec = carla.Vector2D(math.cos(self.ego_car_info.car_yaw), math.sin(self.ego_car_info.car_yaw))
+        sidewalk_vec = forward_vec.rotate(np.deg2rad(90))  # rotate clockwise by 90 degree
+
+        ego_veh_pos = carla.Vector2D(
+            self.ego_car_info.car_pos.x,
+            self.ego_car_info.car_pos.y)
+
+        left_ego_veh_pos = ego_veh_pos - 4.0 * sidewalk_vec
+        right_ego_veh_pos = ego_veh_pos + 4.0 * sidewalk_vec
+
+        cur_route_point = self.network.get_nearest_route_point(ego_veh_pos)
+        left_route_point = self.network.get_nearest_route_point(left_ego_veh_pos)
+        right_route_point = self.network.get_nearest_route_point(right_ego_veh_pos)
+
+        left_lane_exist = False
+        right_lane_exist = False
+
+        if left_route_point.edge == cur_route_point.edge and left_route_point.lane != cur_route_point.lane:
+            left_lane_exist = True
+        else:
+            left_lane_exist = False
+        if right_route_point.edge == cur_route_point.edge and right_route_point.lane != cur_route_point.lane:
+            right_lane_exist = True
+        else:
+            right_lane_exist = False
+
+        min_dist_to_front_veh = self.dist_to_nearest_agt_in_region(ego_veh_pos, forward_vec, sidewalk_vec,
+                                                                   lookahead_x=30, lookahead_y=4, ref_point=None)
+        min_dist_to_left_front_veh = -1.0
+        min_dist_to_right_front_veh = -1.0
+
+        if left_lane_exist:
+            # if want to change lane, also need to consider vehicles behind
+            min_dist_to_left_front_veh = self.dist_to_nearest_agt_in_region(left_ego_veh_pos, forward_vec, sidewalk_vec,
+                                                                            lookahead_x=35, lookahead_y=4,
+                                                                            ref_point=left_ego_veh_pos - 12.0 * forward_vec,
+                                                                            consider_ped=True)
+        if right_lane_exist:
+            # if want to change lane, also need to consider vehicles behind
+            min_dist_to_right_front_veh = self.dist_to_nearest_agt_in_region(right_ego_veh_pos, forward_vec,
+                                                                             sidewalk_vec, lookahead_x=35,
+                                                                             lookahead_y=4,
+                                                                             ref_point=right_ego_veh_pos - 12.0 * forward_vec,
+                                                                             consider_ped=True)
+
+        change_left = -1
+        remain = 0
+        change_right = 1
+
+        if min_dist_to_front_veh >= 15:
+            self.gamma_lane_change_pub.publish(remain)
+        else:
+            if min_dist_to_left_front_veh > min_dist_to_right_front_veh:
+                if min_dist_to_left_front_veh > min_dist_to_front_veh + 3.0:
+                    self.gamma_lane_change_pub.publish(change_left)
+                else:
+                    self.gamma_lane_change_pub.publish(remain)
+            else:  # min_dist_to_left_front_veh <= min_dist_to_right_front_veh:
+                if min_dist_to_right_front_veh > min_dist_to_front_veh + 3.0:
+                    self.gamma_lane_change_pub.publish(change_right)
+                else:
+                    self.gamma_lane_change_pub.publish(remain)
+
+            # if rng.uniform(0.0, 1.0) <= lane_change_probability:
+            #     new_path_candidates = self.summit.network.get_next_route_paths(nearest_route_point, self.path.min_points - 1, self.path.interval)
+            #     new_path = NetworkAgentPath(self.summit, self.path.min_points, self.path.interval)
+            #     new_path.route_points = rng.choice(new_path_candidates)[0:self.path.min_points]
+            #     self.path = new_path
+
+    def make_lane_decision(self, event):
+        self.gamma_lane_change_decision()
+
+    def update_gamma(self, event):
+        update_time = event.current_real
+
+        start_time = time.time()
 
         # Check for ego actor.
-        self.find_ego_actor() 
+        self.find_ego_actor()
 
         # Determine bounds variables.
         if self.ego_actor is None:
@@ -508,82 +612,123 @@ class GammaCrowdController(Drunc):
             bounds_center = carla.Vector2D(self.ego_actor.get_location().x, self.ego_actor.get_location().y)
             bounds_min = bounds_center + carla.Vector2D(-150, -150)
             bounds_max = bounds_center + carla.Vector2D(150, 150)
-        
+
         # Determine spawning variables.
+        global spawn_size_min
         if not self.initialized:
             spawn_size_min = 0
             spawn_size_max = 150
+            spawn_cap = 500
         else:
-            spawn_size_min = 100
+            # spawn_size_min = 100
             spawn_size_max = 150
-        spawn_segment_map = self.network_segment_map.intersection(self.get_spawn_occupancy_map(bounds_center, spawn_size_min, spawn_size_max))
+            spawn_cap = 1
+        spawn_segment_map = self.network_segment_map.intersection(
+            get_spawn_occupancy_map(bounds_center, spawn_size_min, spawn_size_max))
+        spawn_segment_map.seed_rand(self.rng.getrandbits(32))
+        aabb_map = carla.AABBMap(
+            [self.get_aabb(agent.actor) for agent in self.network_bike_agents + self.network_car_agents] +
+            [self.get_aabb(self.ego_actor)])
+        if not self.initialized:
+            spawn_size_min = 100
 
-        start_t = time.time()
-        for i in range(self.num_network_car_agents - len(self.network_car_agents)):
-            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map)
+        # end_time = time.time()
+        # print("get maps time {} s".format(end_time - start_time))
+        # start_time = time.time()
+
+        to_spawn = self.adjust_spawn_params(spawn_cap, self.num_network_car_agents - len(self.network_car_agents),
+                                            'car')
+
+        for i in range(to_spawn):
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map,
+                                              rng=self.rng)
+            if aabb_map.intersects(carla.AABB2D(
+                    carla.Vector2D(path.get_position(0).x - self.spawn_clearance_vehicle,
+                                   path.get_position(0).y - self.spawn_clearance_vehicle),
+                    carla.Vector2D(path.get_position(0).x + self.spawn_clearance_vehicle,
+                                   path.get_position(0).y + self.spawn_clearance_vehicle))):
+                continue
+
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
             trans.location.z = 0.2
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
-                    random.choice(self.cars_blueprints),
-                    trans)
-            self.world.wait_for_tick(5.0)
+                self.rng.choice(self.cars_blueprints),
+                trans)
             if actor:
+                # actor.set_collision_enabled(False)
+                self.world.wait_for_tick(1.0)  # For actor to update pos and bounds, and for collision to apply.
                 self.network_car_agents.append(CrowdNetworkCarAgent(
-                    actor, path, 
-                    5.0 + random.uniform(0.0, 0.5)))
-                self.stats_total_num_car += 1
-            elapsed_time = time.time() - start_t
-            
+                    self, actor, path,
+                    5.0 + self.rng.uniform(0.0, 0.5)))
+                aabb_map.insert(self.get_aabb(actor))
+
             if len(self.network_car_agents) > 0:
                 self.do_publish = True
 
-        start_t = time.time()
-        for _ in range(self.num_network_bike_agents - len(self.network_bike_agents)):
-            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, None, spawn_segment_map)
+        to_spawn = self.adjust_spawn_params(spawn_cap, self.num_network_bike_agents - len(self.network_bike_agents),
+                                            'bikes')
+
+        for _ in range(to_spawn):
+            path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map,
+                                              rng=self.rng)
+            if aabb_map.intersects(carla.AABB2D(
+                    carla.Vector2D(path.get_position(0).x - self.spawn_clearance_vehicle,
+                                   path.get_position(0).y - self.spawn_clearance_vehicle),
+                    carla.Vector2D(path.get_position(0).x + self.spawn_clearance_vehicle,
+                                   path.get_position(0).y + self.spawn_clearance_vehicle))):
+                continue
+
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
             trans.location.z = 0.2
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
-                    random.choice(self.bikes_blueprints),
-                    trans)
-            self.world.wait_for_tick(5.0)
+                self.rng.choice(self.bikes_blueprints),
+                trans)
             if actor:
+                # actor.set_collision_enabled(False)
+                self.world.wait_for_tick(1.0)  # For actor to update pos and bounds, and for collision to apply.
+
                 self.network_bike_agents.append(CrowdNetworkBikeAgent(
-                    actor, path, 
-                    3.0 + random.uniform(0, 0.5)))
-                self.stats_total_num_bike += 1
-            elapsed_time = time.time() - start_t
+                    self, actor, path,
+                    3.0 + self.rng.uniform(0, 0.5)))
+                aabb_map.insert(self.get_aabb(actor))
 
             if len(self.network_bike_agents) > 0:
                 self.do_publish = True
 
-        start_t = time.time()
-        for _ in range(self.num_sidewalk_agents - len(self.sidewalk_agents)):
-            path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, bounds_min, bounds_max)
+        to_spawn = self.adjust_spawn_params(spawn_cap, self.num_sidewalk_agents - len(self.sidewalk_agents), 'walkers')
+
+        for _ in range(to_spawn):
+            path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, bounds_min, bounds_max,
+                                               self.rng)
             trans = carla.Transform()
             trans.location.x = path.get_position(0).x
             trans.location.y = path.get_position(0).y
             trans.location.z = 0.2
             trans.rotation.yaw = path.get_yaw(0)
             actor = self.world.try_spawn_actor(
-                    random.choice(self.walker_blueprints),
-                    trans)
-            self.world.wait_for_tick(5.0)
+                self.rng.choice(self.walker_blueprints),
+                trans)
             if actor:
+                # actor.set_collision_enabled(False)
+                self.world.wait_for_tick(1.0)  # For actor to update pos and bounds, and for collision to apply.
+
                 self.sidewalk_agents.append(CrowdSidewalkAgent(
-                    actor, path, 
-                    0.5 + random.uniform(0.0, 1.0)))
-                self.stats_total_num_ped += 1
-            elapsed_time = time.time() - start_t
+                    self, actor, path,
+                    0.5 + self.rng.uniform(0.0, 1.0)))
 
             if len(self.sidewalk_agents) > 0:
                 self.do_publish = True
-        
+
+        # end_time = time.time()
+        # print("spawn actor time {} s".format(end_time - start_time))
+        # start_time = time.time()
+
         if not self.initialized:
             # send a one time message to inform the pomdp planner
             self.agents_ready_pub.publish(True)
@@ -593,12 +738,12 @@ class GammaCrowdController(Drunc):
         next_agents = []
         for (i, crowd_agent) in enumerate(self.network_car_agents + self.network_bike_agents + self.sidewalk_agents):
             delete = False
-            if not delete and not self.check_bounds(crowd_agent.get_position(), bounds_min, bounds_max):
+            if not delete and not check_bounds(crowd_agent.get_position(), bounds_min, bounds_max):
                 delete = True
-            if not delete and crowd_agent.get_position3D().z < -10:
+            if not delete and crowd_agent.get_position_3d().z < -10:
                 delete = True
-            if not delete and (type(crowd_agent) is not CrowdSidewalkAgent and \
-                    not self.network_occupancy_map.contains(crowd_agent.get_position())):
+            if not delete and (type(crowd_agent) is not CrowdSidewalkAgent and
+                               not self.network_occupancy_map.contains(crowd_agent.get_position())):
                 delete = True
 
             if self.initialized:
@@ -606,13 +751,7 @@ class GammaCrowdController(Drunc):
                     if crowd_agent.stuck_time is not None:
                         if (update_time - crowd_agent.stuck_time).to_sec() >= 5.0:
                             delete = True
-                            if type(crowd_agent) is CrowdNetworkCarAgent:
-                                self.stats_total_num_stuck_car += 1
-                            elif type(crowd_agent) is CrowdNetworkBikeAgent:
-                                self.stats_total_num_stuck_bike += 1
-                            elif type(crowd_agent) is CrowdSidewalkAgent:
-                                self.stats_total_num_stuck_ped += 1
-                    else :
+                    else:
                         crowd_agent.stuck_time = update_time
                 else:
                     crowd_agent.stuck_time = None
@@ -627,26 +766,19 @@ class GammaCrowdController(Drunc):
                 continue
 
             self.gamma.set_agent(i, crowd_agent.get_agent_params())
-            pref_vel = crowd_agent.get_preferred_velocity()
+            pref_vel = crowd_agent.get_preferred_velocity(self.lane_change_probability, self.rng)
             if pref_vel:
-                # self.draw_line(crowd_agent.get_position(), pref_vel, carla.Color (255,0,0))
-                # self.draw_line(crowd_agent.get_position(), crowd_agent.get_velocity(), carla.Color (0,255,0))
                 next_agents.append(crowd_agent)
                 self.gamma.set_agent_position(i, crowd_agent.get_position())
                 self.gamma.set_agent_velocity(i, crowd_agent.get_velocity())
                 self.gamma.set_agent_heading(i, crowd_agent.get_forward_direction())
-                self.gamma.set_agent_bounding_box_corners(i, crowd_agent.get_bounding_box_corners(0.3))
-                self.gamma.set_agent_pref_velocity(i, pref_vel)             
+                self.gamma.set_agent_bounding_box_corners(i, crowd_agent.get_bounding_box_corners())
+                self.gamma.set_agent_pref_velocity(i, pref_vel)
                 self.gamma.set_agent_path_forward(i, crowd_agent.get_path_forward())
-                # left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_forward_direction())
-                # left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_path_forward())
-                # start = timeit.default_timer()
-                left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(), crowd_agent.get_path_forward())
-                # run_time = timeit.default_timer() - start
-                # print("get_lane_constraints ======================")
-                # print(run_time)
-                #self.gamma.set_agent_lane_constraints(i, False, True)
-                self.gamma.set_agent_lane_constraints(i, right_lane_constrained, left_lane_constrained)  ## to check. It seems that we should set left_lane_constrained to false as currently we do because of the difference of the coordiante systems.
+                left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(),
+                                                                                          crowd_agent.get_path_forward())
+                self.gamma.set_agent_lane_constraints(i, right_lane_constrained,
+                                                      left_lane_constrained)  # # to check. It seems that we should
             else:
                 next_agents.append(None)
                 self.gamma.set_agent_position(i, default_agent_pos)
@@ -656,125 +788,90 @@ class GammaCrowdController(Drunc):
                 commands.append(carla.command.DestroyActor(crowd_agent.actor.id))
 
         for i in range(
-                len(self.network_car_agents) + len(self.network_bike_agents) + len(self.sidewalk_agents), 
+                len(self.network_car_agents) + len(self.network_bike_agents) + len(self.sidewalk_agents),
                 self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents):
             self.gamma.set_agent_position(i, default_agent_pos)
             self.gamma.set_agent_pref_velocity(i, carla.Vector2D(0, 0))
             self.gamma.set_agent_velocity(i, carla.Vector2D(0, 0))
             self.gamma.set_agent_bounding_box_corners(i, default_agent_bbox)
 
+        ego_gamma_index = self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents
+        if self.ego_car_info and self.ego_actor:
+            self.gamma.set_agent_position(ego_gamma_index, carla.Vector2D(
+                self.ego_car_info.car_pos.x,
+                self.ego_car_info.car_pos.y))
+            self.gamma.set_agent_velocity(ego_gamma_index, carla.Vector2D(
+                self.ego_car_info.car_vel.x,
+                self.ego_car_info.car_vel.y))
+            self.gamma.set_agent_heading(ego_gamma_index, carla.Vector2D(
+                math.cos(self.ego_car_info.car_yaw),
+                math.sin(self.ego_car_info.car_yaw)))
+            self.gamma.set_agent_bounding_box_corners(ego_gamma_index, self.get_bounding_box_corners(self.ego_actor))
+            self.gamma.set_agent_pref_velocity(ego_gamma_index, carla.Vector2D(
+                self.ego_car_info.car_pref_vel.x,
+                self.ego_car_info.car_pref_vel.y))
+        else:
+            self.gamma.set_agent_position(ego_gamma_index, default_agent_pos)
+            self.gamma.set_agent_pref_velocity(ego_gamma_index, carla.Vector2D(0, 0))
+            self.gamma.set_agent_velocity(ego_gamma_index, carla.Vector2D(0, 0))
+            self.gamma.set_agent_bounding_box_corners(ego_gamma_index, default_agent_bbox)
 
-        # start = timeit.default_timer()
         try:
             self.gamma.do_step()
         except Exception as e:
             print(e)
 
-        # run_time = timeit.default_timer() - start
-        # print("dostep ======================")
-        # print(run_time)
-        global first_time
-        global prev_time
-        if first_time:
-            prev_time = timeit.default_timer()
-            first_time = False
-        cur_time = timeit.default_timer()
-        simu_time = cur_time - prev_time
-        prev_time = cur_time
+        # end_time = time.time()
+        # print("gamma step time {} s".format(end_time - start_time))
+        # start_time = time.time()
 
         if not self.initialized:
             self.start_time = rospy.Time.now()
             self.initialized = True
 
-        #simu_time = 0.05 #self.world.wait_for_tick(5.0).timestamp.delta_seconds
+        new_agent_controls = []
         for (i, crowd_agent) in enumerate(next_agents):
             if crowd_agent:
+                new_agent_controls.append((crowd_agent, self.gamma.get_agent_velocity(i)))
+        self.agent_controls = new_agent_controls
 
-                vel_to_exe = self.gamma.get_agent_velocity(i)
+        # Publish ego vehicle velocity.
+        if self.ego_car_info is not None:
+            # pass
+            ego_gamma_vel = self.gamma.get_agent_velocity(
+                self.num_network_car_agents + self.num_network_bike_agents + self.num_sidewalk_agents)
+            ego_cur_vel = carla.Vector2D(self.ego_car_info.car_vel.x, self.ego_car_info.car_vel.y)
+            ego_angle_diff = get_signed_angle_diff(ego_gamma_vel, ego_cur_vel)
+            if ego_angle_diff > 30 or ego_angle_diff < -30:
+                ego_gamma_vel = 0.5 * (ego_gamma_vel + ego_cur_vel)
+            ego_control = CrowdNetworkAgent(self, self.ego_actor, None, 5.25).get_control(ego_gamma_vel, k1=1.0, k2=2.0,
+                                                                                          k3=2.0)  # TODO: Is there a better way using static methods?
+            self.gamma_cmd_accel_pub.publish(ego_control.throttle if ego_control.throttle > 0 else -ego_control.brake)
+            self.gamma_cmd_speed_pub.publish(ego_gamma_vel.length())
+            self.gamma_cmd_steer_pub.publish(ego_control.steer)
 
-                #self.draw_line(crowd_agent.get_position(), vel_to_exe, carla.Color (0,0,255))
-
-                cur_vel = crowd_agent.actor.get_velocity()
-
-                cur_vel = carla.Vector2D(cur_vel.x, cur_vel.y)
-
-                angle_diff = get_signed_angle_diff(vel_to_exe, cur_vel)
-                if angle_diff > 30 or angle_diff < -30:
-                    vel_to_exe = 0.5 * (vel_to_exe + cur_vel)
-                    #self.draw_line(crowd_agent.get_position(), vel_to_exe, carla.Color (255,255,255))
-
-
-                # cur_loc = crowd_agent.actor.get_location()
-                # translation = simu_time * vel_to_exe
-                # loc = cur_loc + carla.Vector3D(translation.x, translation.y, 0)
-                # #crowd_agent.actor.set_location(loc)
-
-                # trans = crowd_agent.actor.get_transform()
-                # trans.location = loc
-                # if vel_to_exe.length() != 0:
-                #     trans.rotation.yaw = np.rad2deg(math.atan2(vel_to_exe.y, vel_to_exe.x))
-                # crowd_agent.actor.set_transform(trans)
-
-                control = crowd_agent.get_control(vel_to_exe)
-                if type(crowd_agent) is CrowdNetworkCarAgent or type(crowd_agent) is CrowdNetworkBikeAgent:
-                    commands.append(carla.command.ApplyVehicleControl(crowd_agent.actor.id, control))
-                elif type(crowd_agent) is CrowdSidewalkAgent:
-                    commands.append(carla.command.ApplyWalkerControl(crowd_agent.actor.id, control))
-        
         self.network_car_agents = [a for a in next_agents if a and type(a) is CrowdNetworkCarAgent]
         self.network_bike_agents = [a for a in next_agents if a and type(a) is CrowdNetworkBikeAgent]
         self.sidewalk_agents = [a for a in next_agents if a and type(a) is CrowdSidewalkAgent]
-        
-        self.client.apply_batch(commands)
-        self.world.wait_for_tick(5.0)
-        '''
-        stats_num_car = 0
-        stats_num_bike = 0
-        stats_num_ped = 0
-        stats_sum_speed_car = 0.0
-        stats_sum_speed_bike = 0.0
-        stats_sum_speed_ped = 0.0
 
-        for agent in self.network_car_agents:
-            stats_num_car += 1
-            stats_sum_speed_car += agent.get_velocity().length()
-        for agent in self.network_bike_agents:
-            stats_num_bike += 1
-            stats_sum_speed_bike += agent.get_velocity().length()
-        for agent in self.sidewalk_agents:
-            stats_num_ped += 1
-            stats_sum_speed_ped += agent.get_velocity().length()
+        self.client.apply_batch_sync(commands)
 
-        self.log_file.write('{} {} {} {} {} {} {} {} {} {} {} {} {}\n'.format(
-            (update_time - self.start_time).to_sec(),
-            self.stats_total_num_car, 
-            self.stats_total_num_bike, 
-            self.stats_total_num_ped,
-            self.stats_total_num_stuck_car, 
-            self.stats_total_num_stuck_bike, 
-            self.stats_total_num_stuck_ped,
-            stats_num_car,
-            stats_num_bike,
-            stats_num_ped,
-            stats_sum_speed_car,
-            stats_sum_speed_bike,
-            stats_sum_speed_ped))
+        # end_time = time.time()
+        # print("send command time {} s".format(end_time - start_time))
+        # sys.stdout.flush()
 
-        
-        print('Time = {}'.format((update_time - self.start_time).to_sec()))
-        print('Total spawned = {}, {}, {}'.format(
-            self.stats_total_num_car, 
-            self.stats_total_num_bike, 
-            self.stats_total_num_ped))
-        print('Stuck deleted = {}, {}, {}'.format(
-            self.stats_total_num_stuck_car, 
-            self.stats_total_num_stuck_bike, 
-            self.stats_total_num_stuck_ped))
-        print('Avg. Instantaneous Speed = {}, {}, {}'.format(stats_avg_speed_car, stats_avg_speed_bike, stats_avg_speed_ped))
-        '''
-
-        ''' Temporarily disabled for experiments.
-        '''
+    def adjust_spawn_params(self, spawn_cap, to_spawn, flag=''):
+        global spawn_size_min
+        # print("spawning {} {}".format(to_spawn, flag))
+        if to_spawn > spawn_cap:
+            spawn_size_min = max(spawn_size_min - 20, 20)
+            to_spawn = min(spawn_cap, to_spawn)
+        elif flag == 'car':
+            spawn_size_min = min(spawn_size_min + 10, 100)
+        # print("capping to {} {}".format(to_spawn, flag))
+        # print("spawn size min {}".format(spawn_size_min))
+        sys.stdout.flush()
+        return to_spawn
 
     def publish_agents(self, tick):
         if self.do_publish is False:
@@ -792,7 +889,7 @@ class GammaCrowdController(Drunc):
             network_agent_msg.route_point.offset = a.path.route_points[0].offset
             network_agents_msg.agents.append(network_agent_msg)
         self.network_agents_pub.publish(network_agents_msg)
-        
+
         sidewalk_agents_msg = msg_builder.msg.CrowdSidewalkAgentArray()
         sidewalk_agents_msg.header.stamp = rospy.Time.now()
         for a in self.sidewalk_agents:
@@ -805,28 +902,13 @@ class GammaCrowdController(Drunc):
             sidewalk_agent_msg.route_orientation = a.path.route_orientations[0]
             sidewalk_agents_msg.agents.append(sidewalk_agent_msg)
         self.sidewalk_agents_pub.publish(sidewalk_agents_msg)
-        
-            
+
+
 if __name__ == '__main__':
     rospy.init_node('gamma_crowd_controller')
-    init_time = rospy.Time.now()
     rospy.wait_for_message("/meshes_spawned", Bool)
     rospy.wait_for_message("/ego_state", CarInfo)
 
     gamma_crowd_controller = GammaCrowdController()
-
-    rate = rospy.Rate(100) ## to check
-    #rate = rospy.Rate(5)
-    while not rospy.is_shutdown():
-        start_time = rospy.Time.now()
-        gamma_crowd_controller.update()
-        #gamma_crowd_controller.no_collision()
-        end_time = rospy.Time.now()
-        duration = (end_time - start_time).to_sec()
-        elapsed = (end_time - init_time).to_sec()
-        # print('Update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
-        # print('Crowd update at {}'.format(elapsed))
-        # sys.stdout.flush()
-        rate.sleep()
-
-    gamma_crowd_controller.dispose()
+    rospy.on_shutdown(gamma_crowd_controller.dispose)
+    rospy.spin()

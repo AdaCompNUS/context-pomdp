@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import math
-from PyTorch_to_C import global_params
+from Data_processing import global_params
 import pdb
 import numpy as np
 import collections

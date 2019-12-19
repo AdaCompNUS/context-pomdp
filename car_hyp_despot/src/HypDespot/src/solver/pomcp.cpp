@@ -84,12 +84,12 @@ ValuedAction POMCP::Search(double timeout) {
 		vector<State*> particles = belief_->Sample(1000);
 		for (int i = 0; i < particles.size(); i++) {
 			State* particle = particles[i];
-			logd << "[POMCP::Search] Starting simulation " << num_sims << endl;
+			logv << "[POMCP::Search] Starting simulation " << num_sims << endl;
 
 			Simulate(particle, root_, model_, prior_);
  
 			num_sims++;
-			logd << "[POMCP::Search] " << num_sims << " simulations done" << endl;
+			logv << "[POMCP::Search] " << num_sims << " simulations done" << endl;
 			history_.Truncate(hist_size);
 
 			if ((clock() - start_cpu) / CLOCKS_PER_SEC >= timeout) {
@@ -270,8 +270,8 @@ double POMCP::Simulate(State* particle, RandomStreams& streams, VNode* vnode,
 	double explore_constant = prior->exploration_constant();
 
 	int action = POMCP::UpperBoundAction(vnode, explore_constant);
-	logd << *particle << endl;
-	logd << "depth = " << vnode->depth() << "; action = " << action << "; "
+	logv << *particle << endl;
+	logv << "depth = " << vnode->depth() << "; action = " << action << "; "
 		<< particle->scenario_id << endl;
 
 	double reward;
@@ -349,8 +349,8 @@ double POMCP::Rollout(State* particle, RandomStreams& streams, int depth,
 
 	int action = prior->GetAction(*particle);
 
-	logd << *particle << endl;
-	logd << "depth = " << depth << "; action = " << action << endl;
+	logv << *particle << endl;
+	logv << "depth = " << depth << "; action = " << action << endl;
 
 	double reward;
 	OBS_TYPE obs;
@@ -507,7 +507,7 @@ VNode* DPOMCP::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 	double start = clock();
 	int num_sims = 0;
 	while (true) {
-		logd << "Simulation " << num_sims << endl;
+		logv << "Simulation " << num_sims << endl;
 
 		int index = Random::RANDOM.NextInt(particles.size());
 		State* particle = model->Copy(particles[index]);
