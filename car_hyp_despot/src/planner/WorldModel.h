@@ -38,6 +38,10 @@ struct AgentBelief {
 class WorldModel {
 public:
 
+    AgentParams default_car_;
+    AgentParams default_bike_;
+    AgentParams default_ped_;
+
     WorldModel();
     ~WorldModel();
 
@@ -122,6 +126,9 @@ public:
     void cal_bb_extents(AgentBelief& bb, AgentStruct& agent);
     void cal_bb_extents(AgentStruct& agent, std::vector<COORD>& bb, double heading_dir);
 
+    std::vector<RVO::Vector2> get_bounding_box_corners(AgentStruct& agent);
+    std::vector<RVO::Vector2> get_bounding_box_corners(RVO::Vector2 forward_vec, RVO::Vector2 sideward_vec, RVO::Vector2 pos, double forward_len, double side_len);
+
 	Path path;
     COORD car_goal;
     std::vector<COORD> goals;
@@ -193,13 +200,15 @@ public:
     bool CheckCarWithObsLine(const CarStruct& car, COORD obs_last_point, COORD obs_first_point, int flag);// 0 in search, 1 real check
 
     bool CheckCarWithVehicle(const CarStruct& car, const AgentStruct& veh, int flag);
+    bool CheckCarWithVehicleReal(const CarStruct& car, const AgentStruct& veh, int flag);
     /// lets drive
     std::map<int, vector<COORD>> ped_mean_dirs;
     COORD DistractedPedMeanDir(AgentStruct& ped, int goal_id);
     COORD AttentivePedMeanDir(int ped_id, int goal_id);
 
     void add_car_agent(int num_peds, CarStruct& car);
-    void add_veh_agent(AgentBelief& veh);
+    void add_veh_agent(AgentBelief& veh, int id_in_sim);
+    void add_ped_agent(AgentBelief& veh, int id_in_sim);
 
     void PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> peds, CarStruct& car);
 
