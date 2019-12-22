@@ -123,9 +123,20 @@ public:
 
 void PedPomdp::InitRVOSetting()
 {
-    use_rvo_in_search = true;
-    use_rvo_in_simulation = true;
-    //	if (use_rvo_in_simulation)
+    use_gamma_in_search = true;
+    use_gamma_in_simulation = true;
+    use_simplified_gamma = false;
+
+    if(use_simplified_gamma){
+        use_gamma_in_search = true;
+        use_gamma_in_simulation = true;
+
+        GammaParams::use_polygon = false;
+        GammaParams::consider_kinematics = false;
+        GammaParams::use_dynamic_att = false;
+    }
+
+    //	if (use_gamma_in_simulation)
     //		ModelParams::LASER_RANGE = 8.0;
     //	else
     //		ModelParams::LASER_RANGE = 8.0;
@@ -403,7 +414,7 @@ bool PedPomdp::Step(State &state_, double rNum, int action, double &reward, uint
 
     state.time_stamp = state.time_stamp + 1.0 / ModelParams::control_freq;
 
-    if(use_rvo_in_search)
+    if(use_gamma_in_search)
     {
         // Attentive pedestrians
         world_model->PorcaAgentStep(state.agents, rNum, state.num, state.car);
@@ -496,7 +507,7 @@ bool PedPomdp::Step(PomdpStateWorld &state, double rNum, int action, double &rew
     world_model->RobStep(state.car, steering, random);
     world_model->RobVelStep(state.car, acc, random);
 
-    if(use_rvo_in_simulation)
+    if(use_gamma_in_simulation)
     {
         // Attentive pedestrians
         world_model->PorcaAgentStep(state, random);
