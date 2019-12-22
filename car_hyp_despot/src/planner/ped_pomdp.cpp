@@ -17,6 +17,8 @@
 
 #include "debug_util.h"
 
+#include "GammaParams.h"
+
 double path_look_ahead = 5.0;
 
 #undef LOG
@@ -131,9 +133,9 @@ void PedPomdp::InitRVOSetting()
         use_gamma_in_search = true;
         use_gamma_in_simulation = true;
 
-        GammaParams::use_polygon = false;
-        GammaParams::consider_kinematics = false;
-        GammaParams::use_dynamic_att = false;
+	GammaParams::use_polygon = false;
+	GammaParams::consider_kinematics = false;
+	GammaParams::use_dynamic_att = false;
     }
 
     //	if (use_gamma_in_simulation)
