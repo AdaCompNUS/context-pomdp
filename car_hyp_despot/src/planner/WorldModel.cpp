@@ -2725,19 +2725,19 @@ void WorldModel::add_car_agent(int id_in_sim, CarStruct& car){
 
 		traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
 		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-		traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim,-1);
+		traffic_agent_sim_[threadID]->setAgentID(id_in_sim,-1);
 
 		traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56 * 2.33 * cos(car_yaw), car.pos.y + 1.4* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
 		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+1, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-		traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+1,-2);
+		traffic_agent_sim_[threadID]->setAgentID(id_in_sim+1,-2);
 
 		traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56*3.66 * cos(car_yaw), car.pos.y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
 		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+2, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-		traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+2,-3);
+		traffic_agent_sim_[threadID]->setAgentID(id_in_sim+2,-3);
 
 		traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56*5 * cos(car_yaw), car.pos.y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius_large, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
 		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+3, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-		traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+3,-4);
+		traffic_agent_sim_[threadID]->setAgentID(id_in_sim+3,-4);
 	}
     else if(ModelParams::car_model == "carla"){
 
@@ -2749,17 +2749,17 @@ void WorldModel::add_car_agent(int id_in_sim, CarStruct& car){
         traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, 
             car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
         traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-        traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim,-1);
+        traffic_agent_sim_[threadID]->setAgentID(id_in_sim,-1);
 
         traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + shift * cos(car_yaw), car.pos.y + shift * sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, 
             car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
         traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+1, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-        traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+1,-2);
+        traffic_agent_sim_[threadID]->setAgentID(id_in_sim+1,-2);
 
         traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x - shift * cos(car_yaw), car.pos.y - shift * sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, 
             car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
         traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+2, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-        traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+2,-3);
+        traffic_agent_sim_[threadID]->setAgentID(id_in_sim+2,-3);
     }
 }
 
@@ -2793,23 +2793,23 @@ void WorldModel::add_veh_agent(AgentBelief& veh){
     // traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, pref_vel 
     //     ); // the id_in_sim-th pedestrian is the veh. set its prefered velocity
     // DEBUG("agent id");
-    // traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim,-1);
+    // traffic_agent_sim_[threadID]->setAgentID(id_in_sim,-1);
 
     // DEBUG("next");
     // traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(veh.pos.x + 0.56 * 2.33 * cos(veh_yaw), veh.pos.y + 1.4* sin(veh_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
     // traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+1, 
     //     RVO::Vector2(veh.vel.Length() * cos(veh_yaw), veh.vel.Length() * sin(veh_yaw))); // the id_in_sim-th pedestrian is the veh. set its prefered velocity
-    // traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+1,-2);
+    // traffic_agent_sim_[threadID]->setAgentID(id_in_sim+1,-2);
 
     // traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(veh.pos.x + 0.56*3.66 * cos(veh_yaw), veh.pos.y + 2.8* sin(veh_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
     // traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+2, 
     //     RVO::Vector2(veh.vel.Length() * cos(veh_yaw), veh.vel.Length() * sin(veh_yaw))); // the id_in_sim-th pedestrian is the veh. set its prefered velocity
-    // traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+2,-3);
+    // traffic_agent_sim_[threadID]->setAgentID(id_in_sim+2,-3);
 
     // traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(veh.pos.x + 0.56*5 * cos(veh_yaw), veh.pos.y + 2.8* sin(veh_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius_large, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
     // traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+3, 
     //     RVO::Vector2(veh.vel.Length() * cos(veh_yaw), veh.vel.Length() * sin(veh_yaw))); // the id_in_sim-th pedestrian is the veh. set its prefered velocity
-    // traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+3,-4);
+    // traffic_agent_sim_[threadID]->setAgentID(id_in_sim+3,-4);
 }
 
 void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents, CarStruct& car){
