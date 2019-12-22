@@ -44,7 +44,7 @@ include_directories(
    ${catkin_INCLUDE_DIRS}
    ${OpenCV_INCLUDE_DIRS}
    ${TORCH_INCLUDE_DIRS}
-   src/Porca/src
+   src/gamma/
    src/HypDespot/include/
    src/HypDespot/include/despot/
    src/planner/
@@ -52,7 +52,7 @@ include_directories(
    ../crowd_pomdp_planner/src/
 )
  
-FILE(GLOB LIBRVO_SRCS src/Porca/src/*.cpp)
+FILE(GLOB LIBRVO_SRCS src/gamma/*.cpp)
 
 catkin_package(
   INCLUDE_DIRS src/planner/

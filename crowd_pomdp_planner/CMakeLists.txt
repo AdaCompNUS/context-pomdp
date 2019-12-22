@@ -48,7 +48,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${TORCH_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
-  ../car_hyp_despot/src/Porca/src/
+  ../car_hyp_despot/src/gamma/
   ../car_hyp_despot/src/planner/
   ../car_hyp_despot/src/HypDespot/include/
   ../car_hyp_despot/src/HypDespot/include/despot
