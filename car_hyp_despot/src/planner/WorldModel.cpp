@@ -2896,7 +2896,7 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents
 			}
 
             // DEBUG("step gamma");
-			traffic_agent_sim_[threadID]->doStepForPed(i); //TODO: this should be replace by GAMMA functions
+			traffic_agent_sim_[threadID]->doStepForOneAgent(i); //TODO: this should be replace by GAMMA functions
 
 			COORD dir;
 			dir.x = traffic_agent_sim_[threadID]->getAgentPosition(i).x() - agents[id].pos.x;
