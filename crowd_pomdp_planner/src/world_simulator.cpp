@@ -18,18 +18,6 @@
 #include <msg_builder/Lanes.h>
 #include <msg_builder/Obstacles.h>
 
-#include "carla/client/Client.h"
-#include "carla/geom/Vector2D.h"
-#include "carla/sumonetwork/SumoNetwork.h"
-#include "carla/occupancy/OccupancyMap.h"
-#include "carla/segments/SegmentMap.h"
-
-namespace cc = carla::client;
-namespace cg = carla::geom;
-namespace sumo = carla::sumonetwork;
-namespace occu = carla::occupancy;
-namespace segm = carla::segments;
-
 #undef LOG
 #define LOG(lv) \
 if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
@@ -42,19 +30,11 @@ WorldModel SimulatorBase::worldModel;
 bool SimulatorBase::agents_data_ready = false;
 bool SimulatorBase::agents_path_data_ready = false;
 
-static sumo::SumoNetwork network_;
-static occu::OccupancyMap network_occupancy_map_;
-static segm::SegmentMap network_segment_map_;
-
 static nav_msgs::OccupancyGrid raw_map_;
 
 double pub_frequency = 9.0;
 
 void pedPoseCallback(msg_builder::ped_local_frame_vector);
-
-//void laneCallback(msg_builder::Lanes data);
-
-//void obstacleCallback(msg_builder::Obstacles data);
 
 void agentArrayCallback(msg_builder::TrafficAgentArray);
 
@@ -123,74 +103,6 @@ WorldSimulator::~WorldSimulator() {
 	cmdPub_.publish(cmd);
 }
 
-
-void WorldSimulator::Connect_Carla(){
-	// Connect with CARLA server
-	logi << "Connecting with carla world at port " << summit_port_ << endl;
-    auto client = cc::Client("127.0.0.1", summit_port_);
-    client.SetTimeout(10s);
-    auto world = client.GetWorld();
-
-    // Define bounds.
-    cg::Vector2D scenario_center, scenario_min, scenario_max, geo_min, geo_max;
-	if (map_location_ == "map"){
-		scenario_center = cg::Vector2D(825, 1500);
-		scenario_min = cg::Vector2D(450, 1100);
-		scenario_max = cg::Vector2D(1200, 1900);
-		geo_min = cg::Vector2D(1.2894000, 103.7669000);
-		geo_max = cg::Vector2D(1.3088000, 103.7853000);
-	}
-	else if (map_location_ == "meskel_square"){
-		scenario_center = cg::Vector2D(450, 400);
-		scenario_min = cg::Vector2D(350, 300);
-		scenario_max = cg::Vector2D(550, 500);
-		geo_min = cg::Vector2D(9.00802, 38.76009);
-		geo_max = cg::Vector2D(9.01391, 38.76603);
-	}
-	else if (map_location_ == "magic"){
-		scenario_center = cg::Vector2D(180, 220);
-		scenario_min = cg::Vector2D(80, 120);
-		scenario_max = cg::Vector2D(280, 320);
-		geo_min = cg::Vector2D(51.5621800, -1.7729100);
-		geo_max = cg::Vector2D(51.5633900, -1.7697300);
-	}
-	else if (map_location_ == "highway"){
-		scenario_center = cg::Vector2D(100, 400);
-		scenario_min = cg::Vector2D(0, 300);
-		scenario_max = cg::Vector2D(200, 500);
-		geo_min = cg::Vector2D(1.2983800, 103.7777000);
-		geo_max = cg::Vector2D(1.3003700, 103.7814900);
-	}
-	else if (map_location_ == "chandni_chowk"){
-		scenario_center = cg::Vector2D(380, 250);
-		scenario_min = cg::Vector2D(260, 830);
-		scenario_max = cg::Vector2D(500, 1150);
-		geo_min = cg::Vector2D(28.653888, 77.223296);
-		geo_max = cg::Vector2D(28.660295, 77.236850);
-	}
-	else if (map_location_ == "shi_men_er_lu"){
-		scenario_center = cg::Vector2D(1010, 1900);
-		scenario_min = cg::Vector2D(780, 1700);
-		scenario_max = cg::Vector2D(1250, 2100);
-		geo_min = cg::Vector2D(31.229828, 121.438702);
-		geo_max = cg::Vector2D(31.242810, 121.464944);
-	}
-	else if (map_location_ == "beijing"){
-		scenario_center = cg::Vector2D(2080, 1860);
-		scenario_min = cg::Vector2D(490, 1730);
-		scenario_max = cg::Vector2D(3680, 2000);
-		geo_min = cg::Vector2D(39.8992818, 116.4099687);
-		geo_max = cg::Vector2D(39.9476116, 116.4438916);
-	}
-
-    std::string homedir = getenv("HOME");
-	auto summit_root = homedir + "/summit/";
-
-	network_ = sumo::SumoNetwork::Load(summit_root + "Data/" + map_location_ + ".net.xml");
-	network_occupancy_map_ = occu::OccupancyMap::Load(summit_root + "Data/" + map_location_ + ".wkt");
-	network_segment_map_ = network_.CreateSegmentMap();
-}
-
 /**
  * [Essential]
  * Establish connection to simulator or system
@@ -205,27 +117,18 @@ bool WorldSimulator::Connect() {
 	pa_pub = nh.advertise<geometry_msgs::PoseArray>("my_poses", 1000);
 	car_pub = nh.advertise<geometry_msgs::PoseStamped>("car_pose", 1000);
 	goal_pub = nh.advertise<visualization_msgs::MarkerArray>("pomdp_goals", 1);
-	IL_pub = nh.advertise<msg_builder::imitation_data>("il_data", 1);
 
 	mapSub_ = nh.subscribe("map", 1, receive_map_callback); // nav_msgs::OccupancyGrid
 
 	speedSub_ = nh.subscribe("odom", 1, &WorldSimulator::speedCallback, this);
-	// pedSub_ = nh.subscribe("ped_local_frame_vector", 1, pedPoseCallback);
 
-	carSub_ = nh.subscribe("ego_state", 1, &WorldSimulator::update_il_car,
-			this);
+	carSub_ = nh.subscribe("ego_state", 1, &WorldSimulator::update_ego_car, this);
+	nh.subscribe("ego_dead", 1, &WorldSimulator::ego_dead_callback, this);
 
     egodeadSub_ = nh.subscribe("ego_dead", 1, &WorldSimulator::ego_car_dead_callback, this); //Bool
 
-
 	agentSub_ = nh.subscribe("agent_array", 1, agentArrayCallback);
 	agentpathSub_ = nh.subscribe("agent_path_array", 1, agentPathArrayCallback);
-
-//	laneSub_ = nh.subscribe("local_lanes", 1, laneCallback);
-//	obsSub_ = nh.subscribe("local_obstacles", 1, obstacleCallback);
-
-	steerSub_ = nh.subscribe("purepursuit_cmd_steer", 1, &WorldSimulator::cmdSteerCallback, this);
-	lane_change_Sub_ = nh.subscribe("gamma_lane_decision", 1, &WorldSimulator::lane_change_Callback, this);
 
 	logi << "Subscribers and Publishers created at the "
 			<< Globals::ElapsedTime() << "th second" << endl;
@@ -236,8 +139,6 @@ bool WorldSimulator::Connect() {
 
 	logi << "plan get at the " << Globals::ElapsedTime()
 				<< "th second" << endl;
-
-	Connect_Carla();
 
 	ros::spinOnce();
 
@@ -308,7 +209,6 @@ State* WorldSimulator::Initialize() {
 	steering_ = 0.0;
 	goal_reached = false;
 	last_acc_ = 0;
-	b_update_il = true;
 
 	if(SolverPrior::nn_priors.size() == 0){
 		ERR("No nn_prior exist");
@@ -347,18 +247,8 @@ State* WorldSimulator::GetCurrentState() {
 
 	CarStruct updated_car;
 	COORD coord;
-	//msg_builder::StartGoal startGoal;
 
-	/*if(pathplan_ahead_ > 0 && worldModel.path.size()>0) {
-	 startGoal.start = getPoseAhead(out_pose);
-	 coord.x = startGoal.start.pose.position.x;
-	 coord.y = startGoal.start.pose.position.y;
-	 }else{*/
 	coord = poseToCoord(out_pose);
-	//}
-
-	if(!network_occupancy_map_.Contains(cg::Vector2D(coord.x, coord.y)))
-		ERR("Ego-vehicle going out of bound !");
 
 	logv << "======transformed pose = " << coord.x << " " << coord.y << endl;
 
@@ -366,13 +256,8 @@ State* WorldSimulator::GetCurrentState() {
 	updated_car.vel = real_speed_;
 	updated_car.heading_dir = poseToHeadingDir(out_pose);
 
-	// DEBUG("update");
 	stateTracker->updateCar(updated_car);
-	updateLanes(coord);
-	updateObs(coord);
-	// stateTracker->cleanAgents();
 
-	// DEBUG("state");
 	PomdpStateWorld state = stateTracker->getPomdpWorldState();
 
 	current_state.assign(state);
@@ -386,9 +271,7 @@ State* WorldSimulator::GetCurrentState() {
 
 	logv << " current state time stamp " << current_state.time_stamp << endl;
 
-	// logi << "&current_state " << &current_state << endl;
 	return static_cast<State*>(&current_state);
-	// return NULL;
 }
 
 double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action) {
@@ -541,9 +424,6 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	cout << "reward **= " << step_reward << endl;
 	safeAction = action;
 
-	publishImitationData(*curr_state, buffered_action_, step_reward,
-			target_speed_);
-
 	/* Receive observation.
 	 * Caution: obs info is not up-to-date here. Don't use it
 	 */
@@ -551,43 +431,8 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	logv << "[WorldSimulator::" << __FUNCTION__ << "] Generate obs" << endl;
 	obs = static_cast<PedPomdp*>(model_)->StateToIndex(GetCurrentState());
 
-	//worldModel.traffic_agent_sim_[0] -> OutputTime();
 	return goal_reached;
 }
-
-//void WorldSimulator::update_cmds_fix_latency(ACT_TYPE action){
-//	buffered_action_ = action;
-//	cout<<"current steering = "<<steering_<<endl;
-//	cout<<"current target_speed = "<<target_speed_<<endl;
-//	cout<<"last_acc_ = "<<last_acc_<<endl;
-//	cout<<"real_speed_ = "<<real_speed_<<endl;
-//
-//	/* Do look-ahead to adress the latency in real_speed_ */
-//	double predicted_speed = min(max(real_speed_+last_acc_ , 0.0), ModelParams::VEL_MAX);
-//	double last_speed = predicted_speed;
-//	cout<<"predicted real speed: "<<real_speed_+last_acc_<<endl;
-//
-//	float acc=static_cast<PedPomdp*>(model_)->GetAcceleration(action);
-//	last_acc_=acc/ModelParams::control_freq;
-//
-//	cout<<"applying step acc: "<< last_acc_<<endl;
-//
-//	cout<<"trunc to max car vel: "<< ModelParams::VEL_MAX<<endl;
-//
-//	target_speed_ = min(predicted_speed + last_acc_, ModelParams::VEL_MAX);
-//	target_speed_ = max(target_speed_, 0.0);
-//
-//	last_acc_=target_speed_-last_speed;
-//
-//	steering_=static_cast<PedPomdp*>(model_)->GetSteering(action);
-//
-//	cerr << "DEBUG: Executing action:" << action << " steer/acc = " << steering_ << "/" << acc << endl;
-//	cerr << "action IDs steer/acc = " << static_cast<PedPomdp*>(model_)->GetSteeringID(action)
-//			<< "/" << static_cast<PedPomdp*>(model_)->GetAccfromAccID(action) << endl;
-//
-//	cout<<"cmd steering = "<<steering_<<endl;
-//	cout<<"cmd target_speed = "<<target_speed_<<endl;
-//}
 
 void WorldSimulator::update_cmds_fix_latency(ACT_TYPE action, bool buffered) {
 //	buffered_action_ = action;
@@ -1150,17 +995,6 @@ void WorldSimulator::ego_car_dead_callback(std_msgs::Bool::ConstPtr data){
 	ERR("Ego car is dead, reached the edge of the current map");
 }
 
-void WorldSimulator::lane_change_Callback(const std_msgs::Int32::ConstPtr lane_decision){
-	p_IL_data.action_reward.lane_change.data = int(lane_decision->data);
-}
-
-void WorldSimulator::cmdSteerCallback(const std_msgs::Float32::ConstPtr steer){
-//	DEBUG(string_sprintf(" ts = %f", Globals::ElapsedTime()));
-	// receive steering in rad
-	p_IL_data.action_reward.steering_normalized.data = float(steer->data);
-}
-
-
 geometry_msgs::PoseStamped WorldSimulator::getPoseAhead(
 		const tf::Stamped<tf::Pose>& carpose) {
 	static int last_i = -1;
@@ -1199,14 +1033,13 @@ double xylength(geometry_msgs::Point32 p) {
 }
 bool car_data_ready = false;
 
-void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
-//	DEBUG(string_sprintf(" ts = %f", Globals::ElapsedTime()));
+void WorldSimulator::ego_dead_callback(const std_msgs::Bool ego_dead){
+	ERR("Ego vehicle killed in ego_vehicle.py");
+}
 
-	if (b_update_il == true) {
-		p_IL_data.cur_car = *car;
-	}
+void WorldSimulator::update_ego_car(const msg_builder::car_info::ConstPtr car) {
 
-	if (/*!car_data_ready*/true) {
+	if (true) {
 		const msg_builder::car_info& ego_car = *car;
 		ModelParams::CAR_FRONT = COORD(
 				ego_car.front_axle_center.x - ego_car.car_pos.x,
@@ -1241,94 +1074,11 @@ void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
 		ModelParams::CAR_LENGTH = ModelParams::CAR_LENGTH * 2;
 		ModelParams::CAR_FRONT = ModelParams::CAR_LENGTH / 2.0;
 
-		if (Globals::config.useGPU)
-			static_cast<const PedPomdp*>(model_)->InitGPUCarParams();
-
 		car_data_ready = true;
 	}
 }
 
 
-void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state,
-		ACT_TYPE safeAction, float reward, float cmd_vel) {
-	// peds for publish
-	msg_builder::peds_info p_ped;
-	// only publish information for N_PED_IN peds for imitation learning
-	for (int i = 0; i < ModelParams::N_PED_IN; i++) {
-		msg_builder::ped_info ped;
-		ped.ped_id = planning_state.agents[i].id;
-		ped.ped_goal_id = planning_state.agents[i].intention;
-		ped.ped_speed = planning_state.agents[i].vel.Length();
-		ped.ped_pos.x = planning_state.agents[i].pos.x;
-		ped.ped_pos.y = planning_state.agents[i].pos.y;
-		ped.heading = planning_state.agents[i].heading_dir;
-		ped.bb_x = planning_state.agents[i].bb_extent_x;
-		ped.bb_y = planning_state.agents[i].bb_extent_y;
-		ped.ped_pos.z = 0;
-		p_ped.peds.push_back(ped);
-	}
-
-	p_IL_data.cur_peds = p_ped;
-
-	// action for publish
-	geometry_msgs::Twist p_action_reward;
-
-	p_IL_data.action_reward.step_reward.data = reward;
-	p_IL_data.action_reward.cur_speed.data = real_speed_;
-	p_IL_data.action_reward.target_speed.data = cmd_vel;
-
-	p_IL_data.action_reward.acceleration_id.data =
-			static_cast<PedPomdp*>(model_)->GetAccelerationID(safeAction);
-	// steering come from ROS topic
-    // p_IL_data.action_reward.angular.x = static_cast<PedPomdp*>(model_)->GetSteering(safeAction);
-
-	IL_pub.publish(p_IL_data);
-}
-
 void WorldSimulator::setCarGoal(COORD car_goal) {
 	worldModel.car_goal = car_goal;
-}
-
-float publish_map_rad = 100.0;
-
-void WorldSimulator::updateLanes(COORD car_pos){
-	auto OM_bound = occu::OccupancyMap(
-	            cg::Vector2D(car_pos.x - publish_map_rad, car_pos.y - publish_map_rad),
-	            cg::Vector2D(car_pos.x + publish_map_rad, car_pos.y + publish_map_rad));
-
-	auto local_lanes = network_segment_map_.Intersection(OM_bound);
-
-	worldModel.local_lane_segments_.resize(0);
-
-	for (auto& lane_seg : local_lanes.GetSegments()){
-		msg_builder::LaneSeg lane_seg_tmp;
-		lane_seg_tmp.start.x = lane_seg.start.x;
-		lane_seg_tmp.start.y = lane_seg.start.y;
-		lane_seg_tmp.end.x = lane_seg.end.x;
-		lane_seg_tmp.end.y = lane_seg.end.y;
-
-		worldModel.local_lane_segments_.push_back(lane_seg_tmp);
-	}
-}
-
-void WorldSimulator::updateObs(COORD car_pos){
-	auto OM_bound = occu::OccupancyMap(
-		            cg::Vector2D(car_pos.x - publish_map_rad, car_pos.y - publish_map_rad),
-		            cg::Vector2D(car_pos.x + publish_map_rad, car_pos.y + publish_map_rad));
-
-	auto local_obstacles = OM_bound.Difference(network_occupancy_map_);
-	worldModel.local_obs_contours_.resize(0);
-
-	for (auto& polygon : local_obstacles.GetPolygons()){
-		geometry_msgs::Polygon polygon_tmp;
-		auto& outer_contour = polygon[0];
-		for (auto& point: outer_contour){
-			geometry_msgs::Point32 tmp;
-			tmp.x = point.x;
-			tmp.y = point.y;
-			tmp.z = 0.0;
-			polygon_tmp.points.push_back(tmp);
-		}
-		worldModel.local_obs_contours_.push_back(polygon_tmp);
-	}
 }

@@ -210,16 +210,11 @@ State* POMDPSimulator::Initialize(){
 	real_speed_ = 0.0;
 	steering_ = 0.0;
 
-	b_update_il = true;
-
 	cerr << "DEBUG: Initializing POMDPSimulator end" << endl;
-
 }
 
 bool POMDPSimulator::Connect(){
 	cerr << "DEBUG: Connecting POMDPSimulator" << endl;
-
-	IL_pub = nh.advertise<msg_builder::imitation_data>("il_data", 1);
 
 	return true;
 }
@@ -338,9 +333,6 @@ bool POMDPSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs){
 	target_speed_ = max(target_speed_, 0.0);
 
 	steering_=static_cast<PedPomdp*>(model_)->GetSteering(action);
-
-	publishImitationData(world_state, action, step_reward_, target_speed_);
-
 
 	if(terminate) {
 		cout << "-------------------------------------------------------" << endl;
@@ -634,91 +626,3 @@ void POMDPSimulator::PrintWorldState(PomdpStateWorld state, ostream& out) {
         min_dist = COORD::EuclideanDistance(carpos, state.agents[/*0*/mindist_id].pos);
 	out << "MinDist: " << min_dist << endl;
 }
-
-
-void POMDPSimulator::publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float cmd_vel)
-{
-	// car for publish
-	msg_builder::car_info p_car;
-	p_car.car_pos.x = planning_state.car.pos.x;
-	p_car.car_pos.y = planning_state.car.pos.y;
-	p_car.car_pos.z = 0;
-	p_car.car_yaw = planning_state.car.heading_dir;
-
-	p_IL_data.past_car = p_IL_data.cur_car;
-    p_IL_data.cur_car = p_car;
-
-	// path for publish
-	nav_msgs::Path navpath;
-	ros::Time plan_time = ros::Time::now();
-
-	navpath.header.frame_id = global_frame_id;
-	navpath.header.stamp = plan_time;
-	
-	for(const auto& s: path) {
-		geometry_msgs::PoseStamped pose;
-		pose.header.stamp = plan_time;
-		pose.header.frame_id = global_frame_id;
-		pose.pose.position.x = s.x;
-		pose.pose.position.y = s.y;
-		pose.pose.position.z = 0.0;
-		pose.pose.orientation.x = 0.0;
-		pose.pose.orientation.y = 0.0;
-		pose.pose.orientation.z = 0.0;
-		pose.pose.orientation.w = 1.0;
-		navpath.poses.push_back(pose);
-	}
-	p_IL_data.plan = navpath; 
-
-	// agents for publish
-	msg_builder::peds_info p_ped;
-	// only publish information for N_PED_IN agents for imitation learning
-	for (int i = 0; i < ModelParams::N_PED_IN; i++){
-		msg_builder::ped_info ped;
-        ped.ped_id = planning_state.agents[i].id;
-        ped.ped_goal_id = planning_state.agents[i].intention;
-        ped.ped_speed = 1.2;
-        ped.ped_pos.x = planning_state.agents[i].pos.x;
-        ped.ped_pos.y = planning_state.agents[i].pos.y;
-        ped.ped_pos.z = 0;
-        p_ped.peds.push_back(ped);
-    }
-
-    p_IL_data.past_peds = p_IL_data.cur_peds;
-    p_IL_data.cur_peds = p_ped;
-
-	// ped belief for pushlish
-	int i=0;
-	msg_builder::peds_believes pbs;	
-	for(auto & kv: beliefTracker->agent_beliefs)
-	{
-		msg_builder::ped_belief pb;
-		AgentBelief belief = kv.second;
-		pb.ped_x=belief.pos.x;
-		pb.ped_y=belief.pos.y;
-		pb.ped_id=belief.id;
-		for(auto & goal_probs : belief.prob_modes_goals)
-			for (auto v: goal_probs)
-				pb.belief_value.push_back(v);
-		pbs.believes.push_back(pb);
-	}
-	pbs.cmd_vel=stateTracker->carvel;
-	pbs.robotx=stateTracker->carpos.x;
-	pbs.roboty=stateTracker->carpos.y;
-
-	p_IL_data.believes = pbs.believes;
-
-
-	// action for publish
-	geometry_msgs::Twist p_action_reward;
-
-    p_IL_data.action_reward.step_reward.data=reward;
-    p_IL_data.action_reward.target_speed.data=cmd_vel;
-
-    p_IL_data.action_reward.acceleration_id.data = static_cast<PedPomdp*>(model_)->GetAccelerationID(safeAction);
-	p_IL_data.action_reward.steering_normalized.data = static_cast<PedPomdp*>(model_)->GetSteeringNoramlized(safeAction);
-
-    IL_pub.publish(p_IL_data);
-
-}
-

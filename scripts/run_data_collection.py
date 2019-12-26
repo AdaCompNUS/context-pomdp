@@ -21,7 +21,9 @@ root_path = os.path.join(home, 'driving_data')
 if not os.path.isdir(root_path):
     os.makedirs(root_path)
 
-catkin_ws_path = os.path.join(home, 'catkin_ws/')
+# ws_root = 'catkin_ws/'
+ws_root = 'workspace/Context-POMDP/'
+catkin_ws_path = os.path.join(home, ws_root) 
 
 config = Namespace()
 
@@ -155,10 +157,10 @@ def parse_cmd_args():
                         type=int,
                         default=0,
                         help='Make the simulator package')
-    parser.add_argument('--baseline',
+    parser.add_argument('--drive_mode',
                         type=str,
                         default="",
-                        help='Which baseline to run')
+                        help='Which drive_mode to run')
     parser.add_argument('--port',
                         type=int,
                         default=2000,
@@ -213,19 +215,7 @@ def update_global_config(cmd_args):
     config.launch_summit = bool(cmd_args.launch_sim)
     config.eps_length = cmd_args.eps_len
 
-    if "no" in cmd_args.net:
-        config.use_drive_net_mode = NO_NET
-    elif "joint_pomdp" in cmd_args.net:
-        config.use_drive_net_mode = JOINT_POMDP
-    elif "rollout" in cmd_args.net:
-        config.use_drive_net_mode = ROLL_OUT
-    else:
-        print("CAUTION: unsupported drive net mode")
-        exit(-1)
-
-    config.model = cmd_args.model
     config.monitor = cmd_args.monitor
-    config.val_model = cmd_args.val_model
     config.time_scale = float(cmd_args.t_scale)
 
     if config.timeout == 1000000:
@@ -248,20 +238,21 @@ def update_global_config(cmd_args):
 
         print("make done")
 
-    if "joint_pomdp" in cmd_args.baseline:
-        config.use_drive_net_mode = JOINT_POMDP
-    elif "gamma" in cmd_args.baseline:
-        config.use_drive_net_mode = JOINT_POMDP
-    elif "rollout" in cmd_args.baseline:
-        config.use_drive_net_mode = ROLL_OUT
-    elif "pomdp" in cmd_args.baseline:
-        config.use_drive_net_mode = NO_NET
-    elif cmd_args.baseline is "":
-        # not baseline
+    if "joint_pomdp" in cmd_args.drive_mode:
+        config.drive_mode = JOINT_POMDP
+    elif "gamma" in cmd_args.drive_mode:
+        config.drive_mode = JOINT_POMDP
+    elif "rollout" in cmd_args.drive_mode:
+        config.drive_mode = ROLL_OUT
+    elif "pomdp" in cmd_args.drive_mode:
+        config.drive_mode = NO_NET
+    if cmd_args.drive_mode is "":
+        # not drive_mode
+        config.drive_mode = JOINT_POMDP
         config.record_bag = 1
 
-    if cmd_args.baseline is not "":
-        print("=> Running {} baseline".format(cmd_args.baseline))
+    if cmd_args.drive_mode is not "":
+        print("=> Running {} drive_mode".format(cmd_args.drive_mode))
         cmd_args.record = config.record_bag
 
     print('============== cmd_args ==============')
@@ -375,8 +366,8 @@ def init_case_dirs():
     global subfolder, result_subfolder
 
     subfolder = config.summit_maploc
-    if cmd_args.baseline is not "":
-        result_subfolder = path.join(root_path, 'result', cmd_args.baseline + '_baseline', subfolder)
+    if cmd_args.drive_mode is not "":
+        result_subfolder = path.join(root_path, 'result', cmd_args.drive_mode + '_drive_mode', subfolder)
     else:
         result_subfolder = path.join(root_path, 'result', subfolder)
 
@@ -415,20 +406,18 @@ def launch_summit_simulator(round, run):
     	str(config.port) + ' map_location:=' + str(config.summit_maploc) + \
         ' random_seed:=' + str(config.random_seed)
 
-    if "gamma" in cmd_args.baseline:
-    	print("launching connector with GAMMA controller...")
-    	shell_cmd = shell_cmd + ' ego_control_mode:=gamma'
-    elif "imitation" in cmd_args.baseline:
-    	print("launching connector with imitation controller...")
-    	shell_cmd = shell_cmd + ' ego_control_mode:=imitation' + ' ego_speed_control:=vel'
+    if "gamma" in cmd_args.drive_mode:
+        print("launching connector with GAMMA controller...")
+        shell_cmd = shell_cmd + ' ego_control_mode:=gamma ego_speed_mode:=vel'
     else:
-    	shell_cmd = shell_cmd + ' ego_control_mode:=other'
+        shell_cmd = shell_cmd + ' ego_control_mode:=other ego_speed_mode:=vel'
 
     if config.verbosity > 0:
         print('')
         print(shell_cmd)
     summit_connector_proc = subprocess.Popen(shell_cmd, shell=True, 
-        cwd=os.path.join(home, "catkin_ws/src/summit_connector/launch"))
+        cwd=os.path.join(home, os.path.join(ws_root,
+            "src/summit_connector/launch")))
     wait_for(config.max_launch_wait, summit_connector_proc, '[launch] summit_connector')
    
     crowd_out = open("Crowd_controller_log.txt", 'w')
@@ -461,13 +450,14 @@ def launch_record_bag(round, run):
         return None
 
 
-def launch_pomdp_planner(round, run, drive_net_proc):
+def launch_pomdp_planner(round, run):
     global shell_cmd
     global monitor_worker
     pomdp_proc, rviz_out = None, None
 
     shell_cmd = config.ros_pref+'roslaunch --wait crowd_pomdp_planner planner.launch ' \
                 ' gpu_id:=' + str(config.gpu_id) + \
+                ' mode:=' + str(config.drive_mode) + \
                 ' summit_port:=' + str(config.port) + \
                 ' time_scale:=' + str.format("%.2f" % config.time_scale) + \
                 ' map_location:=' + config.summit_maploc
@@ -496,7 +486,7 @@ def launch_pomdp_planner(round, run, drive_net_proc):
         monitor_worker.terminate()
 
     except subprocess.TimeoutExpired:
-        print("[INFO] episode reaches full length %f s" % config.eps_length/config.time_scale)
+        print("[INFO] episode reaches full length {} s".format(config.eps_length/config.time_scale))
         if check_process(pomdp_proc, "pomdp_proc") is True:
             monitor_worker.terminate()
             os.kill(pomdp_proc.pid, signal.SIGTERM)
@@ -622,8 +612,8 @@ if __name__ == '__main__':
             
             record_proc = launch_record_bag(round, run)
 
-            if "pomdp" in cmd_args.baseline or "gamma" in cmd_args.baseline or "rollout" in cmd_args.baseline:
-                pomdp_proc, pomdp_out = launch_pomdp_planner(round, run, drive_net_proc)
+            if "pomdp" in cmd_args.drive_mode or "gamma" in cmd_args.drive_mode or "rollout" in cmd_args.drive_mode:
+                pomdp_proc, pomdp_out = launch_pomdp_planner(round, run)
 
             kill_inner_timer(Timeout_inner_monitor_pid)
 

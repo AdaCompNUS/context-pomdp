@@ -66,7 +66,7 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 
     n.param("max_vel", ModelParams::VEL_MAX, 2.0);
 
-    n.param("use_drivenet", Controller::b_use_drive_net_, 0);
+    n.param("drive_mode", Controller::b_drive_mode_, 0);
     n.param("gpu_id", Controller::gpu_id_, 0);
     n.param<int>("summit_port", Controller::summit_port_, 0);
     n.param<std::string>("model", Controller::model_file_, "");
@@ -79,7 +79,7 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 
 
     cerr << "DEBUG: Params list: " << endl;
-    cerr << "-use_drivenet " << Controller::b_use_drive_net_ << endl;
+    cerr << "-drive_mode " << Controller::b_drive_mode_ << endl;
     cerr << "-model " << Controller::model_file_ << endl;
     cerr << "-time_scale " << Controller::time_scale_ << endl;
     cerr << "-summit_port " << Controller::summit_port_ << endl;

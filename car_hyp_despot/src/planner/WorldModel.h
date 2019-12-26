@@ -144,10 +144,6 @@ public:
 
 public:
 
-	vector<msg_builder::LaneSeg> local_lane_segments_;
-	vector<geometry_msgs::Polygon> local_obs_contours_;
-
-
     int NumPaths(int agent_id){ 
         auto it = id_map_num_paths.find(agent_id);
         if (it == id_map_num_paths.end()){

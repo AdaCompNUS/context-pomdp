@@ -25,7 +25,6 @@
 #include <tf/transform_listener.h>
 #include <nav_msgs/GetPlan.h>
 
-
 #include <msg_builder/ped_local_frame.h>
 #include <msg_builder/ped_local_frame_vector.h>
 #include <msg_builder/imitation_data.h>
@@ -149,10 +148,9 @@ private:
 
 public:
 
-    void update_il_car(const msg_builder::car_info::ConstPtr car) ;
-    void update_il_steering(const std_msgs::Float32::ConstPtr steer);
+    void update_ego_car(const msg_builder::car_info::ConstPtr car) ;
     
-	void publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float vel);
+    void ego_dead_callback(const std_msgs::Bool ego_dead);
 
 	void update_cmds_fix_latency(ACT_TYPE action, bool buffered = false);
 
@@ -163,8 +161,5 @@ public:
 public:
 	void setCarGoal(COORD);
 
-public:
-	void updateLanes(COORD car_pos);
-	void updateObs(COORD car_pos);
 };
 

@@ -19,7 +19,7 @@ else despot::logging::stream(lv)
 using namespace std;
 using namespace despot;
 
-int Controller::b_use_drive_net_ = 0;
+int Controller::b_drive_mode_ = 0;
 int Controller::gpu_id_ = 0;
 int Controller::summit_port_ = 2000;
 float Controller::time_scale_ = 1.0;
@@ -99,7 +99,7 @@ Controller::Controller(ros::NodeHandle& _nh, bool fixed_path,
 
 	cerr << "DEBUG: Entering Controller()" << endl;
 
-	simulation_mode_ = UNITY;
+	simulation_mode_ = SUMMIT;
 	fixed_path_ = false;
 	Globals::config.pruning_constant = pruning_constant;
 	global_frame_id = ModelParams::rosns + "/map";
@@ -123,12 +123,10 @@ Controller::Controller(ros::NodeHandle& _nh, bool fixed_path,
 	start_goal_pub = nh.advertise<msg_builder::StartGoal>(
 			"ped_path_planner/planner/start_goal", 1); //send goal to path planner
 
-	//imitation learning
-
 	last_action = -1;
 	last_obs = -1;
 
-	unity_driving_simulator_ = NULL;
+	summit_driving_simulator_ = NULL;
 	pomdp_driving_simulator_ = NULL;
 
 	logi << " Controller constructed at the " << Globals::ElapsedTime()
@@ -161,7 +159,7 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 
 		SolverPrior::nn_priors[i] =
 				static_cast<PedPomdp*>(model)->CreateSolverPrior(
-						unity_driving_simulator_, "NEURAL", false);
+						summit_driving_simulator_, "NEURAL", false);
 
 		SolverPrior::nn_priors[i]->prior_id(i);
 	}
@@ -183,7 +181,7 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
 		world = new POMDPSimulator(nh, static_cast<DSPOMDP*>(model),
 				Globals::config.root_seed/*random seed*/, obstacle_file_name_);
 		break;
-	case UNITY:
+	case SUMMIT:
 		world = new WorldSimulator(nh, static_cast<DSPOMDP*>(model),
 				Globals::config.root_seed/*random seed*/, pathplan_ahead_,
 				obstacle_file_name_, map_location_, summit_port_,COORD(goalx_, goaly_));
@@ -204,11 +202,11 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
 				&(POMDPSimulator::worldModel);
 		pomdp_driving_simulator_ = static_cast<POMDPSimulator*>(world);
 		break;
-	case UNITY:
+	case SUMMIT:
 		static_cast<PedPomdp*>(model)->world_model =
 				&(WorldSimulator::worldModel);
-		unity_driving_simulator_ = static_cast<WorldSimulator*>(world);
-		unity_driving_simulator_->time_scale_ = time_scale_;
+		summit_driving_simulator_ = static_cast<WorldSimulator*>(world);
+		summit_driving_simulator_->time_scale_ = time_scale_;
 		break;
 	}
 
@@ -244,10 +242,7 @@ void Controller::InitializeDefaultParameters() {
 	Globals::config.xi = 0.97;
 	//Globals::config.pruning_constant= 0.001; // passed as a ROS node param
 
-	Globals::config.useGPU = true;
-
-	if (b_use_drive_net_ == LETS_DRIVE)
-		Globals::config.useGPU = false;
+	Globals::config.useGPU = false;
 
 	Globals::config.GPUid = gpu_id_; //default GPU
 	Globals::config.use_multi_thread_ = true;
@@ -267,16 +262,16 @@ void Controller::InitializeDefaultParameters() {
 	Obs_type = OBS_INT_ARRAY;
 	DESPOT::num_Obs_element_in_GPU = 1 + ModelParams::N_PED_IN * 2 + 3;
 
-	if (b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == ROLL_OUT) {
+	if (b_drive_mode_ == JOINT_POMDP || b_drive_mode_ == ROLL_OUT) {
 		Globals::config.useGPU = false;
 		Globals::config.num_scenarios = 5;
 		Globals::config.NUM_THREADS = 10;
 		Globals::config.discount = 0.95;
 		Globals::config.search_depth = 20;
 		Globals::config.max_policy_sim_len = /*Globals::config.sim_len+30*/20;
-		if (b_use_drive_net_ == JOINT_POMDP)
+		if (b_drive_mode_ == JOINT_POMDP)
 			Globals::config.pruning_constant = 0.001;
-		else if (b_use_drive_net_ == ROLL_OUT)
+		else if (b_drive_mode_ == ROLL_OUT)
 			Globals::config.pruning_constant = 100000000.0;
 		Globals::config.exploration_constant = 0.1;
 		Globals::config.silence = true;
@@ -350,15 +345,6 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 		path_missing = false;
 	}
 
-	if (simulation_mode_ == UNITY && unity_driving_simulator_){
-		if (unity_driving_simulator_->b_update_il == true){
-			cout << " unity_driving_simulator_ = " << unity_driving_simulator_ << endl;
-			cout << " path = " << path << endl;
-
-			unity_driving_simulator_->p_IL_data.plan = *path; // record to be further published for imitation learning
-		}
-	}
-
 	Path p;
 	for (int i = 0; i < path->poses.size(); i++) {
 		COORD coord;
@@ -385,8 +371,7 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 		setCarGoal(p.back());
 	}
 
-	if (b_use_drive_net_ == LETS_DRIVE || b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == ROLL_OUT
-			|| b_use_drive_net_ == IMITATION) {
+	if (b_drive_mode_ == JOINT_POMDP || b_drive_mode_ == ROLL_OUT) {
 		pathplan_ahead_ = 0;
 	}
 
@@ -435,9 +420,9 @@ bool Controller::getUnityPos() {
 	tf::Stamped<tf::Pose> in_pose, out_pose;
 	in_pose.setIdentity();
 	in_pose.frame_id_ = ModelParams::rosns + "/base_link";
-	assert(unity_driving_simulator_);
+	assert(summit_driving_simulator_);
 	logv << "global_frame_id: " << global_frame_id << " " << endl;
-	if (!unity_driving_simulator_->getObjectPose(global_frame_id, in_pose,
+	if (!summit_driving_simulator_->getObjectPose(global_frame_id, in_pose,
 			out_pose)) {
 		cerr << "transform error within Controller::RunStep" << endl;
 		logv << "laser frame " << in_pose.frame_id_ << endl;
@@ -458,7 +443,7 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 
 	double step_start_t = get_time_second();
 
-	if (simulation_mode_ == UNITY) {
+	if (simulation_mode_ == SUMMIT) {
 		bool unity_ready = getUnityPos();
 
 		if (!unity_ready)
@@ -502,14 +487,14 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 	double update_time = (end_t - start_t);
 	logi << "[RunStep] Time spent in Update(): " << update_time << endl;
 
-	if (simulation_mode_ == UNITY) {
-		unity_driving_simulator_->publishROSState();
+	if (simulation_mode_ == SUMMIT) {
+		summit_driving_simulator_->publishROSState();
 		// ped_belief_->publishAgentsPrediciton();
 	}
 
-	unity_driving_simulator_->beliefTracker->text();
+	summit_driving_simulator_->beliefTracker->text();
 
-	if (simulation_mode_ == UNITY) {
+	if (simulation_mode_ == SUMMIT) {
 		if (path_from_topic.size() == 0) {
 			logi << "[RunStep] path topic not ready yet..." << endl;
 			return false;
@@ -529,24 +514,24 @@ void Controller::PredictPedsForSearch(State* search_state) {
 					<< endl;
 		} else {
 
-			unity_driving_simulator_->beliefTracker->cur_acc =
+			summit_driving_simulator_->beliefTracker->cur_acc =
 					static_cast<const PedPomdp*>(ped_pomdp_model)->GetAcceleration(
 							last_action);
-			unity_driving_simulator_->beliefTracker->cur_steering =
+			summit_driving_simulator_->beliefTracker->cur_steering =
 					static_cast<const PedPomdp*>(ped_pomdp_model)->GetSteering(
 							last_action);
 
 			cerr << "DEBUG: Prediction with last action:" << last_action
 					<< " steer/acc = "
-					<< unity_driving_simulator_->beliefTracker->cur_steering
-					<< "/" << unity_driving_simulator_->beliefTracker->cur_acc
+					<< summit_driving_simulator_->beliefTracker->cur_steering
+					<< "/" << summit_driving_simulator_->beliefTracker->cur_acc
 					<< endl;
 
 			auto predicted =
-					unity_driving_simulator_->beliefTracker->predictPedsCurVel(
+					summit_driving_simulator_->beliefTracker->predictPedsCurVel(
 							static_cast<PomdpState*>(search_state),
-							unity_driving_simulator_->beliefTracker->cur_acc,
-							unity_driving_simulator_->beliefTracker->cur_steering);
+							summit_driving_simulator_->beliefTracker->cur_acc,
+							summit_driving_simulator_->beliefTracker->cur_steering);
 
 			PomdpState* predicted_state =
 					static_cast<PomdpState*>(static_cast<const PedPomdp*>(ped_pomdp_model)->Copy(
@@ -601,7 +586,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 
 	double step_start_t = get_time_second();
 
-	if (simulation_mode_ == UNITY) {
+	if (simulation_mode_ == SUMMIT) {
 		bool unity_ready = getUnityPos();
 
 		if (!unity_ready)
@@ -615,38 +600,22 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 		}
 	}
 
-	// imitation learning: pause update of car info and path info for imitation data
-	switch (simulation_mode_) {
-	case UNITY:
-		unity_driving_simulator_->b_update_il = false;
-
-		break;
-	case POMDP:
-		pomdp_driving_simulator_->b_update_il = false;
-
-		break;
-	}
-
 	cerr << "DEBUG: Updating belief" << endl;
 
 	double start_t = get_time_second();
 //	solver->BeliefUpdate(last_action, last_obs);
 
 	const State* cur_state = world->GetCurrentState();
-	unity_driving_simulator_->speed_in_search_state_ =
-			unity_driving_simulator_->real_speed_;
+	summit_driving_simulator_->speed_in_search_state_ =
+			summit_driving_simulator_->real_speed_;
 
 	assert(cur_state);
-
-//	SolverPrior::nn_priors[0]->DebugHistory("After get current step");
 
 	cout << "current state address" << cur_state << endl;
 
 	State* search_state =
 			static_cast<const PedPomdp*>(ped_pomdp_model)->CopyForSearch(
 					cur_state);				//create a new state for search
-
-//	SolverPrior::nn_priors[0]->DebugHistory("After copy for search");
 
 	static_cast<PedPomdpBelief*>(solver->belief())->DeepUpdate(
 			SolverPrior::nn_priors[0]->history_states(),
@@ -661,12 +630,12 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 	double update_time = (end_t - start_t);
 	logi << "[RunStep] Time spent in Update(): " << update_time << endl;
 
-	if (simulation_mode_ == UNITY) {
-		unity_driving_simulator_->publishROSState();
+	if (simulation_mode_ == SUMMIT) {
+		summit_driving_simulator_->publishROSState();
 		// ped_belief_->publishAgentsPrediciton();
 	}
 
-	unity_driving_simulator_->beliefTracker->text();
+	summit_driving_simulator_->beliefTracker->text();
 
 	int cur_search_hist_len = 0;
 	cur_search_hist_len = SolverPrior::nn_priors[0]->Size(true);
@@ -678,7 +647,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 			static_cast<const PedPomdp*>(ped_pomdp_model)->GetActionID(0.0,
 					0.0);
 	double step_reward;
-	if (b_use_drive_net_ == NO || b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == ROLL_OUT) {
+	if (b_drive_mode_ == NO || b_drive_mode_ == JOINT_POMDP || b_drive_mode_ == ROLL_OUT) {
 		cerr << "DEBUG: Search for action using " << typeid(*solver).name()
 				<< endl;
 		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(
@@ -687,12 +656,12 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 		const State& sample =
 				*static_cast<PedPomdpBelief*>(solver->belief())->GetParticle(0);
 
-		cout << "Car odom velocity " << unity_driving_simulator_->odom_vel_.x
-				<< " " << unity_driving_simulator_->odom_vel_.y << endl;
-		cout << "Car odom heading " << unity_driving_simulator_->odom_heading_
+		cout << "Car odom velocity " << summit_driving_simulator_->odom_vel_.x
+				<< " " << summit_driving_simulator_->odom_vel_.y << endl;
+		cout << "Car odom heading " << summit_driving_simulator_->odom_heading_
 				<< endl;
 		cout << "Car base_link heading "
-				<< unity_driving_simulator_->baselink_heading_ << endl;
+				<< summit_driving_simulator_->baselink_heading_ << endl;
 
 		// static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
 		static_cast<PedPomdp*>(ped_pomdp_model)->PrintStateIDs(sample);
@@ -701,23 +670,8 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 		// static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(sample, 10);// 3 steps		
 
 		action = solver->Search().action;
-	} else if (b_use_drive_net_ == LETS_DRIVE) {
-//	 	int state_code = unity_driving_simulator_->worldModel.hasMinSteerPath(cur_state);
-		cerr << "DEBUG: Search for action using " << typeid(*solver).name()
-				<< " with NN prior." << endl;
-		assert(solver->belief());
-		cerr << "DEBUG: Sampling particles" << endl;
-		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(
-				static_cast<const PedPomdp*>(ped_pomdp_model), predict_peds);
-		cerr << "DEBUG: Launch search with NN prior" << endl;
-		action = solver->Search().action;
-
-		cout << "recording SolverPrior::nn_priors[0]->searched_action" << endl;
-		SolverPrior::nn_priors[0]->searched_action = action;
-	} else if (b_use_drive_net_ == IMITATION) {
-		// Query the drive_net for actions, do nothing here
 	} else
-		throw("drive net usage mode not supported!");
+		throw("drive mode not supported!");
 
 	end_t = get_time_second();
 	double search_time = (end_t - start_t);
@@ -725,18 +679,6 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 			<< "::Search(): " << search_time << endl;
 
 	TruncPriors(cur_search_hist_len);
-
-	// imitation learning: renable data update for imitation data
-	switch (simulation_mode_) {
-	case UNITY:
-		unity_driving_simulator_->b_update_il = true;
-
-		break;
-	case POMDP:
-		pomdp_driving_simulator_->b_update_il = true;
-
-		break;
-	}
 
 	OBS_TYPE obs;
 	start_t = get_time_second();
@@ -760,7 +702,7 @@ void Controller::setCarGoal(COORD car_goal) {
 	goalx_ = car_goal.x;
 	goaly_ = car_goal.y;
 
-	unity_driving_simulator_->setCarGoal(car_goal);
+	summit_driving_simulator_->setCarGoal(car_goal);
 }
 
 void Controller::CheckCurPath() {
@@ -768,7 +710,7 @@ void Controller::CheckCurPath() {
 		cerr << "Path missing, fixing steering" << endl;
 		// use default move
 		SolverPrior::prior_force_steer = true;
-		if (unity_driving_simulator_->stateTracker->carvel > 0.01) {
+		if (summit_driving_simulator_->stateTracker->carvel > 0.01) {
 			cerr << "Path missing, fixing acc" << endl;
 			SolverPrior::prior_force_acc = true;
 		} else
@@ -776,7 +718,7 @@ void Controller::CheckCurPath() {
 	} else {
 		WorldSimulator::worldModel.path = path_from_topic;
 
-		COORD car_pos_from_goal = unity_driving_simulator_->stateTracker->carpos
+		COORD car_pos_from_goal = summit_driving_simulator_->stateTracker->carpos
 				- COORD(goalx_, goaly_);
 
 		//	if (car_pos_from_goal.Length() < 5.0)
@@ -787,12 +729,12 @@ void Controller::CheckCurPath() {
 		if (car_pos_from_goal.Length() < 10.0) {
 			SolverPrior::prior_force_steer = true;
 
-			if (unity_driving_simulator_->stateTracker->carvel > 0.01)
+			if (summit_driving_simulator_->stateTracker->carvel > 0.01)
 				SolverPrior::prior_force_acc = true;
 			else
 				SolverPrior::prior_force_acc = false;
 		} else if (car_pos_from_goal.Length() < 8.0
-				&& unity_driving_simulator_->stateTracker->carvel
+				&& summit_driving_simulator_->stateTracker->carvel
 						>= ModelParams::AccSpeed / ModelParams::control_freq) {
 			SolverPrior::prior_discount_optact = 10.0;
 		}
@@ -816,7 +758,7 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world,
 	logi << "Planning loop started at the " << Globals::ElapsedTime()
 					<< "th second" << endl;
 
-	unity_driving_simulator_->stateTracker->detect_time = true;
+	summit_driving_simulator_->stateTracker->detect_time = true;
 
 	ros::spinOnce();
 
@@ -901,8 +843,8 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	assert(belief != NULL);
 	ped_belief_ = static_cast<PedPomdpBelief*>(belief);
 	switch (simulation_mode_) {
-	case UNITY:
-		unity_driving_simulator_->beliefTracker = ped_belief_->beliefTracker;
+	case SUMMIT:
+		summit_driving_simulator_->beliefTracker = ped_belief_->beliefTracker;
 		break;
 	case POMDP:
 		pomdp_driving_simulator_->beliefTracker = ped_belief_->beliefTracker;
@@ -943,7 +885,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	logger->InitRound(world->GetCurrentState());
 	round_ = 0;
 	step_ = 0;
-	unity_driving_simulator_->beliefTracker->text();
+	summit_driving_simulator_->beliefTracker->text();
 	logi << "InitRound finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 

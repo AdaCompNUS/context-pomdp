@@ -41,7 +41,6 @@
 
 #include <msg_builder/ped_local_frame.h>
 #include <msg_builder/ped_local_frame_vector.h>
-#include <msg_builder/imitation_data.h>
 #include <msg_builder/car_info.h>
 #include <msg_builder/peds_info.h>
 
@@ -81,24 +80,13 @@ public:
     std::string obstacle_file_name_;
 
 public:
-	// for imitation learning
 	ros::NodeHandle& nh;
-
 	ros::Subscriber carSub_, egodeadSub_;
-
-	ros::Publisher IL_pub; 
-	bool b_update_il;
-	msg_builder::imitation_data p_IL_data; 
-
-
-	virtual void publishImitationData(PomdpStateWorld& planning_state, ACT_TYPE safeAction, float reward, float vel) =0;
-
 
 public:
 	static bool agents_data_ready;
 	static bool agents_path_data_ready;
 };
-
 
 
 static double marker_colors[20][3] = {

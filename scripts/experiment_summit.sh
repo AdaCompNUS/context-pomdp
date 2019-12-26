@@ -37,7 +37,7 @@ do
     python3 run_data_collection.py --record $record_bags \
     --sround $start_batch --eround $end_batch \
     --make 1 --verb 1 --gpu_id $gpu \
-    --port $port --maploc $maploc --rands $rands --launch_sim $launch_sim --eps_len $eps_len --baseline $mode 2>&1 | tee -a exp_log_$BASHPID
+    --port $port --maploc $maploc --rands $rands --launch_sim $launch_sim --eps_len $eps_len --drive_mode $mode 2>&1 | tee -a exp_log_$BASHPID
     echo "[repeat_run] clearing process"
     python ./clear_process.py $port
     sleep 3

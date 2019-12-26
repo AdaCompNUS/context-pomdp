@@ -3,7 +3,7 @@
   <arg name="port" default="2000" />
   <arg name="map_location" default="meskel_square" />
   <arg name="ego_control_mode" default="gamma" />
-  <arg name="ego_speed_control" default="acc" />
+  <arg name="ego_speed_control" default="vel" />
   <arg name="random_seed" default="0" />
 
   <param name="address" type="string" value="$(arg address)" />

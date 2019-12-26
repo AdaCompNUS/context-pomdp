@@ -44,7 +44,6 @@ include_directories(
   ../car_hyp_despot/src/planner/
   ../car_hyp_despot/src/HypDespot/include/
   ../car_hyp_despot/src/HypDespot/include/despot
-  ../crowd_pomdp_planner/src/carla/
   ../crowd_pomdp_planner/src/
 )
 
@@ -72,26 +71,6 @@ target_link_libraries(ped_pomdp
   car_hyp_despot
   ${catkin_LIBRARIES}
 )
-
-# file (GLOB all_carla_libs ${CMAKE_SOURCE_DIR}/libcarla/*.a)
-
-# foreach (carla_lib ${all_carla_libs})
-#	message("===================== ${carla_lib} ==================")
-# endforeach()
-
-list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/libcarla_client.a)
-list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/libDetour.a)
-list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/libDetourCrowd.a)
-list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/librpc.a)
-list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/libRecast.a)
-list (APPEND carla_libs ${CMAKE_SOURCE_DIR}/libcarla/libDebugUtils.a)
-
-foreach (carla_lib ${carla_libs})
-    target_link_libraries(ped_pomdp ${carla_lib})
-endforeach()
-   
-
-# target_link_libraries(ped_pomdp ${carla_libs})
 
 target_link_libraries(local_frame
   car_hyp_despot

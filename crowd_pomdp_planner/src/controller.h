@@ -61,7 +61,7 @@ class Controller: public Planner
 {
 	enum SIM_MODE{
 		POMDP,
-		UNITY,
+		SUMMIT,
 	};
 public:
 
@@ -138,7 +138,7 @@ public:
 	void PlanningLoop(despot::Solver*& solver, World* world, Logger* logger);
 
 public:
-	WorldSimulator* unity_driving_simulator_;
+	WorldSimulator* summit_driving_simulator_;
 	POMDPSimulator* pomdp_driving_simulator_;
 	PedPomdpBelief* ped_belief_;
 	//World* world_;
@@ -149,7 +149,7 @@ public:
 	SIM_MODE simulation_mode_;
 	
 public: // lets_drive
-	static int b_use_drive_net_;
+	static int b_drive_mode_;
 	static int gpu_id_;
 	static int summit_port_;
     static float time_scale_; // scale down the speed of time, value < 1.0

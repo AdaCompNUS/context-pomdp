@@ -186,9 +186,6 @@ public:
 	PomdpState PredictAgents(const PomdpState& ped_state) const;
 
 public:
-	void InitGPUCarParams() const{;}
-
-public:
 	void CheckPreCollision(const State*);
 	void PrintStateIDs(const State&);
 
