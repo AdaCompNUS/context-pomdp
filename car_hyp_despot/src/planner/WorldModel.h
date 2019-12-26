@@ -331,7 +331,7 @@ public:
     template<typename T>
 	bool AgentIsUp2Date(T& agent) {
     	if (detect_time){
-			if (SolverPrior::get_timestamp() - agent.time_stamp > 1.0){ // agent disappeared for 1 second
+			if (Globals::ElapsedTime() - agent.time_stamp > 1.0){ // agent disappeared for 1 second
 				DEBUG(string_sprintf("agent %d disappeared for too long (>1.0s).", agent.id));
 				return false;
 			}

@@ -19,7 +19,6 @@ struct Config {
 	double noise;
 	bool silence;
 	bool useGPU;
-	bool use_prior;
 	std::string rollout_type;
 	int GPUid;
 	bool use_multi_thread_;
@@ -47,7 +46,6 @@ struct Config {
 		noise(0.1),
 		silence(false),
 	    useGPU(false),
-	    use_prior(false),
 	    rollout_type("BLIND"),
 	    GPUid(0),
 	    use_multi_thread_(false),

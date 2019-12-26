@@ -343,10 +343,6 @@ float Shared_VNode::GetVirtualLoss()
 
 bool Shared_VNode::check_despot_thread(){
 
-	if(Globals::config.use_prior){
-		return false;
-	}
-
 	if(Globals::config.enable_despot_thread)
 		if (Globals::config.despot_thread_gap == 0)
 			return true;

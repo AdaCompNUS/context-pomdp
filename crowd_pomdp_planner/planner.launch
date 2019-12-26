@@ -23,7 +23,7 @@
         <param name = "time_scale" value="$(arg time_scale)" />
         <param name = "model" value="$(arg model_file_name)" />
         <param name = "val_model" value="$(arg val_model_name)" />
-        <param name = "carla_port" value="$(arg carla_port)" />    
+        <param name = "summit_port" value="$(arg summit_port)" />    
 	 </node>
 
 	 <node name="ped_momdp_local_transform" pkg="crowd_pomdp_planner" type="local_frame"  >

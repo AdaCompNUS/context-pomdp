@@ -86,8 +86,6 @@ option::Descriptor* BuildUsage(string lower_bounds_str,
 							"  \t--prior <arg>  \tPOMCP prior." }, 
 					{ E_GPU, 0, "", "GPU", option::Arg::Required,
 					    "  \t--GPU <arg>  \tEnable GPU support (default false)." },
-					{ E_NN_PRIOR, 0, "", "nn", option::Arg::Required,
-						"  \t--nn <arg>  \tUse NN prior in search (default false)." },
 					{ E_GPUID, 0, "", "GPUID", option::Arg::Required,
 						"  \t--GPUID <arg>  \tChoose GPU to use (default 0)." },
 					{ E_CPU, 0, "", "CPU", option::Arg::Required,
@@ -333,12 +331,6 @@ void PlannerBase::OptionParse(option::Option *options, int &num_runs,
 	{
 		Globals::config.useGPU = atoi(options[E_GPU].arg);
 		cout<<"[CmdLine] use GPU: "<<Globals::config.useGPU<<endl;
-	}
-
-	if (options[E_NN_PRIOR])
-	{
-		Globals::config.use_prior = atoi(options[E_NN_PRIOR].arg);
-		cout<<"[CmdLine] use NN prior: "<<Globals::config.use_prior<<endl;
 	}
 
 	if (options[E_GPUID])

@@ -47,7 +47,7 @@ class WorldSimulator: public SimulatorBase, public World {
 
 public:
 	WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model, unsigned seed, bool pathplan_ahead,
-			std::string obstacle_file_name, std::string map_location, int carla_port, COORD car_goal);
+			std::string obstacle_file_name, std::string map_location, int summit_port, COORD car_goal);
 	~WorldSimulator();
 
 public:
@@ -145,7 +145,7 @@ public:
 
 private:
 	std::string map_location_;
-	int carla_port_;
+	int summit_port_;
 
 public:
 
@@ -161,8 +161,6 @@ public:
 	void update_cmds_buffered(const ros::TimerEvent &e);
 
 public:
-	void Debug_action();
-
 	void setCarGoal(COORD);
 
 public:

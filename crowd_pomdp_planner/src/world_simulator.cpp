@@ -18,8 +18,6 @@
 #include <msg_builder/Lanes.h>
 #include <msg_builder/Obstacles.h>
 
-#include "neural_prior.h"
-
 #include "carla/client/Client.h"
 #include "carla/geom/Vector2D.h"
 #include "carla/sumonetwork/SumoNetwork.h"
@@ -94,13 +92,13 @@ double navposeToHeadingDir(const geometry_msgs::Pose & msg) {
 
 WorldSimulator::WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model,
 		unsigned seed, bool pathplan_ahead, std::string obstacle_file_name, std::string map_location,
-		int carla_port,
+		int summit_port,
 		COORD car_goal) :
 		SimulatorBase(_nh, obstacle_file_name), pathplan_ahead_(pathplan_ahead), model_(
 				model), World() {
 
 	map_location_ = map_location;
-	carla_port_ = carla_port;
+	summit_port_ = summit_port;
 
 	global_frame_id = ModelParams::rosns + "/map";
 
@@ -128,8 +126,8 @@ WorldSimulator::~WorldSimulator() {
 
 void WorldSimulator::Connect_Carla(){
 	// Connect with CARLA server
-	logi << "Connecting with carla world at port " << carla_port_ << endl;
-    auto client = cc::Client("127.0.0.1", carla_port_);
+	logi << "Connecting with carla world at port " << summit_port_ << endl;
+    auto client = cc::Client("127.0.0.1", summit_port_);
     client.SetTimeout(10s);
     auto world = client.GetWorld();
 
@@ -230,13 +228,13 @@ bool WorldSimulator::Connect() {
 	lane_change_Sub_ = nh.subscribe("gamma_lane_decision", 1, &WorldSimulator::lane_change_Callback, this);
 
 	logi << "Subscribers and Publishers created at the "
-			<< SolverPrior::get_timestamp() << "th second" << endl;
+			<< Globals::ElapsedTime() << "th second" << endl;
 
 	auto path_data =
 				ros::topic::waitForMessage<nav_msgs::Path>(
 						"plan", ros::Duration(300));
 
-	logi << "plan get at the " << SolverPrior::get_timestamp()
+	logi << "plan get at the " << Globals::ElapsedTime()
 				<< "th second" << endl;
 
 	Connect_Carla();
@@ -251,7 +249,7 @@ bool WorldSimulator::Connect() {
 							"agent_array", ros::Duration(3));
 
 		if (agent_data && !agent_data_ok){
-			logi << "agent_array get at the " << SolverPrior::get_timestamp()
+			logi << "agent_array get at the " << Globals::ElapsedTime()
 				<< "th second" << endl;
 			agent_data_ok = true;
 		}
@@ -260,7 +258,7 @@ bool WorldSimulator::Connect() {
 		auto odom_data = ros::topic::waitForMessage<nav_msgs::Odometry>(
 				"odom", ros::Duration(1));
 		if (odom_data && !odom_data_ok){
-			logi << "odom get at the " << SolverPrior::get_timestamp() << "th second"
+			logi << "odom get at the " << Globals::ElapsedTime() << "th second"
 				<< endl;
 			odom_data_ok = true;
 		}
@@ -269,7 +267,7 @@ bool WorldSimulator::Connect() {
 		auto car_data = ros::topic::waitForMessage<msg_builder::car_info>(
 				"ego_state", ros::Duration(1));
 		if (car_data && !car_data_ok){
-			logi << "ego_state get at the " << SolverPrior::get_timestamp()
+			logi << "ego_state get at the " << Globals::ElapsedTime()
 				<< "th second" << endl;
 			car_data_ok = true;
 		}
@@ -279,7 +277,7 @@ bool WorldSimulator::Connect() {
 				ros::topic::waitForMessage<std_msgs::Bool>(
 						"agents_ready", ros::Duration(1));
 		if (agent_ready_bool && !agent_flag_ok){
-			logi << "agents ready at get at the " << SolverPrior::get_timestamp()
+			logi << "agents ready at get at the " << Globals::ElapsedTime()
 				<< "th second" << endl;
 			agent_flag_ok = true;
 		}
@@ -315,35 +313,6 @@ State* WorldSimulator::Initialize() {
 	if(SolverPrior::nn_priors.size() == 0){
 		ERR("No nn_prior exist");
 	}
-
-	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-		PedNeuralSolverPrior * nn_prior =
-				static_cast<PedNeuralSolverPrior *>(SolverPrior::nn_priors[i]);
-		nn_prior->raw_map_ = raw_map_;
-		nn_prior->map_received = true;
-		nn_prior->Init();
-	}
-
-//	ros::spinOnce();
-//
-//	int tick = 0;
-//	bool map_data_ok = false;
-//	while (tick < 20) {
-//		auto map_data = ros::topic::waitForMessage<nav_msgs::OccupancyGrid>(
-//						"map", ros::Duration(1));
-//		if (map_data && !map_data_ok){
-//			logi << "map get at the " << SolverPrior::get_timestamp() << "th second"
-//				<< endl;
-//			map_data_ok = true;
-//		}
-//		ros::spinOnce();
-//
-//		logi << "Waiting for map..." << endl;
-//		tick++;
-//	}
-//
-//	if (!map_data_ok)
-//		ERR("Map message missing");
 
 	return NULL;
 }
@@ -413,7 +382,7 @@ State* WorldSimulator::GetCurrentState() {
 		static_cast<PedPomdp*>(model_)->PrintWorldState(current_state);
 		printf("GetCurrentState end");
 	}
-	current_state.time_stamp = SolverPrior::get_timestamp();
+	current_state.time_stamp = Globals::ElapsedTime();
 
 	logv << " current state time stamp " << current_state.time_stamp << endl;
 
@@ -441,11 +410,8 @@ double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action) {
 	reward += pedpomdp_model->ActionPenalty(action);
 
 	// Speed control: Encourage higher speed
-	if (Globals::config.use_prior)
-		reward += pedpomdp_model->MovementPenalty(state);
-	else
-		reward += pedpomdp_model->MovementPenalty(state,
-				pedpomdp_model->GetSteering(action));
+	reward += pedpomdp_model->MovementPenalty(state,
+			pedpomdp_model->GetSteering(action));
 	return reward;
 }
 
@@ -459,7 +425,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
 	if (action == -1)
 		return false;
-	logi << "ExecuteAction at the " << SolverPrior::get_timestamp()
+	logi << "ExecuteAction at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	cout << "[ExecuteAction]" << endl;
@@ -562,12 +528,8 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 				<< endl;
 		ros::shutdown();
 	} else {
-//		get_action_fix_latency(action);
-//		update_cmds_naive(action);
 		buffered_action_ = action;
 	}
-
-	Debug_action();
 
 	// Updating cmd steering and speed. They will be send to vel_pulisher by timer
 	update_cmds_naive(buffered_action_, false);
@@ -661,27 +623,12 @@ void WorldSimulator::update_cmds_fix_latency(ACT_TYPE action, bool buffered) {
 }
 
 void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered) {
-//	buffered_action_ = action;
-
-	SolverPrior::nn_priors[0]->Check_force_steer(stateTracker->car_heading_dir,
-			worldModel.path.getCurDir(), stateTracker->carvel);
 
 	worldModel.path.text();
 
 	cout << "[update_cmds_naive] Buffering action " << action << endl;
 
-//	cout<<"real_speed_ = "<<real_speed_<<endl;
-
 	float acc = static_cast<PedPomdp*>(model_)->GetAcceleration(action);
-
-//	float accelaration;
-//	if (!buffered)
-//		accelaration=acc/ModelParams::control_freq;
-//	else if (buffered)
-//		accelaration=acc/pub_frequency;
-//
-//	target_speed_ = min(real_speed_ + accelaration, ModelParams::VEL_MAX);
-//	target_speed_ = max(target_speed_, 0.0);
 
 	double speed_step = ModelParams::AccSpeed / ModelParams::control_freq;
 	int level = real_speed_ / speed_step;
@@ -701,16 +648,7 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered) {
 
 	cerr << "DEBUG: Executing action:" << action << " steer/acc = " << steering_
 			<< "/" << acc << endl;
-
-//	target_speed_ = 0; // Freezing robot motion. Debugging !!!!!!!!
 }
-
-//void WorldSimulator::update_cmds_buffered(const ros::TimerEvent &e){
-//	update_cmds_naive(buffered_action_, true);
-////	update_cmds_fix_latency(buffered_action_, true);
-//
-//	cout<<"[update_cmds_buffered] time stamp" << SolverPrior::nn_priors[0]->get_timestamp() <<endl;
-//}
 
 void WorldSimulator::AddObstacle() {
 
@@ -815,7 +753,7 @@ void WorldSimulator::publishCmdAction(ACT_TYPE action) {
 	cmd.linear.z = static_cast<PedPomdp*>(model_)->GetAcceleration(action);
 	cmd.angular.z = steering_; // GetSteering returns radii value
 	cout << "[publishCmdAction] time stamp"
-			<< SolverPrior::nn_priors[0]->get_timestamp() << endl;
+			<< Globals::ElapsedTime() << endl;
 	cout << "[publishCmdAction] target speed " << target_speed_ << " steering "
 			<< steering_ << endl;
 	cmdPub_.publish(cmd);
@@ -979,7 +917,7 @@ bool WorldSimulator::getObjectPose(string target_frame,
 
 void WorldSimulator::speedCallback(nav_msgs::Odometry odo) {
 
-//	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
+//	DEBUG(string_sprintf(" ts = %f", Globals::ElapsedTime()));
 
 	odom_vel_ = COORD(odo.twist.twist.linear.x, odo.twist.twist.linear.y);
 	// real_speed_=sqrt(odo.twist.twist.linear.x * odo.twist.twist.linear.x + 
@@ -1006,17 +944,17 @@ bool sortFn(Pedestrian p1, Pedestrian p2) {
 
 
 //void laneCallback(msg_builder::Lanes data){
-//	double data_time_sec = SolverPrior::get_timestamp();
+//	double data_time_sec = Globals::ElapsedTime();
 //	DEBUG(
 //			string_sprintf("receive %d lanes at time %f",
-//					data.lane_segments.size(), SolverPrior::get_timestamp()));
+//					data.lane_segments.size(), Globals::ElapsedTime()));
 //}
 //
 //void obstacleCallback(msg_builder::Obstacles data){
-//	double data_time_sec = SolverPrior::get_timestamp();
+//	double data_time_sec = Globals::ElapsedTime();
 //	DEBUG(
 //			string_sprintf("receive %d obstacle contours at time %f",
-//					data.contours.size(), SolverPrior::get_timestamp()));
+//					data.contours.size(), Globals::ElapsedTime()));
 //}
 
 void agentArrayCallback(msg_builder::TrafficAgentArray data) {
@@ -1026,13 +964,13 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 	double data_ros_time_sec = data_sec + data_nsec * 1e-9;
 
-	double data_time_sec = SolverPrior::get_timestamp();
+	double data_time_sec = Globals::ElapsedTime();
 
 	WorldSimulator::stateTracker->latest_time_stamp = data_time_sec;
 
 	DEBUG(
 			string_sprintf("receive agent num %d at time %f",
-					data.agents.size(), SolverPrior::get_timestamp()));
+					data.agents.size(), Globals::ElapsedTime()));
 
 	vector<Pedestrian> ped_list;
 	vector<Vehicle> veh_list;
@@ -1083,7 +1021,7 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 //	DEBUG(
 //				string_sprintf("Finish agent update at time %f",
-//						SolverPrior::get_timestamp()));
+//						Globals::ElapsedTime()));
 
 	WorldSimulator::stateTracker->model.print_path_map();
 
@@ -1108,7 +1046,7 @@ void agentPathArrayCallback(msg_builder::AgentPathArray data) {
 
 	DEBUG(
 			string_sprintf("receive agent num %d at time %f",
-					data.agents.size(), SolverPrior::get_timestamp()));
+					data.agents.size(), Globals::ElapsedTime()));
 
 	vector<Pedestrian> ped_list;
 	vector<Vehicle> veh_list;
@@ -1165,7 +1103,7 @@ void agentPathArrayCallback(msg_builder::AgentPathArray data) {
 
 //	DEBUG(
 //			string_sprintf("Finish agent paths update at time %f",
-//					SolverPrior::get_timestamp()));
+//					Globals::ElapsedTime()));
 
 	SimulatorBase::agents_path_data_ready = true;
 }
@@ -1200,18 +1138,11 @@ void pedPoseCallback(msg_builder::ped_local_frame_vector lPedLocal) {
 }
 
 void receive_map_callback(nav_msgs::OccupancyGrid map) {
-	logi << "[receive_map_callback] ts: " << SolverPrior::get_timestamp() << endl;
+	logi << "[receive_map_callback] ts: " << Globals::ElapsedTime() << endl;
 
 	raw_map_ = map;
-	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-		PedNeuralSolverPrior * nn_prior =
-				static_cast<PedNeuralSolverPrior *>(SolverPrior::nn_priors[i]);
-		nn_prior->raw_map_ = map;
-		nn_prior->map_received = true;
-		nn_prior->Init();
-	}
 
-	logi << "[receive_map_callback] end ts: " << SolverPrior::get_timestamp() << endl;
+	logi << "[receive_map_callback] end ts: " << Globals::ElapsedTime() << endl;
 }
 
 void WorldSimulator::ego_car_dead_callback(std_msgs::Bool::ConstPtr data){
@@ -1224,7 +1155,7 @@ void WorldSimulator::lane_change_Callback(const std_msgs::Int32::ConstPtr lane_d
 }
 
 void WorldSimulator::cmdSteerCallback(const std_msgs::Float32::ConstPtr steer){
-//	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
+//	DEBUG(string_sprintf(" ts = %f", Globals::ElapsedTime()));
 	// receive steering in rad
 	p_IL_data.action_reward.steering_normalized.data = float(steer->data);
 }
@@ -1269,7 +1200,7 @@ double xylength(geometry_msgs::Point32 p) {
 bool car_data_ready = false;
 
 void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
-//	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
+//	DEBUG(string_sprintf(" ts = %f", Globals::ElapsedTime()));
 
 	if (b_update_il == true) {
 		p_IL_data.cur_car = *car;
@@ -1313,10 +1244,6 @@ void WorldSimulator::update_il_car(const msg_builder::car_info::ConstPtr car) {
 		if (Globals::config.useGPU)
 			static_cast<const PedPomdp*>(model_)->InitGPUCarParams();
 
-		for (auto& n_prior: SolverPrior::nn_priors)
-			static_cast<PedNeuralSolverPrior*>(n_prior)->update_ego_car_shape(
-					ego_car.car_bbox.points);
-
 		car_data_ready = true;
 	}
 }
@@ -1356,18 +1283,6 @@ void WorldSimulator::publishImitationData(PomdpStateWorld& planning_state,
     // p_IL_data.action_reward.angular.x = static_cast<PedPomdp*>(model_)->GetSteering(safeAction);
 
 	IL_pub.publish(p_IL_data);
-}
-
-void WorldSimulator::Debug_action() {
-//	if (SolverPrior::nn_priors[0]->default_action != SolverPrior::nn_priors[0]->searched_action){
-//		cerr << "ERROR: Default prior action modified!!!!" << endl;
-//		raise(SIGABRT);
-//	}
-//
-//	if (buffered_action_ != SolverPrior::nn_priors[0]->searched_action){
-//		cerr << "ERROR: Searched action modified!!!!" << endl;
-//		raise(SIGABRT);
-//	}
 }
 
 void WorldSimulator::setCarGoal(COORD car_goal) {

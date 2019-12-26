@@ -36,19 +36,12 @@ find_package(catkin REQUIRED COMPONENTS
   msg_builder
 )
 
-find_package(OpenCV 4.1.0 REQUIRED)
-set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};~/libtorch")
-find_package(Torch REQUIRED)
-
 include_directories(
    ${catkin_INCLUDE_DIRS}
-   ${OpenCV_INCLUDE_DIRS}
-   ${TORCH_INCLUDE_DIRS}
    src/Porca/src
    src/HypDespot/include/
    src/HypDespot/include/despot/
    src/planner/
-   src/planner/GPU_Car_Drive/
    ../crowd_pomdp_planner/src/
 )
  
@@ -57,7 +50,7 @@ FILE(GLOB LIBRVO_SRCS src/Porca/src/*.cpp)
 catkin_package(
   INCLUDE_DIRS src/planner/
   LIBRARIES car_hyp_despot
-  CATKIN_DEPENDS roscpp msg_builder # query_nn #std_msgs
+  CATKIN_DEPENDS roscpp msg_builder 
   DEPENDS CUDA
 )
 
@@ -140,16 +133,10 @@ STATIC
   src/planner/coord.cpp                  
   src/planner/math_utils.cpp
   src/planner/ped_pomdp.cpp
-  src/planner/neural_prior.cpp
+  src/planner/default_prior.cpp
   src/planner/WorldModel.cpp
   src/planner/custom_particle_belief.cpp  
   src/planner/param.cpp
-  src/planner/GPU_Car_Drive/GPU_Car_Drive.cu     
-  src/planner/GPU_Car_Drive/GPU_LowerBoundPolicy.cu
-  src/planner/GPU_Car_Drive/GPU_Init.cu         
-  src/planner/GPU_Car_Drive/GPU_Path.cu
-  src/planner/GPU_Car_Drive/GPU_CarUpperBound.cu  
-  src/planner/GPU_Car_Drive/GPU_param.cu  
 )
 
 add_dependencies("${PROJECT_NAME}" ${catkin_EXPORTED_TARGETS})
@@ -167,14 +154,4 @@ target_compile_definitions(${PROJECT_NAME}
 target_link_libraries("${PROJECT_NAME}"
   ${TinyXML_LIBRARIES}
 )
-
-
-# message("catkin_EXPORTED_LIBRARIES: "${catkin_EXPORTED_LIBRARIES})
-#include(CMakePackageConfigHelpers)
-#configure_package_config_file("cmake/DespotConfig.cmake.in"
-#  "${CMAKE_CURRENT_BINARY_DIR}/DespotConfig.cmake"
-#  INSTALL_DESTINATION "${CONFIG_INSTALL_PATH}"
-#  PATH_VARS INCLUDE_INSTALL_PATH
-#)
-
 

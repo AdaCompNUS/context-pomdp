@@ -2,14 +2,6 @@
 #define PRIOR_H
 #include <despot/planner.h>
 
-//#ifndef __CUDACC__
-#include <torch/script.h> // One-stop header.
-//#include <ATen/ATen.h>
-#include <torch/torch.h>
-// #include "torch/csrc/jit/ivalue.h"
-
-//#endif
-
 using namespace std;
 
 using namespace despot;
@@ -86,42 +78,17 @@ public:
 		return s;
 	}
 
-
-//	virtual const std::vector<double>& ComputePreference() = 0;
-//
-//	virtual double ComputeValue()=0;
-
 	const std::vector<double>& action_probs() const;
 
-
 public:
-//#ifndef __CUDACC__
-
-	// lets drive
-	virtual void Process_history(despot::VNode*, int) = 0;
-	virtual std::vector<torch::Tensor> Process_history_input(despot::VNode* cur_node) = 0;
-	virtual std::vector<torch::Tensor> Process_nodes_input(const std::vector<despot::VNode*>& vnodes,
-			const std::vector<State*>& vnode_states) = 0;
-//	virtual torch::Tensor Combine_images(const at::Tensor& node_image, const at::Tensor& hist_images) = 0;
-	virtual void Compute(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode) =0;
-	virtual void ComputePreference(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode) =0;
-
-	virtual void ComputeValue(vector<torch::Tensor>& images, vector<despot::VNode*>& vnode) =0;
 
 	virtual std::vector<ACT_TYPE> ComputeLegalActions(const State* state, const DSPOMDP* model) = 0;
 
-	virtual void Record_hist_len() = 0;
+	virtual void DebugHistory(string msg) = 0;
 
-	virtual void print_prior_actions(ACT_TYPE) = 0;
+	virtual void record_cur_history()=0;
 
-	virtual void Clear_hist_timestamps() = 0;
-
-	virtual void DebugHistory(string msg)=0;
-
-	virtual void Get_force_steer_action(despot::VNode* vnode, int& opt_act_start, int& opt_act_end) = 0;
-
-//#endif
-
+	virtual void compare_history_with_recorded()=0;
 
 public:
 	static std::vector<SolverPrior*> nn_priors;
@@ -131,13 +98,6 @@ public:
 	static bool prior_force_acc;
 
 public:
-    static std::chrono::time_point<std::chrono::system_clock> init_time_;
-
-	static double get_timestamp();
-	static void record_init_time();
-
-	virtual void record_cur_history()=0;
-	virtual void compare_history_with_recorded()=0;
 
 	void prior_id(int id){
 		prior_id_ = id;
@@ -150,28 +110,6 @@ public:
 public:
 	ACT_TYPE searched_action;
 	ACT_TYPE default_action;
-
-	virtual void root_car_pos(double x, double y) = 0;
-
-	virtual at::Tensor Process_track_state_to_map_tensor(const State* s) = 0;
-	virtual at::Tensor Process_tracked_state_to_car_tensor(const State* s) = 0;
-
-	virtual at::Tensor last_car_tensor() = 0;
-	virtual void add_car_tensor(at::Tensor) = 0;
-
-	virtual at::Tensor last_map_tensor() = 0;
-	virtual void add_map_tensor(at::Tensor) = 0;
-
-	virtual void Add_tensor_hist(const State* s) = 0;
-	virtual void Trunc_tensor_hist(int size) = 0;
-
-	virtual int Tensor_hist_size() = 0;
-
-	virtual	void Check_force_steer(int action, int default_action) = 0;
-
-	virtual void Check_force_steer(double car_heading, double path_heading, double car_vel) = 0;
-
-	virtual bool Check_high_uncertainty(despot::VNode* node) = 0 ;
 
 };
 

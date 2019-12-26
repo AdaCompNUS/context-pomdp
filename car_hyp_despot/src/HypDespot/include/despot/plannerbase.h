@@ -64,7 +64,6 @@ enum OptionIndex {
 	E_EXP_MODE,
 	E_THREAD_GAP,
 	E_SWITCH_THRESH,
-	E_NN_PRIOR
 };
 
 option::Descriptor* BuildUsage(string lower_bounds_str,
@@ -136,8 +135,6 @@ const option::Descriptor usage[] =
 						"  \t--world <arg>  \tWorld type (pomdp, simulator, or real)." },
 				{ E_GPU, 0, "", "GPU", option::Arg::Required,
 				    "  \t--GPU <arg>  \tEnable GPU support (default false)." },
-				{ E_NN_PRIOR, 0, "", "nn", option::Arg::Required,
-					"  \t--nn <arg>  \tUse NN prior in search (default false)." },
 				{ E_GPUID, 0, "", "GPUID", option::Arg::Required,
 					"  \t--GPUID <arg>  \tChoose GPU to use (default 0)." },
 				{ E_CPU, 0, "", "CPU", option::Arg::Required,

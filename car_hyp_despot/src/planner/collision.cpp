@@ -81,7 +81,7 @@ bool inCollision(double ped_x, double ped_y, double car_x, double car_y, double 
 		side_margin = car_width / 2.0 + side_safe_margin;
 		front_margin = 3.6 + safe_margin;
 		back_margin = 0.8 + back_safe_margin;
-	} else if(ModelParams::car_model == "carla") {
+	} else if(ModelParams::car_model == "summit") {
 		double expand_size = (expand)? PED_SIZE: 0.0;
 		side_margin = ModelParams::CAR_WIDTH / 2.0 + CAR_SIDE_MARGIN + expand_size;
 		front_margin = ModelParams::CAR_FRONT + CAR_FRONT_MARGIN + expand_size;
@@ -156,7 +156,7 @@ bool inRealCollision(double Mx, double My, double Hx, double Hy, double Ctheta, 
 		side_margin = car_width / 2.0 + side_safe_margin;
 		front_margin = 3.6 + safe_margin;
 		back_margin = 0.8 + back_safe_margin;
-	} else if(ModelParams::car_model == "carla") {
+	} else if(ModelParams::car_model == "summit") {
 		double expand_size = (expand)? PED_SIZE: 0.0;
 		side_margin = ModelParams::CAR_WIDTH / 2.0 + expand_size;
 		front_margin = ModelParams::CAR_FRONT + expand_size;

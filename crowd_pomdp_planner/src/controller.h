@@ -151,7 +151,7 @@ public:
 public: // lets_drive
 	static int b_use_drive_net_;
 	static int gpu_id_;
-	static int carla_port_;
+	static int summit_port_;
     static float time_scale_; // scale down the speed of time, value < 1.0
     static std::string model_file_;
     static std::string value_model_file_;
@@ -160,15 +160,17 @@ private:
 
 	SolverPrior* prior_;
 
-	void CreateNNPriors(DSPOMDP* model);
 	bool RunPreStep(despot::Solver* solver, World* world, Logger* logger);
 	void PredictPedsForSearch(State* search_state);
 	void UpdatePriors(const State* cur_state, State* search_state);
 
-	void TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len);
+	void TruncPriors(int cur_search_hist_len);
 	void CheckCurPath();
 
 	void setCarGoal(COORD car_goal);
+
+	void CreateNNPriors(DSPOMDP* model);
+
 private:
 	Path path_from_topic;
 };

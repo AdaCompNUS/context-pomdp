@@ -14,7 +14,7 @@
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Path.h>
 
-#include "neural_prior.h"
+
 
 //#include <pomdp_path_planner/GetPomdpPath.h>
 //#include <pomdp_path_planner/PomdpPath.h>
@@ -68,7 +68,7 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 
     n.param("use_drivenet", Controller::b_use_drive_net_, 0);
     n.param("gpu_id", Controller::gpu_id_, 0);
-    n.param<int>("carla_port", Controller::carla_port_, 0);
+    n.param<int>("summit_port", Controller::summit_port_, 0);
     n.param<std::string>("model", Controller::model_file_, "");
     n.param<std::string>("val_model", Controller::value_model_file_, "");
 
@@ -82,7 +82,7 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
     cerr << "-use_drivenet " << Controller::b_use_drive_net_ << endl;
     cerr << "-model " << Controller::model_file_ << endl;
     cerr << "-time_scale " << Controller::time_scale_ << endl;
-    cerr << "-carla_port " << Controller::carla_port_ << endl;
+    cerr << "-summit_port " << Controller::summit_port_ << endl;
     cerr << "-map_location " << Controller::map_location_ << endl;
 
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
@@ -110,7 +110,7 @@ PedPomdpNode::PedPomdpNode(int argc, char** argv)
 		cout << "car goal: " << controller->goalx_ << " " << controller->goaly_ << endl;
 	}
 
-    logi << " PedPomdpNode constructed at the " <<  SolverPrior::get_timestamp() << "th second" << endl;
+    logi << " PedPomdpNode constructed at the " <<  Globals::ElapsedTime() << "th second" << endl;
 
     controller->RunPlanning(argc, argv);
 
@@ -125,7 +125,7 @@ PedPomdpNode::~PedPomdpNode()
 
 int main(int argc, char** argv)
 {
-    SolverPrior::record_init_time();
+    Globals::RecordStartTime();
 
     // cout<< __FUNCTION__ <<"@" << __LINE__<< endl;
 

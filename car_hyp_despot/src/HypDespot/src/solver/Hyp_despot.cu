@@ -348,34 +348,10 @@ void DESPOT::CalExplorationValue(Shared_QNode* node){
 	double parent_weight = ((QNode*)node)->parent()->Weight();
 
 	if(Globals::config.exploration_constant>0){
-		if(!Globals::config.use_prior){// UCT
-			node->exploration_bonus = Globals::config.exploration_constant *
-				sqrt(log(static_cast<Shared_VNode*>(((QNode*)node)->parent())->visit_count_*
-						max( parent_weight * Globals::config.num_scenarios,1.1))
-				/(node->visit_count_*max( node_weight * Globals::config.num_scenarios,1.1)));
-
-		}else if (Globals::config.use_prior) {// PUCT
-
-//			cout << "cal bonus 2 " << endl;
-
-
-			logv << "PUCT for qnode at level " << node->parent()->depth() << endl;
-
-			logv << "PUCT for qnode " << node << " c_o=" << Globals::config.exploration_constant <<
-					" parent visit " << static_cast<Shared_VNode*>(((QNode*)node)->parent())->visit_count_ <<
-					" visit " << node->visit_count_ <<
-					" parent num_particles " << max(((QNode*)node)->parent()->Weight()*Globals::config.num_scenarios,1.1) <<
-					" num_particles " << max(((QNode*)node)->Weight()*Globals::config.num_scenarios,1.1) <<
-					" prior " << node->prior_probability() << endl;
-
-//			double num_visiting_scenarios =
-			node->exploration_bonus= Globals::config.exploration_constant *
-					node->prior_probability() *
-				sqrt(static_cast<Shared_VNode*>(((QNode*)node)->parent())->visit_count_*
-						max( parent_weight * Globals::config.num_scenarios,1.1)) /
-				((node->visit_count_* max( node_weight * Globals::config.num_scenarios,1.1)) + 1);
-
-		}
+		node->exploration_bonus = Globals::config.exploration_constant *
+			sqrt(log(static_cast<Shared_VNode*>(((QNode*)node)->parent())->visit_count_*
+					max( parent_weight * Globals::config.num_scenarios,1.1))
+			/(node->visit_count_*max( node_weight * Globals::config.num_scenarios,1.1)));
 
 		if(node_weight > 0)
 			node->exploration_bonus*= node_weight;

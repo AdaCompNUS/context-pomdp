@@ -1,4 +1,0 @@
-# install cv2 to the current python directory
-pip install opencv-contrib-python
-# after that, add the path to the current python packages to the $PYTHONPATHS
-# export PYTHONPATH="~/workspace/bts_rl/lib/python3.5/site-packages":$PYTHONPATH$

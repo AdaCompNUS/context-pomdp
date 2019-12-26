@@ -31,23 +31,15 @@ find_package(catkin REQUIRED COMPONENTS
   tf
 )
 
-set(CMAKE_PREFIX_PATH  "${CMAKE_PREFIX_PATH};~/libtorch")
-find_package(Torch REQUIRED)  
-find_package(OpenCV 4.1.0 REQUIRED)
-
-
 catkin_package(
   CATKIN_DEPENDS geometry_msgs msg_builder car_hyp_despot  roscpp
-  # DEPENDS TORCH OpenCV CUDA
-  DEPENDS OpenCV CUDA
+  DEPENDS CUDA
 )
 
 
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  ${TORCH_INCLUDE_DIRS}
-  ${OpenCV_INCLUDE_DIRS}
   ../car_hyp_despot/src/Porca/src/
   ../car_hyp_despot/src/planner/
   ../car_hyp_despot/src/HypDespot/include/
@@ -78,8 +70,6 @@ set_target_properties( ped_pomdp
 
 target_link_libraries(ped_pomdp
   car_hyp_despot
-  ${TORCH_LIBRARIES}
-  ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
 )
 
@@ -105,14 +95,10 @@ endforeach()
 
 target_link_libraries(local_frame
   car_hyp_despot
-  ${TORCH_LIBRARIES}
-  ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
 )
 
 target_link_libraries(vel_publisher
   car_hyp_despot
-  ${TORCH_LIBRARIES}
-  ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
 )

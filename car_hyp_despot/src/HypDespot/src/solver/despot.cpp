@@ -65,7 +65,6 @@ DESPOT::DESPOT(const DSPOMDP* model, ScenarioLowerBound* lb,
 	model_ = model;
 
 	use_GPU_ = Globals::config.useGPU;
-	use_nn_prior = Globals::config.use_prior;
 
 	cout<<"DESPOT GPU mode "<< use_GPU_ << endl;
 
@@ -107,10 +106,6 @@ VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
 
 	int hist_size = history.Size();
 
-	int prior_hist_size = 0;
-	if(Globals::config.use_prior)
-		prior_hist_size = SolverPrior::nn_priors[0]->Size(true);
-
 	bool DoPrint = false;
 	float weu = 0;
 	do {
@@ -119,11 +114,9 @@ VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
 			statistics->longest_trial_length = cur->depth();
 		}
 
-		if (!Globals::config.use_prior){
-			double start1 = clock();
-			ExploitBlockers(cur);
-			BlockerCheckTime += double(clock() - start1) / CLOCKS_PER_SEC;
-		}
+		double start1 = clock();
+		ExploitBlockers(cur);
+		BlockerCheckTime += double(clock() - start1) / CLOCKS_PER_SEC;
 
 		if (Gap(cur) == 0) {
 			break;
@@ -189,12 +182,6 @@ VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
 
 		cur = next;
 		history.Add(qstar->edge(), cur->edge());
-		if (Globals::config.use_prior){
-			State* cur_sample_state = cur->particles()[0];
-			SolverPrior::nn_priors[0]->Add_in_search(qstar->edge(), cur_sample_state);
-			logv << __FUNCTION__ << " add history search state of ts " <<
-					static_cast<PomdpState*>(cur_sample_state)->time_stamp << endl;
-		}
 
 		weu = WEU(cur);
 
@@ -204,12 +191,10 @@ VNode* DESPOT::Trial(VNode* root, RandomStreams& streams,
 	if (DoPrint)cout << "Debug end trial: WEU=" << WEU(cur) << endl;
 
 	history.Truncate(hist_size);
-	if(Globals::config.use_prior){
-		SolverPrior::nn_priors[0]->Truncate(prior_hist_size, true);
-	}
 
 	return cur;
 }
+
 Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
                             ScenarioLowerBound* lower_bound, ScenarioUpperBound* upper_bound,
                             const DSPOMDP* model, History& history, bool& Expansion_done,
@@ -218,13 +203,8 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 	Shared_VNode* cur = root;
 
 	int hist_size = history.Size();
-	int prior_hist_size = 0;
-
 	int threadID=MapThread(this_thread::get_id());
 	int trial_expansion_count = 0;
-
-	if(Globals::config.use_prior)
-		prior_hist_size = SolverPrior::nn_priors[threadID]->Size(true);
 
 	do {
 		logd << "Level " << cur->depth() << " start" << endl;
@@ -234,11 +214,9 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			statistics->Update_longest_trial_len(cur->depth());
 		}
 
-		if (!Globals::config.use_prior){
-			auto start1 = Time::now();
-			ExploitBlockers(cur);
-			BlockerCheckTime += Globals::ElapsedTime(start1);
-		}
+		auto start1 = Time::now();
+		ExploitBlockers(cur);
+		BlockerCheckTime += Globals::ElapsedTime(start1);
 
 		if (Gap(cur) == 0) {
 			Globals::Global_print_value(this_thread::get_id(), 1,
@@ -298,21 +276,6 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 			raise(SIGABRT);
 		}
 
-		// lets_drive
-		if (Globals::config.use_prior){
-
-			lock_guard < mutex > lck(qstar->GetMutex());
-
-			if (!qstar->prior_values_ready()){
-
-				ComputePriorValue(qstar, model);
-
-				qstar->prior_values_ready(true);
-
-				InitChildrenLowerBounds(qstar, lower_bound, model, streams, history);
-			}
-		}
-
 		try {
 			next = static_cast<Shared_VNode*>(SelectBestWEUNode(qstar, despot_thread));
 			if (next != NULL) {
@@ -344,31 +307,11 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
 		}
 		cur = next;
 		history.Add(qstar->edge(), cur->edge());
-		if (Globals::config.use_prior){
-			State* cur_sample_state = cur->particles()[0];
-			SolverPrior::nn_priors[threadID]->Add_in_search(qstar->edge(), cur_sample_state);
-
-			logv << __FUNCTION__ << " add history search state of ts " <<
-					static_cast<PomdpState*>(cur_sample_state)->time_stamp << endl;
-		}
-
 	} while (cur->depth() < Globals::config.search_depth
 	         && WEU((VNode*) cur) > 0 &&
 	         !Globals::Timeout(Globals::config.time_per_move));
-  
-//  printf( "Termination of trial-t%d: WEU = %f, timeout = %d, expansion_count= %d, depth = %d\n",
-//		  threadID,
-//		  WEU((VNode*) cur),
-//		  Globals::Timeout(Globals::config.time_per_move),
-//		  trial_expansion_count,
-//		  cur->depth());
 
 	history.Truncate(hist_size);
-	if(Globals::config.use_prior){
-		SolverPrior::nn_priors[threadID]->Truncate(prior_hist_size, true);
-		SolverPrior::nn_priors[threadID]->Trunc_tensor_hist(prior_hist_size);
-	}
-
 	return cur;
 }
 void DESPOT::ExploitBlockers(VNode* vnode) {
@@ -585,8 +528,6 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		statistics->num_particles_before_search = model->NumActiveParticles();
 	}
 
-	Globals::RecordStartTime();
-
 	double used_time = 0;
 	double explore_time = 0;
 	double backup_time = 0;
@@ -604,7 +545,6 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		if (Globals::config.exploration_mode == UCT)
 			static_cast<Shared_VNode*>(root)->visit_count_ = 1.1;
 
-		// if (Globals::config.use_prior)
 		ComputeLegalActions(root, model);
 	} else
 		root = new VNode(particles, particleIDs);
@@ -613,38 +553,9 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		PrepareGPUDataForRoot(root, model, particleIDs, particles);
 	}
 
-	if(Globals::config.use_prior){
-
-		logi << "INFO: Clearing hisoty timestamps " << endl;
-
-		for(int prior_ID = 0 ; prior_ID < SolverPrior::nn_priors.size(); prior_ID++){
-			SolverPrior::nn_priors[prior_ID]->Clear_hist_timestamps();
-			SolverPrior::nn_priors[prior_ID]->Record_hist_len();
-			auto& car_pos = static_cast<PomdpState*>(particles[0])->car.pos;
-			SolverPrior::nn_priors[prior_ID]->root_car_pos(car_pos.x, car_pos.y);
-		}
-
-		logi << "INFO: Processing root images " << endl;
-		// Convert the current history to nn input images
-
-		std::vector<torch::Tensor> hist_images = SolverPrior::nn_priors[0]->Process_history_input(root);
-
-		vector<despot::VNode*> single_node_map;
-		single_node_map.push_back(root);
-
-		logi << "Querying nn for root " << endl;
-		// Initialize the root node by querying the nn
-		SolverPrior::nn_priors[0]->Compute(hist_images, single_node_map);
-	}
-
-//	used_time = Globals::ElapsedTime();
-//	cout << std::setprecision(5) << "Root data preperation in " << used_time << " s" << endl;
-
 	logv << "[DESPOT::ConstructTree] START - Initializing lower and upper bounds at the root node.";
 	if (use_GPU_){
 		GPU_InitBounds(root, lower_bound, upper_bound, model, streams, history);
-//		used_time = Globals::ElapsedTime();
-//		cout << std::setprecision(5) << "Root GPU_InitBounds in " << used_time << " s" << endl;
 	}
 	else
 		InitBounds(root, lower_bound, upper_bound, streams, history, true);
@@ -815,53 +726,11 @@ void DESPOT::Compare() {
 
 void DESPOT::InitLowerBound(VNode* vnode, ScenarioLowerBound* lower_bound,
                             RandomStreams& streams, History& history, bool b_init_root) {
-  logv << __FUNCTION__ << endl;
-	/*if (Globals::config.use_prior && !b_init_root){
-		int prior_id = 0;
-		if (Globals::config.use_multi_thread_){
-			prior_id=MapThread(this_thread::get_id());
-		}
+	logv << __FUNCTION__ << endl;
 
-		ValuedAction move;
-		// Initialize the value
-		assert(SolverPrior::nn_priors[prior_id]);
-		move.value = SolverPrior::nn_priors[prior_id]->ComputeValue();
-		move.action = -1; // fake action
-	}*/
-	ValuedAction move;
-
-	if (Globals::config.use_prior){
-
-		// Initialize the value
-		logv << "[InitLowerBound] Using prior for lower bound value: node "<<vnode<<" at depth " << vnode->depth()
-				<< " value " << vnode->prior_value() << endl;
-		move.value = vnode->prior_value() * vnode->Weight();
-		move.action =vnode->max_prob_action();
-
-		int prior_id = 0;
-		if (Globals::config.use_multi_thread_){
-			prior_id=MapThread(this_thread::get_id());
-		}
-
-		if (vnode->depth()==0){
-			logv << "recording SolverPrior::nn_priors[prior_id]->default_action" << endl;
-			SolverPrior::nn_priors[prior_id]->default_action = vnode->max_prob_action();
-
-//			logi << "default action of root node " << move.action << "(" << move.value << ")"
-//					<< "from " << vnode->legal_actions().size() << " legal actions"<< endl;
-//			vnode->print_action_probs();
-		}
-
-		logv << "vnode "<< vnode << " at level "<< vnode->depth() << " prior value=" << move.value << ", ";
-
-		SolverPrior::nn_priors[prior_id]->print_prior_actions(move.action);
-	}
-	else{
-		streams.position(vnode->depth());
-		move = lower_bound->Value(vnode->particles(), streams,
+	streams.position(vnode->depth());
+	ValuedAction move = lower_bound->Value(vnode->particles(), streams,
 											   history);
-	}
-
 	move.value *= Globals::Discount(vnode->depth());
 
 	vnode->default_move(move);
@@ -877,28 +746,15 @@ void DESPOT::InitUpperBound(VNode* vnode, ScenarioUpperBound* upper_bound,
 	upper = upper * Globals::Discount(vnode->depth())
 	        - Globals::config.pruning_constant;
 	vnode->upper_bound(upper);
-
-//	if (vnode->depth()>1)
-//		logi << "New node upper bound " << upper << endl;
 }
 
 void DESPOT::InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
                         ScenarioUpperBound* upper_bound, RandomStreams& streams,
                         History& history, bool b_init_root) {
-  logv << __FUNCTION__ << endl;
-	//if(vnode->depth()==3)
-	//	cout<<vnode->depth()<<" "<<history.Size()<<" "<<streams.position()<<endl;
+	logv << __FUNCTION__ << endl;
 	InitLowerBound(vnode, lower_bound, streams, history, b_init_root);
 
 	InitUpperBound(vnode, upper_bound, streams, history);
-
-  // if (vnode->depth()==0){
-//      // This is a patch!!!!!!
-//      // The policy network doesn't has a value head yet,
-//      // so we are not able to provide an initial lower bound for the root.
-//      vnode->lower_bound(vnode->Weight() * (vnode->upper_bound() - 5.0));
-  //cout << "roor node default move: " << vnode->default_move().action << endl;
-  //}
 
 	logv << "[InitBounds] node "<<vnode<<" at level " << vnode->depth() <<
 			" neural lb=" << vnode->lower_bound() << " ub=" <<
@@ -1400,169 +1256,41 @@ ValuedAction DESPOT::OptimalAction(VNode* vnode) {
 	ValuedAction astar(-1, Globals::NEG_INFTY);
 	QNode * best_qnode = NULL;
 
-	if (!Globals::config.use_prior){
+	for (ACT_TYPE action: vnode->legal_actions()) {
+		if (action < vnode->children().size()) {
+			QNode* qnode = vnode->Child(action);
 
-//		for (ACT_TYPE action = 0; action < vnode->children().size(); action++) {
-		for (ACT_TYPE action: vnode->legal_actions()) {
-			if (action < vnode->children().size()) {
-				QNode* qnode = vnode->Child(action);
+	float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
 
-        float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
-  
-        logi << "Children of root node: action: " << qnode->edge() << " visit_count: " << visit <<
-                "  lowerbound: " << qnode->lower_bound() <<
-                "  upperbound: " << qnode->upper_bound() << endl;
+	logi << "Children of root node: action: " << qnode->edge() << " visit_count: " << visit <<
+			"  lowerbound: " << qnode->lower_bound() <<
+			"  upperbound: " << qnode->upper_bound() << endl;
 
-				if (qnode->lower_bound() > astar.value) {
-					astar = ValuedAction(action, qnode->lower_bound());
-					best_qnode = qnode;		//Debug
-				}
+			if (qnode->lower_bound() > astar.value) {
+				astar = ValuedAction(action, qnode->lower_bound());
+				best_qnode = qnode;		//Debug
 			}
-		}
-
-		if (vnode->default_move().value > astar.value + 1e-5) {
-			logi.precision(5);
-			logi << "Searched value "<< astar.value << "(act " << astar.action << ") worse than default move " <<
-					vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug
-			astar = vnode->default_move();
-			logi << "Execute default move: " << astar.action << endl;		//Debug
-			best_qnode = NULL;		//Debug
-		}
-		else if (astar.action != vnode->default_move().action)
-		{
-			logi << "Searched value "<< astar.value << "(act " << astar.action << ") better than default move " <<
-					vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug		//logi.precision(5);
-			cout << "unused default action: " << vnode->default_move().action
-				 << setprecision(5) << "(" << vnode->default_move().value << "), ";		//Debug
-			SolverPrior::nn_priors[0]->print_prior_actions(vnode->default_move().action);
-		}
-		else{
-			logi << "Searched value "<< astar.value << "(act " << astar.action << ") is the same as default move " <<
-				   vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug
 		}
 	}
-	else{ // lets drive
 
-		try{
-
-			float root_visit = static_cast<Shared_VNode*>(vnode)->visit_count_;
-			float score_max = Globals::NEG_INFTY;
-
-//			int opt_act_start = 0, opt_act_end = vnode->children().size();
-
-			if (vnode->children().size() == 0 ){ // no node expanded
-				cout << "No node expanded !!" << endl;
-				logi << "prior_force_steer="<< 1 << endl;
-
-				astar = vnode->default_move();
-				return astar;
-			}
-
-			logi << "prior_discount_optact="<< SolverPrior::prior_discount_optact << endl;
-
-			// first round, free steering
-//			for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++) {
-			for (ACT_TYPE action: vnode->legal_actions()) {
-				QNode* qnode = vnode->Child(action);
-
-				float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
-				float score = qnode->lower_bound() + 0.5 * SolverPrior::prior_discount_optact * sqrt(visit/root_visit);
-
-				// logi << "3" << endl;
-
-				// if (astar.value > -100 && qnode->lower_bound() > astar.value * 0.8) // wrong value
-				// 	score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
-
-				if (qnode->lower_bound() != EMPTY_LB_VALUE) // only print visited nodes
-					logi << "Children of root node: action: " << qnode->edge() <<
-							" visit_count: " << visit <<
-							" upper_bound: " << qnode->upper_bound() <<
-							" lower_bound: " << qnode->lower_bound() <<
-							" prior: " << qnode->prior_probability() <<
-							" visit bonus: " << 0.5 * SolverPrior::prior_discount_optact * sqrt(visit/root_visit) <<
-							" score: " << score << endl;
-
-				if (score > score_max) {
-					astar = ValuedAction(action, qnode->lower_bound());
-					best_qnode = qnode;		//Debug
-					score_max = score;
-				}
-
-			}
-
-			SolverPrior::prior_force_steer = false; // Debugging!! disabling force steer and acc codes.
-			SolverPrior::prior_force_acc = false; // Debugging!! disabling force steer and acc codes.
-
-			if (astar.value <= COL_VALUE_THREAD){
-				cerr << "All actions colliding, using default move" << endl;
-				astar = vnode->default_move();
-			}
-
-			if (!SolverPrior::nn_priors[0]->Check_high_uncertainty(vnode)){
-				SolverPrior::nn_priors[0]->Check_force_steer(astar.action, vnode->default_move().action);
-
-				logi << "prior_force_steer="<< SolverPrior::prior_force_steer << endl;
-				logi << "prior_force_acc="<< SolverPrior::prior_force_acc << endl;
-
-				if (SolverPrior::prior_force_steer){
-
-					if (SolverPrior::prior_force_acc){
-						cout << "Fixing acceleration, using default move" << endl;
-						astar = vnode->default_move();
-					} else {
-						cout << "Recalculating action with fixed steering" << endl;
-
-						// Second round, prior steering
-						score_max = Globals::NEG_INFTY;
-
-						// get the action ids corresponding to the optimal prior steering
-						ACT_TYPE opt_act_start, opt_act_end;
-						SolverPrior::nn_priors[0]->Get_force_steer_action(vnode, opt_act_start, opt_act_end);
-						for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++) {
-							QNode* qnode = vnode->Child(action);
-
-							float visit = static_cast<Shared_QNode*>(qnode)->visit_count_;
-							float score = qnode->lower_bound() + 0.5 * SolverPrior::prior_discount_optact * sqrt(visit/root_visit);
-
-							// logi << "3" << endl;
-
-							// 	score = score - qnode->lower_bound() + astar.value; // reset to current optimal value
-
-							logi << "Children of root node: action: " << qnode->edge() <<
-									" visit_count: " << visit <<
-									" upper_bound: " << qnode->upper_bound() <<
-									" lower_bound: " << qnode->lower_bound() <<
-									" score: " << score << endl;
-
-							if (score > score_max) {
-								astar = ValuedAction(action, qnode->lower_bound());
-								best_qnode = qnode;		//Debug
-								score_max = score;
-							}
-						}
-
-						if (astar.value <= COL_VALUE_THREAD)
-						{
-							cerr << "All actions colliding, using default move" << endl;
-							astar = vnode->default_move();
-						}
-					}
-				}
-			}
-
-
-			if (astar.action != vnode->default_move().action){
-				logi << "Searched value "<< astar.value << "(act " << astar.action << "), default value " <<
-						vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;
-				cout << "unused default action: " << vnode->default_move().action
-						<< setprecision(5) << "(" << vnode->default_move().value << "), ";
-				SolverPrior::nn_priors[0]->print_prior_actions(vnode->default_move().action);
-			}
-		} 
-		catch(std::exception e){
-			cerr << "Error: " << e.what() << endl;
-			raise(SIGABRT);
-		}
+	if (vnode->default_move().value > astar.value + 1e-5) {
+		logi.precision(5);
+		logi << "Searched value "<< astar.value << "(act " << astar.action << ") worse than default move " <<
+				vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug
+		astar = vnode->default_move();
+		logi << "Execute default move: " << astar.action << endl;		//Debug
+		best_qnode = NULL;		//Debug
+	}
+	else if (astar.action != vnode->default_move().action)
+	{
+		logi << "Searched value "<< astar.value << "(act " << astar.action << ") better than default move " <<
+				vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug		//logi.precision(5);
+		cout << "unused default action: " << vnode->default_move().action
+			 << setprecision(5) << "(" << vnode->default_move().value << ")";		//Debug
+	}
+	else{
+		logi << "Searched value "<< astar.value << "(act " << astar.action << ") is the same as default move " <<
+			   vnode->default_move().value << "(act " << vnode->default_move().action << ")" << endl;		//Debug
 	}
 
 	if (vnode->lower_bound() < -200/*false*/) {
@@ -1630,84 +1358,56 @@ VNode* DESPOT::SelectBestWEUNode(QNode* qnode, bool despot_thread) {
 	if (despot_thread)
 		use_exploration_value = false;
 
-	if(/*Globals::config.use_prior*/false){
-		int num_vnodes = qnode->children().size();
+	map<OBS_TYPE, VNode*>& children = qnode->children();
+	for (map<OBS_TYPE, VNode*>::iterator it = children.begin();
+			it != children.end(); it++) {
+		VNode* vnode = it->second;
 
-		if(num_vnodes > 0){
-			int node_id = Random::RANDOM.NextInt(num_vnodes);
-			vstar = qnode->children()[node_id];
-		} else {
-			vstar = NULL;
-		}
-	}
-	else{
-
-		map<OBS_TYPE, VNode*>& children = qnode->children();
-		for (map<OBS_TYPE, VNode*>::iterator it = children.begin();
-				it != children.end(); it++) {
-			VNode* vnode = it->second;
-
-			if (vnode){
-				double weu;
-				if (Globals::config.use_multi_thread_)
-					if (use_exploration_value)
-						weu = WEU(static_cast<Shared_VNode*>(vnode));
-					else
-						weu = WEU(vnode);
+		if (vnode){
+			double weu;
+			if (Globals::config.use_multi_thread_)
+				if (use_exploration_value)
+					weu = WEU(static_cast<Shared_VNode*>(vnode));
 				else
 					weu = WEU(vnode);
-				if (weu >= weustar) {
-					weustar = weu;
-					vstar = vnode->vstar;
-				}
-
-				if (FIX_SCENARIO == 1) {
-					if (!Globals::config.use_multi_thread_)
-					{
-						cout.precision(4);
-						cout << "thread " << 0 << " " << "   Compare children vnode" << " get old node"
-							 << " at depth " << vnode->depth()
-							 << ": weight=" << vnode->Weight() << ", reward=-"
-							 << ", lb=" << vnode->lower_bound() / vnode->Weight() <<
-							 ", ub=" << vnode->upper_bound() / vnode->Weight() <<
-							 ", uub=" << vnode->utility_upper_bound() / vnode->Weight() <<
-							 ", edge=" << vnode->edge() <<
-							 ", v_loss=" << 0;
-						if (vnode->Weight() == 1.0 / Globals::config.num_scenarios) cout << ", particle_id=" << "-"/*vnode->particles()[0]->scenario_id*/;
-						cout << ", WEU=" << WEU(vnode);
-						cout << endl;
-					}
-					else
-					{
-						float weight = ((VNode*) vnode)->Weight();
-
-						Globals::Global_print_node(this_thread::get_id(), vnode,
-								   ((VNode*) vnode)->depth(), 0,
-								   ((VNode*) vnode)->lower_bound(),
-								   ((VNode*) vnode)->upper_bound(),
-								   ((VNode*) vnode)->utility_upper_bound(),
-								   static_cast<Shared_VNode*>(vnode)->exploration_bonus,
-								   ((VNode*) vnode)->Weight(),
-								   ((VNode*) vnode)->edge(),
-								   WEU(((VNode*) vnode)),
-								   "  Compare children vnode");
-					}
-				}
+			else
+				weu = WEU(vnode);
+			if (weu >= weustar) {
+				weustar = weu;
+				vstar = vnode->vstar;
 			}
 
-			if(Globals::config.use_prior){
-	//			float weight = ((VNode*) vnode)->Weight();
-	//
-	//			Globals::Global_print_node(this_thread::get_id(), vnode,
-	//				   ((VNode*) vnode)->depth(), 0,
-	//				   ((VNode*) vnode)->lower_bound(),
-	//				   ((VNode*) vnode)->upper_bound(),
-	//				   ((VNode*) vnode)->utility_upper_bound(),
-	//				   static_cast<Shared_VNode*>(vnode)->exploration_bonus,
-	//				   ((VNode*) vnode)->Weight(),
-	//				   ((VNode*) vnode)->edge(),
-	//				   WEU(((VNode*) vnode)),
-	//				   "  Compare children vnode");
+			if (FIX_SCENARIO == 1) {
+				if (!Globals::config.use_multi_thread_)
+				{
+					cout.precision(4);
+					cout << "thread " << 0 << " " << "   Compare children vnode" << " get old node"
+						 << " at depth " << vnode->depth()
+						 << ": weight=" << vnode->Weight() << ", reward=-"
+						 << ", lb=" << vnode->lower_bound() / vnode->Weight() <<
+						 ", ub=" << vnode->upper_bound() / vnode->Weight() <<
+						 ", uub=" << vnode->utility_upper_bound() / vnode->Weight() <<
+						 ", edge=" << vnode->edge() <<
+						 ", v_loss=" << 0;
+					if (vnode->Weight() == 1.0 / Globals::config.num_scenarios) cout << ", particle_id=" << "-"/*vnode->particles()[0]->scenario_id*/;
+					cout << ", WEU=" << WEU(vnode);
+					cout << endl;
+				}
+				else
+				{
+					float weight = ((VNode*) vnode)->Weight();
+
+					Globals::Global_print_node(this_thread::get_id(), vnode,
+							   ((VNode*) vnode)->depth(), 0,
+							   ((VNode*) vnode)->lower_bound(),
+							   ((VNode*) vnode)->upper_bound(),
+							   ((VNode*) vnode)->utility_upper_bound(),
+							   static_cast<Shared_VNode*>(vnode)->exploration_bonus,
+							   ((VNode*) vnode)->Weight(),
+							   ((VNode*) vnode)->edge(),
+							   WEU(((VNode*) vnode)),
+							   "  Compare children vnode");
+				}
 			}
 		}
 	}
@@ -1761,9 +1461,6 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 	if (despot_thread)
 		use_exploration_value = false;
 
-	if (Globals::config.use_prior)
-		use_exploration_value = true;
-
 //	int opt_act_start = 0;
 //	int opt_act_end = vnode->children().size();
 	// if(vnode->legal_actions().size() != vnode->children().size()){
@@ -1778,21 +1475,10 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 		prior_ID=MapThread(this_thread::get_id());
 	}
 
-	if (Globals::config.use_prior && /*vnode->depth()==0 &&*/ SolverPrior::nn_priors[0]->prior_force_steer){
-  //cout << "best upper 1" << endl;
-		// SolverPrior::nn_priors[prior_ID]->Get_force_steer_action(vnode, opt_act_start, opt_act_end);
-	}
-
-  //cout << "best upper 2" << endl;
-
-
-//	for (ACT_TYPE action = opt_act_start; action < opt_act_end; action++){
 	for (ACT_TYPE action: vnode->legal_actions()) {
-  // cout << "best upper 3" << endl;
 
 		Shared_QNode* qnode =
 		    static_cast<Shared_QNode*>(((VNode*) vnode)->Child(action));
-  // cout << "best upper 4, action, qnode" <<action << " "<< qnode<<  endl;
 
 		if (qnode && Globals::config.use_multi_thread_ && Globals::config.exploration_mode == UCT)
 		{
@@ -1800,14 +1486,7 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 				CalExplorationValue(qnode);
 		}
 
-
-  // cout << "best upper 5" << endl;
-
-		if(Globals::config.use_prior && vnode->depth()==0){
-        SolverPrior::nn_priors[prior_ID]->print_prior_actions(action);
-		}
-
-    logv << "comparing level "<< qnode->parent()->depth() << " qnode " << qnode <<
+		logv << "comparing level "<< qnode->parent()->depth() << " qnode " << qnode <<
 					" , upper_bound()= " << qnode->upper_bound(false) <<
 					" , lower_bound()= " << qnode->lower_bound() <<
 					" bonus " << qnode->exploration_bonus << ", ";
@@ -1818,12 +1497,6 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 			astar = action;
 		}
 
-    if(Globals::config.use_prior){
-        if (qnode->prior_probability() > prob_star + 1e-8) {
-            prob_star = qnode->prior_probability();
-            astar_prior = action;
-        }
-    }
 	}
 
 	assert(astar >= 0);
@@ -1834,14 +1507,6 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 		printf("thread %d chose qnode with action %d, address %d;\n",
 			prior_ID, astar, qstar);
 
-  if(Globals::config.use_prior) {
-    assert(astar_prior >= 0);
-    Shared_QNode* qstar_prior = static_cast<Shared_QNode*>(((VNode*) vnode)->Child(astar_prior));
-    if (false)
-      printf("thread %d chose qnode with action %d, prior prob %f, ub %f, bonus %f ;\n          best qnode has action %d, prior prob %f, ub %f, bonus %f\n",
-          prior_ID, astar, qstar->prior_probability_, qstar->upper_bound(false), qstar->exploration_bonus,
-          astar_prior, qstar_prior->prior_probability_, qstar_prior->upper_bound(false), qstar_prior->exploration_bonus);
-	}
 
 	if (Globals::config.exploration_mode == VIRTUAL_LOSS)
 		qstar->exploration_bonus -= CalExplorationValue(((VNode*) vnode)->depth() + 1);
@@ -1850,7 +1515,7 @@ Shared_QNode* DESPOT::SelectBestUpperBoundNode(Shared_VNode* vnode, bool despot_
 		qstar->visit_count_++;
 		CalExplorationValue(qstar);
 	}
-	//cout<<"trace action "<<astar<<endl;
+
 	return qstar;
 }
 
@@ -1905,12 +1570,6 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 	double lower = ((VNode*) vnode)->default_move().value;
 	double upper = ((VNode*) vnode)->default_move().value;
 
-	if (Globals::config.use_prior){
-		lower = Globals::NEG_INFTY;
-		upper = Globals::NEG_INFTY;
-	}
-
-
 //	cout << "1" << endl;
 //	logi << "[Backup] vnode default lb == ub: " << lower << endl;
 
@@ -1949,25 +1608,10 @@ void DESPOT::Update(Shared_VNode* vnode, bool real) {
 
 	}
 
-//	cout << "2" << endl;
-
-
-	if (Globals::config.use_prior){
-      ((VNode*) vnode)->lower_bound(lower);
-//      if (vnode->depth()==0 && std::fabs(vnode->default_move().value + 34.0)< 1e-2 ){
-//          // This is a patch!!!
-//          // The policy network doesn't has a value head yet,
-//          // so we are not able to provide an initial lower bound for the root.
-//          ValuedAction move(((VNode*) vnode)->default_move().action, ((VNode*)
-//          vnode)->lower_bound());
-//          ((VNode*) vnode)->default_move(move);
-//      }
- 	}
- 	else{
-		if (lower > ((VNode*) vnode)->lower_bound()) {
-			((VNode*) vnode)->lower_bound(lower);
-		}
+	if (lower > ((VNode*) vnode)->lower_bound()) {
+		((VNode*) vnode)->lower_bound(lower);
 	}
+
 	if (upper < ((VNode*) vnode)->upper_bound()) {
 		((VNode*) vnode)->upper_bound(upper);
 	}
@@ -2052,14 +1696,8 @@ void DESPOT::Update(Shared_QNode* qnode, bool real) {
 			qnode->exploration_bonus = 0;
 	}
 
-
- 	if (Globals::config.use_prior){
- 		((QNode*) qnode)->lower_bound(lower);
- 	}
- 	else{
-		if (lower > ((QNode*) qnode)->lower_bound()) {
-			((QNode*) qnode)->lower_bound(lower);
-		}
+	if (lower > ((QNode*) qnode)->lower_bound()) {
+		((QNode*) qnode)->lower_bound(lower);
 	}
 
 	if (upper < ((QNode*) qnode)->upper_bound()) {
@@ -2181,149 +1819,21 @@ VNode* DESPOT::FindBlocker(VNode* vnode) {
 	return cur;
 }
 
-//void DESPOT::ComputePrior(vector<QNode*>& qnodes, const DSPOMDP * model){
-//	if (Globals::config.use_prior){
-//
-//		logi << "[ComputePrior] for children qnodes" << endl;
-//
-//		int prior_ID = 0;
-//		if (Globals::config.use_prior){
-//			if (Globals::config.use_multi_thread_){
-//				prior_ID=MapThread(this_thread::get_id());
-//			}
-//		}
-//
-////		VNode* first_vnode = NULL;
-//		vector<VNode*> vnode_collect;
-//		std::vector<State*> node_states;
-//		for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
-//			QNode* qnode = qnodes[action];
-//			map<OBS_TYPE, VNode*>& children = qnode->children();
-//			for (map<OBS_TYPE, VNode* >::iterator it = children.begin();
-//						it != children.end(); it++) {
-//				int rand_id = Random::RANDOM.NextInt(it->second->particles().size());
-//				State* particle = it->second->particles()[rand_id];
-//				node_states.push_back(particle);
-//				vnode_collect.push_back(it->second);
-//
-////				if (first_vnode == NULL)
-////					first_vnode = it->second;
-//			}
-//		}
-//
-//		// Process last 3 steps of history
-//		SolverPrior::nn_priors[prior_ID]->Process_history(qnodes[0]->parent(), 1); // 1 = PARTIAL
-//
-//		// Process into the bach of tensors
-//		logv << "INFO: Processing node images " << endl;
-//		std::vector<torch::Tensor> nn_nodes_batch = SolverPrior::nn_priors[prior_ID]->Process_nodes_input(vnode_collect, node_states);
-//
-//		// Query the nn and initialize the priors in colleccted nodes
-//		logv << "INFO: Querying nn for nodes " << endl;
-//		SolverPrior::nn_priors[prior_ID]->Compute(nn_nodes_batch, vnode_collect);
-//	}
-//}
-
 void DESPOT::ComputeLegalActions(VNode* vnode, const DSPOMDP * model){
-  logv << __FUNCTION__ << endl;
-	if (true/*Globals::config.use_prior*/){
-		logv << "[ComputeLegalActions] for vnode " << vnode << "at depth "
-				<< vnode->depth();
+	logv << __FUNCTION__ << endl;
+	logv << "[ComputeLegalActions] for vnode " << vnode << "at depth "
+			<< vnode->depth();
 
-		int prior_ID = 0;
-		if (Globals::config.use_prior){
-			if (Globals::config.use_multi_thread_){
-				prior_ID=MapThread(this_thread::get_id());
-			}
-		}
-
-		State* state = vnode->particles()[0];
-
-		vnode->legal_actions(SolverPrior::nn_priors[prior_ID]->ComputeLegalActions(state, model));
-
-		logv << " with " << vnode->legal_actions().size() << " legal actions" << endl;
-	}
-  else{
-      std::vector<ACT_TYPE> legal_actions;
-      for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
-        legal_actions.push_back(action);
-      }
-      vnode->legal_actions(legal_actions);
-      logv << " with " << vnode->legal_actions().size() << " legal actions" << endl;
-    }
-}
-
-void DESPOT::ComputePriorPref(VNode* vnode, const DSPOMDP * model){
-  logv << __FUNCTION__ << endl;
-	if (Globals::config.use_prior){
-
-		logv << "[ComputePriorPref] for actions under vnode " << vnode << endl;
-
-		int prior_ID = 0;
-		if (Globals::config.use_prior){
-			if (Globals::config.use_multi_thread_){
-				prior_ID=MapThread(this_thread::get_id());
-			}
-		}
-
-//		VNode* first_vnode = NULL;
-		vector<VNode*> vnode_collect({vnode});
-
-		// Process last 3 steps of history
-		logv << "INFO: Processing history images " << endl;
-		std::vector<torch::Tensor> nn_input = SolverPrior::nn_priors[prior_ID]->Process_history_input(vnode); // 1 = PARTIAL
-
-		// Query the nn and initialize the priors in colleccted nodes
-		logv << "INFO: Querying nn for prior probabilities of the vnode" << endl;
-		SolverPrior::nn_priors[prior_ID]->ComputePreference(nn_input, vnode_collect);
-	}
-}
-
-void DESPOT::ComputePriorValue(QNode* qnode, const DSPOMDP * model){
-  logv << __FUNCTION__ << endl;
-	if (Globals::config.use_prior){
-
-		if (qnode->Weight()==0){
-//			cout << "all particles terminal" << endl;
-			return;
-		}
-
-		logv << "[ComputePriorValue] for chilren vnodes of qstar " << qnode << endl;
-
-		int prior_ID = 0;
-		if (Globals::config.use_prior){
-			if (Globals::config.use_multi_thread_){
-				prior_ID=MapThread(this_thread::get_id());
-			}
-		}
-
-		vector<VNode*> vnode_collect;
-		std::vector<State*> node_states;
-
-		map<OBS_TYPE, VNode*>& children = qnode->children();
-		for (map<OBS_TYPE, VNode* >::iterator it = children.begin();
-					it != children.end(); it++) {
-			int rand_id = Random::RANDOM.NextInt(it->second->particles().size());
-			State* particle = it->second->particles()[rand_id];
-			node_states.push_back(particle);
-			vnode_collect.push_back(it->second);
-		}
-
-		// Process last 3 steps of history
-		SolverPrior::nn_priors[prior_ID]->Process_history(qnode->parent(), 1); // 1 = PARTIAL
-
-//		return; // Debugging
-
-		// Process into the bach of tensors
-		logv << "INFO: Processing node images " << endl;
-
-		std::vector<torch::Tensor> nn_nodes_batch = SolverPrior::nn_priors[prior_ID]->Process_nodes_input(vnode_collect, node_states);
-
-		// Query the nn and initialize the priors in colleccted nodes
-		logv << "INFO: Querying nn for initial value of nodes " << endl;
-		SolverPrior::nn_priors[prior_ID]->ComputeValue(nn_nodes_batch, vnode_collect);
+	int prior_ID = 0;
+	if (Globals::config.use_multi_thread_){
+		prior_ID=MapThread(this_thread::get_id());
 	}
 
+	State* state = vnode->particles()[0];
+
+	vnode->legal_actions(SolverPrior::nn_priors[prior_ID]->ComputeLegalActions(state, model));
+
+	logv << " with " << vnode->legal_actions().size() << " legal actions" << endl;
 }
 
 void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
@@ -2352,24 +1862,11 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 	if (!use_GPU_ || !vnode->PassGPUThreshold())
 		Globals::Global_print_expand(this_thread::get_id(), vnode, vnode->depth(), vnode->edge());
 
-	if (Globals::config.use_prior){
-		// compute prior probabilities for actions
-		ComputePriorPref(vnode, model);
-//		vnode->print_action_probs();
-	}
-
 	for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
 		children.push_back(NULL);
 	}
 
-	if (Globals::config.use_prior && vnode->legal_actions().size() != vnode->prior_action_probs().size()){
-		cerr << "vnode level " << vnode->depth() << " " << vnode->legal_actions().size() << " legal actions, "
-				<< vnode->prior_action_probs().size() << " prior probs " << endl;
-		raise(SIGABRT);
-	}
-	else{
-		logv << "vnode level " << vnode->depth() << " " << vnode->legal_actions().size() << endl;
-	}
+	logv << "vnode level " << vnode->depth() << " " << vnode->legal_actions().size() << endl;
  
 	for(ACT_TYPE action: vnode->legal_actions()){
 		logv << " Legal action " << action << endl;
@@ -2382,23 +1879,9 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 		else
 			qnode = new QNode(vnode, action);
 
-		if (Globals::config.use_prior){
-			logv << "[Expand Vnode] Using prior "<< vnode->prior_action_probs(action) <<
-					" for children qnode "<< qnode << " action "<< action
-					<< ": vnode at depth " << vnode->depth() << endl;
-
-			qnode->prior_probability(vnode->prior_action_probs(action)/*action_probs[action]*/);
-		}
-
-//		children.push_back(qnode);
 		children[action] = qnode;
 	}
 
-	if (Globals::config.use_prior){
-//		vnode->print_action_probs();
-	}
-
-//	for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
 	for(ACT_TYPE action: vnode->legal_actions()){
 		QNode* qnode = children[action];
 
@@ -2412,16 +1895,6 @@ void DESPOT::Expand(VNode* vnode, ScenarioLowerBound* lower_bound,
 		}
 
 	}
-
-//	// lets_drive
-//	ComputePrior(children, model);
-//
-//	if (Globals::config.use_prior){
-//		for (ACT_TYPE action = 0; action < model->NumActions(); action++) {
-//			QNode* qnode = children[action];
-//			InitChildrenBounds(qnode, lower_bound, upper_bound, model, streams, history);
-//		}
-//	}
 
 	if (use_GPU_ && vnode->PassGPUThreshold())
 		GPU_Expand_Action(vnode, lower_bound, upper_bound, model, streams,
@@ -2461,10 +1934,8 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
                     History& history) {
   logv << __FUNCTION__ << endl;
 	int prior_ID = 0;
-	if (Globals::config.use_prior){
-		if (Globals::config.use_multi_thread_){
-			prior_ID=MapThread(this_thread::get_id());
-		}
+	if (Globals::config.use_multi_thread_){
+		prior_ID=MapThread(this_thread::get_id());
 	}
 
 	VNode* parent = qnode->parent();
@@ -2544,8 +2015,8 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 			if (Globals::config.exploration_mode == UCT)
 				static_cast<Shared_VNode*>(vnode)->visit_count_ = 1.1;
 
-      ComputeLegalActions(vnode, model);
-    }
+			ComputeLegalActions(vnode, model);
+		}
 		else
 			vnode = new VNode(partitions[obs], partition_ID,
 			                  parent->depth() + 1, qnode, obs);
@@ -2555,12 +2026,7 @@ void DESPOT::Expand(QNode* qnode, ScenarioLowerBound* lb,
 	}
 	MakeObsNodeTime += Globals::ElapsedTime(start);
 
-
-	if (!Globals::config.use_prior)
-		InitChildrenBounds(qnode, lb, ub, model, streams, history);
-	else{
-		InitChildrenUpperBounds(qnode, ub, model, streams, history);
-	}
+	InitChildrenBounds(qnode, lb, ub, model, streams, history);
 }
 
 void DESPOT::InitChildrenBounds(QNode* qnode, ScenarioLowerBound* lb,

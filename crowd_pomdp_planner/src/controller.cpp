@@ -9,7 +9,6 @@
 #include "pomdp_simulator.h"
 
 #include "custom_particle_belief.h"
-#include "neural_prior.h"
 
 #undef LOG
 #define LOG(lv) \
@@ -22,7 +21,7 @@ using namespace despot;
 
 int Controller::b_use_drive_net_ = 0;
 int Controller::gpu_id_ = 0;
-int Controller::carla_port_ = 2000;
+int Controller::summit_port_ = 2000;
 float Controller::time_scale_ = 1.0;
 
 std::string Controller::model_file_ = "";
@@ -132,7 +131,7 @@ Controller::Controller(ros::NodeHandle& _nh, bool fixed_path,
 	unity_driving_simulator_ = NULL;
 	pomdp_driving_simulator_ = NULL;
 
-	logi << " Controller constructed at the " << SolverPrior::get_timestamp()
+	logi << " Controller constructed at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 }
 
@@ -165,19 +164,11 @@ void Controller::CreateNNPriors(DSPOMDP* model) {
 						unity_driving_simulator_, "NEURAL", false);
 
 		SolverPrior::nn_priors[i]->prior_id(i);
-
-		if (Globals::config.use_prior) {
-//			assert(model_file_ != "");
-//			static_cast<PedNeuralSolverPrior*>(SolverPrior::nn_priors[i])->Load_model(model_file_);
-			assert(value_model_file_ != "");
-			static_cast<PedNeuralSolverPrior*>(SolverPrior::nn_priors[i])->Load_value_model(
-					value_model_file_);
-		}
 	}
 
 	prior_ = SolverPrior::nn_priors[0];
 	logv << "DEBUG: Created solver prior " << typeid(*prior_).name() <<
-			"at ts " << SolverPrior::get_timestamp() << endl;
+			"at ts " << Globals::ElapsedTime() << endl;
 }
 
 World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
@@ -195,16 +186,16 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
 	case UNITY:
 		world = new WorldSimulator(nh, static_cast<DSPOMDP*>(model),
 				Globals::config.root_seed/*random seed*/, pathplan_ahead_,
-				obstacle_file_name_, map_location_, carla_port_,COORD(goalx_, goaly_));
+				obstacle_file_name_, map_location_, summit_port_,COORD(goalx_, goaly_));
 		break;
 	}
-	logi << "WorldSimulator constructed at the " << SolverPrior::get_timestamp()
+	logi << "WorldSimulator constructed at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	if (Globals::config.useGPU)
 		model->InitGPUModel();
 
-	logi << "InitGPUModel finished at the " << SolverPrior::get_timestamp()
+	logi << "InitGPUModel finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	switch (simulation_mode_) {
@@ -223,16 +214,16 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
 
 	//Establish connection with external system
 	world->Connect();
-	logi << "Connect finished at the " << SolverPrior::get_timestamp()
+	logi << "Connect finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	CreateNNPriors(model);
-	logi << "CreateNNPriors finished at the " << SolverPrior::get_timestamp()
+	logi << "CreateNNPriors finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	//Initialize the state of the external system
 	world->Initialize();
-	logi << "Initialize finished at the " << SolverPrior::get_timestamp()
+	logi << "Initialize finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	return world;
@@ -276,11 +267,6 @@ void Controller::InitializeDefaultParameters() {
 	Obs_type = OBS_INT_ARRAY;
 	DESPOT::num_Obs_element_in_GPU = 1 + ModelParams::N_PED_IN * 2 + 3;
 
-	if (b_use_drive_net_ == LETS_DRIVE)
-		Globals::config.use_prior = true;
-	else
-		Globals::config.use_prior = false;
-
 	if (b_use_drive_net_ == JOINT_POMDP || b_use_drive_net_ == ROLL_OUT) {
 		Globals::config.useGPU = false;
 		Globals::config.num_scenarios = 5;
@@ -295,8 +281,6 @@ void Controller::InitializeDefaultParameters() {
 		Globals::config.exploration_constant = 0.1;
 		Globals::config.silence = true;
 	}
-
-//	Globals::config.root_seed=1024;
 
 	logging::level(3);
 
@@ -341,7 +325,7 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 }
 
 void Controller::setGoal(const geometry_msgs::PoseStamped::ConstPtr goal) {
-	DEBUG(string_sprintf(" ts = %f", SolverPrior::get_timestamp()));
+	DEBUG(string_sprintf(" ts = %f", Globals::ElapsedTime()));
 
 	goalx_ = goal->pose.position.x;
 	goaly_ = goal->pose.position.y;
@@ -350,7 +334,7 @@ void Controller::setGoal(const geometry_msgs::PoseStamped::ConstPtr goal) {
 void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 
 	logi << "receive path from navfn " << path->poses.size()
-			<< " at the " << SolverPrior::get_timestamp()
+			<< " at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	if (fixed_path_ && path_from_topic.size() > 0){
@@ -504,19 +488,6 @@ bool Controller::RunPreStep(Solver* solver, World* world, Logger* logger) {
 			SolverPrior::nn_priors[0]->history_states_for_search(), cur_state,
 			search_state, last_action);
 
-	// DEBUG("Track");
-	if (Globals::config.use_prior && SolverPrior::history_mode == "track") {
-		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
-		for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-			if (i > 0) {
-//				SolverPrior::nn_priors[i]->add_car_tensor(
-//						SolverPrior::nn_priors[0]->last_car_tensor());
-				SolverPrior::nn_priors[i]->add_map_tensor(
-						SolverPrior::nn_priors[0]->last_map_tensor());
-			}
-		}
-	}
-
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
@@ -584,20 +555,6 @@ void Controller::PredictPedsForSearch(State* search_state) {
 			static_cast<const PedPomdp*>(ped_pomdp_model)->PrintStateAgents(
 					*predicted_state, string("predicted_agents"));
 
-			if (Globals::config.use_prior
-					&& SolverPrior::history_mode == "track") {
-				SolverPrior::nn_priors[0]->Add_tensor_hist(predicted_state);
-
-				for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-					if (i > 0) {
-//						SolverPrior::nn_priors[i]->add_car_tensor(
-//								SolverPrior::nn_priors[0]->last_car_tensor());
-						SolverPrior::nn_priors[i]->add_map_tensor(
-								SolverPrior::nn_priors[0]->last_map_tensor());
-					}
-				}
-			}
-
 			for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 				SolverPrior::nn_priors[i]->Add_in_search(-1, predicted_state);
 
@@ -607,31 +564,15 @@ void Controller::PredictPedsForSearch(State* search_state) {
 						<< static_cast<PomdpState*>(search_state)->time_stamp
 						<< " hist len " << SolverPrior::nn_priors[i]->Size(true)
 						<< endl;
-
-				//		SolverPrior::nn_priors[i]->DebugHistory("Add prediction " +
-				//			std::to_string(SolverPrior::nn_priors[i]->Size(true)-1));
 			}
 		}
 	}
 }
 
 void Controller::UpdatePriors(const State* cur_state, State* search_state) {
-	//	SolverPrior::nn_priors[0]->DebugHistory("After Deep update");
-	if (Globals::config.use_prior && SolverPrior::history_mode == "track") {
-		SolverPrior::nn_priors[0]->Add_tensor_hist(search_state);
-		for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-			if (i > 0) {
-//				SolverPrior::nn_priors[i]->add_car_tensor(
-//						SolverPrior::nn_priors[0]->last_car_tensor());
-				SolverPrior::nn_priors[i]->add_map_tensor(
-						SolverPrior::nn_priors[0]->last_map_tensor());
-			}
-		}
-	}
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 		// make sure the history has not corrupted
 		SolverPrior::nn_priors[i]->compare_history_with_recorded();
-
 		SolverPrior::nn_priors[i]->Add(last_action, cur_state);
 		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
 
@@ -727,17 +668,8 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 
 	unity_driving_simulator_->beliefTracker->text();
 
-	int cur_search_hist_len = 0, cur_tensor_hist_len = 0;
+	int cur_search_hist_len = 0;
 	cur_search_hist_len = SolverPrior::nn_priors[0]->Size(true);
-	cur_tensor_hist_len = SolverPrior::nn_priors[0]->Tensor_hist_size();
-
-	if (Globals::config.use_prior && SolverPrior::history_mode == "track"
-			&& cur_search_hist_len != cur_tensor_hist_len) {
-		cerr << "State hist length " << cur_search_hist_len
-				<< " mismatch with tensor hist length " << cur_tensor_hist_len
-				<< endl;
-		raise(SIGABRT);
-	}
 
 	PredictPedsForSearch(search_state);
 
@@ -792,7 +724,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 	logi << "[RunStep] Time spent in " << typeid(*solver).name()
 			<< "::Search(): " << search_time << endl;
 
-	TruncPriors(cur_search_hist_len, cur_tensor_hist_len);
+	TruncPriors(cur_search_hist_len);
 
 	// imitation learning: renable data update for imitation data
 	switch (simulation_mode_) {
@@ -865,22 +797,14 @@ void Controller::CheckCurPath() {
 			SolverPrior::prior_discount_optact = 10.0;
 		}
 	}
-
 }
 
-void Controller::TruncPriors(int cur_search_hist_len, int cur_tensor_hist_len) {
+void Controller::TruncPriors(int cur_search_hist_len) {
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 		SolverPrior::nn_priors[i]->Truncate(cur_search_hist_len, true);
 		logv << __FUNCTION__ << " truncating search history length to "
 				<< cur_search_hist_len << endl;
 		SolverPrior::nn_priors[i]->compare_history_with_recorded();
-//		SolverPrior::nn_priors[i]->DebugHistory("Trunc history");
-	}
-
-	if (SolverPrior::history_mode == "track") {
-		for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-			SolverPrior::nn_priors[i]->Trunc_tensor_hist(cur_tensor_hist_len);
-		}
 	}
 }
 
@@ -889,23 +813,18 @@ static int wait_count = 0;
 void Controller::PlanningLoop(despot::Solver*& solver, World* world,
 		Logger* logger) {
 
-	logi << "Planning loop started at the " << SolverPrior::get_timestamp()
+	logi << "Planning loop started at the " << Globals::ElapsedTime()
 					<< "th second" << endl;
 
 	unity_driving_simulator_->stateTracker->detect_time = true;
 
 	ros::spinOnce();
 
-	logi << "First ROS spin finished at the " << SolverPrior::get_timestamp()
+	logi << "First ROS spin finished at the " << Globals::ElapsedTime()
 					<< "th second" << endl;
 
-	int pre_step_count = 0;
-	if (Globals::config.use_prior)
-		pre_step_count = 4;
-	else
-		pre_step_count = 0;
 	while (path_from_topic.size() == 0) {
-		cout << "Waiting for path, ts: " << SolverPrior::get_timestamp() << endl;
+		cout << "Waiting for path, ts: " << Globals::ElapsedTime() << endl;
 		ros::spinOnce();
 		Globals::sleep_ms(100.0 / control_freq / time_scale_);
 		wait_count++;
@@ -914,28 +833,13 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world,
 		}
 	}
 
-	logi << "path_from_topic received at the " << SolverPrior::get_timestamp()
-			<< "th second" << endl;
-
-	while (SolverPrior::nn_priors[0]->Size(true) < pre_step_count) {
-		logi << "Executing pre-step" << endl;
-		RunPreStep(solver, world, logger);
-		ros::spinOnce();
-
-		logi << "sleeping for " << 1.0 / control_freq / time_scale_ << "s"
-				<< endl;
-		Globals::sleep_ms(1000.0 / control_freq / time_scale_);
-
-		logi << "Pre-step sleep end" << endl;
-	}
-
-	logi << "Pre-steps end at the " << SolverPrior::get_timestamp()
+	logi << "path_from_topic received at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	logi << "Executing first step" << endl;
 
 	RunStep(solver, world, logger);
-	logi << "First step end at the " << SolverPrior::get_timestamp()
+	logi << "First step end at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	cerr << "DEBUG: before entering controlloop" << endl;
@@ -962,7 +866,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	if (options == NULL)
 		return 0;
 	logi << "InitializeParamers finished at the "
-			<< SolverPrior::get_timestamp() << "th second" << endl;
+			<< Globals::ElapsedTime() << "th second" << endl;
 
 	if (Globals::config.useGPU)
 		PrepareGPU();
@@ -974,7 +878,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	 * =========================*/
 	DSPOMDP *model = InitializeModel(options);
 	assert(model != NULL);
-	logi << "InitializeModel finished at the " << SolverPrior::get_timestamp()
+	logi << "InitializeModel finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	/* =========================
@@ -984,7 +888,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 
 	cerr << "DEBUG: End initializing world" << endl;
 	assert(world != NULL);
-	logi << "InitializeWorld finished at the " << SolverPrior::get_timestamp()
+	logi << "InitializeWorld finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	/* =========================
@@ -1005,7 +909,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 		break;
 	}
 
-	logi << "InitialBelief finished at the " << SolverPrior::get_timestamp()
+	logi << "InitialBelief finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	/* =========================
@@ -1016,7 +920,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	solver_type = ChooseSolver();
 	Solver *solver = InitializeSolver(model, belief, solver_type, options);
 
-	logi << "InitializeSolver finished at the " << SolverPrior::get_timestamp()
+	logi << "InitializeSolver finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	/* =========================
@@ -1040,7 +944,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	round_ = 0;
 	step_ = 0;
 	unity_driving_simulator_->beliefTracker->text();
-	logi << "InitRound finished at the " << SolverPrior::get_timestamp()
+	logi << "InitRound finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
 	PlanningLoop(solver, world, logger);

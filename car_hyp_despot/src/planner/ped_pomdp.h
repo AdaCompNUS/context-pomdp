@@ -113,46 +113,31 @@ public:
 	void ImportStateList(std::vector<State*>& particles, std::istream& in) const;
 
 
-	/* HyP-DESPOT GPU model */
-	Dvc_State* AllocGPUParticles(int numParticles, MEMORY_MODE mode,  Dvc_State*** particles_all_a = NULL ) const;
-
-	void DeleteGPUParticles( MEMORY_MODE mode, Dvc_State** particles_all_a = NULL) const;
-
-	void CopyParticleIDsToGPU(int* dvc_IDs, const std::vector<int>& particleIDs, void* CUDAstream=NULL) const;
-
-	Dvc_State* CopyParticlesToGPU(Dvc_State* dvc_particles, const std::vector<State*>& particles , bool deep_copy) const;
-
-	void ReadParticlesBackToCPU(std::vector<State*>& particles ,const Dvc_State* parent_particles,
-				bool deepcopy) const;
-
+	/* GPU model to be used by HyP-DESPOT, not available for Context-POMDP*/
+	Dvc_State* AllocGPUParticles(int numParticles, MEMORY_MODE mode,  Dvc_State*** particles_all_a = NULL) const {return NULL;}
+	void DeleteGPUParticles( MEMORY_MODE mode, Dvc_State** particles_all_a = NULL) const {;}
+	void CopyParticleIDsToGPU(int* dvc_IDs, const std::vector<int>& particleIDs, void* CUDAstream=NULL) const {;}
+	Dvc_State* CopyParticlesToGPU(Dvc_State* dvc_particles, const std::vector<State*>& particles , bool deep_copy) const {return NULL;}
+	void ReadParticlesBackToCPU(std::vector<State*>& particles ,const Dvc_State* parent_particles, bool deepcopy) const {;}
 	void CopyGPUParticlesFromParent(Dvc_State* des,Dvc_State* src,int src_offset,int* IDs,
 		int num_particles,bool interleave,
 		Dvc_RandomStreams* streams, int stream_pos,
-			void* CUDAstream=NULL, int shift=0) const;
-
-	void CreateMemoryPool() const;
-	
-	void DestroyMemoryPool(MEMORY_MODE mode) const;
-
-	void InitGPUModel();
-	void InitGPUUpperBound(string name,	string particle_bound_name) const;
-	void InitGPULowerBound(string name,	string particle_bound_name) const ;
-
-	void DeleteGPUModel();
-	void DeleteGPUUpperBound(string name, string particle_bound_name);
-	void DeleteGPULowerBound(string name, string particle_bound_name);
+			void* CUDAstream=NULL, int shift=0) const {;}
+	void CreateMemoryPool() const {;}
+	void DestroyMemoryPool(MEMORY_MODE mode) const {;}
+	void InitGPUModel(){;}
+	void InitGPUUpperBound(string name,	string particle_bound_name) const{;}
+	void InitGPULowerBound(string name,	string particle_bound_name) const {;}
+	void DeleteGPUModel(){;}
+	void DeleteGPUUpperBound(string name, string particle_bound_name){;}
+	void DeleteGPULowerBound(string name, string particle_bound_name){;}
+	/* End GPU model */
 
 	virtual OBS_TYPE StateToIndex(const State*) const;
-
-	/* end HyP-DESPOT GPU model */
-
-
-	SolverPrior* CreateSolverPrior(World* world, std::string name, bool update_prior = true) const;
 
 	State* CopyForSearch(const State* particle) const;
 
 	WorldModel *world_model;
-
 
 	bool use_rvo_in_search;
 	bool use_rvo_in_simulation;
@@ -201,11 +186,13 @@ public:
 	PomdpState PredictAgents(const PomdpState& ped_state) const;
 
 public:
-	void InitGPUCarParams() const;
+	void InitGPUCarParams() const{;}
 
 public:
 	void CheckPreCollision(const State*);
 	void PrintStateIDs(const State&);
+
+	SolverPrior* CreateSolverPrior(World* world, std::string name, bool update_prior = true) const;
 
 };
 

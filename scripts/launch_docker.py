@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('--port',
                         type=int,
                         default=2000,
-                        help='carla_port')
+                        help='summit_port')
     parser.add_argument('--gpu',
                         type=int,
                         default=0,

@@ -8,8 +8,6 @@
 #ifndef SHARD_NODE_H_
 #define SHARD_NODE_H_
 
-#include <torch/script.h> // One-stop header.
-
 #include <despot/GPUcore/thread_globals.h>
 #include <despot/core/node.h>
 #include <despot/interface/pomdp.h>
@@ -101,11 +99,6 @@ public:
 	void ReconstructCPUParticles(const DSPOMDP* model, RandomStreams& streams, History& history);
 
 	bool check_despot_thread();
-
-public:
-
-	at::Tensor car_tensor;
-	at::Tensor map_tensor;
 };
 
 /* =============================================================================

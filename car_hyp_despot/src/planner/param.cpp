@@ -26,7 +26,7 @@ namespace ModelParams {
 	std::string rosns="";
 	std::string laser_frame="/laser_frame";
 
-	std::string car_model = "carla";// carla, audi_r8 or pomdp_car
+	std::string car_model = "summit";// summit, audi_r8 or pomdp_car
 
 	void print_params(){
 		printf("ModelParams:\n");

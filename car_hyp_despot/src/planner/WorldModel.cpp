@@ -1737,12 +1737,7 @@ void WorldStateTracker::trackVel(Agent& des, const Agent& src, bool& no_move, bo
     des.vel.x = (src.w - des.w) / duration;
     des.vel.y = (src.h - des.h) / duration;
 
-    if (Globals::config.use_prior) 
-        if (des.vel.Length()>10.0){
-            ERR(string_sprintf("WARNING: Unusual velocity for ped %d, speed: %f, duration %f ", src.id, des.vel.Length(), duration));
-        }
-
-   if (des.vel.Length()>1e-4){
+    if (des.vel.Length()>1e-4){
         no_move = false;
     }
     else{
@@ -2204,7 +2199,7 @@ void WorldBeliefTracker::update() {
 		sorted_beliefs.push_back(&agent_beliefs[p.id]);
 	}
 
-	cur_time_stamp = SolverPrior::get_timestamp();
+	cur_time_stamp = Globals::ElapsedTime();
 
 	if (logging::level()>=logging::VERBOSE){
 		logi << "belief update end" << endl;
@@ -2739,7 +2734,7 @@ void WorldModel::add_car_agent(int id_in_sim, CarStruct& car){
 		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+3, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
 		traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+3,-4);
 	}
-    else if(ModelParams::car_model == "carla"){
+    else if(ModelParams::car_model == "summit"){
 
         //TODO: this should use the car dimension from topic
         double car_radius = 1.15f;
@@ -2981,7 +2976,7 @@ void WorldModel::AddObstacle(std::vector<RVO::Vector2> obs){
 
 bool WorldModel::CheckCarWithObstacles(const CarStruct& car, int flag){
 
-    return false; // only for the carla project.
+    return false; // only for the summit project.
 
 
 	COORD obs_first_point(Globals::NEG_INFTY, Globals::NEG_INFTY);
