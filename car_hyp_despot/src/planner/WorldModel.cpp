@@ -2376,7 +2376,8 @@ void WorldBeliefTracker::text(const std::map<int, AgentBelief>& agent_bs) const{
 void WorldBeliefTracker::ValidateCar(const char* func){
     if (stateTracker.car_odom_heading == -10) // initial value
         return;
-    if (fabs(car.heading_dir - stateTracker.car_odom_heading)> 0.1){
+    if (fabs(car.heading_dir - stateTracker.car_odom_heading) > 0.1 && 
+        fabs(car.heading_dir - stateTracker.car_odom_heading) < 2* M_PI - 0.1){
         ERR(string_sprintf(
             "%s: car_heading in stateTracker different from odom: %f, %f",
             func, car.heading_dir, stateTracker.car_odom_heading));
