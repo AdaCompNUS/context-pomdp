@@ -658,7 +658,7 @@ class GammaCrowdController(Summit):
                 self.rng.choice(self.cars_blueprints),
                 trans)
             if actor:
-                # actor.set_collision_enabled(False)
+                actor.set_collision_enabled(False)
                 self.world.wait_for_tick(1.0)  # For actor to update pos and bounds, and for collision to apply.
                 self.network_car_agents.append(CrowdNetworkCarAgent(
                     self, actor, path,
@@ -690,7 +690,7 @@ class GammaCrowdController(Summit):
                 self.rng.choice(self.bikes_blueprints),
                 trans)
             if actor:
-                # actor.set_collision_enabled(False)
+                actor.set_collision_enabled(False)
                 self.world.wait_for_tick(1.0)  # For actor to update pos and bounds, and for collision to apply.
 
                 self.network_bike_agents.append(CrowdNetworkBikeAgent(
@@ -715,7 +715,7 @@ class GammaCrowdController(Summit):
                 self.rng.choice(self.walker_blueprints),
                 trans)
             if actor:
-                # actor.set_collision_enabled(False)
+                actor.set_collision_enabled(False)
                 self.world.wait_for_tick(1.0)  # For actor to update pos and bounds, and for collision to apply.
 
                 self.sidewalk_agents.append(CrowdSidewalkAgent(

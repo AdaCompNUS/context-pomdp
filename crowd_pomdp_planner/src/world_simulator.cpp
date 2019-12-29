@@ -17,6 +17,8 @@
 #include <msg_builder/AgentPathArray.h>
 #include <msg_builder/Lanes.h>
 #include <msg_builder/Obstacles.h>
+#include <msg_builder/PomdpCmd.h>
+
 
 #undef LOG
 #define LOG(lv) \
@@ -110,7 +112,7 @@ WorldSimulator::~WorldSimulator() {
 bool WorldSimulator::Connect() {
 	cerr << "DEBUG: Connecting with world" << endl;
 
-	cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp", 1);
+	cmdPub_ = nh.advertise<msg_builder::PomdpCmd>("cmd_vel_pomdp", 1);
 	actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action", 1);
 	actionPubPlot_ = nh.advertise<geometry_msgs::Twist>("pomdp_action_plot", 1);
 
@@ -434,39 +436,6 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	return goal_reached;
 }
 
-void WorldSimulator::update_cmds_fix_latency(ACT_TYPE action, bool buffered) {
-//	buffered_action_ = action;
-
-	cout << "real_speed_ = " << real_speed_ << endl;
-	cout << "speed_in_search_state_ = " << speed_in_search_state_ << endl;
-
-	float acc = static_cast<PedPomdp*>(model_)->GetAcceleration(action);
-
-	float accelaration;
-	if (!buffered)
-		accelaration = acc / ModelParams::control_freq;
-	else if (buffered)
-		accelaration = acc / pub_frequency;
-
-	cout << "applying step acc: " << accelaration << endl;
-	cout << "trunc to max car vel: " << ModelParams::VEL_MAX << endl;
-
-	target_speed_ = min(speed_in_search_state_ + accelaration,
-			ModelParams::VEL_MAX);
-	target_speed_ = max(target_speed_, 0.0);
-
-	steering_ = static_cast<PedPomdp*>(model_)->GetSteering(action);
-
-	cerr << "DEBUG: Executing action:" << action << " steer/acc = " << steering_
-			<< "/" << acc << endl;
-	cerr << "action IDs steer/acc = "
-			<< static_cast<PedPomdp*>(model_)->GetSteeringID(action) << "/"
-			<< static_cast<PedPomdp*>(model_)->GetAccelerationID(action)
-			<< endl;
-	cout << "cmd steering = " << steering_ << endl;
-	cout << "cmd target_speed = " << target_speed_ << endl;
-}
-
 void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered) {
 
 	worldModel.path.text();
@@ -476,18 +445,29 @@ void WorldSimulator::update_cmds_naive(ACT_TYPE action, bool buffered) {
 	float acc = static_cast<PedPomdp*>(model_)->GetAcceleration(action);
 
 	double speed_step = ModelParams::AccSpeed / ModelParams::control_freq;
-	int level = real_speed_ / speed_step;
-	if (std::abs(real_speed_ - (level + 1) * speed_step) < speed_step * 0.3) {
-		level = level + 1;
-	}
 
-	int next_level = level;
+	target_speed_ = real_speed_;
 	if (acc > 0.0)
-		next_level = level + 1;
+		target_speed_ = real_speed_ + speed_step;
 	else if (acc < 0.0)
-		next_level = max(0, level - 1);
+		target_speed_ = real_speed_ - speed_step;
 
-	target_speed_ = min(next_level * speed_step, ModelParams::VEL_MAX);
+//	int level = real_speed_ / speed_step;
+//	if (std::abs(real_speed_ - (level + 1) * speed_step) < speed_step * 0.2) {
+//		level = level + 1;
+//	}
+//
+//	int next_level = level;
+//	if (acc > 0.0)
+//		next_level = level + 1;
+//	else if (acc < 0.0)
+//		next_level = max(0, level - 1);
+//
+//	target_speed_ = next_level * speed_step;
+//	if (acc == 0.0)
+//		target_speed_ = real_speed_;
+
+	target_speed_ = max(min(target_speed_, ModelParams::VEL_MAX),0.0);
 
 	steering_ = static_cast<PedPomdp*>(model_)->GetSteering(action);
 
@@ -592,11 +572,11 @@ void WorldSimulator::publishCmdAction(const ros::TimerEvent &e) {
 }
 
 void WorldSimulator::publishCmdAction(ACT_TYPE action) {
-	geometry_msgs::Twist cmd;
-	cmd.linear.x = target_speed_;
-	cmd.linear.y = real_speed_;
-	cmd.linear.z = static_cast<PedPomdp*>(model_)->GetAcceleration(action);
-	cmd.angular.z = steering_; // GetSteering returns radii value
+	msg_builder::PomdpCmd cmd;
+	cmd.target_speed = target_speed_;
+	cmd.cur_speed = real_speed_;
+	cmd.acc = static_cast<PedPomdp*>(model_)->GetAcceleration(action);
+	cmd.steer = steering_; // GetSteering returns radii value
 	cout << "[publishCmdAction] time stamp"
 			<< Globals::ElapsedTime() << endl;
 	cout << "[publishCmdAction] target speed " << target_speed_ << " steering "

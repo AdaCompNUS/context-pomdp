@@ -523,10 +523,13 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
                              ScenarioLowerBound* lower_bound, ScenarioUpperBound* upper_bound,
                              const DSPOMDP* model, History& history, double timeout,
                              SearchStatistics* statistics) {
-  logv << __FUNCTION__ << endl;
+    logv << __FUNCTION__ << endl;
+
 	if (statistics != NULL) {
 		statistics->num_particles_before_search = model->NumActiveParticles();
 	}
+
+	Globals::RecordSearchStartTime();
 
 	double used_time = 0;
 	double explore_time = 0;
@@ -573,8 +576,8 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 
 	int num_trials = 0;
 
-	used_time = Globals::ElapsedTime();
-	cout << std::setprecision(5) << "Root preperation in " << used_time << " s" << endl;
+	used_time = Globals::ElapsedSearchTime();
+	cout << std::setprecision(5) << "Root preparation in " << used_time << " s" << endl;
 
 	Globals::ResetSerialTime();
 
@@ -610,7 +613,7 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 			futures.push_back(
 				async(launch::async, &PrintServer, ref(Print_queue), timeout));
 
-			double passed_time = Globals::ElapsedTime();
+			double passed_time = Globals::ElapsedSearchTime();
 			cout << std::setprecision(5) << Globals::config.NUM_THREADS << " threads started at the "
 				 << passed_time << "'th second" << endl;
 			try {
@@ -629,7 +632,7 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 				cout << "Exception" << e.what() << endl;
 			}
 
-			passed_time = Globals::ElapsedTime();
+			passed_time = Globals::ElapsedSearchTime();
 			cout << std::setprecision(5) << "Tree expansion in "
 				 << passed_time << " s" << endl;
 
@@ -667,8 +670,8 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 		}
 	}
 
-	if(Globals::ElapsedTime()<Globals::config.time_per_move * 0.9){
-		double sleep_time = Globals::config.time_per_move * 0.9 - Globals::ElapsedTime();
+	if(Globals::ElapsedSearchTime()<Globals::config.time_per_move * 0.9){
+		double sleep_time = Globals::config.time_per_move * 0.9 - Globals::ElapsedSearchTime();
 		cout << "Sleeping for " << sleep_time << "s" << endl;
 		Globals::sleep_ms(1000*sleep_time);
 	}

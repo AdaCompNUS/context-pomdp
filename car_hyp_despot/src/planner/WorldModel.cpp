@@ -1674,10 +1674,6 @@ void WorldStateTracker::cleanVeh() {
     veh_list=veh_list_new;
 }
 
-double get_timestamp(){
-	return Globals::ElapsedTime(init_time);
-}
-
 void WorldStateTracker::tracPos(Agent& des, const Agent& src, bool doPrint){
     des.w=src.w;
     des.h=src.h;

@@ -45,8 +45,8 @@ search_log_name = None
 open_search_log = False
 
 NO_NET = 0
-JOINT_POMDP = 3
-ROLL_OUT = 4
+JOINT_POMDP = 1 
+ROLL_OUT = 2
 
 
 class SubprocessMonitor(Process):

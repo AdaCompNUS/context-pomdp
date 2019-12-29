@@ -26,6 +26,7 @@ import time
 from tf import TransformListener
 import tf.transformations as tftrans
 
+
 change_left = -1
 remain = 0
 change_right = 1
@@ -365,7 +366,6 @@ class EgoVehicle(Summit):
         self.pp_cmd_steer = steer.data
 
     def gamma_lane_change_decision_callback(self, decision):
-        # print('lane decision {}'.format(decision.data))
         sys.stdout.flush()
 
         self.lane_decision = int(decision.data)
@@ -374,8 +374,8 @@ class EgoVehicle(Summit):
         if self.lane_decision * self.last_decision == -1:
             self.last_decision = self.lane_decision
             return
-        print('change lane decision {}'.format(self.lane_decision))
-        sys.stdout.flush()
+        # print('change lane decision {}'.format(self.lane_decision))
+        # sys.stdout.flush()
         self.last_decision = self.lane_decision
         self.update_path(self.lane_decision)
 
@@ -395,50 +395,56 @@ class EgoVehicle(Summit):
         if self.control_mode == 'gamma':
             cmd_speed = self.gamma_cmd_speed
             cmd_steer = self.gamma_cmd_steer
+            kp, ki, kd, k, discount = 0.3, 0.1, 0.005, 1.0, 1.0
         else:
             cmd_speed = self.pomdp_cmd_speed
-            cmd_steer = self.pomdp_cmd_steer
+            cmd_steer = self.pp_cmd_steer
+            # kp, ki, kd, k = 1.8, 1.0, 0.3, 0.3
+            kp, ki, kd, k, discount = 1.2, 0.5, 0.2, 0.8, 0.99
 
         cur_speed = self.actor.get_velocity()
         cur_speed = (cur_speed.x ** 2 + cur_speed.y ** 2) ** 0.5
 
-        if False: # cmd_speed < cur_speed - 0.05:
+        if False:
+            print('cur_speed {} {}'.format(cur_speed, time.time() - script_start))
+            print('cmd_speed {} {}'.format(cmd_speed, time.time() - script_start))
+            sys.stdout.flush()
+
+        if cmd_speed < 1e-5 and cur_speed < 0.5:
             control.throttle = 0
-            control.brake = 0.4
+            control.brake = 1.0
+            control.hand_brake = True
+
+            self.speed_control_last_update = None
+            self.speed_control_integral = 0.0
+            self.speed_control_last_error = 0.0
         else:
-            if cmd_speed < 1e-5 and cur_speed < 0.5:
-                control.throttle = 0
-                control.brake = 1.0
-                control.hand_brake = True
+            cur_time = rospy.Time.now()
 
-                self.speed_control_last_update = None
-                self.speed_control_integral = 0.0
-                self.speed_control_last_error = 0.0
+            if self.speed_control_last_update is None:
+                dt = 0.0
             else:
-                cur_time = rospy.Time.now()
+                dt = (cur_time - self.speed_control_last_update).to_sec()
 
-                if self.speed_control_last_update is None:
-                    dt = 0.0
-                else:
-                    dt = (cur_time - self.speed_control_last_update).to_sec()
-                speed_error = cmd_speed - cur_speed
-                self.speed_control_integral += speed_error * dt
+            speed_error = cmd_speed - cur_speed
+            self.speed_control_integral = speed_error * dt + discount * self.speed_control_integral
 
-                speed_control = 0.3 * speed_error + 0.1 * self.speed_control_integral
-                if self.speed_control_last_update is not None:
-                    speed_control += 0.005 * (speed_error - self.speed_control_last_error) / dt
+            speed_control = kp * speed_error + ki * self.speed_control_integral
+            if self.speed_control_last_update is not None:
+                speed_control += kd * (speed_error - self.speed_control_last_error) / dt
+            speed_control = k * speed_control
 
-                self.speed_control_last_update = cur_time
-                self.speed_control_last_error = speed_error
+            self.speed_control_last_update = cur_time
+            self.speed_control_last_error = speed_error
 
-                if speed_control >= 0:
-                    control.throttle = speed_control
-                    control.brake = 0.0
-                    control.hand_brake = False
-                else:
-                    control.throttle = 0.0
-                    control.brake = -speed_control
-                    control.hand_brake = False
+            if speed_control >= 0:
+                control.throttle = speed_control
+                control.brake = 0.0
+                control.hand_brake = False
+            else:
+                control.throttle = 0.0
+                control.brake = -speed_control
+                control.hand_brake = False
 
         control.steer = np.clip(cmd_steer * 45.0 / self.steer_angle_range, -1.0, 1.0)
 
@@ -531,6 +537,7 @@ class EgoVehicle(Summit):
 
 
 if __name__ == '__main__':
+    script_start = time.time()
     rospy.init_node('ego_vehicle')
     init_time = rospy.Time.now()
 

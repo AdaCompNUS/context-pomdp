@@ -14,6 +14,7 @@
 #include <tf/transform_listener.h>
 
 #include "msg_builder/car_info.h"
+#include <msg_builder/PomdpCmd.h>
 
 int tick = 0;
 double pub_freq = 12; //10;
@@ -73,7 +74,7 @@ public:
 		ros::spin();
 	}
 
-	virtual void actionCallBack(geometry_msgs::TwistConstPtr pomdp_vel) = 0;
+	virtual void actionCallBack(msg_builder::PomdpCmd pomdp_vel) = 0;
 
 	virtual void publishSpeed(const ros::TimerEvent& event) = 0;
 
@@ -155,18 +156,19 @@ public:
  };*/
 
 class VelPublisher2: public VelPublisher {
-	void actionCallBack(geometry_msgs::TwistConstPtr pomdp_vel) {
-		if (pomdp_vel->linear.x == -1) {
+	void actionCallBack(msg_builder::PomdpCmd pomdp_vel) {
+		if (pomdp_vel.target_speed == -1) {
 			curr_vel = 0.0;
 			target_vel = 0.0;
 			steering = 0.0;
 			return;
 		}
-		target_vel = pomdp_vel->linear.x;
-		curr_vel = pomdp_vel->linear.y;
-		real_vel = pomdp_vel->linear.y;
-		target_acc = pomdp_vel->linear.z;
-		steering = pomdp_vel->angular.z;
+
+		target_vel = pomdp_vel.target_speed;
+		curr_vel = pomdp_vel.cur_speed;
+		real_vel = pomdp_vel.cur_speed;
+		target_acc = pomdp_vel.acc;
+		steering = pomdp_vel.steer;
 
 		if (target_vel <= 0.0001) {
 

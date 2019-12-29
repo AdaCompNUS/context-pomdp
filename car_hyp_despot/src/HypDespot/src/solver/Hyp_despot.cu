@@ -1552,7 +1552,7 @@ void DESPOT::GPU_InitBounds(VNode* vnode, ScenarioLowerBound* lower_bound,
 
 	logi << "Thread " << ThreadID << ": [" << __FUNCTION__ << "]" << " Prepare node" << endl;
 
-	double used_time = Globals::ElapsedTime();
+	double used_time = Globals::ElapsedSearchTime();
 	cout << std::setprecision(5) << "Root _InitBounds_LongObs and ReadBackData in ---------------------------------------------------------------------------------------" << used_time << " s" << endl;
 
 	if (used_time > 0.2){

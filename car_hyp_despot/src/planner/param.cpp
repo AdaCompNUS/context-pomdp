@@ -14,7 +14,7 @@ namespace ModelParams {
 	double IN_FRONT_ANGLE_DEG = 60;
     int DRIVING_PLACE = 0;
 
-	double VEL_MAX=/*1.5*/ 6.0;
+	double VEL_MAX=/*1.5*/ 8.0;
 	double LASER_RANGE = 50.0;
 
 	double CAR_WIDTH = 2.0;

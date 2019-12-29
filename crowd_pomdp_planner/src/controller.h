@@ -160,7 +160,6 @@ private:
 
 	SolverPrior* prior_;
 
-	bool RunPreStep(despot::Solver* solver, World* world, Logger* logger);
 	void PredictPedsForSearch(State* search_state);
 	void UpdatePriors(const State* cur_state, State* search_state);
 

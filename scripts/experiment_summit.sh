@@ -6,15 +6,16 @@ e=$3
 port=$4
 launch_sim=$5
 record_bags=$6
-maploc=random
+#maploc=random
 # maploc=magic
-# maploc=meskel_square
+maploc=meskel_square
 # maploc=shi_men_er_lu
 # maploc=highway
 mode=joint_pomdp
 # mode=rollout
 # mode=gamma
-rands=-1
+rands=9475
+# rands=-1
 eps_len=120.0
 
 echo "User: $USER"

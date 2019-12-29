@@ -88,12 +88,19 @@ void RecordStartTime(){
 	ThreadStatistics::STATISTICS.start_time = Time::now();
 }
 
+void RecordSearchStartTime(){
+	ThreadStatistics::STATISTICS.search_start_time = Time::now();
+}
 
 // Return high-definition time in seconds
 double ElapsedTime(){
 	ns thread_d = std::chrono::duration_cast < ns > (Time::now() - ThreadStatistics::STATISTICS.start_time);
-	double passed_time=thread_d.count() / 1000000000.0f;
-	return passed_time;
+	return thread_d.count() / 1000000000.0f;
+}
+
+double ElapsedSearchTime() {
+	ns thread_d = std::chrono::duration_cast < ns > (Time::now() - ThreadStatistics::STATISTICS.search_start_time);
+	return thread_d.count() / 1000000000.0f;
 }
 
 double ElapsedTime(std::chrono::time_point<std::chrono::system_clock> ts){
@@ -167,7 +174,7 @@ void MinusActiveThread()
 bool Timeout(float timeout)
 {
 	auto t1 = Time::now();
-	fsec fs = t1 - ThreadStatistics::STATISTICS.start_time;
+	fsec fs = t1 - ThreadStatistics::STATISTICS.search_start_time;
 	ns d = std::chrono::duration_cast<ns>(fs);
 
 	//if(d.count()/1000000000.0>=timeout)

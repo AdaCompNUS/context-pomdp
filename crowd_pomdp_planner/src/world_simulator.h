@@ -152,8 +152,6 @@ public:
     
     void ego_dead_callback(const std_msgs::Bool ego_dead);
 
-	void update_cmds_fix_latency(ACT_TYPE action, bool buffered = false);
-
 	void update_cmds_naive(ACT_TYPE action, bool buffered = false);
 
 	void update_cmds_buffered(const ros::TimerEvent &e);

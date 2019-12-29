@@ -65,6 +65,7 @@ public:
   int Active_thread_count;
   float Serial_expansion_time;
   std::chrono::time_point<std::chrono::system_clock> start_time;
+  std::chrono::time_point<std::chrono::system_clock> search_start_time;
   int Expansion_Count;
 
 };
@@ -95,7 +96,9 @@ void MinusActiveThread();
 
 //Thread statistics tracking
 void RecordStartTime();
+void RecordSearchStartTime();
 double ElapsedTime();
+double ElapsedSearchTime();
 double ElapsedTime(std::chrono::time_point<std::chrono::system_clock> s);
 double SpeedUp(double parallel_time);
 double Efficiency(double parallel_time);
