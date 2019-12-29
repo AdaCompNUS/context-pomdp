@@ -20,7 +20,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_PREFIX_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
 add_definitions(-std=c++0x -O3)
 
-# find_package(car_hyp_despot REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
@@ -33,21 +32,18 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_package(
   CATKIN_DEPENDS geometry_msgs msg_builder car_hyp_despot  roscpp
-  DEPENDS CUDA
+  # DEPENDS CUDA
 )
-
 
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  ../car_hyp_despot/src/Porca/src/
+  ../car_hyp_despot/src/gamma/
   ../car_hyp_despot/src/planner/
   ../car_hyp_despot/src/HypDespot/include/
   ../car_hyp_despot/src/HypDespot/include/despot
   ../crowd_pomdp_planner/src/
 )
-
-# message("===================== ${CATKIN_DEVEL_PREFIX} ==================")
 
 add_library(car_hyp_despot STATIC IMPORTED)
 set_target_properties(car_hyp_despot PROPERTIES
@@ -58,7 +54,6 @@ set_target_properties(car_hyp_despot PROPERTIES
 )
 
 add_executable(ped_pomdp src/PedPomdpNode.cpp src/controller.cpp src/world_simulator.cpp src/pomdp_simulator.cpp)
-
 add_executable(local_frame src/local_frame.cpp)
 add_executable(vel_publisher src/VelPublisher.cpp)
 

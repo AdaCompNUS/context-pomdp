@@ -139,10 +139,11 @@ public:
 
 	WorldModel *world_model;
 
-	bool use_rvo_in_search;
-	bool use_rvo_in_simulation;
- // protected:
-	enum {
+	bool use_gamma_in_search;
+	bool use_gamma_in_simulation;
+	bool use_simplified_gamma;
+	
+  enum {
 		ACT_CUR,
 		ACT_ACC,
 		ACT_DEC

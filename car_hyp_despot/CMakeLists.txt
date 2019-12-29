@@ -38,20 +38,20 @@ find_package(catkin REQUIRED COMPONENTS
 
 include_directories(
    ${catkin_INCLUDE_DIRS}
-   src/Porca/src
+   src/gamma/
    src/HypDespot/include/
    src/HypDespot/include/despot/
    src/planner/
    ../crowd_pomdp_planner/src/
 )
  
-FILE(GLOB LIBRVO_SRCS src/Porca/src/*.cpp)
+FILE(GLOB GAMMA_SRCS src/gamma/*.cpp)
 
 catkin_package(
   INCLUDE_DIRS src/planner/
   LIBRARIES car_hyp_despot
   CATKIN_DEPENDS roscpp msg_builder 
-  DEPENDS CUDA
+  # DEPENDS CUDA
 )
 
 add_library(
@@ -126,7 +126,7 @@ STATIC
   src/HypDespot/src/GPUrandom_streams.cu
   src/HypDespot/src/solver/Hyp_despot.cu
 
-  ${LIBRVO_SRCS}
+  ${GAMMA_SRCS}
 
   src/planner/Path.cpp
   src/planner/collision.cpp

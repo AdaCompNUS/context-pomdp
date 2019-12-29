@@ -143,6 +143,11 @@ void WorldModel::InitRVO(){
         traffic_agent_sim_[tid]->setAgentDefaults(5.0f, 5, 1.5f, 1.5f, PED_SIZE, 2.5f);
     }
     
+    default_car_ = AgentParams::getDefaultAgentParam("Car");
+    default_bike_ = AgentParams::getDefaultAgentParam("Bike");
+    default_ped_ = AgentParams::getDefaultAgentParam("People");
+
+    
 }
 
 WorldModel::~WorldModel(){
@@ -1117,25 +1122,39 @@ double WorldModel::PurepursuitAngle(const AgentStruct& agent, COORD& pursuit_poi
         return steering_angle;
     }
 }
-// std::vector<COORD> get_bounding_box_corners(AgentStruct& agent){
-//     COORD forward_vec = COORD(cos(agent.heading_dir), sin(agent.heading_dir));
-//     COORD sideward_vec = COORD(-sin(agent.heading_dir), cos(agent.heading_dir));
+
+std::vector<RVO::Vector2> WorldModel::get_bounding_box_corners(AgentStruct& agent){
+    RVO::Vector2 forward_vec = RVO::Vector2(cos(agent.heading_dir), sin(agent.heading_dir));
+    RVO::Vector2 sideward_vec = RVO::Vector2(-sin(agent.heading_dir), cos(agent.heading_dir)); // rotate 90 degree counter-clockwise
     
-//     double side_len = agent.bb_extent_x;
-//     double forward_len = agent.bb_extent_y;
+    double side_len = agent.bb_extent_x;
+    double forward_len = agent.bb_extent_y;
 
-//     if (agent.type == AgentType::ped){
-//         side_len = 0.23;
-//         forward_len = 0.23;
-//     }
+    if (agent.type == AgentType::ped){
+        side_len = 0.23;
+        forward_len = 0.23;
+    }
 
-//     return std::vector<COORD>({
-//         agent.pos + forward_vec * forward_len + sideward_vec * side_len,
-//         agent.pos + forward_vec * forward_len - sideward_vec * side_len,
-//         agent.pos - forward_vec * forward_len - sideward_vec * side_len,
-//         agent.pos - forward_vec * forward_len + sideward_vec * side_len,
-//     });
-// }
+    RVO::Vector2 pos = RVO::Vector2(agent.pos.x, agent.pos.y);
+
+    return std::vector<RVO::Vector2>({
+        pos + forward_vec * forward_len + sideward_vec * side_len,
+        pos - forward_vec * forward_len + sideward_vec * side_len,
+        pos - forward_vec * forward_len - sideward_vec * side_len,
+        pos + forward_vec * forward_len - sideward_vec * side_len
+    });
+}
+
+
+std::vector<RVO::Vector2> WorldModel::get_bounding_box_corners(RVO::Vector2 forward_vec, RVO::Vector2 sideward_vec, RVO::Vector2 pos, double forward_len, double side_len){
+    
+    return std::vector<RVO::Vector2>({
+        pos + forward_vec * forward_len + sideward_vec * side_len,
+        pos - forward_vec * forward_len + sideward_vec * side_len,
+        pos - forward_vec * forward_len - sideward_vec * side_len,
+        pos + forward_vec * forward_len - sideward_vec * side_len
+    });
+}
 
 void WorldModel::cal_bb_extents(AgentBelief& b, AgentStruct& agent){
     COORD forward_vec = COORD(cos(b.heading_dir), sin(b.heading_dir));
@@ -2549,7 +2568,6 @@ void WorldModel::ValidateIntention(int agent_id, int intention_id, const char* m
 
 void WorldModel::PorcaSimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car){
 
-    // DEBUG("start_rvo_sim");
     int threadID=GetThreadID();
 
     // Construct a new set of agents every time
@@ -2557,45 +2575,56 @@ void WorldModel::PorcaSimulateAgents(AgentStruct agents[], int num_agents, CarSt
 
     //adding pedestrians
     for(int i=0; i<num_agents; i++){
-        if(agents[i].mode==AGENT_ATT){
-            traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(agents[i].pos.x, agents[i].pos.y));
-            int intention_id = agents[i].intention;
-            ValidateIntention(agents[i].id, intention_id, __FUNCTION__, __LINE__);
-            if (intention_id == GetNumIntentions(agents[i])-1) { /// stop intention
+
+        if (agents[i].type == AgentType::car){
+            traffic_agent_sim_[threadID]->addAgent(default_car_, i);
+        } else if (agents[i].type == AgentType::ped){
+            traffic_agent_sim_[threadID]->addAgent(default_ped_, i);
+        } else {
+            traffic_agent_sim_[threadID]->addAgent(default_bike_, i);
+        }
+
+        // set agent position
+        traffic_agent_sim_[threadID]->setAgentPosition(i, RVO::Vector2(agents[i].pos.x, agents[i].pos.y));
+
+        // set agent heading
+        RVO::Vector2 agt_heading(cos(agents[i].heading_dir), sin(agents[i].heading_dir));
+        traffic_agent_sim_[threadID]->setAgentHeading (i, agt_heading);
+
+        // set agent current velocity
+        traffic_agent_sim_[threadID]->setAgentVelocity(i, RVO::Vector2(agents[i].vel.x, agents[i].vel.y));
+        
+        // set agent preferred velocity
+        int intention_id = agents[i].intention;
+        ValidateIntention(agents[i].id, intention_id, __FUNCTION__, __LINE__);
+        if (intention_id == GetNumIntentions(agents[i])-1) { /// stop intention
+            traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
+        } else{
+            auto goal_pos = GetGoalPos(agents[i], intention_id);
+            RVO::Vector2 goal(goal_pos.x, goal_pos.y);
+            if ( RVO::absSq(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) < 2 * 2 ) {
+                // Agent is within two meter of its goal, set preferred velocity to zero
                 traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
-            } else{
-                auto goal_pos = GetGoalPos(agents[i], intention_id);
-                RVO::Vector2 goal(goal_pos.x, goal_pos.y);
-                if ( absSq(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) < 
-                    traffic_agent_sim_[threadID]->getAgentRadius(i) * traffic_agent_sim_[threadID]->getAgentRadius(i) ) {
-                    // Agent is within one radius of its goal, set preferred velocity to zero
-                    traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
-                } else {
-                    // Agent is far away from its goal, set preferred velocity as unit vector towards i's goal.
-                    double pref_speed = 0.0;
-                    if (agents[i].type == AgentType::car)
-                        pref_speed = 5.0;
-                    else if (agents[i].type == AgentType::ped)
-                        pref_speed = ModelParams::PED_SPEED;
-                    traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, 
-                        normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i))
-                        */*agents[i].speed*/pref_speed);
-                }
+            } else {
+                // Agent is far away from its goal, set preferred velocity as unit vector towards i's goal.
+                double pref_speed = 0.0;
+                if (agents[i].type == AgentType::car)
+                    pref_speed = agents[i].speed; //5.0;
+                else if (agents[i].type == AgentType::ped)
+                    pref_speed = ModelParams::PED_SPEED;
+                traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i))*pref_speed);
             }
         }
-        else {// distracted agents should also exist in the tree
-            traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(agents[i].pos.x, agents[i].pos.y));
-            COORD pref_vel = GetGoalPos(agents[i]) - agents[i].pos;
-            pref_vel.AdjustLength(agents[i].speed);
-            traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(pref_vel.x, pref_vel.y));
-        }
+
+        // set agent bounding box corners
+        traffic_agent_sim_[threadID] -> setAgentBoundingBoxCorners(i, get_bounding_box_corners(agents[i]));
     }
+
+
     // adding car as a "special" pedestrian
     add_car_agent(num_agents, car);
 
     traffic_agent_sim_[threadID]->doStep();
-
-    // DEBUG("End rvo sim");
 }
 
 COORD WorldModel::GetPorcaVel(AgentStruct& agent, int i){
@@ -2631,6 +2660,7 @@ void WorldModel::AgentApplyPorcaVel(AgentStruct& agent, COORD& rvo_vel) {
         agent.pos_along_path = path.nearest(agent.pos);
     }
     agent.vel = (agent.pos - old_pos)*freq;
+    agent.speed = agent.vel.Length();
 
     // DEBUG("End rvo apply vel");
 }
@@ -2696,117 +2726,108 @@ COORD WorldModel::AttentivePedMeanDir(int agent_id, int intention_id){
 #include "Vector2.h"
 
 void WorldModel::add_car_agent(int id_in_sim, CarStruct& car){
+
     int threadID=GetThreadID();
+    
+    double car_x, car_y, car_yaw;
 
-	double car_x, car_y, car_yaw;
+    car_x = car.pos.x;
+    car_y = car.pos.y;
+    car_yaw = car.heading_dir;
 
-	car_yaw = car.heading_dir;
+    traffic_agent_sim_[threadID]->addAgent(default_car_, id_in_sim);
 
-	if(ModelParams::car_model == "pomdp_car"){
-		/// for pomdp car
-		car_x = car.pos.x - ModelParams::CAR_LENGTH/2.0f*cos(car_yaw);
-		car_y = car.pos.y - ModelParams::CAR_LENGTH/2.0f*sin(car_yaw);
-		double car_radius = sqrt(pow(ModelParams::CAR_WIDTH/2.0f, 2) + pow(ModelParams::CAR_LENGTH/2.0f,2)) + CAR_EXPAND_SIZE;
-		traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car_x, car_y), 3.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw)));
-	} else if(ModelParams::car_model == "audi_r8"){
-		/// for audi r8
-		double car_radius = 1.15f;
-		double car_radius_large = 1.6f;
+    // set agent position
+    traffic_agent_sim_[threadID]->setAgentPosition(id_in_sim, RVO::Vector2(car_x, car_y));
 
-		traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-		traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim,-1);
+    // set agent heading
+    RVO::Vector2 agt_heading(cos(car_yaw), sin(car_yaw));
+    traffic_agent_sim_[threadID]->setAgentHeading (id_in_sim, agt_heading);
 
-		traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56 * 2.33 * cos(car_yaw), car.pos.y + 1.4* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+1, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-		traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+1,-2);
-
-		traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56*3.66 * cos(car_yaw), car.pos.y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+2, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-		traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+2,-3);
-
-		traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + 0.56*5 * cos(car_yaw), car.pos.y + 2.8* sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius_large, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-		traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+3, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-		traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+3,-4);
-	}
-    else if(ModelParams::car_model == "summit"){
-
-        //TODO: this should use the car dimension from topic
-        double car_radius = 1.15f;
-        double car_radius_large = 1.6f;
-        double shift = 1.0;
-
-        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x, car.pos.y), 4.0f, 2, 1.0f, 2.0f, 
-            car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-        traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-        traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim,-1);
-
-        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x + shift * cos(car_yaw), car.pos.y + shift * sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, 
-            car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-        traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+1, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-        traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+1,-2);
-
-        traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(car.pos.x - shift * cos(car_yaw), car.pos.y - shift * sin(car_yaw)), 4.0f, 2, 1.0f, 2.0f, 
-            car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-        traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+2, RVO::Vector2(car.vel * cos(car_yaw), car.vel * sin(car_yaw))); // the id_in_sim-th pedestrian is the car. set its prefered velocity
-        traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+2,-3);
-    }
+    // set agent current velocity
+    traffic_agent_sim_[threadID]->setAgentVelocity(id_in_sim, car.vel * agt_heading);
+    traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, car.vel * agt_heading); // assume that other agents do not know the ego-vehicle's intention and that they also don't infer the intention
+    
+    // set agent bounding box corners
+    RVO::Vector2 sideward_vec = RVO::Vector2(-agt_heading.y(), agt_heading.x()); // rotate 90 degree counter-clockwise
+    traffic_agent_sim_[threadID] -> setAgentBoundingBoxCorners(id_in_sim, get_bounding_box_corners(agt_heading, sideward_vec, RVO::Vector2(car_x, car_y), 2.0, 1.0));
 }
 
 double get_heading_dir(COORD vel){
 
 }
 
-void WorldModel::add_veh_agent(AgentBelief& veh){
+void WorldModel::add_veh_agent(AgentBelief& veh, int id_in_sim){
 
     if(veh.type != AgentType::car)
         return;
 
     int threadID=GetThreadID();
 
-    double veh_x, veh_y, veh_yaw;
+    double car_x, car_y, car_yaw, car_speed;
 
-    veh_yaw = veh.heading_dir;
+    car_x = veh.pos.x;
+    car_y = veh.pos.y;
+    car_yaw = veh.heading_dir;
+    car_speed = veh.speed;
 
-    auto& veh_bb = veh.bb;
 
-    // TODO: replace following to use the bonding box data.
+    traffic_agent_sim_[threadID]->addAgent(default_car_, id_in_sim);
 
-    double car_radius = 1.15f;
-    double car_radius_large = 1.6f;
+    // set agent position
+    traffic_agent_sim_[threadID]->setAgentPosition(id_in_sim, RVO::Vector2(car_x, car_y));
 
-    // DEBUG("agent circle");
-    traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(veh.pos.x, veh.pos.y), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-    // DEBUG("agent pref");
-    // auto pref_vel = RVO::Vector2(veh.vel.Length() * cos(veh_yaw), veh.vel.Length() * sin(veh_yaw));
-    // DEBUG("set pref");
-    // traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, pref_vel 
-    //     ); // the id_in_sim-th pedestrian is the veh. set its prefered velocity
-    // DEBUG("agent id");
-    // traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim,-1);
+    // set agent heading
+    RVO::Vector2 agt_heading(cos(car_yaw), sin(car_yaw));
+    traffic_agent_sim_[threadID]->setAgentHeading (id_in_sim, agt_heading);
 
-    // DEBUG("next");
-    // traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(veh.pos.x + 0.56 * 2.33 * cos(veh_yaw), veh.pos.y + 1.4* sin(veh_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-    // traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+1, 
-    //     RVO::Vector2(veh.vel.Length() * cos(veh_yaw), veh.vel.Length() * sin(veh_yaw))); // the id_in_sim-th pedestrian is the veh. set its prefered velocity
-    // traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+1,-2);
-
-    // traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(veh.pos.x + 0.56*3.66 * cos(veh_yaw), veh.pos.y + 2.8* sin(veh_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-    // traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+2, 
-    //     RVO::Vector2(veh.vel.Length() * cos(veh_yaw), veh.vel.Length() * sin(veh_yaw))); // the id_in_sim-th pedestrian is the veh. set its prefered velocity
-    // traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+2,-3);
-
-    // traffic_agent_sim_[threadID]->addAgent(RVO::Vector2(veh.pos.x + 0.56*5 * cos(veh_yaw), veh.pos.y + 2.8* sin(veh_yaw)), 4.0f, 2, 1.0f, 2.0f, car_radius_large, ModelParams::VEL_MAX, RVO::Vector2(), "vehicle");
-    // traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim+3, 
-    //     RVO::Vector2(veh.vel.Length() * cos(veh_yaw), veh.vel.Length() * sin(veh_yaw))); // the id_in_sim-th pedestrian is the veh. set its prefered velocity
-    // traffic_agent_sim_[threadID]->setAgentPedID(id_in_sim+3,-4);
+    // set agent current velocity
+    traffic_agent_sim_[threadID]->setAgentVelocity(id_in_sim, car_speed * agt_heading);
+    traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, car_speed * agt_heading); // assume that other agents do not know the vehicle's intention and that they also don't infer the intention
+    
+    // set agent bounding box corners
+    RVO::Vector2 sideward_vec = RVO::Vector2(-agt_heading.y(), agt_heading.x()); // rotate 90 degree counter-clockwise
+    traffic_agent_sim_[threadID] -> setAgentBoundingBoxCorners(id_in_sim, get_bounding_box_corners(agt_heading, sideward_vec, RVO::Vector2(car_x, car_y), 2.0, 1.0));
 }
 
-void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents, CarStruct& car){
-	int num_agents = agents.size();
+void WorldModel::add_ped_agent(AgentBelief& ped, int id_in_sim){
 
-	logi << "[PrepareAttentiveAgentMeanDirs] num_agents in belief tracker: " << num_agents << endl;
+    if(ped.type != AgentType::ped)
+        return;
+
+    int threadID=GetThreadID();
+
+    double ped_x, ped_y, ped_yaw, ped_speed;
+
+    ped_x = ped.pos.x;
+    ped_y = ped.pos.y;
+    ped_yaw = ped.heading_dir;
+    ped_speed = ped.speed;
+
+
+    traffic_agent_sim_[threadID]->addAgent(default_ped_, id_in_sim);
+
+    // set agent position
+    traffic_agent_sim_[threadID]->setAgentPosition(id_in_sim, RVO::Vector2(ped_x, ped_y));
+
+    // set agent heading
+    RVO::Vector2 agt_heading(cos(ped_yaw), sin(ped_yaw));
+    traffic_agent_sim_[threadID]->setAgentHeading (id_in_sim, agt_heading);
+
+    // set agent current velocity
+    traffic_agent_sim_[threadID]->setAgentVelocity(id_in_sim, ped_speed * agt_heading);
+    traffic_agent_sim_[threadID]->setAgentPrefVelocity(id_in_sim, ped_speed * agt_heading); // assume that other agents do not know the pedicle's intention and that they also don't infer the intention
+    
+    // set agent bounding box corners
+    RVO::Vector2 sideward_vec = RVO::Vector2(-agt_heading.y(), agt_heading.x()); // rotate 90 degree counter-clockwise
+    traffic_agent_sim_[threadID] -> setAgentBoundingBoxCorners(id_in_sim, get_bounding_box_corners(agt_heading, sideward_vec, RVO::Vector2(ped_x, ped_y), 0.23, 0.23));
+}
+
+
+void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents, CarStruct& car){
+    int num_agents = agents.size();
+
+    logi << "num_agents in belief tracker: " << num_agents << endl;
 
     if (num_agents == 0)
         return;
@@ -2814,10 +2835,10 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents
     int threadID=GetThreadID();
 
     // Construct a new set of agents every time
-	traffic_agent_sim_[threadID]->clearAllAgents();
+    traffic_agent_sim_[threadID]->clearAllAgents();
 
     // DEBUG("adding agents to gamma");
-	//
+    //
     std::vector<int> agent_ids;
     agent_ids.resize(num_agents);
 
@@ -2827,11 +2848,10 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents
         switch (agent.type) {
             case AgentType::ped:
                 // DEBUG("add ped");
-                traffic_agent_sim_[threadID]->addAgent(
-                    RVO::Vector2(agent.pos.x, agent.pos.y)); break;
+                add_ped_agent(agent, i); break;
             case AgentType::car:
                 // DEBUG("add car");
-                add_veh_agent(agent); break;
+                add_veh_agent(agent, i); break;
             default: 
                 ERR("unsupported agent type");
                 break;
@@ -2840,17 +2860,17 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents
         agent_ids[i] = agent.id;
         // TODO: need to assign bounding boxes to vehicles
         
-        logv << "agent " << i << " id "<< agent_ids[i] << endl;
+        logd << "agent " << i << " id "<< agent_ids[i] << endl;
         i++;
     }
 
     // DEBUG("adding car as a "special" agent");
-	// 
-	add_car_agent(num_agents, car);
+    // 
+    add_car_agent(num_agents, car);
 
     // DEBUG("Set the preferred velocity for each agent");
     // 
-	traffic_agent_sim_[threadID]->doPreStep();// build kd tree and find neighbors for agents
+    traffic_agent_sim_[threadID]->doPreStep();// build kd tree and find neighbors for agents
 
     // DEBUG("Ensure the mean_dir container entry exist for all agents");
     for (int i = 0; i < num_agents ; i++){
@@ -2858,56 +2878,58 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents
     }
 
     // DEBUG("predict directions for all agents and all intentions");
-	for (size_t i = 0; i < num_agents; ++i) {
+    for (size_t i = 0; i < num_agents; ++i) {
 
         int id = agent_ids[i];
 
-		// For each ego agent
-	    for(int intention_id=0; intention_id < GetNumIntentions(id); intention_id++) {
+        // For each ego agent
+        for(int intention_id=0; intention_id < GetNumIntentions(id); intention_id++) {
 
-	    	RVO::Vector2 ori_pos(traffic_agent_sim_[threadID]->getAgentPosition(i).x(),  
-                traffic_agent_sim_[threadID]->getAgentPosition(i).y());
+            RVO::Vector2 ori_pos = traffic_agent_sim_[threadID]->getAgentPosition(i);
 
             // DEBUG("Set preferred velocity for the ego agent according to intention_id");
-			// Leave other pedestrians to have default preferred velocity
+            // Leave other pedestrians to have default preferred velocity
             ValidateIntention(id, intention_id, __FUNCTION__, __LINE__);
-			if (intention_id == GetNumIntentions(id)-1) { /// stop intention
-				traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
-			} else{
-                auto goal_pos = GetGoalPos(agents[id], intention_id);
-				RVO::Vector2 goal(goal_pos.x, goal_pos.y);
-				if ( absSq(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) < 
-                    traffic_agent_sim_[threadID]->getAgentRadius(i) * traffic_agent_sim_[threadID]->getAgentRadius(i) ) {
-					// Agent is within one radius of its goal, set preferred velocity to zero
-					traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
-				} else {
-					// Agent is far away from its goal, set preferred velocity as unit vector towards agent's goal.
-					traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i))*ModelParams::PED_SPEED);
-				}
-			}
+            if (intention_id == GetNumIntentions(id)-1) { /// stop intention
+                traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
+            } else{
+                auto goal_pos = GetGoalPos(agents[id], intention_id); //agents is a map indexed by the agent id
+                RVO::Vector2 goal(goal_pos.x, goal_pos.y);
+                if ( absSq(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) < 2*2 ) {
+                    // Agent is within 2 meters of its goal, set preferred velocity to zero
+                    traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
+                } else {
+                    // Agent is far away from its goal, set preferred velocity as unit vector towards agent's goal.
+                    double spd = ModelParams::PED_SPEED;
+                    if(agents[id].type == AgentType::car){
+                        spd = agents[id].speed;
+                    }
+                    traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i))*spd);
+                }
+            }
 
             // DEBUG("step gamma");
-			traffic_agent_sim_[threadID]->doStepForPed(i); //TODO: this should be replace by GAMMA functions
+            traffic_agent_sim_[threadID]->doStepForOneAgent(i); //TODO: this should be replace by GAMMA functions
 
-			COORD dir;
-			dir.x = traffic_agent_sim_[threadID]->getAgentPosition(i).x() - agents[id].pos.x;
-			dir.y = traffic_agent_sim_[threadID]->getAgentPosition(i).y() - agents[id].pos.y;
+            COORD dir;
+            dir.x = traffic_agent_sim_[threadID]->getAgentPosition(i).x() - agents[id].pos.x;
+            dir.y = traffic_agent_sim_[threadID]->getAgentPosition(i).y() - agents[id].pos.y;
 
-			logv << "[PrepareAttentiveAgentMeanDirs] ped_mean_dirs len=" << ped_mean_dirs.size()
-					<< " intention_list len=" << ped_mean_dirs[id].size() << "\n";
+            logd << "[PrepareAttentiveAgentMeanDirs] ped_mean_dirs len=" << ped_mean_dirs.size()
+                    << " intention_list len=" << ped_mean_dirs[id].size() << "\n";
 
-			logv << "[PrepareAttentiveAgentMeanDirs] i=" << i << " intention_id=" << intention_id << "\n";
+            logd << "[PrepareAttentiveAgentMeanDirs] i=" << i << " intention_id=" << intention_id << "\n";
 
             // DEBUG(string_sprintf("set mean, i=%d, intention_id=%d, ped_mean_dirs.size()=%d \n",
             //     i, intention_id, ped_mean_dirs.size()));
 
-			ped_mean_dirs[id][intention_id]=dir;
+            ped_mean_dirs[id][intention_id]=dir;
 
             // DEBUG("reset agent state");
-	    	// 
-			traffic_agent_sim_[threadID]->setAgentPosition(i, ori_pos);
-	    }
-	}
+            // 
+            traffic_agent_sim_[threadID]->setAgentPosition(i, ori_pos);
+        }
+    }
 }
 
 void WorldModel::PrintMeanDirs(std::map<int, AgentBelief> old_agents, 
@@ -3040,29 +3062,35 @@ bool WorldModel::CheckCarWithVehicle(const CarStruct& car, const AgentStruct& ve
     
     // bool result = false;
     
-    COORD tan_dir(-sin(veh.heading_dir), cos(veh.heading_dir));
+    COORD tan_dir(-sin(veh.heading_dir), cos(veh.heading_dir)); // along_dir rotates by 90 degree counter-clockwise
     COORD along_dir(cos(veh.heading_dir), sin(veh.heading_dir));
 
     COORD test;
 
     bool result = false;
-    test = veh.pos + tan_dir * veh.bb_extent_x + along_dir * veh.bb_extent_y;
-    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, ModelParams::CAR_WIDTH/2.0, ModelParams::CAR_FRONT, flag)){
+    double veh_bb_extent_x = veh.bb_extent_x;// * 0.6;
+    double veh_bb_extent_y = veh.bb_extent_y;// * 0.8;
+
+    double car_bb_extent_x = ModelParams::CAR_WIDTH/2.0;
+    double car_bb_extent_y = ModelParams::CAR_FRONT + 0.5;
+
+    test = veh.pos + tan_dir * veh_bb_extent_x + along_dir * veh_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, car_bb_extent_x, car_bb_extent_y, flag)){
         // return true;
         result = true;
     }
-    test = veh.pos - tan_dir * veh.bb_extent_x + along_dir * veh.bb_extent_y;
-    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, ModelParams::CAR_WIDTH/2.0, ModelParams::CAR_FRONT, flag)){
+    test = veh.pos - tan_dir * veh_bb_extent_x + along_dir * veh_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, car_bb_extent_x, car_bb_extent_y, flag)){
         // return true;
         result = true;
     }
-    test = veh.pos + tan_dir * veh.bb_extent_x - along_dir * veh.bb_extent_y;
-    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, ModelParams::CAR_WIDTH/2.0, ModelParams::CAR_FRONT, flag)){
+    test = veh.pos + tan_dir * veh_bb_extent_x - along_dir * veh_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, car_bb_extent_x, car_bb_extent_y, flag)){
         // return true;
         result = true;
     }
-    test = veh.pos - tan_dir * veh.bb_extent_x - along_dir * veh.bb_extent_y;
-    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, ModelParams::CAR_WIDTH/2.0, ModelParams::CAR_FRONT, flag)){
+    test = veh.pos - tan_dir * veh_bb_extent_x - along_dir * veh_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, car_bb_extent_x, car_bb_extent_y, flag)){
         // return true;
         result = true;
     }
@@ -3070,23 +3098,25 @@ bool WorldModel::CheckCarWithVehicle(const CarStruct& car, const AgentStruct& ve
     tan_dir = COORD(-sin(car.heading_dir), cos(car.heading_dir));
     along_dir = COORD(cos(car.heading_dir), sin(car.heading_dir));
 
-    test = car.pos + tan_dir * (ModelParams::CAR_WIDTH/2.0) + along_dir * ModelParams::CAR_FRONT;
-    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh.bb_extent_x, veh.bb_extent_y, flag)){
+
+    
+    test = car.pos + tan_dir * (car_bb_extent_x) + along_dir * car_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh_bb_extent_x, veh_bb_extent_y, flag)){
         // return true;
         result = true;
     }
-    test = car.pos - tan_dir * (ModelParams::CAR_WIDTH/2.0) + along_dir * ModelParams::CAR_FRONT;
-    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh.bb_extent_x, veh.bb_extent_y, flag)){
+    test = car.pos - tan_dir * (car_bb_extent_x) + along_dir * car_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh_bb_extent_x, veh_bb_extent_y, flag)){
         // return true;
         result = true;
     }
-    test = car.pos + tan_dir * (ModelParams::CAR_WIDTH/2.0) - along_dir * ModelParams::CAR_FRONT;
-    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh.bb_extent_x, veh.bb_extent_y, flag)){
+    test = car.pos + tan_dir * (car_bb_extent_x) - along_dir * car_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh_bb_extent_x, veh_bb_extent_y, flag)){
         // return true;
         result = true;
     }
-    test = car.pos - tan_dir * (ModelParams::CAR_WIDTH/2.0) - along_dir * ModelParams::CAR_FRONT;
-    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh.bb_extent_x, veh.bb_extent_y, flag)){
+    test = car.pos - tan_dir * (car_bb_extent_x) - along_dir * car_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh_bb_extent_x, veh_bb_extent_y, flag)){
         // return true;
         result = true;
     }
@@ -3096,23 +3126,23 @@ bool WorldModel::CheckCarWithVehicle(const CarStruct& car, const AgentStruct& ve
     if (flag == 1 && result){
         cout << "collision point";
         cout << " "<< veh.pos.x << " " << veh.pos.y;
-        test = veh.pos + tan_dir * veh.bb_extent_x + along_dir * veh.bb_extent_y;
+        test = veh.pos + tan_dir * veh_bb_extent_x + along_dir * veh_bb_extent_y;
         cout << " "<< test.x << " " << test.y;
-        test = veh.pos - tan_dir * veh.bb_extent_x + along_dir * veh.bb_extent_y;
+        test = veh.pos - tan_dir * veh_bb_extent_x + along_dir * veh_bb_extent_y;
         cout << " "<< test.x << " " << test.y;
-        test = veh.pos + tan_dir * veh.bb_extent_x - along_dir * veh.bb_extent_y;
+        test = veh.pos + tan_dir * veh_bb_extent_x - along_dir * veh_bb_extent_y;
         cout << " "<< test.x << " " << test.y;
-        test = veh.pos - tan_dir * veh.bb_extent_x - along_dir * veh.bb_extent_y;
+        test = veh.pos - tan_dir * veh_bb_extent_x - along_dir * veh_bb_extent_y;
         cout << " "<< test.x << " " << test.y;
 
         cout << " "<< car.pos.x << " " << car.pos.y;
-        test = car.pos + tan_dir * (ModelParams::CAR_WIDTH/2.0) + along_dir * ModelParams::CAR_FRONT;
+        test = car.pos + tan_dir * (car_bb_extent_x) + along_dir * car_bb_extent_y;
         cout << " "<< test.x << " " << test.y;
-        test = car.pos - tan_dir * (ModelParams::CAR_WIDTH/2.0) + along_dir * ModelParams::CAR_FRONT;
+        test = car.pos - tan_dir * (car_bb_extent_x) + along_dir * car_bb_extent_y;
         cout << " "<< test.x << " " << test.y;
-        test = car.pos + tan_dir * (ModelParams::CAR_WIDTH/2.0) - along_dir * ModelParams::CAR_FRONT;
+        test = car.pos + tan_dir * (car_bb_extent_x) - along_dir * car_bb_extent_y;
         cout << " "<< test.x << " " << test.y;
-        test = car.pos - tan_dir * (ModelParams::CAR_WIDTH/2.0) - along_dir * ModelParams::CAR_FRONT;
+        test = car.pos - tan_dir * (car_bb_extent_x) - along_dir * car_bb_extent_y;
         cout << " "<< test.x << " " << test.y << endl;
     }
 
@@ -3128,6 +3158,96 @@ bool WorldModel::CheckCarWithVehicle(const CarStruct& car, const AgentStruct& ve
     // result = result || CheckCarWithObsLine(car, 
     //     veh.pos - tan_dir * veh.bb_extent_x, veh.pos + along_dir * veh.bb_extent_y, flag);
     // return result;
+}
+
+
+bool WorldModel::CheckCarWithVehicleReal(const CarStruct& car, const AgentStruct& veh, int flag) {
+
+    COORD tan_dir(-sin(veh.heading_dir), cos(veh.heading_dir)); // along_dir rotates by 90 degree counter-clockwise
+    COORD along_dir(cos(veh.heading_dir), sin(veh.heading_dir));
+
+    COORD test;
+
+    bool result = false;
+    double veh_bb_extent_x = veh.bb_extent_x * 0.95;// * 0.6;
+    double veh_bb_extent_y = veh.bb_extent_y * 0.95;// * 0.8;
+
+    double car_bb_extent_x = ModelParams::CAR_WIDTH/2.0;
+    double car_bb_extent_y = ModelParams::CAR_FRONT;
+
+    test = veh.pos + tan_dir * veh_bb_extent_x + along_dir * veh_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, car_bb_extent_x, car_bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+    test = veh.pos - tan_dir * veh_bb_extent_x + along_dir * veh_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, car_bb_extent_x, car_bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+    test = veh.pos + tan_dir * veh_bb_extent_x - along_dir * veh_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, car_bb_extent_x, car_bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+    test = veh.pos - tan_dir * veh_bb_extent_x - along_dir * veh_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y, car.heading_dir, car_bb_extent_x, car_bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+
+    tan_dir = COORD(-sin(car.heading_dir), cos(car.heading_dir));
+    along_dir = COORD(cos(car.heading_dir), sin(car.heading_dir));
+
+
+    
+    test = car.pos + tan_dir * (car_bb_extent_x) + along_dir * car_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh_bb_extent_x, veh_bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+    test = car.pos - tan_dir * (car_bb_extent_x) + along_dir * car_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh_bb_extent_x, veh_bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+    test = car.pos + tan_dir * (car_bb_extent_x) - along_dir * car_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh_bb_extent_x, veh_bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+    test = car.pos - tan_dir * (car_bb_extent_x) - along_dir * car_bb_extent_y;
+    if(::inCarlaCollision(test.x, test.y, veh.pos.x, veh.pos.y, veh.heading_dir, veh_bb_extent_x, veh_bb_extent_y, flag)){
+        // return true;
+        result = true;
+    }
+
+    // return false;
+
+    if (flag == 1 && result){
+        cout << "collision point";
+        cout << " "<< veh.pos.x << " " << veh.pos.y;
+        test = veh.pos + tan_dir * veh_bb_extent_x + along_dir * veh_bb_extent_y;
+        cout << " "<< test.x << " " << test.y;
+        test = veh.pos - tan_dir * veh_bb_extent_x + along_dir * veh_bb_extent_y;
+        cout << " "<< test.x << " " << test.y;
+        test = veh.pos + tan_dir * veh_bb_extent_x - along_dir * veh_bb_extent_y;
+        cout << " "<< test.x << " " << test.y;
+        test = veh.pos - tan_dir * veh_bb_extent_x - along_dir * veh_bb_extent_y;
+        cout << " "<< test.x << " " << test.y;
+
+        cout << " "<< car.pos.x << " " << car.pos.y;
+        test = car.pos + tan_dir * (car_bb_extent_x) + along_dir * car_bb_extent_y;
+        cout << " "<< test.x << " " << test.y;
+        test = car.pos - tan_dir * (car_bb_extent_x) + along_dir * car_bb_extent_y;
+        cout << " "<< test.x << " " << test.y;
+        test = car.pos + tan_dir * (car_bb_extent_x) - along_dir * car_bb_extent_y;
+        cout << " "<< test.x << " " << test.y;
+        test = car.pos - tan_dir * (car_bb_extent_x) - along_dir * car_bb_extent_y;
+        cout << " "<< test.x << " " << test.y << endl;
+    }
+
+    return result;
 }
 
 bool WorldModel::CheckCarWithObsLine(const CarStruct& car, COORD start_point, COORD end_point, int flag){
