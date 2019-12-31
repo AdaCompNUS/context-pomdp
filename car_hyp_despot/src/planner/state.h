@@ -17,37 +17,47 @@ enum AgentType { car=0, ped=1, num_values=2};
 struct AgentStruct {
 	
 	AgentStruct(){
-		id = -1;
-    	speed = -1;
-    	mode = 1;//PED_DIS;
+		set_default_values();
   	}
 	
 	AgentStruct(COORD a, int b, int c) {
+		set_default_values();
 		pos = a;
 		intention = b;
 		id = c;
-    	speed = -1;
-    	mode = 1;//PED_DIS;
 	}
 	
 	AgentStruct(COORD a, int b, int c, float _speed) {
+		set_default_values();
 		pos = a;
 		intention = b;
 		id = c;
 		speed = _speed;
-    	mode = 1;//PED_DIS;
 	}
 
-	COORD pos; //pos
+	void set_default_values(){
+//		pos = COORD(-1, -1);
+		intention = -1;
+		id = -1;
+		speed = 0.0;
+		mode = 1; //PED_DIS
+		type = AgentType::car;
+		pos_along_path = 0;
+		bb_extent_x = 0;
+		bb_extent_y = 0;
+		heading_dir = 0;
+		cross_dir = 0;
+	}
+
+	COORD pos; // pos
     int mode;
-	int intention;  //intended path
+	int intention; // intended path
 	int pos_along_path; // traveled distance along the path
 	int cross_dir;
-	int id;   //id
+	int id; //id
 	AgentType type;
     double speed;
     COORD vel; // heading dir, for cur_vel motion model
-    // std::vector<COORD> bb;
     double heading_dir;
     double bb_extent_x, bb_extent_y;
 
@@ -72,15 +82,27 @@ class Agent
 {
 public:
 	Agent() {
-		time_stamp = -1; vel.x = 0; vel.y = 0;
-    }
-	Agent(double _w,double _h,int _id) {
-        w=_w;h=_h;id=_id;time_stamp = -1; vel.x = 0; vel.y = 0;
-    }
-	Agent(double _w,double _h) {w=_w;h=_h;
-		time_stamp = -1; vel.x = 0; vel.y = 0;
+		set_default();
     }
 
+	Agent(double _w,double _h,int _id) {
+		set_default();
+        w=_w;h=_h;id=_id;
+    }
+
+	Agent(double _w,double _h) {
+		set_default();
+		w=_w;h=_h;
+    }
+
+	virtual ~Agent() {}
+
+	void set_default() {
+		time_stamp = -1; vel.x = 0; vel.y = 0;
+		reset_intention = false; ros_time_stamp = 0;
+		h = 0; w = 0;
+		id = -1;
+	}
     virtual AgentType type() const = 0;
 
 	double w,h;
@@ -88,8 +110,6 @@ public:
 	int id;   //each pedestrian has a unique identity
 	double time_stamp;
 	double ros_time_stamp;
-	// double last_update;
-
 	bool reset_intention;
 	std::vector<Path> paths;	
 };
@@ -132,7 +152,7 @@ public:
 
 	float time_stamp;
 
-	PomdpState() {time_stamp = -1;}
+	PomdpState() {time_stamp = -1; num = 0;}
 
 	string text() const {
 		return concat(car.vel);
@@ -148,7 +168,7 @@ public:
 	float time_stamp;
 
 //	int peds_mode[ModelParams::N_PED_WORLD];
-	PomdpStateWorld() {time_stamp = -1;}
+	PomdpStateWorld() {time_stamp = -1; num = 0;}
 
 	string text() const {
 		return concat(car.vel);

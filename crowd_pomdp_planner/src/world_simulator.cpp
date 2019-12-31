@@ -323,7 +323,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	PomdpStateWorld* curr_state =
 			static_cast<PomdpStateWorld*>(GetCurrentState());
 
-	if (logging::level() >= logging::INFO)
+	if (logging::level() >= logging::DEBUG)
 		static_cast<PedPomdp*>(model_)->PrintWorldState(*curr_state);
 
 	double acc;
@@ -767,34 +767,16 @@ bool sortFn(Pedestrian p1, Pedestrian p2) {
 	return p1.id < p2.id;
 }
 
-
-//void laneCallback(msg_builder::Lanes data){
-//	double data_time_sec = Globals::ElapsedTime();
-//	DEBUG(
-//			string_sprintf("receive %d lanes at time %f",
-//					data.lane_segments.size(), Globals::ElapsedTime()));
-//}
-//
-//void obstacleCallback(msg_builder::Obstacles data){
-//	double data_time_sec = Globals::ElapsedTime();
-//	DEBUG(
-//			string_sprintf("receive %d obstacle contours at time %f",
-//					data.contours.size(), Globals::ElapsedTime()));
-//}
-
 void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
-	double data_sec = data.header.stamp.sec;  // std_msgs::time
+	double data_sec = data.header.stamp.sec;
 	double data_nsec = data.header.stamp.nsec;
-
 	double data_ros_time_sec = data_sec + data_nsec * 1e-9;
-
 	double data_time_sec = Globals::ElapsedTime();
 
 	WorldSimulator::stateTracker->latest_time_stamp = data_time_sec;
 
-	DEBUG(
-			string_sprintf("receive agent num %d at time %f",
+	DEBUG(string_sprintf("receive agent num %d at time %f",
 					data.agents.size(), Globals::ElapsedTime()));
 
 	vector<Pedestrian> ped_list;
@@ -802,8 +784,6 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 	for (msg_builder::TrafficAgent& agent : data.agents) {
 		std::string agent_type = agent.type;
-		// cout << "get agent: " << agent.id <<" "<< agent_type << endl;
-
 		if (agent_type == "car" || agent_type == "bike") {
 			Vehicle world_veh;
 
@@ -812,6 +792,9 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 			world_veh.id = agent.id;
 			world_veh.w = agent.pose.position.x;
 			world_veh.h = agent.pose.position.y;
+			world_veh.vel.x = agent.vel.x;
+			world_veh.vel.y = agent.vel.y;
+
 			world_veh.heading_dir = navposeToHeadingDir(agent.pose);
 
 			for (auto& corner : agent.bbox.points) {
@@ -827,6 +810,8 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 			world_ped.id = agent.id;
 			world_ped.w = agent.pose.position.x;
 			world_ped.h = agent.pose.position.y;
+			world_ped.vel.x = agent.vel.x;
+			world_ped.vel.y = agent.vel.y;
 
 			ped_list.push_back(world_ped);
 		} else {
@@ -843,20 +828,9 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 	}
 
 	WorldSimulator::stateTracker->cleanAgents();
-
-//	DEBUG(
-//				string_sprintf("Finish agent update at time %f",
-//						Globals::ElapsedTime()));
-
 	WorldSimulator::stateTracker->model.print_path_map();
-
 	WorldSimulator::stateTracker->text(ped_list);
 	WorldSimulator::stateTracker->text(veh_list);
-
-	// DEBUG(string_sprintf("ped_list len %d", ped_list.size()));
-	// DEBUG(string_sprintf("veh_list len %d", veh_list.size()));
-//	logv << "====================[ agentArrayCallback end ]================="
-//			<< endl;
 
 	SimulatorBase::agents_data_ready = true;
 }
@@ -931,35 +905,6 @@ void agentPathArrayCallback(msg_builder::AgentPathArray data) {
 //					Globals::ElapsedTime()));
 
 	SimulatorBase::agents_path_data_ready = true;
-}
-
-void pedPoseCallback(msg_builder::ped_local_frame_vector lPedLocal) {
-	logv << "======================[ pedPoseCallback ]= ts "
-			<< Globals::ElapsedTime() << " ==================" << endl;
-
-	DEBUG(string_sprintf("receive peds num %d", lPedLocal.ped_local.size()));
-
-	if (lPedLocal.ped_local.size() == 0)
-		return;
-
-	vector<Pedestrian> ped_list;
-	for (int ii = 0; ii < lPedLocal.ped_local.size(); ii++) {
-		Pedestrian world_ped;
-		msg_builder::ped_local_frame ped = lPedLocal.ped_local[ii];
-		world_ped.id = ped.ped_id;
-		world_ped.w = ped.ped_pose.x;
-		world_ped.h = ped.ped_pose.y;
-		ped_list.push_back(world_ped);
-	}
-
-	for (int i = 0; i < ped_list.size(); i++) {
-		WorldSimulator::stateTracker->updatePed(ped_list[i]);
-	}
-
-	logv << "====================[ pedPoseCallback end ]================="
-			<< endl;
-
-	SimulatorBase::agents_data_ready = true;
 }
 
 void receive_map_callback(nav_msgs::OccupancyGrid map) {

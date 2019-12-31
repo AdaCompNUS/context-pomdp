@@ -14,6 +14,8 @@ fig = plt.figure()
 plt.axis([-sx,sx,-sy,sy])
 ax = plt.gca()
 ax.set_aspect(sy/sx)
+anim_running = True
+
 
 def error_handler(e):
     print(
@@ -25,7 +27,8 @@ def parse_data(txt_file):
     exos_list = {}
     coll_bool_list = {}
     ego_path_list = {}
-
+    pred_car_list = {}
+    pred_exo_list = {}
     exo_count = 0
     start_recording = False
 
@@ -43,7 +46,6 @@ def parse_data(txt_file):
             try:
 
                 if "car pos / heading / vel" in line:  # ego_car info
-                    # car pos / heading / vel = (162.54, 358.42) / 2.1142 / -6.1142e-10 car dim 2.0091 4.8541
                     speed = float(line.split(' ')[12])
                     heading = float(line.split(' ')[10])
                     pos_x = float(line.split(' ')[7].replace('(', '').replace(',', ''))
@@ -99,6 +101,44 @@ def parse_data(txt_file):
                         y = float(line_split[i+1])
                         path.append([x,y])
                     ego_path_list[cur_step] = path
+                elif 'predicted_car_' in line:
+                    # predicted_car_0 378.632 470.888 5.541   
+                    # (x, y, heading in rad)
+                    line_split = line.split(' ')
+                    pred_step = int(line_split[0][14:])
+                    x = float(line_split[1])
+                    y = float(line_split[2])
+                    heading = float(line_split[3])
+                    agent_dict = {'pos': [x, y],
+                                'heading': heading,
+                                'bb': (10.0, 10.0)
+                                }
+                    if pred_step == 0:
+                        pred_car_list[cur_step] = []
+                    pred_car_list[cur_step].append(agent_dict)
+
+                elif 'predicted_agents_' in line:
+                    # predicted_agents_0 380.443 474.335 5.5686 0.383117 1.1751
+                    # [(x, y, heading, bb_x, bb_y)]
+                    line_split = line.split(' ')
+                    pred_step = int(line_split[0][17:])
+                    if pred_step == 0:
+                        pred_exo_list[cur_step] = []
+                    num_agents = (len(line_split) - 1) / 5
+                    agent_list = []
+                    for i in range(num_agents):
+                        start = 1 + i * 5
+                        x = float(line_split[start])
+                        y = float(line_split[start + 1])
+                        heading = float(line_split[start + 2])
+                        bb_x = float(line_split[start + 3])
+                        bb_y = float(line_split[start + 4])
+                        agent_dict = {'pos': [x, y],
+                                    'heading': heading,
+                                    'bb': (bb_x, bb_y) 
+                                    }
+                        agent_list.append(agent_dict)
+                    pred_exo_list[cur_step].append(agent_list)
                 if 'collision = 1' in line or 'INININ' in line or 'in real collision' in line:
                     coll_bool_list[cur_step] = 1
 
@@ -106,26 +146,28 @@ def parse_data(txt_file):
                 error_handler(e)
                 pdb.set_trace()
 
-    return ego_list, ego_path_list, exos_list, coll_bool_list
+    return ego_list, ego_path_list, exos_list, coll_bool_list, pred_car_list, pred_exo_list
 
 
-def agent_rect(agent_dict, origin, color):
-    pos = agent_dict['pos']
-    heading = agent_dict['heading']
-    bb_x, bb_y = agent_dict['bb']
+def agent_rect(agent_dict, origin, color, fill=True):
+    try:
+        pos = agent_dict['pos']
+        heading = agent_dict['heading']
+        bb_x, bb_y = agent_dict['bb']
+        # print('rect={},{},{},{},{}'.format(pos, heading, bb_x, bb_y, origin))
 
-    x_shift = [bb_y/2.0 * math.cos(heading), bb_y/2.0 * math.sin(heading)]
-    y_shift = [-bb_x/2.0 * math.sin(heading), bb_x/2.0 * math.cos(heading)]
-    
-    # y_shift = -bb_y/2.0 * math.sin(heading) + bb_x/2.0 * math.cos(heading)
-    # x_shift = [0.0, 0.0]
+        x_shift = [bb_y/2.0 * math.cos(heading), bb_y/2.0 * math.sin(heading)]
+        y_shift = [-bb_x/2.0 * math.sin(heading), bb_x/2.0 * math.cos(heading)]
+        
+        coord = [pos[0] - origin[0] - x_shift[0] - y_shift[0], pos[1] - origin[1] - x_shift[1] - y_shift[1]]
+        rect = mpatches.Rectangle(
+            xy=coord, 
+            width=bb_y , height=bb_x, angle=np.rad2deg(heading), fill=fill, color=color)
+        return rect
 
-    rect = mpatches.Rectangle(
-        xy=[pos[0] - origin[0] - x_shift[0] - y_shift[0], pos[1] - origin[1] - x_shift[1] - y_shift[1]], 
-        # xy=[pos[0] - origin[0], pos[1] - origin[1]],  
-        width=bb_y , height=bb_x, angle=np.rad2deg(heading), fill=True, color=color)
-    return rect
-
+    except Exception as e:
+        error_handler(e)
+        pdb.set_trace()
 
 def init():
     # initialize an empty list of cirlces
@@ -133,6 +175,8 @@ def init():
 
 def animate(time_step):
     patches = []
+
+    time_step =  time_step + config.frame
 
     print("Drawing time step {}...".format(time_step))
 
@@ -142,6 +186,9 @@ def animate(time_step):
         ego_color = 'red'
     else:
         ego_color = 'green'
+
+    # print('ego_heading: {}'.format(ego_list[time_step]['heading']))
+
     patches.append(ax.add_patch(
         agent_rect(ego_list[time_step], ego_pos, ego_color)))
 
@@ -150,17 +197,34 @@ def animate(time_step):
         patches.append(ax.add_patch(
             agent_rect(agent_dict, ego_pos, 'black')))
 
+    for car_dict in pred_car_list[time_step]:
+        # print(car_dict, ego_list[time_step]['bb'])
+        car_dict['bb'] = ego_list[time_step]['bb'] 
+        patches.append(ax.add_patch(
+            agent_rect(car_dict, ego_pos, 'lightgreen', False)))
+
+    for agent_list in pred_exo_list[time_step]:
+        for agent_dict in agent_list:
+            patches.append(ax.add_patch(
+                agent_rect(agent_dict, ego_pos, 'grey', False)))
     # draw path
     path = ego_path_list[time_step]
     for i in range(0, len(path), 2):
         point = path[i]
         patches.append(ax.add_patch(
             mpatches.Circle([point[0]-ego_pos[0], point[1]-ego_pos[1]],
-                                 0.1, color='orange')
-            ))
+                                 0.1, color='orange')))
 
     return patches
 
+def onClick(event):
+    global anim_running
+    if anim_running:
+        anim.event_source.stop()
+        anim_running = False
+    else:
+        anim.event_source.start()
+        anim_running = True
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -169,11 +233,18 @@ if __name__ == "__main__":
         type=str,
         default='some_txt_file',
         help='File to animate')
-
-    ego_list, ego_path_list, exos_list, coll_bool_list = parse_data(parser.parse_args().file)
+    parser.add_argument(
+        '--frame',
+        type=int,
+        default=0,
+        help='start frame')
+    config = parser.parse_args()
+    ego_list, ego_path_list, exos_list, coll_bool_list, pred_car_list, pred_exo_list = parse_data(config.file)
 
     anim = animation.FuncAnimation(fig, animate, init_func=init,
-                               frames=len(ego_list.keys()), interval=300, blit=True)
+                               frames=len(ego_list.keys()) - config.frame, interval=30, blit=True)
+    fig.canvas.mpl_connect('button_press_event', onClick)
+
     plt.show()
 
 

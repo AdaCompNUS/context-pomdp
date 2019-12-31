@@ -27,13 +27,13 @@ float Controller::time_scale_ = 1.0;
 std::string Controller::model_file_ = "";
 std::string Controller::value_model_file_ = "";
 std::string Controller::map_location_ = "";
-bool path_missing = false;
+bool path_missing = true;
 
 static DSPOMDP* ped_pomdp_model;
 static ACT_TYPE action = (ACT_TYPE) (-1);
 static OBS_TYPE obs = (OBS_TYPE) (-1);
 
-bool predict_peds = true;
+bool predict_peds = false;
 
 struct my_sig_action {
 	typedef void (*handler_type)(int, siginfo_t*, void*);
@@ -176,17 +176,9 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
 
 	//Create a custom world as defined and implemented by the user
 	World* world;
-	switch (simulation_mode_) {
-	case POMDP:
-		world = new POMDPSimulator(nh, static_cast<DSPOMDP*>(model),
-				Globals::config.root_seed/*random seed*/, obstacle_file_name_);
-		break;
-	case SUMMIT:
-		world = new WorldSimulator(nh, static_cast<DSPOMDP*>(model),
-				Globals::config.root_seed/*random seed*/, pathplan_ahead_,
-				obstacle_file_name_, map_location_, summit_port_,COORD(goalx_, goaly_));
-		break;
-	}
+  world = new WorldSimulator(nh, static_cast<DSPOMDP*>(model),
+      Globals::config.root_seed/*random seed*/, pathplan_ahead_,
+      obstacle_file_name_, map_location_, summit_port_,COORD(goalx_, goaly_));
 	logi << "WorldSimulator constructed at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
@@ -196,19 +188,10 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
 	logi << "InitGPUModel finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
-	switch (simulation_mode_) {
-	case POMDP:
-		static_cast<PedPomdp*>(model)->world_model =
-				&(POMDPSimulator::worldModel);
-		pomdp_driving_simulator_ = static_cast<POMDPSimulator*>(world);
-		break;
-	case SUMMIT:
-		static_cast<PedPomdp*>(model)->world_model =
-				&(WorldSimulator::worldModel);
-		summit_driving_simulator_ = static_cast<WorldSimulator*>(world);
-		summit_driving_simulator_->time_scale_ = time_scale_;
-		break;
-	}
+  static_cast<PedPomdp*>(model)->world_model =
+      &(WorldSimulator::worldModel);
+  summit_driving_simulator_ = static_cast<WorldSimulator*>(world);
+  summit_driving_simulator_->time_scale_ = time_scale_;
 
 	//Establish connection with external system
 	world->Connect();
@@ -592,11 +575,10 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 		cout << "Car base_link heading "
 				<< summit_driving_simulator_->baselink_heading_ << endl;
 
-		// static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
+		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
 		static_cast<PedPomdp*>(ped_pomdp_model)->PrintStateIDs(sample);
 		static_cast<PedPomdp*>(ped_pomdp_model)->CheckPreCollision(&sample);
-
-		// static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(sample, 10);// 3 steps		
+		static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(sample, 10);// 3 steps		
 
 		action = solver->Search().action;
 	} else

@@ -277,8 +277,6 @@ public:
         detect_time = false;
     }
 
-    void updatePed(const Pedestrian& ped, bool doPrint = false);
-    void updateVeh(const Vehicle& veh, bool doPrint = false); // this is for exo-vehicles
     void updatePedState(const Pedestrian& ped, bool doPrint = false);
 	void updateVehState(const Vehicle& veh, bool doPrint = false); // this is for exo-vehicles
 	void updatePedPaths(const Pedestrian& ped, bool doPrint = false);
@@ -307,30 +305,30 @@ public:
 
     template<typename T>
     bool AgentIsAlive(T& agent, vector<T>& agent_list_new) {
-		bool insert=true;
+		bool alive=true;
 		if (detect_time) {
-			double w1,h1;
-			w1 = agent.w;
-			h1 = agent.h;
-			for(const auto& p: agent_list_new) {
-				double w2,h2;
-				w2=p.w;
-				h2=p.h;
-				if (abs(w1-w2)<=0.1&&abs(h1-h2)<=0.1) {
-					insert=false;
-					break;
-				}
-			}
+//			double w1,h1;
+//			w1 = agent.w;
+//			h1 = agent.h;
+//			for(const auto& p: agent_list_new) {
+//				double w2,h2;
+//				w2=p.w;
+//				h2=p.h;
+//				if (abs(w1-w2)<=0.1&&abs(h1-h2)<=0.1) {
+//					insert=false;
+//					break;
+//				}
+//			}
 			if (latest_time_stamp - agent.time_stamp > 1.0){ // agent disappeared for 1 second
 				DEBUG(string_sprintf("agent %d disappeared for too long (>1.0s).", agent.id));
-				insert=false;
+				alive=false;
 			}
 			else
 				; // fprintf(stderr, "agent %d alive, latest_time_stamp = %f, agent time_stamp = %f \n",
 					// agent.id, latest_time_stamp, agent.time_stamp);
     	}
 
-		return insert;
+		return alive;
     }
 
     template<typename T>

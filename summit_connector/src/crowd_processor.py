@@ -160,6 +160,8 @@ class CrowdProcessor(Summit):
             agent_tmp.pose.position.x = actor.get_location().x
             agent_tmp.pose.position.y = actor.get_location().y
             agent_tmp.pose.position.z = actor.get_location().z
+            agent_tmp.vel.x = actor.get_velocity().x
+            agent_tmp.vel.y = actor.get_velocity().y
             quat_tf = tf.transformations.quaternion_from_euler(
                 0, 0,
                 np.deg2rad(actor.get_transform().rotation.yaw))

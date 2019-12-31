@@ -23,6 +23,7 @@ using namespace std;
 std::chrono::time_point<std::chrono::system_clock> init_time;
 
 bool use_noise_in_rvo = false;
+bool use_vel_from_summit = true;
 
 double cap_angle(double angle){
 
@@ -67,18 +68,6 @@ void WorldModel::InitPedGoals(){
      if(goal_file_name_ == "null"){
         std::cout<<"Using default goals"<<std::endl;
 
-       /* goals = { // indian cross 2 larger map
-            COORD(3.5, 20.0),
-            COORD(-3.5, 20.0), 
-            COORD(3.5, -20.0), 
-            COORD(-3.5, -20.0),
-            COORD(20.0  , 3.5),
-            COORD( 20.0 , -3.5), 
-            COORD(-20.0 , 3.5), 
-            COORD( -20.0, -3.5),
-            COORD(-1, -1) // stop
-        };*/
-
         goals = {
 		   COORD(/*-2*/-20, 7.5),
 		   COORD(10, /*17*//*27*/37),
@@ -118,11 +107,6 @@ void WorldModel::InitPedGoals(){
 
         file.close();
     }
-
-     // for(int i=0;i<ModelParams::N_PED_WORLD; i++){
-    	//  vector<COORD> dirs(goals.size());
-    	//  ped_mean_dirs.push_back(dirs);
-     // }
 }
 
 void WorldModel::InitRVO(){
@@ -1000,8 +984,6 @@ int WorldModel::GetNumIntentions(const Agent& agent){
         return NumPaths(agent.id) + 1; // number of paths + stop (agent has one more cross intention)
     else if (goal_mode == "cur_vel")
         return 2;
-    else if (goal_mode == "goal")
-        return goals.size();
 }
 
 int WorldModel::GetNumIntentions(int agent_id){
@@ -1009,8 +991,6 @@ int WorldModel::GetNumIntentions(int agent_id){
         return NumPaths(agent_id) + 1; // number of paths + stop (agent has one more cross intention)
     else if (goal_mode == "cur_vel")
         return 2;
-    else if (goal_mode == "goal")
-        return goals.size();
 }
 
 void WorldModel::AgentStepGoal(AgentStruct& agent, int step, double noise) {
@@ -1501,15 +1481,9 @@ void WorldModel::RobStepCurVel(CarStruct &car) {
 }
 
 void WorldModel::RobStepCurAction(CarStruct &car, double acc, double steering) {
-	bool fix_scenario = CPUDoPrint;
-	CPUDoPrint = true;  // to block the random number generation
-
 	double det_prob=1;
-
 	RobStep(car, steering, det_prob);
 	RobVelStep(car, acc, det_prob);
-
-	CPUDoPrint = fix_scenario;
 }
 
 double WorldModel::ISRobVelStep(CarStruct &car, double acc, Random& random) {
@@ -1632,16 +1606,8 @@ AgentBelief WorldModel::initPedBelief(const Agent& agent) {
     b.cross_dir = fetch_cross_dir(agent);
     b.bb = fetch_bounding_box(agent);
 
-    // b.speed = ModelParams::PED_SPEED;
-    //    cout << "AGENT_DIS + 1= "<< AGENT_DIS + 1 << endl;
-    
     int num_types = NUM_AGENT_TYPES;
     for(int i =0 ; i < num_types; i++){
-        // vector<double> temp_probs;
-        // temp_probs.reserve(20);
-        // for (int i =0; i<GetNumIntentions(agent); i++)
-        //     temp_probs.push_back(1.0/GetNumIntentions(agent)/num_types);
-        // b.prob_modes_goals.push_back(temp_probs);
         b.prob_modes_goals.push_back(vector<double>());
         b.prob_modes_goals.back().reserve(20);
         for (int i =0; i<GetNumIntentions(agent); i++)
@@ -1727,7 +1693,6 @@ void WorldStateTracker::tracIntention(Agent& des, const Agent& src, bool doPrint
         des.reset_intention = true;
     else
         des.reset_intention = src.reset_intention;
-    // des.paths = src.paths;
 
     des.paths.resize(0);
 
@@ -1739,67 +1704,23 @@ void WorldStateTracker::tracIntention(Agent& des, const Agent& src, bool doPrint
 }
 
 void WorldStateTracker::trackVel(Agent& des, const Agent& src, bool& no_move, bool doPrint){
-    double duration =  src.ros_time_stamp - des.ros_time_stamp;
-
-    if (duration < 0.001 / Globals::config.time_scale){
-        no_move = false;
-
-        DEBUG(string_sprintf("Update duration too short for agent %d: %f, (%f-%f)", 
-            src.id, duration, src.ros_time_stamp, des.ros_time_stamp));
-        return;
-    }
-
-    des.vel.x = (src.w - des.w) / duration;
-    des.vel.y = (src.h - des.h) / duration;
-
-    if (des.vel.Length()>1e-4){
-        no_move = false;
-    }
-    else{
-//        DEBUG(string_sprintf("Vel too small: (%f, %f)", des.vel.x, des.vel.y));
-    }
-}
-
-
-void WorldStateTracker::updateVeh(const Vehicle& veh, bool doPrint){
-
-    int i=0;
-    bool no_move = true;
-    for(;i<veh_list.size();i++) {
-        if (veh_list[i].id==veh.id) {
-            logv <<"[updateVel] updating agent " << veh.id << endl;
-
-            trackVel(veh_list[i], veh, no_move, doPrint);
-            tracPos(veh_list[i], veh, doPrint);
-            tracIntention(veh_list[i], veh, doPrint);
-            tracBoundingBox(veh_list[i], veh, doPrint);
-
-            veh_list[i].time_stamp = veh.time_stamp;
-            break;
-        }
-
-        if (abs(veh_list[i].w-veh.w)<=0.1 && abs(veh_list[i].h-veh.h)<=0.1)   //overlap
-        {}
-    }
-
-    if (i==veh_list.size()) {
-        logv << "[updateVel] updating new agent " << veh.id << endl;
-
-        no_move = false;
-
-        veh_list.push_back(veh);
-
-        veh_list.back().vel.x = 0.01; // to avoid subsequent runtime error
-        veh_list.back().vel.y = 0.01; // to avoid subsequent runtime error
-        veh_list.back().time_stamp = veh.time_stamp;
-
-        updatePathPool(veh_list.back());
-    }
-
-    if (no_move){
-        cout << __FUNCTION__ << " no_move veh "<< veh.id <<
-                " caught: vel " << veh_list[i].vel.x <<" "<< veh_list[i].vel.y << endl;
-    }
+	if (use_vel_from_summit){
+	    des.vel = src.vel;
+	    no_move = false;
+	} else {
+	    double duration =  src.ros_time_stamp - des.ros_time_stamp;
+	    if (duration < 0.001 / Globals::config.time_scale){
+	        no_move = false;
+	        DEBUG(string_sprintf("Update duration too short for agent %d: %f, (%f-%f)",
+	            src.id, duration, src.ros_time_stamp, des.ros_time_stamp));
+	        return;
+	    }
+	    des.vel.x = (src.w - des.w) / duration;
+	    des.vel.y = (src.h - des.h) / duration;
+	    if (des.vel.Length()>1e-4){
+	        no_move = false;
+	    }
+	}
 }
 
 void WorldStateTracker::updateVehState(const Vehicle& veh, bool doPrint){
@@ -1809,7 +1730,6 @@ void WorldStateTracker::updateVehState(const Vehicle& veh, bool doPrint){
     for(;i<veh_list.size();i++) {
         if (veh_list[i].id==veh.id) {
             logv <<"[updateVel] updating agent " << veh.id << endl;
-
             trackVel(veh_list[i], veh, no_move, doPrint);
             tracPos(veh_list[i], veh, doPrint);
             tracBoundingBox(veh_list[i], veh, doPrint);
@@ -1823,18 +1743,15 @@ void WorldStateTracker::updateVehState(const Vehicle& veh, bool doPrint){
 
     if (i==veh_list.size()) {
         logv << "[updateVel] updating new agent " << veh.id << endl;
-
         no_move = false;
-
         veh_list.push_back(veh);
-        veh_list.back().vel.x = 0.01; // to avoid subsequent runtime error
-        veh_list.back().vel.y = 0.01; // to avoid subsequent runtime error
+        if (!use_vel_from_summit) {
+        	veh_list.back().vel.x = 0.01; // to avoid subsequent runtime error
+        	veh_list.back().vel.y = 0.01; // to avoid subsequent runtime error
+        } else {
+        	veh_list.back().vel = veh.vel;
+        }
         veh_list.back().time_stamp = veh.time_stamp;
-    }
-
-    if (no_move){
-//        cout << __FUNCTION__ << " no_move veh "<< veh.id <<
-//                " caught: vel " << veh_list[i].vel.x <<" "<< veh_list[i].vel.y << endl;
     }
 }
 
@@ -1852,46 +1769,6 @@ void WorldStateTracker::updateVehPaths(const Vehicle& veh, bool doPrint){
 
 }
 
-void WorldStateTracker::updatePed(const Pedestrian& agent, bool doPrint){
-    int i=0;
-
-    bool no_move = true;
-    for(;i<ped_list.size();i++) {
-        if (ped_list[i].id==agent.id) {
-            logv <<"[updatePed] updating agent " << agent.id << endl;
-    
-            trackVel(ped_list[i], agent, no_move, doPrint);
-            tracPos(ped_list[i], agent, doPrint);
-            tracIntention(ped_list[i], agent, doPrint);
-            tracCrossDirs(ped_list[i], agent, doPrint);
-            ped_list[i].time_stamp = agent.time_stamp;
-
-            break;
-        }
-        if (abs(ped_list[i].w-agent.w)<=0.1 && abs(ped_list[i].h-agent.h)<=0.1)   //overlap
-        {}
-    }
-
-    if (i==ped_list.size()) {
-    	no_move = false;
-        //not found, new agent
-   	    logv << "[updatePed] updating new agent " << agent.id << endl;
-
-        ped_list.push_back(agent);
-
-        ped_list.back().vel.x = 0.01; // to avoid subsequent runtime error
-        ped_list.back().vel.y = 0.01; // to avoid subsequent runtime error
-        ped_list.back().time_stamp = agent.time_stamp;
-
-        updatePathPool(ped_list.back());
-    }
-
-    if (no_move){
-		cout << __FUNCTION__ << " no_move agent "<< agent.id <<
-				" caught: vel " << ped_list[i].vel.x <<" "<< ped_list[i].vel.y << endl;
-    }
-}
-
 void WorldStateTracker::updatePedState(const Pedestrian& agent, bool doPrint){
     int i=0;
 
@@ -1899,7 +1776,6 @@ void WorldStateTracker::updatePedState(const Pedestrian& agent, bool doPrint){
     for(;i<ped_list.size();i++) {
         if (ped_list[i].id==agent.id) {
             logv <<"[updatePed] updating agent " << agent.id << endl;
-
             trackVel(ped_list[i], agent, no_move, doPrint);
             tracPos(ped_list[i], agent, doPrint);
             ped_list[i].time_stamp = agent.time_stamp;
@@ -1913,10 +1789,14 @@ void WorldStateTracker::updatePedState(const Pedestrian& agent, bool doPrint){
     	no_move = false;
         //not found, new agent
    	    logv << "[updatePed] updating new agent " << agent.id << endl;
-
         ped_list.push_back(agent);
-        ped_list.back().vel.x = 0.01; // to avoid subsequent runtime error
-        ped_list.back().vel.y = 0.01; // to avoid subsequent runtime error
+        if (!use_vel_from_summit) {
+        	ped_list.back().vel.x = 0.01; // to avoid subsequent runtime error
+            ped_list.back().vel.y = 0.01; // to avoid subsequent runtime error
+        }
+        else {
+        	ped_list.back().vel = agent.vel;
+        }
         ped_list.back().time_stamp = agent.time_stamp;
     }
 
@@ -2489,34 +2369,11 @@ vector<AgentStruct> WorldBeliefTracker::predictAgents() {
 
 PomdpState WorldBeliefTracker::predictPedsCurVel(PomdpState* ped_state, double acc, double steering) {
 
-//	cout << __FUNCTION__ << "applying action " << acc <<"/"<< steering << endl;
-
 	PomdpState predicted_state = *ped_state;
-
-//	if (acc >0){
-//		cout << "source agent list addr "<< ped_state->agents << endl;
-//		cout << "des agent list addr "<< predicted_state.agents << endl;
-//		cout << predicted_state.num << " agents active" << endl;
-//		raise(SIGABRT);
-//	}
-
-//	model.RobStepCurVel(predicted_state.car);
-	model.RobStepCurAction(predicted_state.car, acc, steering);
-
+//	model.RobStepCurAction(predicted_state.car, acc, steering);
+	model.RobStepCurVel(predicted_state.car);
 	for(int i =0 ; i< predicted_state.num ; i++) {
 		auto & p = predicted_state.agents[i];
-
-//		if (acc >0 ){
-//			if (ped_vel.Length()<1e-3){
-//				cout << "agent " << p.id << " vel = " << ped_vel.Length() << endl;
-//				cout.flush();
-//				raise(SIGABRT);
-//			}
-//			else{
-//				cout << "agent " << p.id << " vel = " << ped_vel.x <<" "<< ped_vel.y << endl;
-//			}
-//		}
-
 		model.PedStepCurVel(p/*, ped_vel*/);
     }
 
