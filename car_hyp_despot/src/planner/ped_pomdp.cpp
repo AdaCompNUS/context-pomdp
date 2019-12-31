@@ -328,18 +328,15 @@ bool PedPomdp::Step(State &state_, double rNum, int action, double &reward, uint
     double acc = GetAcceleration(action);
 
     //	cout << "car freq " << world_model->freq << endl;
-
     world_model->RobStep(state.car, steering, rNum/*random*/);
-
     world_model->RobVelStep(state.car, acc, rNum/*random*/);
-
 
     state.time_stamp = state.time_stamp + 1.0 / ModelParams::control_freq;
 
     if(use_gamma_in_search)
     {
         // Attentive pedestrians
-        world_model->PorcaAgentStep(state.agents, rNum, state.num, state.car);
+    	world_model->GammaAgentStep(state.agents, rNum, state.num, state.car);
         for(int i = 0; i < state.num; i++)
         {
             //Distracted pedestrians
@@ -352,7 +349,6 @@ bool PedPomdp::Step(State &state_, double rNum, int action, double &reward, uint
         for(int i = 0; i < state.num; i++)
         {
             world_model->PedStep(state.agents[i], rNum/*random*/);
-
             assert(state.agents[i].pos.x == state.agents[i].pos.x); //debugging
         }
     }
@@ -429,7 +425,7 @@ bool PedPomdp::Step(PomdpStateWorld &state, double rNum, int action, double &rew
     if(use_gamma_in_simulation)
     {
         // Attentive pedestrians
-        world_model->PorcaAgentStep(state, random);
+        world_model->GammaAgentStep(state, random);
         // Distracted pedestrians
         for(int i = 0; i < state.num; i++)
         {
@@ -715,48 +711,13 @@ PomdpState PedPomdp::PredictAgents(const PomdpState &ped_state) const
     PomdpState* predicted_state = static_cast<PomdpState*>(Copy(&ped_state));
 
     double steer_to_path = world_model->GetSteerToPath<PomdpState>(*predicted_state);
-    // double acc = ModelParams::AccSpeed; // intend at cur speed;
-    // ACT_TYPE action = GetActionID(steer_to_path, acc);
-    ACT_TYPE action = GetActionID(GetSteerIDfromSteering(steer_to_path), 2);
+    ACT_TYPE action = GetActionID(GetSteerIDfromSteering(steer_to_path), 0);
 
     OBS_TYPE dummy_obs;
     double dummy_reward;
 
     double rNum = Random::RANDOM.NextDouble();
     Step(*predicted_state, rNum, action, dummy_reward, dummy_obs);
-
-    // world_model->RobStepCurAction(predicted_state.car, acc, steer_to_path);
-
-    // for(int i = 0 ; i < predicted_state.num ; i++)
-    // {
-    //     auto &p = predicted_state.agents[i];
-
-    //     if(world_model->goal_mode == "goal")
-    //     {
-    //         world_model->AgentStepGoal(p, 1);
-    //     }
-    //     else if (world_model->goal_mode == "cur_vel")
-    //     {
-    //         world_model->PedStepCurVel(p, 1);
-    //     }
-    //     else if (world_model->goal_mode == "path")
-    //     {
-    //         int old_path_pos = p.pos_along_path;
-    //         double noise = Random::RANDOM.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
-    //         if (true)
-    //         {
-    //             world_model->AgentStepPath(p, 1, noise, false);
-    //         }
-    //         else
-    //             world_model->AgentStepPath(p, 1, noise, false);
-
-    //         if(p.pos_along_path == old_path_pos)
-    //             logv << "[PredictAgents] agent " << p.id << " no move with " << world_model->PathCandidates(p.id).size()
-    //                  << " path_candidates, pos_along_path " << p.pos_along_path << " " << endl;
-    //     }
-    // }
-	// 
-    // predicted_state.time_stamp = ped_state.time_stamp + 1.0 / ModelParams::control_freq;
 
     return *predicted_state;
 }

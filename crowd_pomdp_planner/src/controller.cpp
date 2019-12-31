@@ -33,7 +33,7 @@ static DSPOMDP* ped_pomdp_model;
 static ACT_TYPE action = (ACT_TYPE) (-1);
 static OBS_TYPE obs = (OBS_TYPE) (-1);
 
-bool predict_peds = false;
+bool predict_peds = true;
 
 struct my_sig_action {
 	typedef void (*handler_type)(int, siginfo_t*, void*);

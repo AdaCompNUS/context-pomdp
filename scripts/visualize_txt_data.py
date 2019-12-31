@@ -154,8 +154,6 @@ def agent_rect(agent_dict, origin, color, fill=True):
         pos = agent_dict['pos']
         heading = agent_dict['heading']
         bb_x, bb_y = agent_dict['bb']
-        # print('rect={},{},{},{},{}'.format(pos, heading, bb_x, bb_y, origin))
-
         x_shift = [bb_y/2.0 * math.cos(heading), bb_y/2.0 * math.sin(heading)]
         y_shift = [-bb_x/2.0 * math.sin(heading), bb_x/2.0 * math.cos(heading)]
         
@@ -164,6 +162,17 @@ def agent_rect(agent_dict, origin, color, fill=True):
             xy=coord, 
             width=bb_y , height=bb_x, angle=np.rad2deg(heading), fill=fill, color=color)
         return rect
+
+    except Exception as e:
+        error_handler(e)
+        pdb.set_trace()
+
+def vel_arrow(agent_dict, origin, color):
+    try:
+        vel = agent_dict['vel']
+        arrow = mpatches.Arrow(
+            x=origin[0], y=origin[1], dx=vel[0], dy=vel[1], color=color)
+        return arrow
 
     except Exception as e:
         error_handler(e)
@@ -196,9 +205,10 @@ def animate(time_step):
     for agent_dict in exos_list[time_step]:
         patches.append(ax.add_patch(
             agent_rect(agent_dict, ego_pos, 'black')))
+        patches.append(ax.add_patch(
+            vel_arrow(agent_dict, ego_pos, 'grey')))
 
     for car_dict in pred_car_list[time_step]:
-        # print(car_dict, ego_list[time_step]['bb'])
         car_dict['bb'] = ego_list[time_step]['bb'] 
         patches.append(ax.add_patch(
             agent_rect(car_dict, ego_pos, 'lightgreen', False)))
@@ -242,7 +252,7 @@ if __name__ == "__main__":
     ego_list, ego_path_list, exos_list, coll_bool_list, pred_car_list, pred_exo_list = parse_data(config.file)
 
     anim = animation.FuncAnimation(fig, animate, init_func=init,
-                               frames=len(ego_list.keys()) - config.frame, interval=30, blit=True)
+                               frames=len(ego_list.keys()) - config.frame, interval=300, blit=True)
     fig.canvas.mpl_connect('button_press_event', onClick)
 
     plt.show()

@@ -30,7 +30,7 @@ struct AgentBelief {
     int sample_goal() const;
     int maxlikely_intention() const;
 
-    void sample_goal_mode(int& goal, int& mode, bool use_att_mode = true) const;
+    void sample_goal_mode(int& goal, int& mode, int use_att_mode = 0) const;
 
     void reset_belief(int new_size);
 };
@@ -77,17 +77,14 @@ public:
 	void PedStep(AgentStruct &ped, double& random);
 
     double ISPedStep(CarStruct &car, AgentStruct &ped, Random& random);//importance sampling PedStep
-    void PorcaAgentStep(AgentStruct peds[], Random& random, int num_ped); //no interaction between car and pedestrian
-    void PorcaAgentStep(AgentStruct peds[], Random& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
-    void PorcaAgentStep(AgentStruct peds[], double& random, int num_ped); //no interaction between car and pedestrian
-    void PorcaAgentStep(AgentStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
-    void PorcaAgentStep(PomdpStateWorld& state, Random& random);
-    void PedStepGoal(AgentStruct& ped, int step=1, double noise=0.0);
+    void GammaAgentStep(AgentStruct peds[], Random& random, int num_ped); //no interaction between car and pedestrian
+    void GammaAgentStep(AgentStruct peds[], Random& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
+    void GammaAgentStep(AgentStruct peds[], double& random, int num_ped); //no interaction between car and pedestrian
+    void GammaAgentStep(AgentStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
+    void GammaAgentStep(PomdpStateWorld& state, Random& random);
     void PedStepCurVel(AgentStruct& ped, int step=1, double noise=0.0);
     void PedStepPath(AgentStruct& agent, int step=1, double noise=0.0, bool doPrint = false);
-    void VehStepGoal(AgentStruct& ped, int step=1, double noise=0.0);
     void VehStepPath(AgentStruct& agent, int step=1, double noise=0.0, bool doPrint = false);
-    void AgentStepGoal(AgentStruct& ped, int step=1, double noise=0.0);
     void AgentStepPath(AgentStruct& agent, int step=1, double noise=0.0, bool doPrint = false);
 
     COORD GetGoalPos(const AgentStruct& ped, int intention_id=-1);
@@ -131,12 +128,11 @@ public:
 
 	Path path;
     COORD car_goal;
-    std::vector<COORD> goals;
     double freq;
     const double in_front_angle_cos;
     std::vector<RVO::RVOSimulator*> traffic_agent_sim_;
 
-    const std::string goal_mode = "path"; // "cur_vel", "path", "goal"
+    const std::string goal_mode = "path"; // "cur_vel", "path"
 
     void rasie_unsupported_goal_mode(std::string function){
         std::cout << function << ": unsupported goal mode " 
@@ -190,7 +186,6 @@ public:
 
 public:
     std::string goal_file_name_;
-    void InitPedGoals();
     void AddObstacle(std::vector<RVO::Vector2> obstacles);
     bool CheckCarWithObstacles(const CarStruct& car, int flag);// 0 in search, 1 real check
     bool CheckCarWithObsLine(const CarStruct& car, COORD obs_last_point, COORD obs_first_point, int flag);// 0 in search, 1 real check
@@ -259,10 +254,10 @@ public:
 
 public:
 
-    void PorcaSimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car);
-    COORD GetPorcaVel(AgentStruct& agent, int i);
+    void GammaSimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car);
+    COORD GetGammaVel(AgentStruct& agent, int i);
 
-    void AgentApplyPorcaVel(AgentStruct& agent, COORD& rvo_vel);
+    void AgentApplyGammaVel(AgentStruct& agent, COORD& rvo_vel);
 
 };
 
@@ -385,8 +380,8 @@ public:
     WorldBeliefTracker(WorldModel& _model, WorldStateTracker& _stateTracker): model(_model), stateTracker(_stateTracker) {}
 
     void update();
-    PomdpState sample(bool predict = false, bool use_att_mode = true);
-    vector<PomdpState> sample(int num, bool predict = false, bool use_att_mode = true);
+    PomdpState sample(bool predict = false, int use_att_mode = 0);
+    vector<PomdpState> sample(int num, bool predict = false, int use_att_mode = 0);
     vector<AgentStruct> predictAgents();
     PomdpState predictPedsCurVel(PomdpState*, double acc, double steering);
 

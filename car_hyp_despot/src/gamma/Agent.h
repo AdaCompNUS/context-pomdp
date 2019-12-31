@@ -105,7 +105,6 @@ namespace RVO {
 
         void computeLaneConstrains ();
 
-
 		std::vector<std::pair<float, const Agent *> > agentNeighbors_;
 		size_t maxNeighbors_;
 		float maxSpeed_;
@@ -138,6 +137,7 @@ namespace RVO {
 		bool right_lane_constrained_;
 		Vector2 path_forward_;
 
+		bool frozen; // agent position is frozen
 
 		friend class KdTree;
 		friend class RVOSimulator;

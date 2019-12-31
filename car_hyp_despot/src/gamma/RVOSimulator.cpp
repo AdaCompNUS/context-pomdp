@@ -206,7 +206,7 @@ namespace RVO {
 	}
 
 
-	size_t RVOSimulator::addAgent(const AgentParams agt, int tracking_id)
+	size_t RVOSimulator::addAgent(const AgentParams agt, int tracking_id, bool frozen_agent)
 	{
 		Agent *agent = new Agent(this);
 
@@ -235,6 +235,7 @@ namespace RVO {
 		agent->path_forward_ = Vector2(0.0f, 0.0f);
 		agent->left_lane_constrained_ = false;
 		agent->right_lane_constrained_ = false;
+		agent->frozen = frozen_agent;
 
 		agents_.push_back(agent);
 
@@ -365,15 +366,18 @@ namespace RVO {
 #pragma omp parallel for
 #endif
 		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
-			agents_[static_cast<size_t>(i)]->computeNeighbors();
-			agents_[static_cast<size_t>(i)]->computeNewVelocity();
+			if (!agents_[static_cast<size_t>(i)]->frozen) {
+				agents_[static_cast<size_t>(i)]->computeNeighbors();
+				agents_[static_cast<size_t>(i)]->computeNewVelocity();
+			}
 		}
 
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
 		for (int i = 0; i < static_cast<int>(agents_.size()); ++i) {
-			agents_[static_cast<size_t>(i)]->update();
+			if (!agents_[static_cast<size_t>(i)]->frozen)
+				agents_[static_cast<size_t>(i)]->update();
 		}
 
 		globalTime_ += timeStep_;

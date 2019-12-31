@@ -62,53 +62,6 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
     init_time = Time::now();
 }
 
-void WorldModel::InitPedGoals(){
-
-	logi << "WorldModel::InitPedGoals\n";
-     if(goal_file_name_ == "null"){
-        std::cout<<"Using default goals"<<std::endl;
-
-        goals = {
-		   COORD(/*-2*/-20, 7.5),
-		   COORD(10, /*17*//*27*/37),
-		   COORD(-1,-1)
-		};
-    }
-    else{
-
-        std::cout<<"Using goal file name " << goal_file_name_ <<std::endl;
-
-        goals.resize(0);
-
-        std::ifstream file;
-        file.open(goal_file_name_, std::ifstream::in);
-
-        if(file.fail()){
-            std::cout<<"open goal file failed !!!!!!"<<std::endl;
-            exit(-1);
-        }
-
-        std::string line;
-        int goal_num = 0;
-        while (std::getline(file, line))
-        {
-            std::istringstream iss(line);
-            
-            double x;
-            double y;
-            while (iss >> x >>y){
-                std::cout << x <<" "<< y<<std::endl;
-                goals.push_back(COORD(x, y));
-            }
-
-            goal_num++;
-            if(goal_num > 99) break;
-        }
-
-        file.close();
-    }
-}
-
 void WorldModel::InitRVO(){
     if(!Globals::config.use_multi_thread_ )
         //NumThreads=Globals::config.NUM_THREADS;
@@ -768,10 +721,7 @@ int WorldModel::minStepToGoalWithSteer(const PomdpState& state) {
 void WorldModel::PedStep(AgentStruct &agent, Random& random) {
 
     double noise = random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
-    if(goal_mode == "goal") {
-        AgentStepGoal(agent, 1, noise);
-    }
-    else if (goal_mode == "cur_vel") {
+    if (goal_mode == "cur_vel") {
         PedStepCurVel(agent, 1, noise);
     }
     else if (goal_mode == "path") {
@@ -803,10 +753,7 @@ void WorldModel::PedStep(AgentStruct &agent, double& random) {
     }
     noise *= cos(2 * M_PI * random)* ModelParams::NOISE_GOAL_ANGLE;
     
-    if(goal_mode == "goal") {
-        AgentStepGoal(agent, 1, noise);
-    }
-    else if (goal_mode == "cur_vel") {
+    if (goal_mode == "cur_vel") {
         PedStepCurVel(agent, 1, noise);
     }
     else if (goal_mode == "path") {
@@ -930,8 +877,6 @@ COORD WorldModel::GetGoalPos(const Agent& agent, int intention_id){
     }
     else if (goal_mode == "cur_vel")
         return COORD(agent.w + agent.vel.x/freq*3, agent.h + agent.vel.y/freq*3);
-    else if (goal_mode == "goal")
-        return goals[intention_id];
     else{
         rasie_unsupported_goal_mode(__FUNCTION__);
     }
@@ -947,8 +892,6 @@ COORD WorldModel::GetGoalPos(const AgentStruct& agent, int intention_id){
             agent.pos, agent.type, agent.cross_dir);
     else if (goal_mode == "cur_vel")
         return COORD(agent.pos.x + agent.vel.x/freq*3, agent.pos.y + agent.vel.y/freq*3);
-    else if (goal_mode == "goal")
-        return goals[intention_id];
     else{
         rasie_unsupported_goal_mode(__FUNCTION__);
     }
@@ -962,8 +905,6 @@ COORD WorldModel::GetGoalPos(const AgentBelief& agent, int intention_id){
             agent.pos, agent.type, agent.cross_dir);
     else if (goal_mode == "cur_vel")
         return COORD(agent.pos.x + agent.vel.x/freq*3, agent.pos.y + agent.vel.y/freq*3);
-    else if (goal_mode == "goal")
-        return goals[intention_id];
     else{
         rasie_unsupported_goal_mode(__FUNCTION__);
     }
@@ -974,8 +915,6 @@ int WorldModel::GetNumIntentions(const AgentStruct& agent){
         return NumPaths(agent.id) + 1; // number of paths + stop (agent has one more cross intention)
     else if (goal_mode == "cur_vel")
         return 2;
-    else if (goal_mode == "goal")
-        return goals.size();
 }
 
 
@@ -991,56 +930,6 @@ int WorldModel::GetNumIntentions(int agent_id){
         return NumPaths(agent_id) + 1; // number of paths + stop (agent has one more cross intention)
     else if (goal_mode == "cur_vel")
         return 2;
-}
-
-void WorldModel::AgentStepGoal(AgentStruct& agent, int step, double noise) {
-    if (agent.type == AgentType::ped)
-        PedStepGoal(agent, step, noise);
-    else if (agent.type == AgentType::car)
-        VehStepGoal(agent, step, noise);
-    else
-        ERR(string_sprintf(
-            "unsupported agent mode %d", agent.type));
-}
-
-void WorldModel::PedStepGoal(AgentStruct& agent, int step, double noise) {
-  const COORD& goal = goals[agent.intention];
-	if (agent.intention == GetNumIntentions(agent.id)-1) {  //stop intention
-		return;
-	}
-
-	COORD goal_vec(goal.x - agent.pos.x, goal.y - agent.pos.y);
-    if (noise!=0){
-        double a = goal_vec.GetAngle(); 
-        a += noise;
-        MyVector move(a, step * agent.speed/freq, 0);
-        agent.pos.x += move.dw;
-        agent.pos.y += move.dh;    
-    } else{
-        goal_vec.AdjustLength(step * agent.speed / freq);
-        agent.pos.x += goal_vec.x;
-        agent.pos.y += goal_vec.y;
-    }
-}
-
-void WorldModel::VehStepGoal(AgentStruct& agent, int step, double noise) {
-  const COORD& goal = goals[agent.intention];
-    if (agent.intention == GetNumIntentions(agent.id)-1) {  //stop intention
-        return;
-    }
-
-    COORD old_pos = agent.pos;
-    COORD goal_vec(goal.x - agent.pos.x, goal.y - agent.pos.y);
-    goal_vec.AdjustLength(3.0);// lookahead 3 meters
-
-    COORD pursuit_point = goal_vec + agent.pos;
-    // double steering = PurepursuitAngle(agent, pursuit_point);
-    double steering = PControlAngle<AgentStruct>(agent, pursuit_point);
-    
-    steering += noise;
-    BicycleModel(agent, steering, agent.speed);
-
-    agent.vel = (agent.pos - old_pos)*freq;
 }
 
 void WorldModel::PedStepCurVel(AgentStruct& agent, int step, double noise) {
@@ -2004,8 +1893,6 @@ void AgentBelief::reset_belief(int new_size){
 }
 
 void WorldBeliefTracker::update() {
-
-    // DEBUG("Update agent_beliefs");
     auto sorted_agents = stateTracker.getSortedAgents();
 
     if (logging::level()>=logging::VERBOSE){
@@ -2019,22 +1906,18 @@ void WorldBeliefTracker::update() {
         newagents[p->id] = p;
     }
 
-    // DEBUG("remove disappeared agent_beliefs");
     vector<int> agents_to_remove;
 
     for(const auto& p: agent_beliefs) {
         if (newagents.find(p.first) == newagents.end()) {
             logi << "["<<__FUNCTION__<< "]" << " removing agent "<< p.first << endl;
             agents_to_remove.push_back(p.first);
-            // agent_beliefs.erase(p.first);
         }
     }
 
     for(const auto& i: agents_to_remove) {
         agent_beliefs.erase(i);
     }
-
-    // DEBUG("reset agent belief if paths are updated");
 
     for(auto& dp: sorted_agents) {
         auto& agent = *dp.second;
@@ -2052,22 +1935,16 @@ void WorldBeliefTracker::update() {
     if (logging::level()>=logging::VERBOSE){
 		text(agent_beliefs);
 	}
-    //
 
-    // DEBUG("Run ORCA for all possible hidden variable combinations");
     model.PrepareAttentiveAgentMeanDirs(agent_beliefs, car);
 
     model.PrintMeanDirs(agent_beliefs, newagents);
 
-    // update car
     car.pos = stateTracker.carpos;
     car.vel = stateTracker.carvel;
 	car.heading_dir = /*0*/stateTracker.car_heading_dir;
 
-//    DEBUG("Before belief update");
     stateTracker.model.print_path_map();
-
-    // DEBUG("update existing agent_beliefs");
 
     for(auto& kv : agent_beliefs) {
     	if (newagents.find(kv.first) == newagents.end()){
@@ -2076,8 +1953,6 @@ void WorldBeliefTracker::update() {
         model.updatePedBelief(kv.second, *newagents[kv.first]);
     }
 
-//    DEBUG("add new agent_beliefs");
-    // 
     for(const auto& kv: newagents) {
 		auto& p = *kv.second;
         if (agent_beliefs.find(p.id) == agent_beliefs.end()) {
@@ -2086,8 +1961,6 @@ void WorldBeliefTracker::update() {
         }
     }
 
-    // DEBUG("maintain sorted peds");
-    // 
 	sorted_beliefs.clear();
 	for(const auto& dp: sorted_agents) {
 		auto& p = *dp.second;
@@ -2105,12 +1978,6 @@ void WorldBeliefTracker::update() {
 
 int AgentBelief::sample_goal() const {
     double r = /*double(rand()) / RAND_MAX*/ Random::RANDOM.NextDouble();
-    // int i = 0;
-    // r -= prob_goals[i];
-    // while(r > 0) {
-    //     i++;
-    //     r -= prob_goals[i];
-    // }
 
     for (auto prob_goals: prob_modes_goals){
         int i = 0;
@@ -2125,70 +1992,64 @@ int AgentBelief::sample_goal() const {
     return prob_modes_goals[0].size() - 1; // stop intention as default
 }
 
-void AgentBelief::sample_goal_mode(int& goal, int& mode, bool use_att_mode) const {
-//	logv << "[AgentBelief::sample_goal_mode] " << endl;
-
+void AgentBelief::sample_goal_mode(int& goal, int& mode, int use_att_mode) const {
     double r = Random::RANDOM.NextDouble();
 
-    if (use_att_mode){
-        // sample full modes
-        bool done = false;
+    if (use_att_mode == 0){
+		bool done = false;
 
-        double total_prob = 0;
-        for (auto& goal_probs: prob_modes_goals){
-            // total_prob += std::accumulate(goal_probs.begin(), goal_probs.end(), 0);
-            for (auto p: goal_probs)
-                total_prob += p;
-        }
+		double total_prob = 0;
+		for (auto& goal_probs: prob_modes_goals){
+			// total_prob += std::accumulate(goal_probs.begin(), goal_probs.end(), 0);
+			for (auto p: goal_probs)
+				total_prob += p;
+		}
 
-        assert(total_prob!=0);
+		assert(total_prob!=0);
 
-        // cout << prob_modes_goals << endl;
-        // cout << __FUNCTION__ << " total_prob=" << total_prob << endl; 
+		r = r * total_prob;
 
-        r = r * total_prob;
-        
-        for (int ped_type = 0 ; ped_type < prob_modes_goals.size() ; ped_type++){
-            auto& goal_probs = prob_modes_goals[ped_type];
-            for (int ped_goal = 0 ; ped_goal < goal_probs.size() ; ped_goal++){
-                r -= prob_modes_goals[ped_type][ped_goal];
-                if(r <= 0.001) {
-                    goal = ped_goal;
-                    mode = ped_type;
-                    done = true;
-                    break;
-                }
-            }
-            if (done) break;
-        }
+		for (int ped_type = 0 ; ped_type < prob_modes_goals.size() ; ped_type++){
+			auto& goal_probs = prob_modes_goals[ped_type];
+			for (int ped_goal = 0 ; ped_goal < goal_probs.size() ; ped_goal++){
+				r -= prob_modes_goals[ped_type][ped_goal];
+				if(r <= 0.001) {
+					goal = ped_goal;
+					mode = ped_type;
+					done = true;
+					break;
+				}
+			}
+			if (done) break;
+		}
 
-        if(r > 0) {
-            logv << "[WARNING]: [AgentBelief::sample_goal_mode] execess probability " << r << endl;
-            goal = 0;
-            mode = 0;
-        } 
+		if(r > 0) {
+			logv << "[WARNING]: [AgentBelief::sample_goal_mode] execess probability " << r << endl;
+			goal = 0;
+			mode = 0;
+		}
 
-        if(goal > 10){
-            cout << "the rest r = " << r << endl;
-        }
-    } else { // only sample for attentive mode
-        int ped_type = AGENT_DIS;
-        auto& goal_probs = prob_modes_goals[ped_type];
-        double total_prob = 0; //accumulate(goal_probs.begin(), goal_probs.end(), 0);
-        for (auto p: goal_probs)
-            total_prob += p;
+		if(goal > 10){
+			cout << "the rest r = " << r << endl;
+		}
+    } else {
+		int ped_type = (use_att_mode <= 1)? AGENT_DIS: AGENT_ATT;
+		auto& goal_probs = prob_modes_goals[ped_type];
+		double total_prob = 0; //accumulate(goal_probs.begin(), goal_probs.end(), 0);
+		for (auto p: goal_probs)
+			total_prob += p;
 
-        assert(total_prob!=0);
-        r = r * total_prob;
-        for (int ped_goal = 0 ; ped_goal < goal_probs.size() ; ped_goal++){
-            r -= prob_modes_goals[ped_type][ped_goal];
-            if(r <= 0) {
-                goal = ped_goal;
-                mode = ped_type;
-                break;
-            }
-        }
-    }  
+		assert(total_prob!=0);
+		r = r * total_prob;
+		for (int ped_goal = 0 ; ped_goal < goal_probs.size() ; ped_goal++){
+			r -= prob_modes_goals[ped_type][ped_goal];
+			if(r <= 0) {
+				goal = ped_goal;
+				mode = ped_type;
+				break;
+			}
+		}
+    }
 }
 
 int AgentBelief::maxlikely_intention() const {
@@ -2231,12 +2092,6 @@ PomdpState WorldBeliefTracker::text() const{
 			cout << " sorted agent " << p.id << endl;
 
 			cout << "-prob_modes_goals: " << p.prob_modes_goals << endl;
-			// for (int i=0;i<p.prob_modes_goals.size();i++){
-			// 	for (int j=0;j<p.prob_modes_goals[i].size();j++){
-			// 		cout << p.prob_modes_goals[i][j] << " ";
-			// 	}
-			// 	cout<< endl;
-			// }
 		}
 	}
 }
@@ -2264,7 +2119,7 @@ void WorldBeliefTracker::ValidateCar(const char* func){
     }
 }
 
-PomdpState WorldBeliefTracker::sample(bool predict, bool use_att_mode) {
+PomdpState WorldBeliefTracker::sample(bool predict, int use_att_mode) {
     ValidateCar(__FUNCTION__);
 
     PomdpState s;
@@ -2316,7 +2171,7 @@ PomdpState WorldBeliefTracker::sample(bool predict, bool use_att_mode) {
     return s;
 }
 
-vector<PomdpState> WorldBeliefTracker::sample(int num, bool predict, bool use_att_mode) {
+vector<PomdpState> WorldBeliefTracker::sample(int num, bool predict, int use_att_mode) {
 
 	if(DESPOT::Debug_mode)
 		Random::RANDOM.seed(0);
@@ -2350,10 +2205,7 @@ vector<AgentStruct> WorldBeliefTracker::predictAgents() {
         for(int i=0; i<4; i++) {
             AgentStruct agent = agent_pred;
 
-            if(model.goal_mode == "goal"){
-                model.AgentStepGoal(agent, step + i);
-            }
-            else if (model.goal_mode == "cur_vel"){
+            if (model.goal_mode == "cur_vel"){
                 model.PedStepCurVel(agent, step + i);
             }
             else if (model.goal_mode == "path"){
@@ -2424,7 +2276,7 @@ void WorldModel::ValidateIntention(int agent_id, int intention_id, const char* m
 }
 
 
-void WorldModel::PorcaSimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car){
+void WorldModel::GammaSimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car){
 
     int threadID=GetThreadID();
 
@@ -2433,51 +2285,50 @@ void WorldModel::PorcaSimulateAgents(AgentStruct agents[], int num_agents, CarSt
 
     //adding pedestrians
     for(int i=0; i<num_agents; i++){
+    	bool frozen_agent = (agents[i].mode == AGENT_DIS);
+		if (agents[i].type == AgentType::car){
+			traffic_agent_sim_[threadID]->addAgent(default_car_, i, frozen_agent);
+		} else if (agents[i].type == AgentType::ped){
+			traffic_agent_sim_[threadID]->addAgent(default_ped_, i, frozen_agent);
+		} else {
+			traffic_agent_sim_[threadID]->addAgent(default_bike_, i, frozen_agent);
+		}
 
-        if (agents[i].type == AgentType::car){
-            traffic_agent_sim_[threadID]->addAgent(default_car_, i);
-        } else if (agents[i].type == AgentType::ped){
-            traffic_agent_sim_[threadID]->addAgent(default_ped_, i);
-        } else {
-            traffic_agent_sim_[threadID]->addAgent(default_bike_, i);
-        }
+		// set agent position
+		traffic_agent_sim_[threadID]->setAgentPosition(i, RVO::Vector2(agents[i].pos.x, agents[i].pos.y));
 
-        // set agent position
-        traffic_agent_sim_[threadID]->setAgentPosition(i, RVO::Vector2(agents[i].pos.x, agents[i].pos.y));
+		// set agent heading
+		RVO::Vector2 agt_heading(cos(agents[i].heading_dir), sin(agents[i].heading_dir));
+		traffic_agent_sim_[threadID]->setAgentHeading (i, agt_heading);
 
-        // set agent heading
-        RVO::Vector2 agt_heading(cos(agents[i].heading_dir), sin(agents[i].heading_dir));
-        traffic_agent_sim_[threadID]->setAgentHeading (i, agt_heading);
+		// set agent current velocity
+		traffic_agent_sim_[threadID]->setAgentVelocity(i, RVO::Vector2(agents[i].vel.x, agents[i].vel.y));
 
-        // set agent current velocity
-        traffic_agent_sim_[threadID]->setAgentVelocity(i, RVO::Vector2(agents[i].vel.x, agents[i].vel.y));
-        
-        // set agent preferred velocity
-        int intention_id = agents[i].intention;
-        ValidateIntention(agents[i].id, intention_id, __FUNCTION__, __LINE__);
-        if (intention_id == GetNumIntentions(agents[i])-1) { /// stop intention
-            traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
-        } else{
-            auto goal_pos = GetGoalPos(agents[i], intention_id);
-            RVO::Vector2 goal(goal_pos.x, goal_pos.y);
-            if ( RVO::absSq(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) < 2 * 2 ) {
-                // Agent is within two meter of its goal, set preferred velocity to zero
-                traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
-            } else {
-                // Agent is far away from its goal, set preferred velocity as unit vector towards i's goal.
-                double pref_speed = 0.0;
-                if (agents[i].type == AgentType::car)
-                    pref_speed = agents[i].speed; //5.0;
-                else if (agents[i].type == AgentType::ped)
-                    pref_speed = ModelParams::PED_SPEED;
-                traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i))*pref_speed);
-            }
-        }
+		// set agent preferred velocity
+		int intention_id = agents[i].intention;
+		ValidateIntention(agents[i].id, intention_id, __FUNCTION__, __LINE__);
+		if (intention_id == GetNumIntentions(agents[i])-1) { /// stop intention
+			traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
+		} else{
+			auto goal_pos = GetGoalPos(agents[i], intention_id);
+			RVO::Vector2 goal(goal_pos.x, goal_pos.y);
+			if ( RVO::absSq(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) < 2 * 2 ) {
+				// Agent is within two meter of its goal, set preferred velocity to zero
+				traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
+			} else {
+				// Agent is far away from its goal, set preferred velocity as unit vector towards i's goal.
+				double pref_speed = 0.0;
+				if (agents[i].type == AgentType::car)
+					pref_speed = agents[i].speed; //5.0;
+				else if (agents[i].type == AgentType::ped)
+					pref_speed = ModelParams::PED_SPEED;
+				traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i))*pref_speed);
+			}
+		}
 
-        // set agent bounding box corners
-        traffic_agent_sim_[threadID] -> setAgentBoundingBoxCorners(i, get_bounding_box_corners(agents[i]));
-    }
-
+		// set agent bounding box corners
+		traffic_agent_sim_[threadID] -> setAgentBoundingBoxCorners(i, get_bounding_box_corners(agents[i]));
+	}
 
     // adding car as a "special" pedestrian
     add_car_agent(num_agents, car);
@@ -2485,7 +2336,7 @@ void WorldModel::PorcaSimulateAgents(AgentStruct agents[], int num_agents, CarSt
     traffic_agent_sim_[threadID]->doStep();
 }
 
-COORD WorldModel::GetPorcaVel(AgentStruct& agent, int i){
+COORD WorldModel::GetGammaVel(AgentStruct& agent, int i){
     // DEBUG("End rvo vel");
     int threadID=GetThreadID();
     assert(agent.mode==AGENT_ATT);
@@ -2498,7 +2349,7 @@ COORD WorldModel::GetPorcaVel(AgentStruct& agent, int i){
     return (new_pos - agent.pos) * freq; 
 }
 
-void WorldModel::AgentApplyPorcaVel(AgentStruct& agent, COORD& rvo_vel) {
+void WorldModel::AgentApplyGammaVel(AgentStruct& agent, COORD& rvo_vel) {
     // DEBUG("Start rvo apply vel");
     COORD old_pos = agent.pos;
     double rvo_speed = rvo_vel.Length();
@@ -2523,18 +2374,18 @@ void WorldModel::AgentApplyPorcaVel(AgentStruct& agent, COORD& rvo_vel) {
     // DEBUG("End rvo apply vel");
 }
 
-void WorldModel::PorcaAgentStep(PomdpStateWorld& state, Random& random){
-    PorcaAgentStep(state.agents, random, state.num, state.car);
+void WorldModel::GammaAgentStep(PomdpStateWorld& state, Random& random){
+    GammaAgentStep(state.agents, random, state.num, state.car);
 }
 
-void WorldModel::PorcaAgentStep(AgentStruct agents[], Random& random, int num_agents, CarStruct car){
-    PorcaSimulateAgents(agents, num_agents, car);
+void WorldModel::GammaAgentStep(AgentStruct agents[], Random& random, int num_agents, CarStruct car){
+    GammaSimulateAgents(agents, num_agents, car);
 
     for (int i = 0; i < num_agents; ++i){
         auto& agent = agents[i];
         if(agent.mode == AGENT_ATT){
-            COORD rvo_vel = GetPorcaVel(agent, i);
-            AgentApplyPorcaVel(agent,rvo_vel);
+            COORD rvo_vel = GetGammaVel(agent, i);
+            AgentApplyGammaVel(agent,rvo_vel);
             if(use_noise_in_rvo){
                 agent.pos.x+= random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
                 agent.pos.y+= random.NextGaussian() * ModelParams::NOISE_PED_POS / freq;
@@ -2543,14 +2394,14 @@ void WorldModel::PorcaAgentStep(AgentStruct agents[], Random& random, int num_ag
     }
 }
 
-void WorldModel::PorcaAgentStep(AgentStruct agents[], double& random, int num_agents, CarStruct car){
-    PorcaSimulateAgents(agents, num_agents, car);
+void WorldModel::GammaAgentStep(AgentStruct agents[], double& random, int num_agents, CarStruct car){
+    GammaSimulateAgents(agents, num_agents, car);
 
     for (int i = 0; i < num_agents; ++i){
         auto& agent = agents[i];
         if(agent.mode == AGENT_ATT){
-            COORD rvo_vel = GetPorcaVel(agent, i);
-            AgentApplyPorcaVel(agent, rvo_vel);
+            COORD rvo_vel = GetGammaVel(agent, i);
+            AgentApplyGammaVel(agent, rvo_vel);
             if(use_noise_in_rvo){
                 double rNum=GenerateGaussian(random);
                 agent.pos.x+= rNum * ModelParams::NOISE_PED_POS / freq;

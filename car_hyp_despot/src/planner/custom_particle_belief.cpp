@@ -206,17 +206,10 @@ bool PedPomdpBelief::DeepUpdate(const std::vector<const State*>& state_history,
 }
 
 bool PedPomdpBelief::DeepUpdate(const State* cur_state){
-
 	if (cur_state == NULL)
 		return false;
 
-	//Update current belief
 	const PomdpStateWorld* cur_world_state = static_cast<const PomdpStateWorld*>(cur_state);
-
-	//Sort pedestrians in the current state and update the current search state
-//	UpdateState(cur_world_state, world_model_);
-
-	//Update and reorder the belief distributions for agents
 	beliefTracker->update();
 
 	return true;
@@ -229,8 +222,8 @@ void PedPomdpBelief::ResampleParticles(const PedPomdp* model, bool do_prediction
 
 	assert(beliefTracker);
 
-	// bool do_prediction = true;
-	bool use_att_mode = model->use_gamma_in_search;
+//	bool use_att_mode = model->use_gamma_in_search? 0: 1; // 0: use both, 1: use dis mode only
+	int use_att_mode = 2;// onlu use att mode
 	vector<PomdpState> samples = beliefTracker->sample(
 		max(2000,5*Globals::config.num_scenarios), do_prediction, use_att_mode);
 

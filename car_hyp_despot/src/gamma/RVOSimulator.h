@@ -209,7 +209,7 @@ namespace RVO {
 			const Vector2 &velocity, 
 			std::string tag, float max_tracking_angle, int agent_id);
 
-		size_t addAgent(const AgentParams agt, int tracking_id = 0);
+		size_t addAgent(const AgentParams agt, int tracking_id = 0, bool frozen = false);
 
 		//size_t addAgent()
 

@@ -90,7 +90,6 @@ WorldSimulator::WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model,
 	ros::NodeHandle n("~");
 	n.param<std::string>("goal_file_name", worldModel.goal_file_name_, "null");
 
-	worldModel.InitPedGoals();
 	worldModel.InitRVO();
 	worldModel.car_goal = car_goal;
 	AddObstacle();
@@ -621,41 +620,6 @@ void WorldSimulator::publishROSState() {
 	pa_pub.publish(pA);
 
 	uint32_t shape = visualization_msgs::Marker::CYLINDER;
-
-	if (worldModel.goal_mode == "goal") {
-
-		visualization_msgs::MarkerArray markers;
-
-		for (int i = 0; i < worldModel.goals.size(); i++) {
-			visualization_msgs::Marker marker;
-
-			marker.header.frame_id = ModelParams::rosns + "/map";
-			marker.header.stamp = ros::Time::now();
-			marker.ns = "basic_shapes";
-			marker.id = i;
-			marker.type = shape;
-			marker.action = visualization_msgs::Marker::ADD;
-
-			marker.pose.position.x = worldModel.goals[i].x;
-			marker.pose.position.y = worldModel.goals[i].y;
-			marker.pose.position.z = 0;
-			marker.pose.orientation.x = 0.0;
-			marker.pose.orientation.y = 0.0;
-			marker.pose.orientation.z = 0.0;
-			marker.pose.orientation.w = 1.0;
-
-			marker.scale.x = 1;
-			marker.scale.y = 1;
-			marker.scale.z = 1;
-			marker.color.r = marker_colors[i][0];
-			marker.color.g = marker_colors[i][1];
-			marker.color.b = marker_colors[i][2];
-			marker.color.a = 1.0;
-
-			markers.markers.push_back(marker);
-		}
-		goal_pub.publish(markers);
-	}
 }
 
 extern double marker_colors[20][3];
