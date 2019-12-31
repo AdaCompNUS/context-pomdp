@@ -33,7 +33,6 @@ namespace ModelParams {
 	
 	const double PATH_STEP = 0.05;
 	const double GOAL_TOLERANCE = 2;
-	const double PED_SPEED = 1.0;
 
 	const double pos_rln=0.4; // position resolution
 	const double vel_rln=0.3; // velocity resolution

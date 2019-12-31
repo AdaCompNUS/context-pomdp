@@ -1141,33 +1141,6 @@ void WorldModel::VehStepPath(AgentStruct& agent, int step, double noise, bool do
     }
 }
 
-double WorldModel::agentMoveProb(COORD prev, const Agent& agent, int intention_id) {
-	const double K = 0.001;
-  COORD curr(agent.w, agent.h);
-  const COORD& goal = GetGoalPos(agent, intention_id); 
-	double move_dist = Norm(curr.x-prev.x, curr.y-prev.y),
-		   goal_dist = Norm(goal.x-prev.x, goal.y-prev.y);
-	double sensor_noise = 0.1;
-    if(ModelParams::is_simulation) sensor_noise = 0.02;
-
-    bool debug=false;
-	// CHECK: beneficial to add back noise?
-	if(debug) cout<<"intention id "<<intention_id<<endl;
-	if (intention_id == GetNumIntentions(agent.id)-1) {  //stop intention 
-		return (move_dist < sensor_noise) ? 0.4 : 0;
-	} else {
-		if (move_dist < sensor_noise) return 0;
-
-		double cosa = DotProduct(curr.x-prev.x, curr.y-prev.y, goal.x-prev.x, goal.y-prev.y) / (move_dist * goal_dist);
-		if(cosa >1) cosa = 1;
-		else if(cosa < -1) cosa = -1;
-		double angle = acos(cosa);
-		double prob = gaussian_prob(angle, ModelParams::NOISE_GOAL_ANGLE) + K;
-        assert(prob == prob);//nan detector
-        return prob;
-	}
-}
-
 void WorldModel::EnsureMeanDirExist(int agent_id){
     auto it = ped_mean_dirs.find(agent_id);
     if ( it == ped_mean_dirs.end()){ 
@@ -1180,12 +1153,11 @@ void WorldModel::EnsureMeanDirExist(int agent_id){
     }
 }
 
-double WorldModel::agentMoveProb(COORD prev, const Agent& agent, int intention_id, int ped_mode) {
+double WorldModel::agentMoveProb(COORD prev_pos, double prev_speed, const Agent& agent, int intention_id, int ped_mode) {
 	const double K = 0.001;
-//	cout << __FUNCTION__ << "@" << __LINE__ << endl;
-    COORD curr(agent.w, agent.h);
+    COORD cur_pos(agent.w, agent.h);
     int agent_id = agent.id;
-	double move_dist = Norm(curr.x-prev.x, curr.y-prev.y);
+	double move_dist = Norm(cur_pos.x-prev_pos.x, cur_pos.y-prev_pos.y);
 
 	COORD goal;
 
@@ -1197,13 +1169,13 @@ double WorldModel::agentMoveProb(COORD prev, const Agent& agent, int intention_i
                 "Encountering overflowed intention id %d at agent %d\n ", 
                 intention_id, agent_id));
 		}
-		goal = ped_mean_dirs[agent_id][intention_id] + prev;
+		goal = ped_mean_dirs[agent_id][intention_id] + prev_pos;
 	}
 	else{
 		goal = GetGoalPos(agent, intention_id);
 	}
 
-	double goal_dist = Norm(goal.x-prev.x, goal.y-prev.y);
+	double goal_dist = Norm(goal.x-prev_pos.x, goal.y-prev_pos.y);
 
 	double sensor_noise = 0.1;
     if(ModelParams::is_simulation) sensor_noise = 0.02;
@@ -1219,17 +1191,15 @@ double WorldModel::agentMoveProb(COORD prev, const Agent& agent, int intention_i
 
 		double angle = 0;
 		if (goal_dist > 1e-5 && move_dist > sensor_noise){
-			double cosa = DotProduct(curr.x-prev.x, curr.y-prev.y, goal.x-prev.x, goal.y-prev.y) / (move_dist * goal_dist);
+			double cosa = DotProduct(cur_pos.x-prev_pos.x, cur_pos.y-prev_pos.y, goal.x-prev_pos.x, goal.y-prev_pos.y) / (move_dist * goal_dist);
 			if(cosa >1) cosa = 1;
 			else if(cosa < -1) cosa = -1;
 			angle = acos(cosa);
 		}
 		else
 			logv <<"goal_dist=" << goal_dist << " move_dist " << move_dist << endl;
-//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 		double angle_prob = gaussian_prob(angle, ModelParams::NOISE_GOAL_ANGLE) + K;
-
 		double vel_error=0;
 		if(ped_mode == AGENT_ATT){
 			double mean_vel = ped_mean_dirs[agent_id][intention_id].Length();
@@ -1240,13 +1210,11 @@ double WorldModel::agentMoveProb(COORD prev, const Agent& agent, int intention_i
 
 		}
 		else{
-			vel_error = move_dist - ModelParams::PED_SPEED/freq;
+			vel_error = move_dist - prev_speed/freq;
 
 			logv <<"DIS angle error=" << angle << endl;
 			logv <<"DIS vel_error=" << vel_error << endl;
-
 		}
-//		cout << __FUNCTION__ << "@" << __LINE__ << endl;
 
 		double vel_prob = gaussian_prob(vel_error, ModelParams::NOISE_PED_VEL/freq) + K;
 		assert(angle_prob == angle_prob ); // nan detector
@@ -1421,7 +1389,7 @@ void WorldModel::updatePedBelief(AgentBelief& b, const Agent& curr_agent) {
 
             // Attentive mode
             logv << "TEST ATT" << endl;
-            double prob = agentMoveProb(b.pos, curr_agent, i, AGENT_ATT);
+            double prob = agentMoveProb(b.pos, b.speed, curr_agent, i, AGENT_ATT);
             if(debug) cout << "attentive likelihood " << i << ": " << prob << endl;
             b.prob_modes_goals[AGENT_ATT][i] *=  prob;
             // Keep the belief noisy to avoid aggressive policies
@@ -1429,7 +1397,7 @@ void WorldModel::updatePedBelief(AgentBelief& b, const Agent& curr_agent) {
 
             // Detracted mode
             logv << "TEST DIS" << endl;
-            prob = agentMoveProb(b.pos, curr_agent, i, AGENT_DIS);
+            prob = agentMoveProb(b.pos, b.speed, curr_agent, i, AGENT_DIS);
             if(debug) cout << "Detracted likelihood " << i << ": " << prob << endl;
             b.prob_modes_goals[AGENT_DIS][i] *=  prob;
             // Important: Keep the belief noisy to avoid aggressive policies
@@ -1467,20 +1435,13 @@ void WorldModel::updatePedBelief(AgentBelief& b, const Agent& curr_agent) {
     double moved_dist = COORD::EuclideanDistance(b.pos, cur_pos);
     b.vel = b.vel*ALPHA + (cur_pos - b.pos)* (ModelParams::control_freq * (1-ALPHA));
     // b.speed = ALPHA * b.speed + (1-ALPHA) * moved_dist * ModelParams::control_freq;
-    if (b.type == AgentType::car){
-        b.speed = b.vel.Length();
-    }
-    else{
-        b.speed = ModelParams::PED_SPEED;
-    }
+	b.speed = b.vel.Length();
+
 	b.pos = cur_pos;
 }
 
 double WorldModel::GetPrefSpeed(const Agent& agent){
-    if (agent.type() == AgentType::car)
-        return agent.vel.Length();
-    else    
-        return ModelParams::PED_SPEED;
+	return agent.vel.Length();
 }
 
 AgentBelief WorldModel::initPedBelief(const Agent& agent) {
@@ -1808,7 +1769,7 @@ void WorldStateTracker::setPomdpPed(AgentStruct& agent, const Agent& src){
     agent.id = src.id;
     agent.type = src.type();
     agent.vel=src.vel;
-    agent.speed = ModelParams::PED_SPEED;
+    agent.speed = src.vel.Length();
     agent.intention = -1; // which path to take
     agent.pos_along_path = 0.0; // travel distance along the path
     agent.cross_dir = fetch_cross_dir(src);; // which path to take
@@ -2318,10 +2279,7 @@ void WorldModel::GammaSimulateAgents(AgentStruct agents[], int num_agents, CarSt
 			} else {
 				// Agent is far away from its goal, set preferred velocity as unit vector towards i's goal.
 				double pref_speed = 0.0;
-				if (agents[i].type == AgentType::car)
-					pref_speed = agents[i].speed; //5.0;
-				else if (agents[i].type == AgentType::ped)
-					pref_speed = ModelParams::PED_SPEED;
+				pref_speed = agents[i].speed;
 				traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i))*pref_speed);
 			}
 		}
@@ -2609,10 +2567,7 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> agents
                     traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, RVO::Vector2(0.0f, 0.0f));
                 } else {
                     // Agent is far away from its goal, set preferred velocity as unit vector towards agent's goal.
-                    double spd = ModelParams::PED_SPEED;
-                    if(agents[id].type == AgentType::car){
-                        spd = agents[id].speed;
-                    }
+					spd = agents[id].speed;
                     traffic_agent_sim_[threadID]->setAgentPrefVelocity(i, normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i))*spd);
                 }
             }
@@ -2682,7 +2637,7 @@ void WorldModel::PrintMeanDirs(std::map<int, AgentBelief> old_agents,
     	    for(int intention_id=0; intention_id<GetNumIntentions(cur_agent.id); intention_id++) {
     	    	logv <<"agent, goal, ped_mean_dirs.size() =" << cur_agent.id << " "
     	    					<< intention_id <<" "<< ped_mean_dirs.size() << endl;
-    			double prob = agentMoveProb(old_agent.pos, cur_agent, intention_id, AGENT_ATT);
+    			double prob = agentMoveProb(old_agent.pos, old_agent.speed, cur_agent, intention_id, AGENT_ATT);
 
     			cout <<"prob: "<< intention_id<<","<<prob << endl;
     		}

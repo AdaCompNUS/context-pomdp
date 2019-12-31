@@ -110,8 +110,7 @@ public:
     void RobStepCurVel(CarStruct &car);
     void RobStepCurAction(CarStruct &car, double acc, double steering);
 
-    double agentMoveProb(COORD p0, const Agent& p1, int goal_id);
-    double agentMoveProb(COORD prev, const Agent& curr, int goal_id, int ped_mode);
+    double agentMoveProb(COORD prev, double prev_speed, const Agent& curr, int goal_id, int ped_mode);
 
     void setPath(Path path);
     void updatePedBelief(AgentBelief& b, const Agent& curr_ped);
