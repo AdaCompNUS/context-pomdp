@@ -27,22 +27,15 @@ double Path::mindist(COORD pos) {
     return d;
 }
 
-int Path::forward(int i, double len) const {
+int Path::forward(double i, double len) const {
     auto& path = *this;
-    //while(len > 0 and i<path.size()-1) {
-        //double d = COORD::EuclideanDistance(path[i], path[i+1]);
-        //len -= d;
-		//i++;
-    //}
     float step=(len / ModelParams::PATH_STEP);
 
     if(step-(int)step>1.0-1e-5)
     {
-        //cout<<"original step="<< step<<" new step"<<(int)(step+1)<<endl;
     	step++;
     }
     i += (int)(step);
-//    i += int(len / ModelParams::PATH_STEP);
 
     if(i > path.size()-1) {
         i = path.size()-1;
@@ -95,19 +88,6 @@ Path Path::interpolate(double max_len) const {
 	}
 	p.push_back(path[path.size()-1]);
 	return p;
-}
-
-Path Path::copy_without_travelled_points(double dist_to_remove){
-	float d = 0;
-	auto iter = begin();
-	while (d< dist_to_remove && size() > 0){
-		iter = iter + 1;
-		d += ModelParams::PATH_STEP;
-	}
-
-	Path new_path;
-	new_path.assign(iter, end());
-	return new_path;
 }
 
 void Path::cutjoin(const Path& p) {

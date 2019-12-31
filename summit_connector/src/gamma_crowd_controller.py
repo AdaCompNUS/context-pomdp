@@ -655,6 +655,8 @@ class GammaCrowdController(Summit):
                         self, actor, path,
                         5.0 + self.rng.uniform(0.0, 0.5)))
                     self.network_car_agents_lock.release()
+        if len(self.network_car_agents) > self.num_network_car_agents/2:
+            self.do_publish = True     
 
         # Spawn at most one bike.
         self.network_bike_agents_lock.acquire()
@@ -682,6 +684,8 @@ class GammaCrowdController(Summit):
                         self, actor, path,
                         3.0 + self.rng.uniform(0, 0.5)))
                     self.network_bike_agents_lock.release()
+        #if len(self.network_bike_agents) > self.num_network_bike_agents/2:
+        #    self.do_publish = True     
 
         # Spawn at most one pedestrian.
         self.sidewalk_agents_lock.acquire()
@@ -709,6 +713,8 @@ class GammaCrowdController(Summit):
                         self, actor, path,
                         0.5 + self.rng.uniform(0.0, 1.0)))
                     self.sidewalk_agents_lock.release()
+        # if len(self.sidewalk_agents) > self.num_sidewalk_agents/2:
+            # self.do_publish = True     
 
         if not self.initialized and rospy.Time.now() - self.start_time > rospy.Duration.from_sec(5.0):
             self.agents_ready_pub.publish(True)

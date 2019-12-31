@@ -42,9 +42,9 @@
     <param name="lane_change_probability" value="0.10"/>
   </node>
   
-  <!--
   <node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen"/>
   <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
+  <!--
   <node name="visualize_live" pkg="summit_connector" type="visualize_live.py" output="screen"/>
   -->
 </launch>

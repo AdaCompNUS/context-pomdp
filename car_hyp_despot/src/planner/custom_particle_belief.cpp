@@ -223,7 +223,7 @@ void PedPomdpBelief::ResampleParticles(const PedPomdp* model, bool do_prediction
 	assert(beliefTracker);
 
 //	bool use_att_mode = model->use_gamma_in_search? 0: 1; // 0: use both, 1: use dis mode only
-	int use_att_mode = 2;// onlu use att mode
+	int use_att_mode = 1;// onlu use dis mode
 	vector<PomdpState> samples = beliefTracker->sample(
 		max(2000,5*Globals::config.num_scenarios), do_prediction, use_att_mode);
 
