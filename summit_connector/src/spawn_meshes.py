@@ -87,19 +87,22 @@ class SpawnMeshes(Summit):
         if self.roadmark_occupancy_map is not None:
             commands.append(carla.command.SpawnDynamicMesh(
                 self.roadmark_occupancy_map.get_mesh_triangles(-0.0),
-                '/Game/Carla/Static/GenericMaterials/LaneMarking/M_MarkingLane_W'))
+                '/Game/Carla/Static/GenericMaterials/LaneMarking/M_MarkingLane_W',
+                6))
 
         # Network occupancy map.
         if self.network_occupancy_map is not None:
             commands.append(carla.command.SpawnDynamicMesh(
                 self.network_occupancy_map.difference(self.roadmark_occupancy_map).get_mesh_triangles(-0.0),
-                '/Game/Carla/Static/GenericMaterials/Masters/LowComplexity/M_Road1'))
+                '/Game/Carla/Static/GenericMaterials/Masters/LowComplexity/M_Road1',
+                7))
 
         # Sidewalk occupancy.
         if self.sidewalk_occupancy_map is not None:
             commands.append(carla.command.SpawnDynamicMesh(
                 self.sidewalk.create_occupancy_map(3.0).get_mesh_triangles(-0.0),
-                '/Game/Carla/Static/GenericMaterials/Ground/GroundWheatField_Mat'))
+                '/Game/Carla/Static/GenericMaterials/Ground/GroundWheatField_Mat',
+                8))
         
         results = self.client.apply_batch_sync(commands)
         self.mesh_ids.extend(result.actor_id for result in results)
@@ -146,7 +149,7 @@ class SpawnMeshes(Summit):
                         bounds_max = project(num2deg(zoom, row, column + 1)) + self.network.offset
                         bounds_max = carla.Vector3D(bounds_max.x, bounds_max.y, 0)
 
-                        self.mesh_ids.append(self.world.spawn_dynamic_tile_mesh(bounds_min, bounds_max, data))
+                        self.mesh_ids.append(self.world.spawn_dynamic_tile_mesh(bounds_min, bounds_max, data, 9))
 
             spawn_tiles(18, self.geo_min, self.geo_max)
 
@@ -156,13 +159,16 @@ class SpawnMeshes(Summit):
             for l in self.landmarks:
                 commands.append(carla.command.SpawnDynamicMesh(
                     l.get_mesh_triangles(20),
-                    random.choice(WALL_MAT)))
+                    random.choice(WALL_MAT),
+                    1))
                 commands.append(carla.command.SpawnDynamicMesh(
                     l.get_mesh_triangles(0),
-                    random.choice(WALL_MAT)))
+                    random.choice(WALL_MAT),
+                    1))
                 commands.append(carla.command.SpawnDynamicMesh(
                     l.get_wall_mesh_triangles(20),
-                    random.choice(WALL_MAT)))
+                    random.choice(WALL_MAT),
+                    1))
             results = self.client.apply_batch_sync(commands)
             self.mesh_ids.extend(result.actor_id for result in results)
 
