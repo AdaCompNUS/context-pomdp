@@ -130,7 +130,6 @@ STATIC
 
   src/planner/path.cpp
   src/planner/collision.cpp
-  src/planner/coord.cpp                  
   src/planner/math_utils.cpp
   src/planner/ped_pomdp.cpp
   src/planner/default_prior.cpp
