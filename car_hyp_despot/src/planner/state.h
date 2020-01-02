@@ -61,7 +61,7 @@ struct AgentStruct {
     double heading_dir;
     double bb_extent_x, bb_extent_y;
 
-    void text(std::ostream& out) const {
+    void Text(std::ostream& out) const {
     	out << "agent: id / pos / speed / vel / intention / dist2car / infront =  "
 			<< id << " / "
 			<< "(" << pos.x << ", " << pos.y << ") / "
@@ -154,7 +154,7 @@ public:
 
 	PomdpState() {time_stamp = -1; num = 0;}
 
-	string text() const {
+	string Text() const {
 		return concat(car.vel);
 	}
 };
@@ -170,7 +170,7 @@ public:
 //	int peds_mode[ModelParams::N_PED_WORLD];
 	PomdpStateWorld() {time_stamp = -1; num = 0;}
 
-	string text() const {
+	string Text() const {
 		return concat(car.vel);
 	}
 
