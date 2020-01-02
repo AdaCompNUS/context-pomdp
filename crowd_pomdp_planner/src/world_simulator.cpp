@@ -76,7 +76,7 @@ WorldSimulator::WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model,
 		unsigned seed, std::string map_location, int summit_port) :
 		SimulatorBase(_nh),
 		model_(model), last_acc_(-1), odom_heading(0), goal_reached_(false),
-		baselink_heading(0), safe_action_(0), World() {
+		baselink_heading(0), safe_action_(0), time_scale(1.0), World() {
 
 	map_location_ = map_location;
 	summit_port_ = summit_port;
