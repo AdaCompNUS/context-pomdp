@@ -19,7 +19,7 @@
 #include <solver/despot.h>
 #include <std_msgs/ColorRGBA.h>
 #include <std_msgs/Header.h>
-#include <WorldModel.h>
+#include <world_model.h>
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>

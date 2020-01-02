@@ -1,13 +1,14 @@
-#ifndef PED_STATE_H
-#define PED_STATE_H
-#include "coord.h"
-#include "param.h"
-#include "Path.h"
-#include "despot/interface/pomdp.h"
-//#include "util/util.h"
-#include "disabled_util.h"
+#ifndef AGENT_STATE_H
+#define AGENT_STATE_H
 #include <vector>
 #include <utility>
+
+#include "coord.h"
+#include "param.h"
+#include "path.h"
+#include "disabled_util.h"
+#include "despot/interface/pomdp.h"
+
 using namespace std;
 
 using namespace despot;

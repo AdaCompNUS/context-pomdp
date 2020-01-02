@@ -1,5 +1,5 @@
 #include "world_simulator.h"
-#include "WorldModel.h"
+#include "world_model.h"
 #include "ped_pomdp.h"
 
 #include <std_msgs/Int32.h>

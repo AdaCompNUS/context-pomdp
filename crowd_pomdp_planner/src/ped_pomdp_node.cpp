@@ -4,7 +4,7 @@
  */
 
 #include <fenv.h>
-#include "PedPomdpNode.h"
+#include "ped_pomdp_node.h"
 #include <time.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PolygonStamped.h>
@@ -13,8 +13,6 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Path.h>
-
-bool b_load_goal=true; // !!!set to false only for data collection purpose!!! 
 
 PedPomdpNode::PedPomdpNode(int argc, char** argv)
 {

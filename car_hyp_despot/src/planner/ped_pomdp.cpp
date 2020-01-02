@@ -16,7 +16,7 @@
 #include <ped_pomdp.h>
 #include <solver/despot.h>
 #include <util/seeds.h>
-#include <WorldModel.h>
+#include <world_model.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>

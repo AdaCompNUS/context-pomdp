@@ -28,7 +28,7 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <nav_msgs/GetPlan.h>
-#include "WorldModel.h"
+#include "world_model.h"
 #include "ped_pomdp.h"
 #include "core/particle_belief.h"
 #include "solver/despot.h"

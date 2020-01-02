@@ -13,7 +13,7 @@
 #include "despot/core/globals.h"
 #include "despot/util/coord.h"
 #include <despot/core/prior.h>
-#include "WorldModel.h"
+#include "world_model.h"
 
 class DefaultPrior: public SolverPrior {
 public:

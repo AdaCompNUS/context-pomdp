@@ -1,6 +1,6 @@
 #pragma once
-#include"state.h"
-#include"Path.h"
+#include "state.h"
+#include "path.h"
 #include <RVO.h>
 #include "debug_util.h"
 #include <unordered_map>

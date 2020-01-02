@@ -1,17 +1,16 @@
 #include<limits>
 #include<cmath>
 #include<cstdlib>
-#include"WorldModel.h"
+#include <numeric>
 
 #include <despot/GPUcore/thread_globals.h>
 #include <despot/core/globals.h>
+#include <despot/solver/despot.h>
 
 #include"math_utils.h"
 #include"coord.h"
-#include "Path.h"
-
-#include <despot/solver/despot.h>
-#include <numeric>
+#include "path.h"
+#include "world_model.h"
 #include "ped_pomdp.h"
 
 #undef LOG
