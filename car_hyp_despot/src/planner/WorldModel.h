@@ -92,7 +92,7 @@ public:
     COORD GetGoalPos(const Agent& ped, int intention_id);
 
     COORD GetGoalPosFromPaths(int agent_id, int intention_id, int pos_along_path, 
-        const COORD& agent_pos, AgentType type, bool agent_cross_dir);
+        const COORD& agent_pos, const COORD& agent_vel, AgentType type, bool agent_cross_dir);
 
     int GetNumIntentions(const AgentStruct& ped);
     int GetNumIntentions(const Agent& ped);
@@ -110,7 +110,10 @@ public:
     void RobStepCurVel(CarStruct &car);
     void RobStepCurAction(CarStruct &car, double acc, double steering);
 
-    double agentMoveProb(COORD prev, double prev_speed, const Agent& curr, int goal_id, int ped_mode);
+    double agentMoveProb(const AgentBelief& prev_agent, const Agent& curr, int goal_id, int ped_mode);
+
+    bool isStopIntention(int intention, int agent_id);
+    bool isCurVelIntention(int intention, int agent_id);
 
     void setPath(Path path);
     void updatePedBelief(AgentBelief& b, const Agent& curr_ped);
@@ -121,6 +124,7 @@ public:
 
     void cal_bb_extents(AgentBelief& bb, AgentStruct& agent);
     void cal_bb_extents(AgentStruct& agent, std::vector<COORD>& bb, double heading_dir);
+    void cal_bb_extents(COORD pos, double heading_dir, vector<COORD>& bb, double& extent_x, double& extent_y);
 
     std::vector<RVO::Vector2> get_bounding_box_corners(AgentStruct& agent);
     std::vector<RVO::Vector2> get_bounding_box_corners(RVO::Vector2 forward_vec, RVO::Vector2 sideward_vec, RVO::Vector2 pos, double forward_len, double side_len);
@@ -196,9 +200,8 @@ public:
     COORD DistractedPedMeanDir(AgentStruct& ped, int goal_id);
     COORD AttentivePedMeanDir(int ped_id, int goal_id);
 
-    void add_car_agent(int num_peds, CarStruct& car);
-    void add_veh_agent(AgentBelief& veh, int id_in_sim);
-    void add_ped_agent(AgentBelief& veh, int id_in_sim);
+    void AddEgoGammaAgent(int num_peds, CarStruct& car);
+    void AddGammaAgent(AgentBelief& b, int id_in_sim);
 
     void PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> peds, CarStruct& car);
 

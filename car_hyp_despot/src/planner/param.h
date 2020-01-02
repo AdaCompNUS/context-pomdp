@@ -69,8 +69,6 @@ namespace ModelParams {
     const double TIME_REWARD = 0.1/*0.0*/;
     const bool CPUDoPrint=false;
 
-    const bool is_simulation=true;
-
     void print_params();
 };
 

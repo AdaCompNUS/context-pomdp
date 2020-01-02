@@ -6,6 +6,8 @@
 #include <ostream>
 #include <math.h>
 
+#include "math_utils.h"
+
 struct COORD
 {
   double x, y;
@@ -59,6 +61,8 @@ struct COORD
   static double DirectedDistance(COORD lhs, COORD rhs, double dir);
   
   static double SlopAngle(COORD start, COORD end);
+  static double Angle(COORD A, COORD B, COORD C, double noise_level);
+
 
   static bool get_dir(double a, double b);
 
@@ -80,30 +84,6 @@ struct COORD
     x*=rate;
     y*=rate;
   }
-
-/*
-  static int DirectionalDistance(COORD lhs, COORD rhs, int direction);
-  enum {
-    E_NORTH,
-    E_EAST,
-    E_SOUTH,
-    E_WEST,
-    E_NORTHEAST,
-    E_SOUTHEAST,
-    E_SOUTHWEST,
-    E_NORTHWEST
-  };
-  static const COORD Null;
-  static const COORD North, East, South, West;
-  static const COORD NorthEast, SouthEast, SouthWest, NorthWest;
-  static const COORD Compass[8];
-  static const char* CompassString[8];
-  static int Clockwise(int dir) { return (dir + 1) % 4; }
-  static int Opposite(int dir) { return (dir + 2) % 4; }
-  static int Anticlockwise(int dir) { return (dir + 3) % 4; }
-
-  */
- // static void UnitTest();
 };
 
 inline double COORD::EuclideanDistance(COORD lhs, COORD rhs) {
@@ -128,6 +108,20 @@ inline double COORD::SlopAngle(COORD start, COORD end){
 
 	return angle;
 }
+
+inline double COORD::Angle(COORD A, COORD B, COORD C, double noise_level) {
+	// angle between AB and AC in rad.
+	double angle = 0;
+	double norm_AB = (B-A).Length();
+	double norm_AC = (C-A).Length();
+	if (norm_AB > noise_level && norm_AC > noise_level){
+		double cosa = DotProduct(B.x-A.x, B.y-A.y, C.x-A.x, C.y-A.y) / (norm_AB * norm_AC);
+		cosa = std::max(-1.0, std::min(1.0, cosa));
+		angle = acos(cosa);
+	}
+	return angle;
+}
+
 
 inline bool COORD::get_dir(double a, double b){
 	// a and b are two angles
