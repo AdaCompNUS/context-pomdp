@@ -12,7 +12,7 @@ class PedPomdpNode
 {
 public:
     PedPomdpNode(int argc, char** argv);
-    ~PedPomdpNode();
+    ~PedPomdpNode() {};
     
     Controller* controller;
 

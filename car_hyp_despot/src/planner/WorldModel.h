@@ -12,409 +12,393 @@ using namespace despot;
 
 struct AgentBelief {
 	int id;
-    COORD pos;
-    double speed;
-    COORD vel;
-    double heading_dir;
-    AgentType type;
-    bool reset;
-    // std::vector<double> prob_goals;
-    bool cross_dir;
+	COORD pos;
+	double speed;
+	COORD vel;
+	double heading_dir;
+	AgentType type;
+	bool reset;
+	bool cross_dir;
 
-    std::vector<Path> goal_paths;
-    // this can be shared for all types of intention
-    std::vector<std::vector<double>> prob_modes_goals;
+	std::vector<Path> goal_paths;
+	std::vector<std::vector<double>> prob_modes_goals;
 
-    std::vector<COORD> bb;
+	std::vector<COORD> bb;
 
-    int sample_goal() const;
-    int maxlikely_intention() const;
-
-    void sample_goal_mode(int& goal, int& mode, int use_att_mode = 0) const;
-
-    void reset_belief(int new_size);
+	int SampleGoal() const;
+	int MaxLikelyIntention() const;
+	void SampleGoalMode(int& goal, int& mode, int use_att_mode = 0) const;
+	void ResetBelief(int new_size);
 };
 
 class WorldModel {
 public:
 
-    AgentParams default_car_;
-    AgentParams default_bike_;
-    AgentParams default_ped_;
+	AgentParams default_car_;
+	AgentParams default_bike_;
+	AgentParams default_ped_;
 
-    WorldModel();
-    ~WorldModel();
+	WorldModel();
+	~WorldModel();
 
-	bool isMovingAway(const PomdpState& state, int ped);
-	void getClosestPed(const PomdpState& state, int& closest_front_ped, double& closest_front_dist,
-			int& closest_side_ped, double& closest_side_dist);
-	double getMinCarPedDist(const PomdpState& state);
-	double getMinCarPedDistAllDirs(const PomdpState& state);
-	int defaultPolicy(const std::vector<State*>& particles);
-	ACT_TYPE defaultStatePolicy(const State* _state) const;
-    int defaultGraphEdge(const State* particle, bool print_debug);
+	bool MovingAway(const PomdpState& state, int ped);
+	void GetClosestPed(const PomdpState& state, int& closest_front_ped,
+			double& closest_front_dist, int& closest_side_ped,
+			double& closest_side_dist);
+	double GetMinCarPedDist(const PomdpState& state);
+	double GetMinCarPedDistAllDirs(const PomdpState& state);
+	int DefaultPolicy(const std::vector<State*>& particles);
+	ACT_TYPE DefaultStatePolicy(const State* _state) const;
+	int DefaultGraphEdge(const State* particle, bool print_debug);
 
-//    bool isLocalGoal(const PomdpState& state);
-//    bool isLocalGoal(const PomdpStateWorld& state);
+	bool InFront(const COORD ped_pos, const CarStruct car,
+			double in_front_angle_deg = -1) const;
 
-    bool isGlobalGoal(const CarStruct& car);
-	bool inFront(const COORD ped_pos, const CarStruct car, double in_front_angle_deg = -1) const;
-    
-    bool inCollision(const PomdpState& state);
-    bool inCollision(const PomdpStateWorld& state);
-    bool inRealCollision(const PomdpStateWorld& state, double in_front_angle_deg = -1);
-    
-    bool inCollision(const PomdpState& state, int &id);
-    bool inCollision(const PomdpStateWorld& state, int &id);
-    bool inRealCollision(const PomdpStateWorld& state, int &id, double in_front_angle_deg = -1);
-    
-    int minStepToGoal(const PomdpState& state);
-    int minStepToGoalWithSteer(const PomdpState& state);
+	bool InCollision(const PomdpState& state);
+	bool InCollision(const PomdpStateWorld& state);
+	bool InRealCollision(const PomdpStateWorld& state,
+			double in_front_angle_deg = -1);
 
-    int hasMinSteerPath(const PomdpState& state);
+	bool InCollision(const PomdpState& state, int &id);
+	bool InCollision(const PomdpStateWorld& state, int &id);
+	bool InRealCollision(const PomdpStateWorld& state, int &id,
+			double in_front_angle_deg = -1);
 
-	void PedStep(AgentStruct &ped, Random& random);
-	void PedStep(AgentStruct &ped, double& random);
+	bool IsGlobalGoal(const CarStruct& car);
+	int MinStepToGoal(const PomdpState& state);
 
-    double ISPedStep(CarStruct &car, AgentStruct &ped, Random& random);//importance sampling PedStep
-    void GammaAgentStep(AgentStruct peds[], Random& random, int num_ped); //no interaction between car and pedestrian
-    void GammaAgentStep(AgentStruct peds[], Random& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
-    void GammaAgentStep(AgentStruct peds[], double& random, int num_ped); //no interaction between car and pedestrian
-    void GammaAgentStep(AgentStruct peds[], double& random, int num_ped, CarStruct car); //pedestrian also need to consider car when moving
-    void GammaAgentStep(PomdpStateWorld& state, Random& random);
-    void PedStepCurVel(AgentStruct& ped, int step=1, double noise=0.0);
-    void PedStepPath(AgentStruct& agent, int step=1, double noise=0.0, bool doPrint = false);
-    void VehStepPath(AgentStruct& agent, int step=1, double noise=0.0, bool doPrint = false);
-    void AgentStepPath(AgentStruct& agent, int step=1, double noise=0.0, bool doPrint = false);
+	void AgentStep(AgentStruct &ped, Random& random);
+	void AgentStep(AgentStruct &ped, double& random);
+	double ISAgentStep(CarStruct &car, AgentStruct &ped, Random& random); //importance sampling AgentStep
+	void GammaAgentStep(AgentStruct peds[], Random& random, int num_ped); //no interaction between car and pedestrian
+	void GammaAgentStep(AgentStruct peds[], Random& random, int num_ped,
+			CarStruct car); //pedestrian also need to consider car when moving
+	void GammaAgentStep(AgentStruct peds[], double& random, int num_ped); //no interaction between car and pedestrian
+	void GammaAgentStep(AgentStruct peds[], double& random, int num_ped,
+			CarStruct car); //pedestrian also need to consider car when moving
+	void GammaAgentStep(PomdpStateWorld& state, Random& random);
+	void AgentStepCurVel(AgentStruct& ped, int step = 1, double noise = 0.0);
+	void AgentStepPath(AgentStruct& agent, int step = 1, double noise = 0.0,
+			bool doPrint = false);
+	void VehStepPath(AgentStruct& agent, int step = 1, double noise = 0.0,
+			bool doPrint = false);
+	void PedStepPath(AgentStruct& agent, int step = 1, double noise = 0.0,
+			bool doPrint = false);
 
-    COORD GetGoalPos(const AgentStruct& ped, int intention_id=-1);
-    COORD GetGoalPos(const AgentBelief& ped, int intention_id);
-    COORD GetGoalPos(const Agent& ped, int intention_id);
+	COORD GetGoalPos(const AgentStruct& ped, int intention_id = -1);
+	COORD GetGoalPos(const AgentBelief& ped, int intention_id);
+	COORD GetGoalPos(const Agent& ped, int intention_id);
+	COORD GetGoalPosFromPaths(int agent_id, int intention_id,
+			int pos_along_path, const COORD& agent_pos, const COORD& agent_vel,
+			AgentType type, bool agent_cross_dir);
 
-    COORD GetGoalPosFromPaths(int agent_id, int intention_id, int pos_along_path, 
-        const COORD& agent_pos, const COORD& agent_vel, AgentType type, bool agent_cross_dir);
+	int GetNumIntentions(const AgentStruct& ped);
+	int GetNumIntentions(const Agent& ped);
+	int GetNumIntentions(int ped_id);
 
-    int GetNumIntentions(const AgentStruct& ped);
-    int GetNumIntentions(const Agent& ped);
-    int GetNumIntentions(int ped_id);
-
-    void FixGPUVel(CarStruct &car);
+	void FixGPUVel(CarStruct &car);
 	void RobStep(CarStruct &car, double steering, Random& random);
 	void RobStep(CarStruct &car, double steering, double& random);
 	void RobStep(CarStruct &car, double& random, double acc, double steering);
-    void RobStep(CarStruct &car, Random& random, double acc, double steering);
-    void RobVelStep(CarStruct &car, double acc, Random& random);
-    void RobVelStep(CarStruct &car, double acc, double& random);
-    double ISRobVelStep(CarStruct &car, double acc, Random& random);//importance sampling RobvelStep
+	void RobStep(CarStruct &car, Random& random, double acc, double steering);
+	void RobVelStep(CarStruct &car, double acc, Random& random);
+	void RobVelStep(CarStruct &car, double acc, double& random);
+	double ISRobVelStep(CarStruct &car, double acc, Random& random); //importance sampling RobvelStep
 
-    void RobStepCurVel(CarStruct &car);
-    void RobStepCurAction(CarStruct &car, double acc, double steering);
+	void RobStepCurVel(CarStruct &car);
+	void RobStepCurAction(CarStruct &car, double acc, double steering);
 
-    double agentMoveProb(const AgentBelief& prev_agent, const Agent& curr, int goal_id, int ped_mode);
+	double AgentMoveProb(const AgentBelief& prev_agent, const Agent& curr,
+			int goal_id, int ped_mode);
 
-    bool isStopIntention(int intention, int agent_id);
-    bool isCurVelIntention(int intention, int agent_id);
+	bool IsStopIntention(int intention, int agent_id);
+	bool IsCurVelIntention(int intention, int agent_id);
 
-    void setPath(Path path);
-    void updatePedBelief(AgentBelief& b, const Agent& curr_ped);
-    AgentBelief initPedBelief(const Agent& ped);
+	void SetPath(Path path);
+	void UpdatePedBelief(AgentBelief& b, const Agent& curr_ped);
+	AgentBelief InitPedBelief(const Agent& ped);
 
-    inline int GetThreadID(){return Globals::MapThread(this_thread::get_id());}
-    void InitRVO();
+	inline int GetThreadID() {
+		return Globals::MapThread(this_thread::get_id());
+	}
+	void InitRVO();
 
-    void cal_bb_extents(AgentBelief& bb, AgentStruct& agent);
-    void cal_bb_extents(AgentStruct& agent, std::vector<COORD>& bb, double heading_dir);
-    void cal_bb_extents(COORD pos, double heading_dir, vector<COORD>& bb, double& extent_x, double& extent_y);
+	void CalBBExtents(AgentBelief& bb, AgentStruct& agent);
+	void CalBBExtents(AgentStruct& agent, std::vector<COORD>& bb,
+			double heading_dir);
+	void CalBBExtents(COORD pos, double heading_dir, vector<COORD>& bb,
+			double& extent_x, double& extent_y);
 
-    std::vector<RVO::Vector2> get_bounding_box_corners(AgentStruct& agent);
-    std::vector<RVO::Vector2> get_bounding_box_corners(RVO::Vector2 forward_vec, RVO::Vector2 sideward_vec, RVO::Vector2 pos, double forward_len, double side_len);
+	std::vector<RVO::Vector2> GetBoundingBoxCorners(AgentStruct& agent);
+	std::vector<RVO::Vector2> GetBoundingBoxCorners(RVO::Vector2 forward_vec,
+			RVO::Vector2 sideward_vec, RVO::Vector2 pos, double forward_len,
+			double side_len);
 
 	Path path;
-    COORD car_goal;
-    double freq;
-    const double in_front_angle_cos;
-    std::vector<RVO::RVOSimulator*> traffic_agent_sim_;
+	double freq;
+	const double in_front_angle_cos;
+	std::vector<RVO::RVOSimulator*> traffic_agent_sim_;
 
-    const std::string goal_mode = "path"; // "cur_vel", "path"
+	const std::string goal_mode = "path"; // "cur_vel", "path"
 
-    void rasie_unsupported_goal_mode(std::string function){
-        std::cout << function << ": unsupported goal mode " 
-            << goal_mode << std::endl;
-        raise(SIGABRT);
-    }
+	void RasieUnsupportedGoalMode(std::string function) {
+		std::cout << function << ": unsupported goal mode " << goal_mode
+				<< std::endl;
+		raise (SIGABRT);
+	}
 
-    std::vector<COORD> obstacles;
-
-    std::unordered_map<int, int> id_map_num_paths;
-    std::unordered_map<int, std::vector<Path>> id_map_paths;
+	std::unordered_map<int, int> id_map_num_paths;
+	std::unordered_map<int, std::vector<Path>> id_map_paths;
 
 public:
 
-    int NumPaths(int agent_id){ 
-        auto it = id_map_num_paths.find(agent_id);
-        if (it == id_map_num_paths.end()){
-//            DEBUG(string_sprintf("agent id %d not found in id_map_num_paths\n", agent_id));
-            return 0;
-        }
-        return it->second;
-    }
+	int NumPaths(int agent_id) {
+		auto it = id_map_num_paths.find(agent_id);
+		if (it == id_map_num_paths.end()) {
+			return 0;
+		}
+		return it->second;
+	}
 
-    std::vector<Path>& PathCandidates(int agent_id){
-        auto it = id_map_paths.find(agent_id);
-        if (it == id_map_paths.end()){
-            std::cout << __FILE__ << ": agent id " << agent_id <<
-             " not found in id_map_paths" << std::endl;
+	std::vector<Path>& PathCandidates(int agent_id) {
+		auto it = id_map_paths.find(agent_id);
+		if (it == id_map_paths.end()) {
+			std::cout << __FILE__ << ": agent id " << agent_id
+					<< " not found in id_map_paths" << std::endl;
+			PrintPathMap();
+			std::vector<Path> ps;
+			id_map_paths[agent_id] = ps;
+			it = id_map_paths.find(agent_id);
+		}
+		return it->second;
+	}
 
-            print_path_map();
-
-            std::vector<Path> ps;
-
-            id_map_paths[agent_id] = ps;
-            it = id_map_paths.find(agent_id);
-            // raise(SIGABRT);
-        }
-        return it->second;
-    }
-
-    void print_path_map(){
-        return;
-
-        cout << "id_map_paths: ";
-        for(auto it = id_map_paths.begin(); it != id_map_paths.end(); ++it) {
-            cout << " (" << it->first << ", l_" << it->second.size() << ")";
-        }
-        cout << endl;       
-    }
-    void ValidateIntention(int agent_id, int intention_id, const char*, int);
+	void PrintPathMap() {
+		cout << "id_map_paths: ";
+		for (auto it = id_map_paths.begin(); it != id_map_paths.end(); ++it) {
+			cout << " (" << it->first << ", l_" << it->second.size() << ")";
+		}
+		cout << endl;
+	}
+	void ValidateIntention(int agent_id, int intention_id, const char*, int);
 
 public:
-    std::string goal_file_name_;
-    void AddObstacle(std::vector<RVO::Vector2> obstacles);
-    bool CheckCarWithObstacles(const CarStruct& car, int flag);// 0 in search, 1 real check
-    bool CheckCarWithObsLine(const CarStruct& car, COORD obs_last_point, COORD obs_first_point, int flag);// 0 in search, 1 real check
-
-    bool CheckCarWithVehicle(const CarStruct& car, const AgentStruct& veh, int flag);
-    bool CheckCarWithVehicleReal(const CarStruct& car, const AgentStruct& veh, int flag);
-    /// lets drive
-    std::map<int, vector<COORD>> ped_mean_dirs;
-    COORD DistractedPedMeanDir(AgentStruct& ped, int goal_id);
-    COORD AttentivePedMeanDir(int ped_id, int goal_id);
-
-    void AddEgoGammaAgent(int num_peds, CarStruct& car);
-    void AddGammaAgent(AgentBelief& b, int id_in_sim);
-
-    void PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> peds, CarStruct& car);
-
-    void PrintMeanDirs(std::map<int, AgentBelief> old_peds, map<int, const Agent*>& curr_peds);
-
-    void EnsureMeanDirExist(int ped_id);
+	std::string goal_file_name_;
+	bool CheckCarWithObsLine(const CarStruct& car, COORD obs_last_point,
+			COORD obs_first_point, int flag); // 0 in search, 1 real check
+	bool CheckCarWithVehicle(const CarStruct& car, const AgentStruct& veh,
+			int flag);
+	bool CheckCarWithVehicleReal(const CarStruct& car, const AgentStruct& veh,
+			int flag);
 
 public:
-  template<typename T>
-  double GetSteerToPath(const T& state) const {
-    COORD car_goal= path[path.forward(path.nearest(state.car.pos), 5.0)]; // target at 3 meters ahead along the path
-    
-    // return PurepursuitAngle(state.car, car_goal);
-    
-    return PControlAngle<CarStruct>(state.car, car_goal);
-  }
+	/// lets drive
+	std::map<int, vector<COORD>> ped_mean_dirs;
+	COORD DistractedPedMeanDir(AgentStruct& ped, int goal_id);
+	COORD AttentivePedMeanDir(int ped_id, int goal_id);
 
-  template<typename T>
-  double PControlAngle(const T& car, COORD& car_goal) const{
-    COORD dir = car_goal - car.pos;
-    double theta = atan2(dir.y, dir.x);
+	void AddEgoGammaAgent(int num_peds, CarStruct& car);
+	void AddGammaAgent(AgentBelief& b, int id_in_sim);
 
-    if(theta<0)
-      theta+=2*M_PI;
+	void PrepareAttentiveAgentMeanDirs(std::map<int, AgentBelief> peds,
+			CarStruct& car);
+	void PrintMeanDirs(std::map<int, AgentBelief> old_peds,
+			map<int, const Agent*>& curr_peds);
 
-    theta = theta - car.heading_dir;
+	void EnsureMeanDirExist(int ped_id);
 
-    while (theta > 2*M_PI)
-      theta -= 2*M_PI;
-    while (theta < 0)
-      theta += 2*M_PI;
+public:
+	template<typename T>
+	double GetSteerToPath(const T& state) const {
+		COORD car_goal = path[path.forward(path.nearest(state.car.pos), 5.0)];
+		return PControlAngle<CarStruct>(state.car, car_goal);
+	}
 
-    float guide_steer = 0;
-    if(theta < M_PI)
-      guide_steer = min(theta, ModelParams::MaxSteerAngle); // Dvc_ModelParams::MaxSteerAngle//CCW
-    else if(theta>M_PI)
-      guide_steer = max((theta - 2*M_PI), -ModelParams::MaxSteerAngle); //-Dvc_ModelParams::MaxSteerAngle;//CW
-    else
-      guide_steer = 0;//ahead
-    return guide_steer;
-  }
+	template<typename T>
+	double PControlAngle(const T& car, COORD& car_goal) const {
+		COORD dir = car_goal - car.pos;
+		double theta = atan2(dir.y, dir.x);
 
-  double GetPrefSpeed(const Agent& agent);
+		if (theta < 0)
+			theta += 2 * M_PI;
 
-  // for ego-car
-  void BicycleModel(CarStruct &car, double steering, double end_vel);
-  double PurepursuitAngle(const CarStruct& car, COORD& pursuit_point) const;
+		theta = theta - car.heading_dir;
 
-  // for exo-cars
-  void BicycleModel(AgentStruct &car, double steering, double end_vel);
-  double PurepursuitAngle(const AgentStruct& car, COORD& pursuit_point) const;
+		while (theta > 2 * M_PI)
+			theta -= 2 * M_PI;
+		while (theta < 0)
+			theta += 2 * M_PI;
+
+		float guide_steer = 0;
+		if (theta < M_PI)
+			guide_steer = min(theta, ModelParams::MAX_STEER_ANGLE);
+		else if (theta > M_PI)
+			guide_steer = max((theta - 2 * M_PI), -ModelParams::MAX_STEER_ANGLE);
+		else
+			guide_steer = 0; //ahead
+		return guide_steer;
+	}
+
+	double GetPrefSpeed(const Agent& agent);
+
+	// for ego-car
+	void BicycleModel(CarStruct &car, double steering, double end_vel);
+	double PurepursuitAngle(const CarStruct& car, COORD& pursuit_point) const;
+
+	// for exo-cars
+	void BicycleModel(AgentStruct &car, double steering, double end_vel);
+	double PurepursuitAngle(const AgentStruct& car, COORD& pursuit_point) const;
 
 public:
 
-    void GammaSimulateAgents(AgentStruct agents[], int num_agents, CarStruct& car);
-    COORD GetGammaVel(AgentStruct& agent, int i);
+	void GammaSimulateAgents(AgentStruct agents[], int num_agents,
+			CarStruct& car);
+	COORD GetGammaVel(AgentStruct& agent, int i);
 
-    void AgentApplyGammaVel(AgentStruct& agent, COORD& rvo_vel);
+	void AgentApplyGammaVel(AgentStruct& agent, COORD& rvo_vel);
 
 };
 
 class WorldStateTracker {
 public:
-    typedef pair<float, Agent*> AgentDistPair;
+	typedef pair<float, Agent*> AgentDistPair;
 
-    WorldStateTracker(WorldModel& _model): model(_model) {
-    	car_heading_dir = 0;
-    	carvel = 0;
-        car_odom_heading = -10;
-        detect_time = false;
-    }
-
-    void updatePedState(const Pedestrian& ped, bool doPrint = false);
-	void updateVehState(const Vehicle& veh, bool doPrint = false); // this is for exo-vehicles
-	void updatePedPaths(const Pedestrian& ped, bool doPrint = false);
-	void updateVehPaths(const Vehicle& veh, bool doPrint = false); // this is for exo-vehicles
-    
-	void trackVel(Agent& des, const Agent& src, bool&, bool);
-    void tracPos(Agent& des, const Agent& src, bool);
-    void tracIntention(Agent& des, const Agent& src, bool);
-    void tracBoundingBox(Vehicle& des, const Vehicle& src, bool);
-    void tracCrossDirs(Pedestrian& des, const Pedestrian& src, bool);
-    void updatePathPool(Agent& des);
-
-    void updateCar(const CarStruct car);
-    void updateVel(double vel);
-
-    void cleanPed();
-    void cleanVeh();
-    void cleanAgents();
-
-    void removeAgents();
-
-//    double timestamp() {
-//        static double starttime=get_time_second();
-//        return get_time_second()-starttime;
-//    }
-
-    template<typename T>
-    bool AgentIsAlive(T& agent, vector<T>& agent_list_new) {
-		bool alive=true;
-		if (detect_time) {
-//			double w1,h1;
-//			w1 = agent.w;
-//			h1 = agent.h;
-//			for(const auto& p: agent_list_new) {
-//				double w2,h2;
-//				w2=p.w;
-//				h2=p.h;
-//				if (abs(w1-w2)<=0.1&&abs(h1-h2)<=0.1) {
-//					insert=false;
-//					break;
-//				}
-//			}
-			if (latest_time_stamp - agent.time_stamp > 1.0){ // agent disappeared for 1 second
-				DEBUG(string_sprintf("agent %d disappeared for too long (>1.0s).", agent.id));
-				alive=false;
-			}
-			else
-				; // fprintf(stderr, "agent %d alive, latest_time_stamp = %f, agent time_stamp = %f \n",
-					// agent.id, latest_time_stamp, agent.time_stamp);
-    	}
-
-		return alive;
-    }
-
-    template<typename T>
-	bool AgentIsUp2Date(T& agent) {
-    	if (detect_time){
-			if (Globals::ElapsedTime() - agent.time_stamp > 1.0){ // agent disappeared for 1 second
-				DEBUG(string_sprintf("agent %d disappeared for too long (>1.0s).", agent.id));
-				return false;
-			}
-			else
-				return true;
-    	}
-    	else
-    		return true;
+	WorldStateTracker(WorldModel& _model) :
+			model(_model) {
+		car_heading_dir = 0;
+		carvel = 0;
+		car_odom_heading = -10;
+		detect_time = false;
+		latest_path_time_stamp = -1;
+		latest_time_stamp = -1;
 	}
 
-    void ValidateCar(const char* func);
+	void UpdatePedState(const Pedestrian& ped, bool doPrint = false);
+	void UpdateVehState(const Vehicle& veh, bool doPrint = false); // this is for exo-vehicles
+	void UpdatePedPaths(const Pedestrian& ped, bool doPrint = false);
+	void UpdateVehPaths(const Vehicle& veh, bool doPrint = false); // this is for exo-vehicles
 
-    void setPomdpCar(CarStruct& car);
-    void setPomdpPed(AgentStruct& agent, const Agent& src);
+	void TrackVel(Agent& des, const Agent& src, bool&, bool);
+	void TracPos(Agent& des, const Agent& src, bool);
+	void TracIntention(Agent& des, const Agent& src, bool);
+	void TracBoundingBox(Vehicle& des, const Vehicle& src, bool);
+	void TracCrossDirs(Pedestrian& des, const Pedestrian& src, bool);
+	void UpdatePathPool(Agent& des);
 
-    bool emergency();
+	void UpdateCar(const CarStruct car);
+	void UpdateVel(double vel);
 
-    void check_world_status();
+	void CleanPed();
+	void CleanVeh();
+	void CleanAgents();
 
-    std::vector<AgentDistPair> getSortedAgents(bool doPrint = false);
+	void RemoveAgents();
 
-    PomdpState getPomdpState();
-    PomdpStateWorld getPomdpWorldState();
+	template<typename T>
+	bool AgentIsAlive(T& agent, vector<T>& agent_list_new) {
+		bool alive = true;
+		if (detect_time) {
+			if (latest_time_stamp - agent.time_stamp > 1.0) { // agent disappeared for 1 second
+				DEBUG(
+						string_sprintf(
+								"agent %d disappeared for too long (>1.0s).",
+								agent.id));
+				alive = false;
+			}
+		}
 
-    void text(const vector<AgentDistPair>& sorted_agents) const;  
-    void text(const vector<Pedestrian>& tracked_peds) const;
-    void text(const vector<Vehicle>& tracked_vehs) const;
-    
-    // Car state
-    COORD carpos;
-    double carvel;
-    double car_heading_dir;
-    double car_odom_heading;
+		return alive;
+	}
 
-    //Ped states
-    std::vector<Pedestrian> ped_list;
-    std::vector<Vehicle> veh_list;
+	template<typename T>
+	bool AgentIsUp2Date(T& agent) {
+		if (detect_time) {
+			if (Globals::ElapsedTime() - agent.time_stamp > 1.0) { // agent disappeared for 1 second
+				DEBUG(
+						string_sprintf(
+								"agent %d disappeared for too long (>1.0s).",
+								agent.id));
+				return false;
+			} else
+				return true;
+		} else
+			return true;
+	}
 
-    double latest_time_stamp;
-    double latest_path_time_stamp;
-    bool detect_time;
+	void ValidateCar(const char* func);
 
-    WorldModel& model;
+	void SetPomdpCar(CarStruct& car);
+	void SetPomdpPed(AgentStruct& agent, const Agent& src);
+
+	bool Emergency();
+
+	void CheckWorldStatus();
+
+	std::vector<AgentDistPair> GetSortedAgents(bool doPrint = false);
+
+	PomdpState GetPomdpState();
+	PomdpStateWorld GetPomdpWorldState();
+
+	void Text(const vector<AgentDistPair>& sorted_agents) const;
+	void Text(const vector<Pedestrian>& tracked_peds) const;
+	void Text(const vector<Vehicle>& tracked_vehs) const;
+
+	// Car state
+	COORD carpos;
+	double carvel;
+	double car_heading_dir;
+	double car_odom_heading;
+
+	//Ped states
+	std::vector<Pedestrian> ped_list;
+	std::vector<Vehicle> veh_list;
+
+	double latest_time_stamp;
+	double latest_path_time_stamp;
+	bool detect_time;
+
+	WorldModel& model;
 };
 
 class WorldBeliefTracker {
 public:
-    WorldBeliefTracker(WorldModel& _model, WorldStateTracker& _stateTracker): model(_model), stateTracker(_stateTracker) {}
+	WorldBeliefTracker(WorldModel& model, WorldStateTracker& _stateTracker) :
+			model(model), stateTracker(_stateTracker), cur_time_stamp(0), cur_acc(
+					-1), cur_steering(0) {
+	}
 
-    void update();
-    PomdpState sample(bool predict = false, int use_att_mode = 0);
-    vector<PomdpState> sample(int num, bool predict = false, int use_att_mode = 0);
-    vector<AgentStruct> predictAgents();
-    PomdpState predictPedsCurVel(PomdpState*, double acc, double steering);
+	void Update();
+	void UpdateCar();
+	PomdpState Sample(bool predict = false, int use_att_mode = 0);
+	vector<PomdpState> Sample(int num, bool predict = false, int use_att_mode =
+			0);
+	vector<AgentStruct> PredictAgents();
+	PomdpState PredictPedsCurVel(PomdpState*, double acc, double steering);
 
-    WorldModel& model;
-    WorldStateTracker& stateTracker;
-    CarStruct car;
-    std::map<int, AgentBelief> agent_beliefs;
+	WorldModel& model;
+	WorldStateTracker& stateTracker;
+	CarStruct car;
+	std::map<int, AgentBelief> agent_beliefs;
 	std::vector<AgentBelief*> sorted_beliefs;
 
-    void PrintState(const State& s, ostream& out = cout) const;
-    void printBelief() const;
+	void PrintState(const State& s, ostream& out = cout) const;
+	void printBelief() const;
 
-    PomdpState text() const;
+	PomdpState Text() const;
+	void Text(const std::map<int, AgentBelief>&) const;
 
-    void text(const std::map<int, AgentBelief>&) const;
-
-    void ValidateCar(const char* func);
+	void ValidateCar(const char* func);
 
 public:
-    double cur_time_stamp;
+	double cur_time_stamp;
 
-    double cur_acc;
-    double cur_steering;
+	double cur_acc;
+	double cur_steering;
 };
 
 enum PED_MODES {
-	AGENT_ATT = 0,
-	AGENT_DIS = 1,
-    NUM_AGENT_TYPES = 2,
+	AGENT_ATT = 0, AGENT_DIS = 1, NUM_AGENT_TYPES = 2,
 };
 
-double cap_angle(double angle);
 int ClosestInt(double v);
 int FloorIntRobust(double v);

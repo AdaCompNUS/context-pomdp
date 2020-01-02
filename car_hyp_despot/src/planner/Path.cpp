@@ -96,12 +96,11 @@ void Path::cutjoin(const Path& p) {
 	insert(end(), p.begin()/*+1*/, p.end());
 }
 
-
-double Path::getlength(){
+double Path::getlength(int start){
     auto& path = *this;
 
 	double path_len = 0;
-	for(int i=0; i<path.size()-1; i++) {
+	for(int i=start; i<path.size()-1; i++) {
         double d = COORD::EuclideanDistance(path[i], path[i+1]);
         path_len += d;
 	}

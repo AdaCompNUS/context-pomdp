@@ -1670,21 +1670,6 @@ void DESPOT::Update(Shared_QNode* qnode, bool real) {
 	        it != children.end(); it++) {
 		Shared_VNode* vnode = static_cast<Shared_VNode*>(it->second);
 
-		// Globals::Global_print_node(this_thread::get_id(), vnode,
-		//    static_cast<Shared_VNode*>(vnode)->depth(), 0,
-		//    static_cast<Shared_VNode*>(vnode)->lower_bound(),
-		//    static_cast<Shared_VNode*>(vnode)->upper_bound(false),
-		//    -1000,
-		//    static_cast<Shared_VNode*>(vnode)->GetVirtualLoss(),
-		//    static_cast<Shared_VNode*>(vnode)->Weight(),
-		//    static_cast<Shared_VNode*>(vnode)->edge(),
-		//    -1000,
-		//    "Update Qnode");
-
-//		logi << "[Backup] child vnode bounds: " << ((VNode*) vnode)->lower_bound() << ", "
-//				<< ((VNode*) vnode)->upper_bound() << ", "
-//				<< ((VNode*) vnode)->utility_upper_bound()<< endl;
-
 		lower += ((VNode*) vnode)->lower_bound();
 		upper += ((VNode*) vnode)->upper_bound();
 		utility_upper += ((VNode*) vnode)->utility_upper_bound();

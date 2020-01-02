@@ -41,123 +41,61 @@ using namespace despot;
 class WorldBeliefTracker;
 
 class WorldSimulator: public SimulatorBase, public World {
+private:
 	DSPOMDP* model_;
 
+	PomdpStateWorld current_state_;
 
-public:
-	WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model, unsigned seed, bool pathplan_ahead,
-			std::string obstacle_file_name, std::string map_location, int summit_port, COORD car_goal);
-	~WorldSimulator();
-
-public:
-	/**
-	 * [Essential]
-	 * Establish connection to simulator or system
-	 */
-	bool Connect();
-
-	// for carla
-	void Connect_Carla();
-
-	/**
-	 * [Essential]
-	 * Initialize or reset the (simulation) environment, return the start state if applicable
-	 */
-	State* Initialize();
-
-	/**
-	 * [Optional]
-	 * To help construct initial belief to print debug informations in Logger
-	 */
-	State* GetCurrentState();
-
-	/**
-	 * [Essential]
-	 * send action, receive reward, obs, and terminal
-	 * @param action Action to be executed in the real-world system
-	 * @param obs    Observation sent back from the real-world system
-	 */
-	bool ExecuteAction(ACT_TYPE action, OBS_TYPE& obs);
-
-	void AddObstacle();
-
-	void publishPedsPrediciton();
-	void publishAction(int action, double reward);
-	void publishCmdAction(const ros::TimerEvent &e);
-	void publishCmdAction(ACT_TYPE);
-	void publishROSState();
-
-	void robotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
-    void speedCallback(nav_msgs::Odometry odo);
-    void moveSpeedCallback(geometry_msgs::Twist speed);
-    void cmdSteerCallback(const std_msgs::Float32::ConstPtr steer);
-    void lane_change_Callback(const std_msgs::Int32::ConstPtr data);
-    void ego_car_dead_callback(std_msgs::Bool::ConstPtr data);
-	void publishPath();
-
-
-	bool getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
-	tf::Stamped<tf::Pose>GetBaseLinkPose();
-	geometry_msgs::PoseStamped getPoseAhead(const tf::Stamped<tf::Pose>& carpose);
-	double StepReward(PomdpStateWorld& state, ACT_TYPE action);
-
-public:
-	
-	int safeAction;
-	bool goal_reached;
+	int safe_action_;
+	bool goal_reached_;
 	double last_acc_;
 
-	//double real_speed_;
-	COORD odom_vel_;
-	double odom_heading_;
-	double baselink_heading_;
-	//double target_speed_;
-
-    //double steering_;
-
-
-    bool pathplan_ahead_;
-
-   	//static WorldStateTracker* stateTracker;
-   	//WorldBeliefTracker* beliefTracker;
-
-    //static WorldModel worldModel;
-
-	//std::string global_frame_id;
-    //std::string obstacle_file_name_;
-
-
-	ros::Publisher goal_pub;
-	ros::Publisher car_pub;
-	ros::Publisher pa_pub;
 	ros::Publisher cmdPub_, actionPub_, actionPubPlot_;
-
-    ros::Subscriber speedSub_, laneSub_, obsSub_, agentSub_, agentpathSub_,
-    	mapSub_, scanSub_, move_base_speed_, steerSub_, lane_change_Sub_;
-
-    ros::Timer timer_speed;
-    ros::Timer timer_cmd_update;
-
+	ros::Publisher goal_pub, car_pub, pa_pub;
     tf::TransformListener tf_;
 
-	PomdpStateWorld current_state;
-
-private:
 	std::string map_location_;
 	int summit_port_;
 
 public:
-
-    void update_ego_car(const msg_builder::car_info::ConstPtr car) ;
-    
-    void ego_dead_callback(const std_msgs::Bool ego_dead);
-
-	void update_cmds_naive(ACT_TYPE action, bool buffered = false);
-
-	void update_cmds_buffered(const ros::TimerEvent &e);
+	double time_scale;
+	COORD odom_vel;
+	double odom_heading;
+	double baselink_heading;
 
 public:
-	void setCarGoal(COORD);
+	WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model, unsigned seed,
+			std::string map_location, int summit_port);
+	~WorldSimulator();
 
+public:
+
+	bool Connect();
+	void Connect_Carla();
+	State* Initialize();
+	State* GetCurrentState();
+	bool ExecuteAction(ACT_TYPE action, OBS_TYPE& obs);
+	double StepReward(PomdpStateWorld& state, ACT_TYPE action);
+
+	void PublishPedsPrediciton();
+	void PublishAction(int action, double reward);
+	void PublishCmdAction(const ros::TimerEvent &e);
+	void PublishCmdAction(ACT_TYPE);
+	void PublishROSState();
+    void PublishPath();
+
+	void RobotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
+    void SpeedCallback(nav_msgs::Odometry odo);
+    void MoveSpeedCallback(geometry_msgs::Twist speed);
+    void CmdSteerCallback(const std_msgs::Float32::ConstPtr steer);
+    void LaneChangeCallback(const std_msgs::Int32::ConstPtr data);
+    void EgoDeadCallBack(const std_msgs::Bool ego_dead);
+
+	bool GetObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
+	tf::Stamped<tf::Pose>GetBaseLinkPose();
+
+    void UpdateEgoCar(const msg_builder::car_info::ConstPtr car) ;
+	void UpdateCmdsNaive(ACT_TYPE action, bool buffered = false);
+	void UpdateCmdsBuffered(const ros::TimerEvent &e);
 };
 

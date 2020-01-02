@@ -10,7 +10,7 @@ struct Path : std::vector<COORD> {
 	double getYaw(int i) const;
 	Path interpolate(double max_len = 10000.0) const;
 	void cutjoin(const Path& p);
-	double getlength();
+	double getlength(int start=0);
 	double getCurDir(int pos_along = 0);
 
 	COORD GetCrossDir(int, bool);
@@ -23,3 +23,4 @@ struct Path : std::vector<COORD> {
 	}
 };
 
+double CapAngle(double x);

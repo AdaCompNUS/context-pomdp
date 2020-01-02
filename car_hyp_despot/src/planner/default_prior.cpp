@@ -84,14 +84,14 @@ void Record_debug_state(State* state){
 	debug_state = state;
 }
 
-void DefaultPrior::record_cur_history(){
+void DefaultPrior::RecordCurHistory(){
 	as_history_in_search_recorded.Truncate(0);
 	for (int i = 0 ;i<as_history_in_search_.Size(); i++){
 		as_history_in_search_recorded.Add(as_history_in_search_.Action(i), as_history_in_search_.state(i));
 	}
 }
 
-void DefaultPrior::compare_history_with_recorded(){
+void DefaultPrior::CompareHistoryWithRecorded(){
 
 	if (as_history_in_search_.Size() != as_history_in_search_recorded.Size()){
 		cerr << "ERROR: history length changed after search!!!" << endl;
@@ -123,7 +123,7 @@ std::vector<ACT_TYPE> DefaultPrior::ComputeLegalActions(const State* state, cons
 
   act_start = pomdp_model->GetActionID(pomdp_model->GetSteerIDfromSteering(steer_to_path), 0);
 
-  act_end = act_start + 2 * ModelParams::NumAcc + 1;
+  act_end = act_start + 2 * ModelParams::NUM_ACC + 1;
 
   std::vector<ACT_TYPE> legal_actions;
   for (ACT_TYPE action = act_start; action < act_end; action++) {

@@ -1,12 +1,6 @@
-/*
- * momdp.h
- *
- *  Created on: Mar 4, 2012
- *      Author: golfcar
- */
 
-#ifndef MOMDP_H_
-#define MOMDP_H_
+#ifndef CONTROLLER_H_
+#define CONTROLLER_H_
 
 #include <RVO.h>
 #include <nav_msgs/Odometry.h>
@@ -15,9 +9,6 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/PointCloud.h>
-//#include <sensing_on_road/pedestrian_laser_batch.h>
-//#include <dataAssoc_experimental/PedDataAssoc_vector.h>
-//#include <dataAssoc_experimental/PedDataAssoc.h>
 #include <rosgraph_msgs/Clock.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -26,22 +17,16 @@
 #include <msg_builder/ped_local_frame_vector.h>
 #include <msg_builder/imitation_data.h>
 #include <std_msgs/Float32.h>
-// #include <pnc_msgs/speed_contribute.h>
-//#include "executer.h"
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/PoseArray.h>
-//#include "pedestrian_changelane.h"
-//#include "mcts.h"
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 #include "param.h"
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
-//#include <pomdp_path_planner/GetPomdpPath.h>
-//#include <pomdp_path_planner/PomdpPath.h>
 #include <nav_msgs/GetPlan.h>
 #include "WorldModel.h"
 #include "ped_pomdp.h"
@@ -59,118 +44,66 @@ using namespace std;
 
 class Controller: public Planner
 {
-	enum SIM_MODE{
-		POMDP,
-		SUMMIT,
-	};
-public:
+private:
+	ros::NodeHandle& nh_;
 
-	PomdpStateWorld world_state;
-
-    Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead, string obstacle_file_name);
-
-    ~Controller();
-
-	void publishBelief();
-	void publishPath(const string& frame_id, const Path& path);
-	bool getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
-
-	//for despot
-	void initSimulator();
-	void momdpInit();
-	void sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose);
-	void RetrievePathCallBack(const nav_msgs::Path::ConstPtr path); 
-    void setGoal(const geometry_msgs::PoseStamped::ConstPtr goal);
-	geometry_msgs::PoseStamped getPoseAhead(const tf::Stamped<tf::Pose>& carpose);
-
-	ros::Publisher pathPub_;
 	ros::Subscriber pathSub_;
     ros::Subscriber navGoalSub_;
-	ros::Publisher start_goal_pub;
 
-	ros::NodeHandle& nh;
-	//ros::Publisher markers_pubs[ModelParams::N_PED_IN];
+    ros::Publisher pedStatePub_;
+    ros::Publisher plannerPedsPub_;
+	ros::Publisher start_goal_pub_;
+	ros::Publisher pathPub_;
 
-    
-	//PedPomdp * despot;
-	//DESPOT* solver;
-	//Simulator* gpu_handler;
-	
-	string global_frame_id;
-	
+    ros::Timer timer_;
 
-    double goalx_, goaly_;
-    std::string obstacle_file_name_;
+	string global_frame_id_;
+    ACT_TYPE last_action_;
+    OBS_TYPE last_obs_;
+    bool fixed_path_;
+	double control_freq_;
 
-    ACT_TYPE last_action;
-    OBS_TYPE last_obs;
+	WorldSimulator* summit_driving_simulator_;
+	PedPomdpBelief* ped_belief_;
+	DSPOMDP* model_;
+	SolverPrior* prior_;
+	Path path_from_topic_;
+
+public:
+
+    Controller(ros::NodeHandle& nh, bool fixed_path);
+    ~Controller();
 
 private:
-    bool fixed_path_;
-	double pathplan_ahead_;
-	double control_freq;
-    int X_SIZE, Y_SIZE;
-    double dX, dY;
-    double momdp_problem_timeout;
-    bool robot_pose_available;
-    double robotx_, roboty_, robotspeedx_;
-    ros::Timer timer_;
-    ros::Publisher plannerPedsPub_;
-    ros::Publisher pedStatePub_;
 
-    void controlLoop(const ros::TimerEvent &e);
+    void ControlLoop(const ros::TimerEvent &e);
     double StepReward(PomdpStateWorld& state, int action);
 
-	void publishPlannerPeds(const State &);
-	bool getUnityPos();
-public:
-	DSPOMDP* InitializeModel(option::Option* options);
-
-	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options);
-
-	void InitializeDefaultParameters();
-
-	std::string ChooseSolver();
-
-public:
-	bool RunStep(despot::Solver* solver, World* world, Logger* logger);
-	int RunPlanning(int argc, char* argv[]);
-	void PlanningLoop(despot::Solver*& solver, World* world, Logger* logger);
-
-public:
-	WorldSimulator* summit_driving_simulator_;
-	POMDPSimulator* pomdp_driving_simulator_;
-	PedPomdpBelief* ped_belief_;
-	//World* world_;
-	Logger *logger_;
-	DSPOMDP* model_;
-	despot::Solver* solver_;
-
-	SIM_MODE simulation_mode_;
-	
-public: // lets_drive
-	static int b_drive_mode_;
-	static int gpu_id_;
-	static int summit_port_;
-    static float time_scale_; // scale down the speed of time, value < 1.0
-    static std::string model_file_;
-    static std::string value_model_file_;
-    static std::string map_location_;
-private:
-
-	SolverPrior* prior_;
+	void PublishPath(const string& frame_id, const Path& path);
+	bool GetEgoPosFromSummit();
+	void RetrievePathCallBack(const nav_msgs::Path::ConstPtr path);
 
 	void PredictPedsForSearch(State* search_state);
 	void UpdatePriors(const State* cur_state, State* search_state);
-
 	void TruncPriors(int cur_search_hist_len);
-	void CheckCurPath();
+	void CreateDefaultPriors(DSPOMDP* model);
 
-	void setCarGoal(COORD car_goal);
+	DSPOMDP* InitializeModel(option::Option* options);
+	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options);
+	void InitializeDefaultParameters();
+	std::string ChooseSolver();
 
-	void CreateNNPriors(DSPOMDP* model);
+	bool RunStep(despot::Solver* solver, World* world, Logger* logger);
+	void PlanningLoop(despot::Solver*& solver, World* world, Logger* logger);
 
-private:
-	Path path_from_topic;
+public:
+	int RunPlanning(int argc, char* argv[]);
+
+public:
+	static int b_drive_mode;
+	static int gpu_id;
+	static int summit_port;
+    static float time_scale; // scale down the speed of time, value < 1.0
+    static std::string map_location;
 };
-#endif /* MOMDP_H_ */
+#endif /* CONTROLLER_H_ */

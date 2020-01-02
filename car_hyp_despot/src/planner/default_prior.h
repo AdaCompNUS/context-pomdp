@@ -21,8 +21,8 @@ public:
 
 	std::vector<ACT_TYPE> ComputeLegalActions(const State* state, const DSPOMDP* model);
 	void DebugHistory(string msg);
-	void record_cur_history();
-	void compare_history_with_recorded();
+	void RecordCurHistory();
+	void CompareHistoryWithRecorded();
 
 public:
 	WorldModel& world_model;

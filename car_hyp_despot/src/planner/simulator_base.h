@@ -1,91 +1,41 @@
 #pragma once
-#include <interface/world.h>
+
+#include <core/globals.h>
+#include <ros/node_handle.h>
 #include <string>
-#include <ros/ros.h>
-#include "ped_pomdp.h"
-#include "param.h"
 
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
-#include <sensor_msgs/LaserScan.h>
-#include <geometry_msgs/Twist.h>
-#include <sensor_msgs/PointCloud.h>
-//#include <sensing_on_road/pedestrian_laser_batch.h>
-//#include <dataAssoc_experimental/PedDataAssoc_vector.h>
-//#include <dataAssoc_experimental/PedDataAssoc.h>
-
-//#include <msg_builder/peds_believes.h>
-
-
-#include <rosgraph_msgs/Clock.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <geometry_msgs/PoseStamped.h>
-//#include "executer.h"
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/PolygonStamped.h>
-#include <geometry_msgs/PoseArray.h>
-//#include "pedestrian_changelane.h"
-//#include "mcts.h"
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
-#include "param.h"
-#include <tf/tf.h>
-#include <tf/transform_broadcaster.h>
-#include <tf/transform_listener.h>
-//#include <pomdp_path_planner/GetPomdpPath.h>
-//#include <pomdp_path_planner/PomdpPath.h>
-#include <nav_msgs/GetPlan.h>
-
-
-
-#include <msg_builder/ped_local_frame.h>
-#include <msg_builder/ped_local_frame_vector.h>
-#include <msg_builder/car_info.h>
-#include <msg_builder/peds_info.h>
-
-#include "std_msgs/Float32.h"
-
-
+class WorldBeliefTracker;
+class WorldModel;
+class WorldStateTracker;
 
 using namespace despot;
 
 class SimulatorBase  {
-
-public:
-
-	SimulatorBase(ros::NodeHandle& _nh, std::string obstacle_file_name):
-		nh(_nh), obstacle_file_name_(obstacle_file_name), speed_in_search_state_(0){
-		;
-	}
-
-	double real_speed_;
+protected:
 	double target_speed_;
-
 	double time_scale_;
-
     double steering_;
 
     ACT_TYPE buffered_action_;
 
-    double speed_in_search_state_;
-
-
-   	static WorldStateTracker* stateTracker;
-   	WorldBeliefTracker* beliefTracker;
-
-    static WorldModel worldModel;
-
-	std::string global_frame_id;
-    std::string obstacle_file_name_;
-
 public:
 	ros::NodeHandle& nh;
-	ros::Subscriber carSub_, egodeadSub_;
 
-public:
+	double real_speed;
+	std::string global_frame_id;
+   	WorldBeliefTracker* beliefTracker;
+
+
+    static WorldModel worldModel;
+   	static WorldStateTracker* stateTracker;
+
 	static bool agents_data_ready;
 	static bool agents_path_data_ready;
+
+public:
+	SimulatorBase(ros::NodeHandle&_nh):
+		nh(_nh), time_scale_(1.0), buffered_action_(0),
+		beliefTracker(NULL), target_speed_(0), real_speed(0), steering_(0) {}
 };
 
 
