@@ -237,10 +237,10 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
 		p.push_back(coord);
 	}
 
-	if (p.getlength() < 3)
+	if (p.GetLength() < 3)
 		ERR("Path length shorter than 3 meters.");
 
-	path_from_topic_ = p.interpolate();
+	path_from_topic_ = p.Interpolate();
 	WorldSimulator::worldModel.SetPath(path_from_topic_);
 	PublishPath(path->header.frame_id, path_from_topic_);
 }

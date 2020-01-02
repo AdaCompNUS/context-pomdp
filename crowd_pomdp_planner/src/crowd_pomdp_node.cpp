@@ -4,7 +4,7 @@
  */
 
 #include <fenv.h>
-#include "ped_pomdp_node.h"
+#include "crowd_pomdp_node.h"
 #include <time.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PolygonStamped.h>

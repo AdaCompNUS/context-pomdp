@@ -13,7 +13,6 @@ struct COORD
   double x, y;
   
   COORD() {}
-
   COORD(double _x, double _y) : x(_x), y(_y) {}
 
   bool Valid() const {
@@ -57,14 +56,11 @@ struct COORD
   
   static double EuclideanDistance(COORD lhs, COORD rhs);
   static double ManhattanDistance(COORD lhs, COORD rhs);
-
   static double DirectedDistance(COORD lhs, COORD rhs, double dir);
   
   static double SlopAngle(COORD start, COORD end);
   static double Angle(COORD A, COORD B, COORD C, double noise_level);
-
-
-  static bool get_dir(double a, double b);
+  static bool GetDir(double a, double b);
 
   double GetAngle() const  //[0,2*pi)
   {
@@ -122,8 +118,7 @@ inline double COORD::Angle(COORD A, COORD B, COORD C, double noise_level) {
 	return angle;
 }
 
-
-inline bool COORD::get_dir(double a, double b){
+inline bool COORD::GetDir(double a, double b){
 	// a and b are two angles
 	double diff = b - a;
 	if (diff >= 0 and diff < M_PI)
@@ -137,19 +132,6 @@ inline bool COORD::get_dir(double a, double b){
 	else
 		return true;
 }
-
-
-/*
-inline int COORD::DirectionalDistance(COORD lhs, COORD rhs, int direction) {
-  switch (direction) {
-    case E_NORTH: return rhs.y - lhs.y;
-    case E_EAST: return rhs.x - lhs.x;
-    case E_SOUTH: return lhs.y - rhs.y;
-    case E_WEST: return lhs.x - rhs.x;
-    default: assert(false);
-  }
-}
-*/
 
 inline std::ostream& operator<<(std::ostream& ostr, COORD& COORD) {
   ostr << "(" << COORD.x << ", " << COORD.y << ")";

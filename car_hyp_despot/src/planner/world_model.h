@@ -210,7 +210,7 @@ public:
 public:
 	template<typename T>
 	double GetSteerToPath(const T& state) const {
-		COORD car_goal = path[path.forward(path.nearest(state.car.pos), 5.0)];
+		COORD car_goal = path[path.Forward(path.Nearest(state.car.pos), 5.0)];
 		return PControlAngle<CarStruct>(state.car, car_goal);
 	}
 

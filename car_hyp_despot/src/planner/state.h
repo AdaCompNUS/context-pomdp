@@ -37,7 +37,6 @@ struct AgentStruct {
 	}
 
 	void set_default_values(){
-//		pos = COORD(-1, -1);
 		intention = -1;
 		id = -1;
 		speed = 0.0;
@@ -50,15 +49,15 @@ struct AgentStruct {
 		cross_dir = 0;
 	}
 
-	COORD pos; // pos
+	COORD pos;
     int mode;
 	int intention; // intended path
 	int pos_along_path; // traveled distance along the path
 	int cross_dir;
-	int id; //id
+	int id;
 	AgentType type;
     double speed;
-    COORD vel; // heading dir, for cur_vel motion model
+    COORD vel;
     double heading_dir;
     double bb_extent_x, bb_extent_y;
 

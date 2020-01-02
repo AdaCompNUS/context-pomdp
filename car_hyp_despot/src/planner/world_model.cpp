@@ -511,7 +511,7 @@ double WorldModel::GetMinCarPedDistAllDirs(const PomdpState& state) {
 }
 
 int WorldModel::MinStepToGoal(const PomdpState& state) {
-	double d = path.getlength(path.nearest(state.car.pos));
+	double d = path.GetLength(path.Nearest(state.car.pos));
 	if (d < 0)
 		d = 0;
 	return int(ceil(d / (ModelParams::VEL_MAX / freq)));
@@ -554,7 +554,7 @@ COORD WorldModel::GetGoalPosFromPaths(int agent_id, int intention_id,
 	double forward_len = 3.0;
 	if (intention_id < path_candidates.size()) {
 		auto& path = path_candidates[intention_id];
-		COORD pursuit = path[path.forward(pos_along_path, forward_len)];
+		COORD pursuit = path[path.Forward(pos_along_path, forward_len)];
 		return pursuit;
 	} else if (IsCurVelIntention(intention_id, agent_id)) {
 		COORD dir(agent_vel);
@@ -821,7 +821,7 @@ void WorldModel::PedStepPath(AgentStruct& agent, int step, double noise,
 
 	if (intention < path_candidates.size()) {
 		auto& path = path_candidates[intention];
-		agent.pos_along_path = path.forward(agent.pos_along_path,
+		agent.pos_along_path = path.Forward(agent.pos_along_path,
 				agent.speed * (float(step) / freq));
 		COORD new_pos = path[agent.pos_along_path];
 
@@ -855,13 +855,13 @@ void WorldModel::VehStepPath(AgentStruct& agent, int step, double noise,
 	if (intention < path_candidates.size()) {
 		COORD old_pos = agent.pos;
 		auto& path = path_candidates[intention];
-		int pursuit_pos = path.forward(agent.pos_along_path, 3.0);
+		int pursuit_pos = path.Forward(agent.pos_along_path, 3.0);
 		COORD pursuit_point = path[pursuit_pos];
 
 		double steering = PControlAngle<AgentStruct>(agent, pursuit_point) + noise;
 		BicycleModel(agent, steering, agent.speed);
 
-		agent.pos_along_path = path.nearest(agent.pos);
+		agent.pos_along_path = path.Nearest(agent.pos);
 		agent.vel = (agent.pos - old_pos) * freq;
 
 		if (doPrint && agent.pos_along_path == old_path_pos)
@@ -1089,7 +1089,7 @@ double WorldModel::ISRobVelStep(CarStruct &car, double acc, Random& random) {
 
 void WorldModel::SetPath(Path path) {
 	this->path = path;
-	ModelParams::GOAL_TRAVELLED = path.getlength();
+	ModelParams::GOAL_TRAVELLED = path.GetLength();
 }
 
 void WorldModel::UpdatePedBelief(AgentBelief& b, const Agent& curr_agent) {
@@ -1272,7 +1272,7 @@ void WorldStateTracker::TracIntention(Agent& des, const Agent& src,
 	des.paths.resize(0);
 
 	for (const Path& path : src.paths) {
-		des.paths.push_back(path.interpolate(60.0)); // reset the resolution of the path to ModelParams:PATH_STEP
+		des.paths.push_back(path.Interpolate(60.0)); // reset the resolution of the path to ModelParams:PATH_STEP
 	}
 
 	UpdatePathPool(des);
@@ -2025,7 +2025,7 @@ void WorldModel::AgentApplyGammaVel(AgentStruct& agent, COORD& rvo_vel) {
 	if (!IsStopIntention(agent.intention, agent.id)
 			&& !IsCurVelIntention(agent.intention, agent.id)) {
 		auto& path = PathCandidates(agent.id)[agent.intention];
-		agent.pos_along_path = path.nearest(agent.pos);
+		agent.pos_along_path = path.Nearest(agent.pos);
 	}
 	agent.vel = (agent.pos - old_pos) * freq;
 	agent.speed = agent.vel.Length();

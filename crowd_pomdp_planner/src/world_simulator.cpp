@@ -398,7 +398,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
 void WorldSimulator::UpdateCmdsNaive(ACT_TYPE action, bool buffered) {
 	if (logging::level() >= logging::INFO)
-		worldModel.path.text();
+		worldModel.path.Text();
 
 	logi << "[update_cmds_naive] Buffering action " << action << endl;
 
