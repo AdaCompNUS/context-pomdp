@@ -263,6 +263,7 @@ class GammaCrowdController(Summit):
         self.path_min_points = rospy.get_param('~path_min_points')
         self.path_interval = rospy.get_param('~path_interval')
         self.lane_change_probability = rospy.get_param('~lane_change_probability')
+        self.spawn_clearance_ego = rospy.get_param('~spawn_clearance_ego')
         self.spawn_clearance_vehicle = rospy.get_param('~spawn_clearance_vehicle')
         self.spawn_clearance_person = rospy.get_param('~spawn_clearance_person')
         self.crowd_range = rospy.get_param('~crowd_range')
@@ -625,6 +626,7 @@ class GammaCrowdController(Summit):
         spawn_segment_map.seed_rand(self.rng.getrandbits(32))
 
         # Get AABB.
+        exo_aabb_map = carla.AABBMap([self.get_aabb(ego_actor)])
         aabb_map = carla.AABBMap(
             [self.get_aabb(agent.actor) for agent in self.network_bike_agents + self.network_car_agents + self.sidewalk_agents] +
             [self.get_aabb(self.ego_actor)])
@@ -639,7 +641,12 @@ class GammaCrowdController(Summit):
                     carla.Vector2D(path.get_position(0).x - self.spawn_clearance_vehicle,
                                    path.get_position(0).y - self.spawn_clearance_vehicle),
                     carla.Vector2D(path.get_position(0).x + self.spawn_clearance_vehicle,
-                                   path.get_position(0).y + self.spawn_clearance_vehicle))):
+                                   path.get_position(0).y + self.spawn_clearance_vehicle))) and \ 
+                    not exo_aabb_map.intersects(carla.AABB2D(
+                        carla.Vector2D(path.get_position(0).x - self.spawn_clearance_ego,
+                                       path.get_position(0).y - self.spawn_clearance_ego),
+                        carla.Vector2D(path.get_position(0).x + self.spawn_clearance_ego,
+                                       path.get_position(0).y + self.spawn_clearance_ego))):
                 trans = carla.Transform()
                 trans.location.x = path.get_position(0).x
                 trans.location.y = path.get_position(0).y
@@ -668,7 +675,12 @@ class GammaCrowdController(Summit):
                     carla.Vector2D(path.get_position(0).x - self.spawn_clearance_vehicle,
                                    path.get_position(0).y - self.spawn_clearance_vehicle),
                     carla.Vector2D(path.get_position(0).x + self.spawn_clearance_vehicle,
-                                   path.get_position(0).y + self.spawn_clearance_vehicle))):
+                                   path.get_position(0).y + self.spawn_clearance_vehicle))) and \
+                    not exo_aabb_map.intersects(carla.AABB2D(
+                        carla.Vector2D(path.get_position(0).x - self.spawn_clearance_ego,
+                                       path.get_position(0).y - self.spawn_clearance_ego),
+                        carla.Vector2D(path.get_position(0).x + self.spawn_clearance_ego,
+                                       path.get_position(0).y + self.spawn_clearance_ego))):
                 trans = carla.Transform()
                 trans.location.x = path.get_position(0).x
                 trans.location.y = path.get_position(0).y
@@ -697,7 +709,12 @@ class GammaCrowdController(Summit):
                     carla.Vector2D(path.get_position(0).x - self.spawn_clearance_person,
                                    path.get_position(0).y - self.spawn_clearance_person),
                     carla.Vector2D(path.get_position(0).x + self.spawn_clearance_person,
-                                   path.get_position(0).y + self.spawn_clearance_person))):
+                                   path.get_position(0).y + self.spawn_clearance_person))) and \
+                    not exo_aabb_map.intersects(carla.AABB2D(
+                        carla.Vector2D(path.get_position(0).x - self.spawn_clearance_ego,
+                                       path.get_position(0).y - self.spawn_clearance_ego),
+                        carla.Vector2D(path.get_position(0).x + self.spawn_clearance_ego,
+                                       path.get_position(0).y + self.spawn_clearance_ego))):
                 trans = carla.Transform()
                 trans.location.x = path.get_position(0).x
                 trans.location.y = path.get_position(0).y
