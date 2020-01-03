@@ -3,8 +3,8 @@
  *
  */
 
-#ifndef PEDESTRIAN_MOMDP_H_
-#define PEDESTRIAN_MOMDP_H_
+#ifndef CROWD_POMDP_H_
+#define CROWD_POMDP_H_
 
 #include "controller.h"
 
@@ -12,11 +12,11 @@ class PedPomdpNode
 {
 public:
     PedPomdpNode(int argc, char** argv);
-    ~PedPomdpNode();
+    ~PedPomdpNode() {};
     
     Controller* controller;
 
 	bool pathPublished;
 };
 
-#endif /* PEDESTRIAN_MOMDP_H_ */
+#endif /* CROWD_POMDP_H_ */

@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
-message("@@@@@@@@@@@@@@ CarDriving cmake list @@@@@@@@@@@@@@")
 
 set(CUDA_SDK_ROOT_DIR "/usr/local/cuda/samples")
 
 #project(HyP_DESPOT_CarDriving CXX CUDA)
-
 
 if(NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 11)
@@ -36,8 +34,6 @@ endif()
 
 #add_definitions(-std=c++0x -O3)
 
-
-
 find_package(catkin REQUIRED COMPONENTS
   roscpp
 #  ${PROJECT_NAME}
@@ -48,33 +44,23 @@ include_directories(
    ${catkin_INCLUDE_DIRS}
    ../../HypDespot/include/
    ./
-   GPU_Car_Drive/
-   ../crowd_pomdp_planner/src/carla/
 )
-message("@@@@@@@@@@@@@@ before add lib @@@@@@@@@@@@@@")
 
 add_library(
 #"${PROJECT_NAME}" STATIC
 "GPUmodel" STATIC
 # add_executable(${PROJECT_NAME}_CarDriving  
-  Path.cpp
+  path.cpp
   collision.cpp
   coord.cpp                  
   math_utils.cpp
   ped_pomdp.cpp
-  WorldModel.cpp
+  world_model.cpp
   custom_particle_belief.cpp  
   param.cpp
   simulator.cpp
   controller.cpp
-  GPU_Car_Drive/GPU_Car_Drive.cu     
-  GPU_Car_Drive/GPU_LowerBoundPolicy.cu
-  GPU_Car_Drive/GPU_Init.cu         
-  GPU_Car_Drive/GPU_Path.cu
-  GPU_Car_Drive/GPU_CarUpperBound.cu  
-  GPU_Car_Drive/GPU_param.cu  
 )
-message("@@@@@@@@@@@@@@ after add lib @@@@@@@@@@@@@@")
 
 target_link_libraries(GPUmodel # ${PROJECT_NAME}_CarDriving
    ${catkin_LIBRARIES}
@@ -96,7 +82,6 @@ target_compile_definitions(GPUmodel # ${PROJECT_NAME}_CarDriving
 target_link_libraries( GPUmodel # ${PROJECT_NAME}_CarDriving
   ${TinyXML_LIBRARIES}
 )
-message("@@@@@@@@@@@@@@ LIBUNWIND_LIBRARIES @@@@@@@@@@@@@@")
 
 target_link_libraries(GPUmodel # ${PROJECT_NAME}_CarDriving
    ${LIBUNWIND_LIBRARIES}
@@ -111,5 +96,4 @@ configure_package_config_file("cmake/DespotConfig.cmake.in"
 )
 
 
-message("@@@@@@@@@@@@@@ end @@@@@@@@@@@@@@")
 

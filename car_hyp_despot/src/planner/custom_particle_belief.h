@@ -67,7 +67,6 @@ public:
 	//long double TransProb(const State* state1, const State* state2, ACT_TYPE action) const;
 	WorldModel& world_model_;
 
-
 public:     
 
 	WorldStateTracker* stateTracker;
@@ -83,15 +82,12 @@ public:
 		const PomdpState* ref_search_state,
 		const PomdpStateWorld* src_history_state);
 
-	void publishAgentsPrediciton();
-	void publishBelief();
-	void publishPlannerPeds(const State &s);
-
-	void publishMarker(int , AgentBelief & ped);
+	void PublishAgentsPrediciton();
+	void PublishBelief();
+	void PublishPlannerPeds(const State &s);
+	void PublishMarker(int , AgentBelief & ped);
 
 	State* GetParticle(int i);
-
-	//inline int GetThreadID() const{return 0/*MapThread(this_thread::get_id())*/;}
 };
 
 const double dummy_pos_value=std::numeric_limits<float>::max();

@@ -128,13 +128,12 @@ STATIC
 
   ${GAMMA_SRCS}
 
-  src/planner/Path.cpp
+  src/planner/path.cpp
   src/planner/collision.cpp
-  src/planner/coord.cpp                  
   src/planner/math_utils.cpp
   src/planner/ped_pomdp.cpp
   src/planner/default_prior.cpp
-  src/planner/WorldModel.cpp
+  src/planner/world_model.cpp
   src/planner/custom_particle_belief.cpp  
   src/planner/param.cpp
 )

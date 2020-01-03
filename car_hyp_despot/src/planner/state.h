@@ -1,13 +1,14 @@
-#ifndef PED_STATE_H
-#define PED_STATE_H
-#include "coord.h"
-#include "param.h"
-#include "Path.h"
-#include "despot/interface/pomdp.h"
-//#include "util/util.h"
-#include "disabled_util.h"
+#ifndef AGENT_STATE_H
+#define AGENT_STATE_H
 #include <vector>
 #include <utility>
+
+#include "coord.h"
+#include "param.h"
+#include "path.h"
+#include "disabled_util.h"
+#include "despot/interface/pomdp.h"
+
 using namespace std;
 
 using namespace despot;
@@ -36,7 +37,6 @@ struct AgentStruct {
 	}
 
 	void set_default_values(){
-//		pos = COORD(-1, -1);
 		intention = -1;
 		id = -1;
 		speed = 0.0;
@@ -49,19 +49,19 @@ struct AgentStruct {
 		cross_dir = 0;
 	}
 
-	COORD pos; // pos
+	COORD pos;
     int mode;
 	int intention; // intended path
 	int pos_along_path; // traveled distance along the path
 	int cross_dir;
-	int id; //id
+	int id;
 	AgentType type;
     double speed;
-    COORD vel; // heading dir, for cur_vel motion model
+    COORD vel;
     double heading_dir;
     double bb_extent_x, bb_extent_y;
 
-    void text(std::ostream& out) const {
+    void Text(std::ostream& out) const {
     	out << "agent: id / pos / speed / vel / intention / dist2car / infront =  "
 			<< id << " / "
 			<< "(" << pos.x << ", " << pos.y << ") / "
@@ -154,7 +154,7 @@ public:
 
 	PomdpState() {time_stamp = -1; num = 0;}
 
-	string text() const {
+	string Text() const {
 		return concat(car.vel);
 	}
 };
@@ -170,7 +170,7 @@ public:
 //	int peds_mode[ModelParams::N_PED_WORLD];
 	PomdpStateWorld() {time_stamp = -1; num = 0;}
 
-	string text() const {
+	string Text() const {
 		return concat(car.vel);
 	}
 

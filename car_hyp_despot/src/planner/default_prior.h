@@ -13,7 +13,7 @@
 #include "despot/core/globals.h"
 #include "despot/util/coord.h"
 #include <despot/core/prior.h>
-#include "WorldModel.h"
+#include "world_model.h"
 
 class DefaultPrior: public SolverPrior {
 public:
@@ -21,8 +21,8 @@ public:
 
 	std::vector<ACT_TYPE> ComputeLegalActions(const State* state, const DSPOMDP* model);
 	void DebugHistory(string msg);
-	void record_cur_history();
-	void compare_history_with_recorded();
+	void RecordCurHistory();
+	void CompareHistoryWithRecorded();
 
 public:
 	WorldModel& world_model;

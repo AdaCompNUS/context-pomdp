@@ -1,13 +1,11 @@
 
-#include "Path.h"
+#include "path.h"
 #include<iostream>
 #include "math_utils.h"
 #include <fstream>
 using namespace std;
 
-
-
-int Path::nearest(const COORD pos) const {
+int Path::Nearest(const COORD pos) const {
     auto& path = *this;
     double dmin = COORD::EuclideanDistance(pos, path[0]);
     int imin = 0;
@@ -21,13 +19,13 @@ int Path::nearest(const COORD pos) const {
     return imin;
 }
 
-double Path::mindist(COORD pos) {
-    COORD mc = at(nearest(pos));
+double Path::MinDist(COORD pos) {
+    COORD mc = at(Nearest(pos));
     double d = COORD::EuclideanDistance(mc, pos);
     return d;
 }
 
-int Path::forward(double i, double len) const {
+int Path::Forward(double i, double len) const {
     auto& path = *this;
     float step=(len / ModelParams::PATH_STEP);
 
@@ -43,21 +41,20 @@ int Path::forward(double i, double len) const {
     return i;
 }
 
-double Path::getYaw(int i) const {
+double Path::GetYaw(int i) const {
     auto& path = *this;
-	//TODO review this code
 	
-	int j = forward(i, 1.0);
+	int j = Forward(i, 1.0);
 	if(i==j) { i = max(0, i-3);}
 
 	const COORD& pos = path[i];
 	const COORD& forward_pos = path[j];
 	MyVector vec(forward_pos.x - pos.x, forward_pos.y - pos.y);
-    double a = vec.GetAngle(); // is this the yaw angle?
+    double a = vec.GetAngle();
 	return a;
 }
 
-Path Path::interpolate(double max_len) const {
+Path Path::Interpolate(double max_len) const {
     auto& path = *this;
 	Path p;
 
@@ -90,25 +87,24 @@ Path Path::interpolate(double max_len) const {
 	return p;
 }
 
-void Path::cutjoin(const Path& p) {
-	int i = max(0, nearest(p[0])-1);
+void Path::CutJoin(const Path& p) {
+	int i = max(0, Nearest(p[0])-1);
 	erase(begin()+i, end());
 	insert(end(), p.begin()/*+1*/, p.end());
 }
 
-
-double Path::getlength(){
+double Path::GetLength(int start){
     auto& path = *this;
 
 	double path_len = 0;
-	for(int i=0; i<path.size()-1; i++) {
+	for(int i=start; i<path.size()-1; i++) {
         double d = COORD::EuclideanDistance(path[i], path[i+1]);
         path_len += d;
 	}
 	return path_len;
 }
 
-double Path::getCurDir(int pos_along){
+double Path::GetCurDir(int pos_along){
     auto& path = *this;
 
     int end_pos = min(pos_along + 150, int(path.size())-1);
@@ -126,7 +122,7 @@ double CapAngle(double x){
 COORD Path::GetCrossDir(int pos_along, bool dir){
 	auto& path = *this;
 	COORD& pos = path[pos_along];
-	double cur_dir = getCurDir(pos_along);
+	double cur_dir = GetCurDir(pos_along);
 	if (dir) // left, ccw
 		cur_dir = cur_dir + M_PI/2;
 	else // right.cw
@@ -137,7 +133,7 @@ COORD Path::GetCrossDir(int pos_along, bool dir){
 	return COORD(cos(cur_dir), sin(cur_dir));
 }
 
-void Path::text(){
+void Path::Text(){
     auto& path = *this;
 
 	cout << "Path: ";

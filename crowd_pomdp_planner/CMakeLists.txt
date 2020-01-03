@@ -53,9 +53,9 @@ set_target_properties(car_hyp_despot PROPERTIES
   IMPORTED_LINK_INTERFACE_LANGUAGES "CUDA"
 )
 
-add_executable(ped_pomdp src/PedPomdpNode.cpp src/controller.cpp src/world_simulator.cpp)
+add_executable(ped_pomdp src/crowd_pomdp_node.cpp src/controller.cpp src/world_simulator.cpp)
 add_executable(local_frame src/local_frame.cpp)
-add_executable(vel_publisher src/VelPublisher.cpp)
+add_executable(vel_publisher src/vel_publisher.cpp)
 
 set_target_properties( ped_pomdp 
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

@@ -52,15 +52,7 @@ class CrowdProcessor(Summit):
             '/agent_path_array',
             msg_builder.msg.AgentPathArray,
             queue_size=1)
-        self.obstacles_pub = rospy.Publisher(
-            '/local_obstacles',
-            msg_builder.msg.Obstacles,
-            queue_size=1)
-        self.lanes_pub = rospy.Publisher(
-            '/local_lanes',
-            msg_builder.msg.Lanes,
-            queue_size=1)
-
+        
     def network_agents_callback(self, agents):
         self.network_agents = agents.agents
         self.do_update = True
@@ -105,41 +97,6 @@ class CrowdProcessor(Summit):
         agents_path_msg = msg_builder.msg.AgentPathArray()
 
         current_time = rospy.Time.now()
-
-        # get local occupancy map
-        publish_map_rad = 50
-        OM_bound = carla.OccupancyMap(
-            carla.Vector2D(ego_car_position.x - publish_map_rad, ego_car_position.y - publish_map_rad),
-            carla.Vector2D(ego_car_position.x + publish_map_rad, ego_car_position.y + publish_map_rad))
-
-        local_obstacles = OM_bound.difference(self.network_occupancy_map)
-        obstacle_msg = msg_builder.msg.Obstacles()
-        obstacle_msg.contours = []
-
-        for polygon in local_obstacles.get_polygons():
-            polygon_tmp = Polygon()
-            outer_contour = polygon[0]
-            for point in outer_contour:
-                polygon_tmp.points.append(Point32(point.x, point.y, 0.0))
-            obstacle_msg.contours.append(polygon_tmp)
-
-        self.obstacles_pub.publish(obstacle_msg)
-
-        # get local lane centers
-        local_lanes = self.network_segment_map.intersection(OM_bound)
-        lane_msg = msg_builder.msg.Lanes()
-        lane_msg.lane_segments = []
-
-        for lane_seg in local_lanes.get_segments():
-            lane_seg_tmp = msg_builder.msg.LaneSeg()
-            lane_seg_tmp.start.x = lane_seg.start.x
-            lane_seg_tmp.start.y = lane_seg.start.y
-            lane_seg_tmp.end.x = lane_seg.end.x
-            lane_seg_tmp.end.y = lane_seg.end.y
-
-            lane_msg.lane_segments.append(lane_seg_tmp)
-
-        self.lanes_pub.publish(lane_msg)
 
         agents = self.network_agents + self.sidewalk_agents
         for agent in agents:
@@ -263,7 +220,7 @@ class CrowdProcessor(Summit):
         agents_path_msg.header.stamp = current_time
         self.agents_path_pub.publish(agents_path_msg)
 
-        self.do_update = False
+        # self.do_update = False
         end_time = rospy.Time.now()
         elapsed = (end_time - init_time).to_sec()
         # print('agent_array update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
