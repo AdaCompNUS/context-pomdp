@@ -52,6 +52,7 @@ private:
 
 	ros::Publisher cmdPub_, actionPub_, actionPubPlot_;
 	ros::Publisher goal_pub, car_pub, pa_pub;
+	ros::Subscriber map_sub_, odom_sub, ego_sub_, ego_dead_sub_, agent_sub_, agent_path_sub_;
     tf::TransformListener tf_;
 
 	std::string map_location_;

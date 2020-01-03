@@ -47,6 +47,7 @@ const double TIME_REWARD = 0.1;
 
 extern std::string ROS_NS;
 extern std::string LASER_FRAME;
+extern bool ROS_BRIDG;
 
 inline void InitParams(bool in_simulation) {
 	if (in_simulation) {

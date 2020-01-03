@@ -115,12 +115,12 @@ bool WorldSimulator::Connect() {
 	car_pub = nh.advertise<geometry_msgs::PoseStamped>("car_pose", 1000);
 	goal_pub = nh.advertise<visualization_msgs::MarkerArray>("pomdp_goals", 1);
 
-	nh.subscribe("map", 1, receive_map_callback);
-	nh.subscribe("odom", 1, &WorldSimulator::SpeedCallback, this);
-	nh.subscribe("ego_state", 1, &WorldSimulator::UpdateEgoCar, this);
-	nh.subscribe("ego_dead", 1, &WorldSimulator::EgoDeadCallBack, this);
-	nh.subscribe("agent_array", 1, agentArrayCallback);
-	nh.subscribe("agent_path_array", 1, agentPathArrayCallback);
+	map_sub_ = nh.subscribe("map", 1, receive_map_callback);
+	odom_sub = nh.subscribe("odom", 1, &WorldSimulator::SpeedCallback, this);
+	ego_sub_ = nh.subscribe("ego_state", 1, &WorldSimulator::UpdateEgoCar, this);
+	ego_dead_sub_ = nh.subscribe("ego_dead", 1, &WorldSimulator::EgoDeadCallBack, this);
+	agent_sub_ = nh.subscribe("agent_array", 1, agentArrayCallback);
+	agent_path_sub_ = nh.subscribe("agent_path_array", 1, agentPathArrayCallback);
 
 	logi << "Subscribers and Publishers created at the "
 			<< Globals::ElapsedTime() << "th second" << endl;
@@ -254,10 +254,9 @@ State* WorldSimulator::GetCurrentState() {
 
 	current_state_.assign(state);
 
-	if (logging::level() >= logging::VERBOSE){
-		printf("GetCurrentState start");
+	if (logging::level() >= logging::DEBUG){
+		logi << "current world state:" << endl;
 		static_cast<PedPomdp*>(model_)->PrintWorldState(current_state_);
-		printf("GetCurrentState end");
 	}
 	current_state_.time_stamp = Globals::ElapsedTime();
 
@@ -308,8 +307,10 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	PomdpStateWorld* curr_state =
 			static_cast<PomdpStateWorld*>(GetCurrentState());
 
-	if (logging::level() >= logging::DEBUG)
+	if (logging::level() >= logging::INFO) {
+		logi << "Executing action for state:" << endl;
 		static_cast<PedPomdp*>(model_)->PrintWorldState(*curr_state);
+	}
 
 	double acc, steer;
 
@@ -437,36 +438,38 @@ void WorldSimulator::PublishCmdAction(ACT_TYPE action) {
 }
 
 void WorldSimulator::PublishROSState() {
-	geometry_msgs::Point32 pnt;
-	geometry_msgs::Pose pose;
-	geometry_msgs::PoseStamped pose_stamped;
+	if (ModelParams::ROS_BRIDG) {
+		geometry_msgs::Point32 pnt;
+		geometry_msgs::Pose pose;
+		geometry_msgs::PoseStamped pose_stamped;
 
-	pose_stamped.header.stamp = ros::Time::now();
-	pose_stamped.header.frame_id = global_frame_id;
-	pose_stamped.pose.position.x = stateTracker->carpos.x;
-	pose_stamped.pose.position.y = stateTracker->carpos.y;
-	pose_stamped.pose.orientation.w = 1.0;
-	car_pub.publish(pose_stamped);
+		pose_stamped.header.stamp = ros::Time::now();
+		pose_stamped.header.frame_id = global_frame_id;
+		pose_stamped.pose.position.x = stateTracker->carpos.x;
+		pose_stamped.pose.position.y = stateTracker->carpos.y;
+		pose_stamped.pose.orientation.w = 1.0;
+		car_pub.publish(pose_stamped);
 
-	geometry_msgs::PoseArray pA;
-	pA.header.stamp = ros::Time::now();
-	pA.header.frame_id = global_frame_id;
-	for (auto& ped : stateTracker->ped_list) {
-		pose.position.x = ped.w;
-		pose.position.y = ped.h;
-		pose.orientation.w = 0.0;
-		pA.poses.push_back(pose);
+		geometry_msgs::PoseArray pA;
+		pA.header.stamp = ros::Time::now();
+		pA.header.frame_id = global_frame_id;
+		for (auto& ped : stateTracker->ped_list) {
+			pose.position.x = ped.w;
+			pose.position.y = ped.h;
+			pose.orientation.w = 0.0;
+			pA.poses.push_back(pose);
+		}
+		for (auto& veh : stateTracker->veh_list) {
+			pose.position.x = (veh.w + 0.0);
+			pose.position.y = (veh.h + 0.0);
+			pose.orientation.w = veh.heading_dir;
+			pA.poses.push_back(pose);
+		}
+
+		pa_pub.publish(pA);
+
+		uint32_t shape = visualization_msgs::Marker::CYLINDER;
 	}
-	for (auto& veh : stateTracker->veh_list) {
-		pose.position.x = (veh.w + 0.0);
-		pose.position.y = (veh.h + 0.0);
-		pose.orientation.w = veh.heading_dir;
-		pA.poses.push_back(pose);
-	}
-
-	pa_pub.publish(pA);
-
-	uint32_t shape = visualization_msgs::Marker::CYLINDER;
 }
 
 extern double marker_colors[20][3];
@@ -579,7 +582,6 @@ bool sortFn(Pedestrian p1, Pedestrian p2) {
 }
 
 void agentArrayCallback(msg_builder::TrafficAgentArray data) {
-
 	double data_sec = data.header.stamp.sec;
 	double data_nsec = data.header.stamp.nsec;
 	double data_ros_time_sec = data_sec + data_nsec * 1e-9;
@@ -639,7 +641,8 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 	}
 
 	WorldSimulator::stateTracker->CleanAgents();
-	WorldSimulator::stateTracker->model.PrintPathMap();
+	if (logging::level() >= logging::DEBUG)
+		WorldSimulator::stateTracker->model.PrintPathMap();
 	WorldSimulator::stateTracker->Text(ped_list);
 	WorldSimulator::stateTracker->Text(veh_list);
 

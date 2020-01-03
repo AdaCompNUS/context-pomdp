@@ -25,6 +25,7 @@ double CAR_REAR = 1.34;
 
 std::string ROS_NS = "";
 std::string LASER_FRAME = "/laser_frame";
+bool ROS_BRIDG = false;
 
 void PrintParams() {
 	printf("ModelParams:\n");

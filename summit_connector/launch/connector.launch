@@ -19,7 +19,7 @@
         args="0.0 0.0 0.0 0.0 0.0 0.0 /base_link /laser_frame 10" />
 
   <node name="spawn_meshes" pkg="summit_connector" type="spawn_meshes.py" output="screen">
-    <param name="spawn_imagery" value="false"/>
+    <param name="spawn_imagery" value="true"/>
     <param name="spawn_landmarks" value="false"/>
   </node>
  

@@ -293,8 +293,8 @@ void Controller::PredictPedsForSearch(State* search_state) {
 	if (predict_peds) {
 		// predict state using last action
 		if (last_action_ < 0 || last_action_ > model_->NumActions()) {
-			cerr << "ERROR: wrong last action for prediction " << last_action_
-					<< endl;
+			logi << "Skip state prediction for the initial step, last action=" << last_action_ << endl;
+			return;
 		} else {
 
 			summit_driving_simulator_->beliefTracker->cur_acc =
@@ -430,11 +430,11 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 		cout << "Car base_link heading "
 				<< summit_driving_simulator_->baselink_heading << endl;
 
-		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
 		static_cast<PedPomdp*>(ped_pomdp_model)->PrintStateIDs(sample);
 		static_cast<PedPomdp*>(ped_pomdp_model)->CheckPreCollision(&sample);
-		static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(
-				sample, 10);				// 3 steps
+//		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
+//		static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(
+//				sample, 10);				// 3 steps
 
 		action = solver->Search().action;
 	} else

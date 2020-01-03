@@ -145,9 +145,11 @@ class SpawnMeshes(Summit):
                                 byte = f.read(1)
 
                         bounds_min = project(num2deg(zoom, row + 1, column)) + self.network.offset
-                        bounds_min = carla.Vector3D(bounds_min.x, bounds_min.y, 0)
+                        bounds_min = carla.Vector3D(bounds_min.x, bounds_min.y,
+                                -0.1)
                         bounds_max = project(num2deg(zoom, row, column + 1)) + self.network.offset
-                        bounds_max = carla.Vector3D(bounds_max.x, bounds_max.y, 0)
+                        bounds_max = carla.Vector3D(bounds_max.x, bounds_max.y,
+                                -0.1)
 
                         self.mesh_ids.append(self.world.spawn_dynamic_tile_mesh(bounds_min, bounds_max, data, 9))
 

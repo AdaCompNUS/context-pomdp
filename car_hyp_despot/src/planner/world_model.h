@@ -29,6 +29,15 @@ struct AgentBelief {
 	int MaxLikelyIntention() const;
 	void SampleGoalMode(int& goal, int& mode, int use_att_mode = 0) const;
 	void ResetBelief(int new_size);
+
+	void Text() {
+		cout << "Agent belief: id / type / pos / heading / vel: "
+				<< id << " / "
+				<< type << " / "
+				<< pos.x << "," << pos.y << " / "
+				<< heading_dir << " / "
+				<< vel.x << "," << vel.y << endl;
+	}
 };
 
 class WorldModel {

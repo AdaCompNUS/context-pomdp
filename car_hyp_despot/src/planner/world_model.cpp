@@ -26,7 +26,7 @@ bool use_noise_in_rvo = false;
 bool use_vel_from_summit = true;
 int include_stop_intention = 0;
 int include_curvel_intention = 1;
-
+bool initial_update_step = true;
 
 int ClosestInt(double v) {
 	if ((v - (int) v) < 0.5)
@@ -1161,6 +1161,7 @@ void WorldModel::UpdatePedBelief(AgentBelief& b, const Agent& curr_agent) {
 	b.speed = b.vel.Length();
 
 	b.pos = cur_pos;
+
 }
 
 double WorldModel::GetPrefSpeed(const Agent& agent) {
@@ -1194,7 +1195,8 @@ AgentBelief WorldModel::InitPedBelief(const Agent& agent) {
 void WorldStateTracker::CleanAgents() {
 	CleanPed();
 	CleanVeh();
-	model.PrintPathMap();
+	if (logging::level() >= logging::DEBUG)
+		model.PrintPathMap();
 }
 
 void WorldStateTracker::CleanPed() {
@@ -1570,18 +1572,24 @@ void WorldBeliefTracker::Update() {
 		cur_agent_map[p->id] = p;
 	}
 
-	for (const auto& p : agent_beliefs) { // agent disappeared
+	vector<int> agents_to_remove;
+	for(const auto& p: agent_beliefs) {
 		if (cur_agent_map.find(p.first) == cur_agent_map.end()) {
-			agent_beliefs.erase(p.first);
+			logi << "agent "<< p.first << " disappeared" << endl;
+			agents_to_remove.push_back(p.first); // erasing element here would trigger error.
 		}
+	}
+	for(const auto& i: agents_to_remove) {
+		agent_beliefs.erase(i);
 	}
 
 	for (auto& dp : sorted_agents) {
 		auto& agent = *dp.second;
-		if (agent.reset_intention)
-			agent_beliefs[agent.id].ResetBelief(model.GetNumIntentions(agent.id));
-		else
-			agent_beliefs[agent.id].reset = false;
+		if (agent_beliefs.find(agent.id) != agent_beliefs.end())
+			if (agent.reset_intention)
+				agent_beliefs[agent.id].ResetBelief(model.GetNumIntentions(agent.id));
+			else
+				agent_beliefs[agent.id].reset = false;
 	}
 
 	if (logging::level() >= logging::VERBOSE)
@@ -1591,14 +1599,10 @@ void WorldBeliefTracker::Update() {
 	if (logging::level() >= logging::VERBOSE)
 		model.PrintMeanDirs(agent_beliefs, cur_agent_map);
 
-	car.pos = stateTracker.carpos;
-	car.vel = stateTracker.carvel;
-	car.heading_dir = stateTracker.car_heading_dir;
 	UpdateCar();
 
 	if (logging::level() >= logging::VERBOSE)
 		stateTracker.model.PrintPathMap();
-
 	for (auto& kv : agent_beliefs) {
 		if (cur_agent_map.find(kv.first) == cur_agent_map.end())
 			ERR(string_sprintf("id %d agent_beliefs does not exist any more in newagents", kv.first))
@@ -1618,6 +1622,11 @@ void WorldBeliefTracker::Update() {
 		sorted_beliefs.push_back(&agent_beliefs[p.id]);
 	}
 
+	if (logging::level() >= logging::DEBUG)
+		for (auto it = agent_beliefs.begin(); it != agent_beliefs.end(); it++) {
+			auto & agent = it->second;
+			agent.Text();
+		}
 	cur_time_stamp = Globals::ElapsedTime();
 	return;
 }
@@ -2163,69 +2172,82 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(
 	if (num_agents == 0)
 		return;
 
-	int threadID = GetThreadID();
-
-	traffic_agent_sim_[threadID]->clearAllAgents();
-
-	std::vector<int> agent_ids;
-	agent_ids.resize(num_agents);
-	int i = 0;
 	for (auto it = agents.begin(); it != agents.end(); it++) {
 		auto & agent = it->second;
-		AddGammaAgent(agent, i);
-		agent_ids[i] = agent.id;
-		i++;
-	}
-	AddEgoGammaAgent(num_agents, car);
-
-	traffic_agent_sim_[threadID]->doPreStep();
-
-	for (int i = 0; i < num_agents; i++) {
-		EnsureMeanDirExist(agent_ids[i]);
+		EnsureMeanDirExist(agent.id);
 	}
 
-	for (size_t i = 0; i < num_agents; ++i) {
-		int id = agent_ids[i];
-		// For each ego agent
-		for (int intention_id = 0; intention_id < GetNumIntentions(id);
-				intention_id++) {
-			RVO::Vector2 ori_pos =
-					traffic_agent_sim_[threadID]->getAgentPosition(i);
-			// Leave other pedestrians to have default preferred velocity
-			ValidateIntention(id, intention_id, __FUNCTION__, __LINE__);
-			if (IsStopIntention(intention_id, id)) { /// stop intention
-				traffic_agent_sim_[threadID]->setAgentPrefVelocity(i,
-						RVO::Vector2(0.0f, 0.0f));
-			} else {
-				auto goal_pos = GetGoalPos(agents[id], intention_id);
-				RVO::Vector2 goal(goal_pos.x, goal_pos.y);
-				if (abs(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) < 0.5) {
-					// Agent is within 0.5 meters of its goal, set preferred velocity to zero
+	if (initial_update_step){
+		initial_update_step = false;
+
+		for (auto it = agents.begin(); it != agents.end(); it++) {
+			auto & agent = it->second;
+			int id = agent.id;
+			for (int intention_id = 0; intention_id < GetNumIntentions(id);	intention_id++)
+				ped_mean_dirs[id][intention_id] = COORD(0.0, 0.0);
+		}
+	}
+	else {
+		int threadID = GetThreadID();
+
+		traffic_agent_sim_[threadID]->clearAllAgents();
+
+		std::vector<int> agent_ids;
+		agent_ids.resize(num_agents);
+		int i = 0;
+		for (auto it = agents.begin(); it != agents.end(); it++) {
+			auto & agent = it->second;
+			AddGammaAgent(agent, i);
+			agent_ids[i] = agent.id;
+			i++;
+		}
+		AddEgoGammaAgent(num_agents, car);
+
+		traffic_agent_sim_[threadID]->doPreStep();
+
+		for (size_t i = 0; i < num_agents; ++i) {
+			int id = agent_ids[i];
+			// For each ego agent
+			for (int intention_id = 0; intention_id < GetNumIntentions(id);
+					intention_id++) {
+				RVO::Vector2 ori_pos =
+						traffic_agent_sim_[threadID]->getAgentPosition(i);
+				// Leave other pedestrians to have default preferred velocity
+				ValidateIntention(id, intention_id, __FUNCTION__, __LINE__);
+				if (IsStopIntention(intention_id, id)) { /// stop intention
 					traffic_agent_sim_[threadID]->setAgentPrefVelocity(i,
 							RVO::Vector2(0.0f, 0.0f));
 				} else {
-					// Agent is far away from its goal, set preferred velocity as unit vector towards agent's goal.
-					double spd = agents[id].speed;
-					traffic_agent_sim_[threadID]->setAgentPrefVelocity(i,
-							normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) * spd);
+					auto goal_pos = GetGoalPos(agents[id], intention_id);
+					RVO::Vector2 goal(goal_pos.x, goal_pos.y);
+					if (abs(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) < 0.5) {
+						// Agent is within 0.5 meters of its goal, set preferred velocity to zero
+						traffic_agent_sim_[threadID]->setAgentPrefVelocity(i,
+								RVO::Vector2(0.0f, 0.0f));
+					} else {
+						// Agent is far away from its goal, set preferred velocity as unit vector towards agent's goal.
+						double spd = agents[id].speed;
+						traffic_agent_sim_[threadID]->setAgentPrefVelocity(i,
+								normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) * spd);
+					}
 				}
+
+				traffic_agent_sim_[threadID]->doStepForOneAgent(i);
+
+				COORD dir;
+				dir.x = traffic_agent_sim_[threadID]->getAgentPosition(i).x()
+						- agents[id].pos.x;
+				dir.y = traffic_agent_sim_[threadID]->getAgentPosition(i).y()
+						- agents[id].pos.y;
+
+				logd << "[PrepareAttentiveAgentMeanDirs] ped_mean_dirs len="
+						<< ped_mean_dirs.size() << " intention_list len="
+						<< ped_mean_dirs[id].size() << "\n";
+				ped_mean_dirs[id][intention_id] = dir;
+
+				// reset back agent position
+				traffic_agent_sim_[threadID]->setAgentPosition(i, ori_pos);
 			}
-
-			traffic_agent_sim_[threadID]->doStepForOneAgent(i);
-
-			COORD dir;
-			dir.x = traffic_agent_sim_[threadID]->getAgentPosition(i).x()
-					- agents[id].pos.x;
-			dir.y = traffic_agent_sim_[threadID]->getAgentPosition(i).y()
-					- agents[id].pos.y;
-
-			logd << "[PrepareAttentiveAgentMeanDirs] ped_mean_dirs len="
-					<< ped_mean_dirs.size() << " intention_list len="
-					<< ped_mean_dirs[id].size() << "\n";
-			ped_mean_dirs[id][intention_id] = dir;
-
-			// reset back agent position
-			traffic_agent_sim_[threadID]->setAgentPosition(i, ori_pos);
 		}
 	}
 }

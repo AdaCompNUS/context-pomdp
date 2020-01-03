@@ -185,8 +185,11 @@ bool PedPomdpBelief::DeepUpdate(const std::vector<const State*>& state_history,
 		if (Globals::config.silence == false && DESPOT::Debug_mode)
 			beliefTracker->printBelief();
 
-		PublishPlannerPeds(*cur_state_search);
-		PublishBelief();
+		if (ModelParams::ROS_BRIDG) {
+			PublishPlannerPeds(*cur_state_search);
+			PublishBelief();
+		}
+
 	} catch (exception e) {
 		cerr << "Exception caught in " << __FUNCTION__ << " " << e.what()
 				<< endl;

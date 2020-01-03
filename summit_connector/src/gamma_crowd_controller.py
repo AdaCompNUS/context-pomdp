@@ -655,7 +655,7 @@ class GammaCrowdController(Summit):
                         self, actor, path,
                         5.0 + self.rng.uniform(0.0, 0.5)))
                     self.network_car_agents_lock.release()
-        if len(self.network_car_agents) > self.num_network_car_agents/2:
+        if len(self.network_car_agents) > self.num_network_car_agents / 1.5:
             self.do_publish = True     
 
         # Spawn at most one bike.
