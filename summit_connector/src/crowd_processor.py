@@ -220,7 +220,7 @@ class CrowdProcessor(Summit):
         agents_path_msg.header.stamp = current_time
         self.agents_path_pub.publish(agents_path_msg)
 
-        self.do_update = False
+        # self.do_update = False
         end_time = rospy.Time.now()
         elapsed = (end_time - init_time).to_sec()
         # print('agent_array update = {} ms = {} hz'.format(duration * 1000, 1.0 / duration))
