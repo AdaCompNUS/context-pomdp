@@ -54,7 +54,7 @@ if __name__ == '__main__':
     for trial in range(config.trials):
         shell_cmd = shell_prefix + "bash " + \
             os.path.expanduser(config.summit_dir + "LinuxNoEditor/CarlaUE4.sh") + \
-            " -summit-rpc-port={} -summit-streaming-port={}".format(config.port, config.sport)
+            " -carla-rpc-port={} -carla-streaming-port={}".format(config.port, config.sport)
 
         summit_proc = subprocess.Popen(shell_cmd, shell = True, preexec_fn=os.setsid)
 
