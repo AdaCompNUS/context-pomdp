@@ -293,7 +293,8 @@ class GammaCrowdController(Summit):
         for i in range(self.num_network_car_agents):
             self.gamma.add_agent(carla.AgentParams.get_default('Car'), i)
 
-        for i in range(self.num_network_bike_agents):
+        for i in range(self.num_network_bike_agents):        # self.draw_box(right_region_corners)
+
             self.gamma.add_agent(carla.AgentParams.get_default('Bicycle'), i + self.num_network_car_agents)
 
         for i in range(self.num_sidewalk_agents):
@@ -663,7 +664,7 @@ class GammaCrowdController(Summit):
                         self, actor, path,
                         5.0 + self.rng.uniform(0.0, 0.5)))
                     self.network_car_agents_lock.release()
-        if len(self.network_car_agents) > self.num_network_car_agents / 2.0:
+        if len(self.network_car_agents) > self.num_network_car_agents / 4:
             self.do_publish = True     
 
         # Spawn at most one bike.
