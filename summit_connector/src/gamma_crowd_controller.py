@@ -626,7 +626,7 @@ class GammaCrowdController(Summit):
         spawn_segment_map.seed_rand(self.rng.getrandbits(32))
 
         # Get AABB.
-        exo_aabb_map = carla.AABBMap([self.get_aabb(ego_actor)])
+        exo_aabb_map = carla.AABBMap([self.get_aabb(self.ego_actor)])
         aabb_map = carla.AABBMap(
             [self.get_aabb(agent.actor) for agent in self.network_bike_agents + self.network_car_agents + self.sidewalk_agents] +
             [self.get_aabb(self.ego_actor)])
@@ -641,7 +641,8 @@ class GammaCrowdController(Summit):
                     carla.Vector2D(path.get_position(0).x - self.spawn_clearance_vehicle,
                                    path.get_position(0).y - self.spawn_clearance_vehicle),
                     carla.Vector2D(path.get_position(0).x + self.spawn_clearance_vehicle,
-                                   path.get_position(0).y + self.spawn_clearance_vehicle))) and \ 
+                                   path.get_position(0).y +
+                                   self.spawn_clearance_vehicle))) and \
                     not exo_aabb_map.intersects(carla.AABB2D(
                         carla.Vector2D(path.get_position(0).x - self.spawn_clearance_ego,
                                        path.get_position(0).y - self.spawn_clearance_ego),

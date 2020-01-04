@@ -80,6 +80,13 @@ struct COORD
     x*=rate;
     y*=rate;
   }
+
+  COORD Scale(double length) const {
+      if(Length()<0.001)
+    	  return COORD(0.0, 0.0);
+      double rate=length/Length();
+      return COORD(x * rate, y * rate);
+  }
 };
 
 inline double COORD::EuclideanDistance(COORD lhs, COORD rhs) {
