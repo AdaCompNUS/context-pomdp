@@ -27,6 +27,8 @@ bool use_vel_from_summit = true;
 int include_stop_intention = 0;
 int include_curvel_intention = 1;
 bool initial_update_step = true;
+double PURSUIT_LEN = 3.0;
+
 
 int ClosestInt(double v) {
 	if ((v - (int) v) < 0.5)
@@ -551,14 +553,13 @@ COORD WorldModel::GetGoalPosFromPaths(int agent_id, int intention_id,
 		int pos_along_path, const COORD& agent_pos, const COORD& agent_vel,
 		AgentType type, bool agent_cross_dir) {
 	auto& path_candidates = PathCandidates(agent_id);
-	double forward_len = 3.0;
 	if (intention_id < path_candidates.size()) {
 		auto& path = path_candidates[intention_id];
-		COORD pursuit = path[path.Forward(pos_along_path, forward_len)];
+		COORD pursuit = path[path.Forward(pos_along_path, PURSUIT_LEN)];
 		return pursuit;
 	} else if (IsCurVelIntention(intention_id, agent_id)) {
 		COORD dir(agent_vel);
-		dir.AdjustLength(forward_len);
+		dir.AdjustLength(PURSUIT_LEN);
 		return agent_pos + dir;
 	} else if (IsStopIntention(intention_id, agent_id)) { // stop intention
 		return COORD(agent_pos.x, agent_pos.y);
@@ -567,6 +568,7 @@ COORD WorldModel::GetGoalPosFromPaths(int agent_id, int intention_id,
 				"Intention ID %d excesses # intentions %d for agent %d of type %d\n",
 				intention_id, GetNumIntentions(agent_id), agent_id,
 				type));
+		return COORD(0.0, 0.0);
 	}
 }
 
@@ -595,16 +597,15 @@ double fetch_heading_dir(const Agent& agent) {
 }
 
 COORD WorldModel::GetGoalPos(const Agent& agent, int intention_id) {
-
 	if (goal_mode == "path") {
 		bool cross_dir = fetch_cross_dir(agent);
 		return GetGoalPosFromPaths(agent.id, intention_id, 0,
 				COORD(agent.w, agent.h), agent.vel, agent.type(), cross_dir); // assuming path is up-to-date
 	} else if (goal_mode == "cur_vel")
-		return COORD(agent.w + agent.vel.x / freq * 3,
-				agent.h + agent.vel.y / freq * 3);
+		return COORD(agent.w, agent.h) + agent.vel.Scale(PURSUIT_LEN);
 	else {
 		RasieUnsupportedGoalMode(__FUNCTION__);
+		return COORD(0.0, 0.0);
 	}
 }
 
@@ -617,10 +618,10 @@ COORD WorldModel::GetGoalPos(const AgentStruct& agent, int intention_id) {
 		return GetGoalPosFromPaths(agent.id, intention_id, agent.pos_along_path,
 				agent.pos, agent.vel, agent.type, agent.cross_dir);
 	else if (goal_mode == "cur_vel")
-		return COORD(agent.pos.x + agent.vel.x / freq * 3,
-				agent.pos.y + agent.vel.y / freq * 3);
+		return agent.pos + agent.vel.Scale(PURSUIT_LEN);
 	else {
 		RasieUnsupportedGoalMode(__FUNCTION__);
+		return COORD(0.0, 0.0);
 	}
 }
 
@@ -631,10 +632,10 @@ COORD WorldModel::GetGoalPos(const AgentBelief& agent, int intention_id) {
 		return GetGoalPosFromPaths(agent.id, intention_id, pos_along_path,
 				agent.pos, agent.vel, agent.type, agent.cross_dir);
 	else if (goal_mode == "cur_vel")
-		return COORD(agent.pos.x + agent.vel.x / freq * 3,
-				agent.pos.y + agent.vel.y / freq * 3);
+		return agent.pos + agent.vel.Scale(PURSUIT_LEN);
 	else {
 		RasieUnsupportedGoalMode(__FUNCTION__);
+		return COORD(0.0, 0.0);
 	}
 }
 
@@ -644,6 +645,8 @@ int WorldModel::GetNumIntentions(const AgentStruct& agent) {
 				+ include_curvel_intention;
 	else if (goal_mode == "cur_vel")
 		return 2;
+	else
+		return 0;
 }
 
 int WorldModel::GetNumIntentions(const Agent& agent) {
@@ -652,6 +655,8 @@ int WorldModel::GetNumIntentions(const Agent& agent) {
 				+ include_curvel_intention;
 	else if (goal_mode == "cur_vel")
 		return 2;
+	else
+		return 0;
 }
 
 int WorldModel::GetNumIntentions(int agent_id) {
@@ -660,6 +665,8 @@ int WorldModel::GetNumIntentions(int agent_id) {
 				+ include_curvel_intention;
 	else if (goal_mode == "cur_vel")
 		return 2;
+	else
+		return 0;
 }
 
 void WorldModel::AgentStepCurVel(AgentStruct& agent, int step, double noise) {
@@ -855,7 +862,7 @@ void WorldModel::VehStepPath(AgentStruct& agent, int step, double noise,
 	if (intention < path_candidates.size()) {
 		COORD old_pos = agent.pos;
 		auto& path = path_candidates[intention];
-		int pursuit_pos = path.Forward(agent.pos_along_path, 3.0);
+		int pursuit_pos = path.Forward(agent.pos_along_path, PURSUIT_LEN);
 		COORD pursuit_point = path[pursuit_pos];
 
 		double steering = PControlAngle<AgentStruct>(agent, pursuit_point) + noise;
@@ -2023,7 +2030,7 @@ void WorldModel::AgentApplyGammaVel(AgentStruct& agent, COORD& rvo_vel) {
 	COORD old_pos = agent.pos;
 	double rvo_speed = rvo_vel.Length();
 	if (agent.type == AgentType::car) {
-		rvo_vel.AdjustLength(3.0);
+		rvo_vel.AdjustLength(PURSUIT_LEN);
 		COORD pursuit_point = agent.pos + rvo_vel;
 		double steering = PControlAngle<AgentStruct>(agent, pursuit_point);
 		BicycleModel(agent, steering, rvo_speed);

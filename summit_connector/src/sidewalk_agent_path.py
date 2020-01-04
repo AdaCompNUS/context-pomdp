@@ -33,7 +33,7 @@ class SidewalkAgentPath:
             rng = random
 
         while len(self.route_points) < self.min_points:
-            if rng.random() <= 0.8: #0.01
+            if rng.random() <= 0.5: #0.01
                 adjacent_route_points = self.summit.sidewalk.get_adjacent_route_points(self.route_points[-1], 50.0)
                 if adjacent_route_points:
                     self.route_points.append(adjacent_route_points[0])

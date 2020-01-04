@@ -263,6 +263,7 @@ class GammaCrowdController(Summit):
         self.path_min_points = rospy.get_param('~path_min_points')
         self.path_interval = rospy.get_param('~path_interval')
         self.lane_change_probability = rospy.get_param('~lane_change_probability')
+        self.spawn_clearance_ego = rospy.get_param('~spawn_clearance_ego')
         self.spawn_clearance_vehicle = rospy.get_param('~spawn_clearance_vehicle')
         self.spawn_clearance_person = rospy.get_param('~spawn_clearance_person')
         self.crowd_range = rospy.get_param('~crowd_range')
@@ -625,6 +626,7 @@ class GammaCrowdController(Summit):
         spawn_segment_map.seed_rand(self.rng.getrandbits(32))
 
         # Get AABB.
+        exo_aabb_map = carla.AABBMap([self.get_aabb(self.ego_actor)])
         aabb_map = carla.AABBMap(
             [self.get_aabb(agent.actor) for agent in self.network_bike_agents + self.network_car_agents + self.sidewalk_agents] +
             [self.get_aabb(self.ego_actor)])
@@ -639,7 +641,13 @@ class GammaCrowdController(Summit):
                     carla.Vector2D(path.get_position(0).x - self.spawn_clearance_vehicle,
                                    path.get_position(0).y - self.spawn_clearance_vehicle),
                     carla.Vector2D(path.get_position(0).x + self.spawn_clearance_vehicle,
-                                   path.get_position(0).y + self.spawn_clearance_vehicle))):
+                                   path.get_position(0).y +
+                                   self.spawn_clearance_vehicle))) and \
+                    not exo_aabb_map.intersects(carla.AABB2D(
+                        carla.Vector2D(path.get_position(0).x - self.spawn_clearance_ego,
+                                       path.get_position(0).y - self.spawn_clearance_ego),
+                        carla.Vector2D(path.get_position(0).x + self.spawn_clearance_ego,
+                                       path.get_position(0).y + self.spawn_clearance_ego))):
                 trans = carla.Transform()
                 trans.location.x = path.get_position(0).x
                 trans.location.y = path.get_position(0).y
@@ -655,7 +663,7 @@ class GammaCrowdController(Summit):
                         self, actor, path,
                         5.0 + self.rng.uniform(0.0, 0.5)))
                     self.network_car_agents_lock.release()
-        if len(self.network_car_agents) > self.num_network_car_agents / 1.5:
+        if len(self.network_car_agents) > self.num_network_car_agents / 2.0:
             self.do_publish = True     
 
         # Spawn at most one bike.
@@ -668,7 +676,12 @@ class GammaCrowdController(Summit):
                     carla.Vector2D(path.get_position(0).x - self.spawn_clearance_vehicle,
                                    path.get_position(0).y - self.spawn_clearance_vehicle),
                     carla.Vector2D(path.get_position(0).x + self.spawn_clearance_vehicle,
-                                   path.get_position(0).y + self.spawn_clearance_vehicle))):
+                                   path.get_position(0).y + self.spawn_clearance_vehicle))) and \
+                    not exo_aabb_map.intersects(carla.AABB2D(
+                        carla.Vector2D(path.get_position(0).x - self.spawn_clearance_ego,
+                                       path.get_position(0).y - self.spawn_clearance_ego),
+                        carla.Vector2D(path.get_position(0).x + self.spawn_clearance_ego,
+                                       path.get_position(0).y + self.spawn_clearance_ego))):
                 trans = carla.Transform()
                 trans.location.x = path.get_position(0).x
                 trans.location.y = path.get_position(0).y
@@ -684,8 +697,6 @@ class GammaCrowdController(Summit):
                         self, actor, path,
                         3.0 + self.rng.uniform(0, 0.5)))
                     self.network_bike_agents_lock.release()
-        #if len(self.network_bike_agents) > self.num_network_bike_agents/2:
-        #    self.do_publish = True     
 
         # Spawn at most one pedestrian.
         self.sidewalk_agents_lock.acquire()
@@ -697,7 +708,12 @@ class GammaCrowdController(Summit):
                     carla.Vector2D(path.get_position(0).x - self.spawn_clearance_person,
                                    path.get_position(0).y - self.spawn_clearance_person),
                     carla.Vector2D(path.get_position(0).x + self.spawn_clearance_person,
-                                   path.get_position(0).y + self.spawn_clearance_person))):
+                                   path.get_position(0).y + self.spawn_clearance_person))) and \
+                    not exo_aabb_map.intersects(carla.AABB2D(
+                        carla.Vector2D(path.get_position(0).x - self.spawn_clearance_ego,
+                                       path.get_position(0).y - self.spawn_clearance_ego),
+                        carla.Vector2D(path.get_position(0).x + self.spawn_clearance_ego,
+                                       path.get_position(0).y + self.spawn_clearance_ego))):
                 trans = carla.Transform()
                 trans.location.x = path.get_position(0).x
                 trans.location.y = path.get_position(0).y
@@ -713,13 +729,12 @@ class GammaCrowdController(Summit):
                         self, actor, path,
                         0.5 + self.rng.uniform(0.0, 1.0)))
                     self.sidewalk_agents_lock.release()
-        # if len(self.sidewalk_agents) > self.num_sidewalk_agents/2:
-            # self.do_publish = True     
 
         if not self.initialized and rospy.Time.now() - self.start_time > rospy.Duration.from_sec(5.0):
             self.agents_ready_pub.publish(True)
             self.initialized = True
-
+        if rospy.Time.now() - self.start_time > rospy.Duration.from_sec(10.0):
+            self.do_publish = True     
 
     def update_destroy(self, event):
         update_time = event.current_real
