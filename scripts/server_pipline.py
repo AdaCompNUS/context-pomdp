@@ -68,7 +68,7 @@ if __name__ == '__main__':
         time.sleep(1)
 
         shell_cmd = 'python launch_docker.py --port {} --gpu {}'.format(config.port, config.gpu)
-        print("Ececuting: "+shell_cmd)
+        print("Executing: "+shell_cmd)
         docker_proc = subprocess.call(shell_cmd, shell = True)
 
         print "Docker exited, closing simulator."

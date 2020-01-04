@@ -18,6 +18,8 @@ mode=joint_pomdp
 rands=-1
 eps_len=120.0
 
+record_bags=0
+
 echo "User: $USER"
 echo "PATH: $PATH"
 echo "PYTHON: $(which python3)"

@@ -4,7 +4,8 @@ import subprocess
 
 home = expanduser("~")
 
-catkin_ws_path = home + '/workspace/catkin_ws'
+# catkin_ws_path = home + '/workspace/catkin_ws'
+catkin_ws_path = home + '/workspace/Context-POMDP'
 
 summit_path = home + "/summit"
 
@@ -48,4 +49,5 @@ if __name__ == '__main__':
                 "-e DISPLAY=${DISPLAY} -v /tmp/.X11-unix:/tmp/.X11-unix " + \
                 config.image + " " + str(config.gpu) + " " + str(config.port) 
 
+    print(cmd_args)
     subprocess.call(cmd_args.split())

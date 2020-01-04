@@ -21,8 +21,8 @@ root_path = os.path.join(home, 'driving_data')
 if not os.path.isdir(root_path):
     os.makedirs(root_path)
 
-# ws_root = 'catkin_ws/'
-ws_root = 'workspace/Context-POMDP/'
+ws_root = 'catkin_ws/'
+# ws_root = 'workspace/Context-POMDP/'
 catkin_ws_path = os.path.join(home, ws_root) 
 
 config = Namespace()
