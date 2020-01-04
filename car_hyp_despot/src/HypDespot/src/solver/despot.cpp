@@ -421,7 +421,7 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 	backup_time = 0;
 	num_trials = 0;
 	Shared_VNode* root = node_queue.receive(true, timeout);
-	DEBUG(string_sprintf("thread %d", threadID));
+//	DEBUG(string_sprintf("thread %d", threadID));
 
 	logv << "time_out = "<< timeout << endl;
 
