@@ -87,7 +87,7 @@ def parse_data(txt_file):
                                     'pos': [pos_x, pos_y],
                                     'heading': heading,
                                     'vel': [vel_x, vel_y],
-                                    'bb': (bb_x, bb_y)
+                                    'bb': (bb_x*2, bb_y*2)
                     }
 
                     exos_list[cur_step].append(agent_dict)
@@ -135,7 +135,7 @@ def parse_data(txt_file):
                         bb_y = float(line_split[start + 4])
                         agent_dict = {'pos': [x, y],
                                     'heading': heading,
-                                    'bb': (bb_x, bb_y) 
+                                    'bb': (bb_x*2, bb_y*2) 
                                     }
                         agent_list.append(agent_dict)
                     pred_exo_list[cur_step].append(agent_list)

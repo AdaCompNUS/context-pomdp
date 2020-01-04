@@ -2335,7 +2335,7 @@ bool WorldModel::CheckCarWithVehicle(const CarStruct& car,
 	double veh_bb_extent_y = veh.bb_extent_y;
 
 	double car_bb_extent_x = ModelParams::CAR_WIDTH / 2.0;
-	double car_bb_extent_y = ModelParams::CAR_FRONT + 0.5;
+	double car_bb_extent_y = ModelParams::CAR_FRONT;
 
 	test = veh.pos + tan_dir * veh_bb_extent_x + along_dir * veh_bb_extent_y;
 	if (::inCarlaCollision(test.x, test.y, car.pos.x, car.pos.y,
