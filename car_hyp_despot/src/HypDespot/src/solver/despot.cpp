@@ -419,6 +419,7 @@ void DESPOT::ExpandTreeServer(RandomStreams streams,
 	backup_time = 0;
 	num_trials = 0;
 	Shared_VNode* root = node_queue.receive(true, timeout);
+	DEBUG(string_sprintf("thread %d", threadID));
 
 	logv << "time_out = "<< timeout << endl;
 
@@ -646,7 +647,6 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 								   history, statistics);
 				used_time += double(clock() - start) / CLOCKS_PER_SEC;
 				explore_time += double(clock() - start) / CLOCKS_PER_SEC;
-				//model->Debug();
 				start = clock();
 				Backup(cur, true);
 				if (statistics != NULL) {
@@ -655,15 +655,13 @@ VNode* DESPOT::ConstructTree(vector<State*>& particles, RandomStreams& streams,
 				}
 				used_time += double(clock() - start) / CLOCKS_PER_SEC;
 				backup_time += double(clock() - start) / CLOCKS_PER_SEC;
-				//model->Debug();
 				num_trials++;
 				Globals::AddSerialTime(used_time);
 
-	//			if (DESPOT::Debug_mode || FIX_SCENARIO == 1)
-					if (num_trials == max_trial){
-						cout << "Reaching max trials, stopping search" << endl;
-						break;
-					}
+				if (num_trials == max_trial){
+					cout << "Reaching max trials, stopping search" << endl;
+					break;
+				}
 			} while (used_time * (num_trials + 1.0) / num_trials < timeout
 					 && !Globals::Timeout(Globals::config.time_per_move)
 					 && (root->upper_bound() - root->lower_bound()) > 1e-6);
