@@ -45,39 +45,39 @@ using namespace std;
 class Controller: public Planner
 {
 private:
-	ros::NodeHandle& nh_;
+  ros::NodeHandle& nh_;
 
-	ros::Subscriber pathSub_;
-    ros::Subscriber navGoalSub_;
+  ros::Subscriber pathSub_;
+  ros::Subscriber navGoalSub_;
 
-    ros::Publisher pedStatePub_;
-    ros::Publisher plannerPedsPub_;
-	ros::Publisher start_goal_pub_;
-	ros::Publisher pathPub_;
+  ros::Publisher pedStatePub_;
+  ros::Publisher plannerPedsPub_;
+  ros::Publisher start_goal_pub_;
+  ros::Publisher pathPub_;
 
-    ros::Timer timer_;
+  ros::Timer timer_;
 
-	string global_frame_id_;
-    ACT_TYPE last_action_;
-    OBS_TYPE last_obs_;
-    bool fixed_path_;
-	double control_freq_;
+  string global_frame_id_;
+  ACT_TYPE last_action_;
+  OBS_TYPE last_obs_;
+  bool fixed_path_;
+  double control_freq_;
 
-	WorldSimulator* summit_driving_simulator_;
-	PedPomdpBelief* ped_belief_;
-	DSPOMDP* model_;
-	SolverPrior* prior_;
-	Path path_from_topic_;
+  WorldSimulator* summit_driving_simulator_;
+  PedPomdpBelief* ped_belief_;
+  DSPOMDP* model_;
+  SolverPrior* prior_;
+  Path path_from_topic_;
 
 public:
 
-    Controller(ros::NodeHandle& nh, bool fixed_path);
-    ~Controller();
+  Controller(ros::NodeHandle& nh, bool fixed_path);
+  ~Controller();
 
 private:
 
-    void ControlLoop(const ros::TimerEvent &e);
-    double StepReward(PomdpStateWorld& state, int action);
+  void ControlLoop(const ros::TimerEvent &e);
+  double StepReward(PomdpStateWorld& state, int action);
 
 	void PublishPath(const string& frame_id, const Path& path);
 	bool GetEgoPosFromSummit();
@@ -102,8 +102,8 @@ public:
 public:
 	static int b_drive_mode;
 	static int gpu_id;
-	static int summit_port;
-    static float time_scale; // scale down the speed of time, value < 1.0
-    static std::string map_location;
+  static int summit_port;
+  static float time_scale; // scale down the speed of time, value < 1.0
+  static std::string map_location;
 };
 #endif /* CONTROLLER_H_ */

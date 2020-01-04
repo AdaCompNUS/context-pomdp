@@ -53,7 +53,7 @@ private:
 	ros::Publisher cmdPub_, actionPub_, actionPubPlot_;
 	ros::Publisher goal_pub, car_pub, pa_pub;
 	ros::Subscriber map_sub_, odom_sub, ego_sub_, ego_dead_sub_, agent_sub_, agent_path_sub_;
-    tf::TransformListener tf_;
+  tf::TransformListener tf_;
 
 	std::string map_location_;
 	int summit_port_;
@@ -83,19 +83,19 @@ public:
 	void PublishCmdAction(const ros::TimerEvent &e);
 	void PublishCmdAction(ACT_TYPE);
 	void PublishROSState();
-    void PublishPath();
+  void PublishPath();
 
-	void RobotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
-    void SpeedCallback(nav_msgs::Odometry odo);
-    void MoveSpeedCallback(geometry_msgs::Twist speed);
-    void CmdSteerCallback(const std_msgs::Float32::ConstPtr steer);
-    void LaneChangeCallback(const std_msgs::Int32::ConstPtr data);
-    void EgoDeadCallBack(const std_msgs::Bool ego_dead);
+  void RobotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
+  void SpeedCallback(nav_msgs::Odometry odo);
+  void MoveSpeedCallback(geometry_msgs::Twist speed);
+  void CmdSteerCallback(const std_msgs::Float32::ConstPtr steer);
+  void LaneChangeCallback(const std_msgs::Int32::ConstPtr data);
+  void EgoDeadCallBack(const std_msgs::Bool ego_dead);
 
 	bool GetObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
 	tf::Stamped<tf::Pose>GetBaseLinkPose();
 
-    void UpdateEgoCar(const msg_builder::car_info::ConstPtr car) ;
+  void UpdateEgoCar(const msg_builder::car_info::ConstPtr car);
 	void UpdateCmdsNaive(ACT_TYPE action, bool buffered = false);
 	void UpdateCmdsBuffered(const ros::TimerEvent &e);
 };
