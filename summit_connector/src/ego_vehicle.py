@@ -127,6 +127,8 @@ class EgoVehicle(Summit):
 
     def get_position(self):
         location = self.actor.get_location()
+        if location.z < 0:
+            self.ego_dead_pub.publish(True)
         return carla.Vector2D(location.x, location.y)
 
     def get_cur_ros_pose(self):
