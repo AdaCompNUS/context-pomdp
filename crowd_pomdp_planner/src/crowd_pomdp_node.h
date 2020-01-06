@@ -11,10 +11,10 @@
 class PedPomdpNode
 {
 public:
-    PedPomdpNode(int argc, char** argv);
-    ~PedPomdpNode() {};
-    
-    Controller* controller;
+  PedPomdpNode(int argc, char** argv);
+  ~PedPomdpNode() {};
+
+  Controller* controller;
 
 	bool pathPublished;
 };
