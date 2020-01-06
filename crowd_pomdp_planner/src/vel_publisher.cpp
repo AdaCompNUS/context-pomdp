@@ -83,24 +83,24 @@ public:
 	virtual void egostateCallback(msg_builder::car_info car) = 0;
 
 	double cal_pub_acc() {
-	if (emergency_break)
-            return -1;
+    if (emergency_break)
+      return -1;
 
-        double throttle = 0.0;
+    double throttle = 0.0;
 
-        if (target_vel < real_vel + 0.02 && target_vel > real_vel - 0.02 ){
-            throttle = 0.025; // maintain cur vel
-        } else if(target_vel >= real_vel + 0.02){
-            throttle = (target_vel - real_vel - 0.02) * 1.0;
-            throttle = max(min(0.55, throttle),0.025);
-        } else if(target_vel < real_vel - 0.05){
-            throttle = 0.0;
-        } else {
-            throttle = (target_vel - real_vel) * 3.0;
-            throttle = max(-1.0, throttle);
-        }
+    if (target_vel < real_vel + 0.02 && target_vel > real_vel - 0.02 ){
+      throttle = 0.025; // maintain cur vel
+    } else if(target_vel >= real_vel + 0.02){
+      throttle = (target_vel - real_vel - 0.02) * 1.0;
+      throttle = max(min(0.55, throttle),0.025);
+    } else if(target_vel < real_vel - 0.05){
+      throttle = 0.0;
+    } else {
+      throttle = (target_vel - real_vel) * 3.0;
+      throttle = max(-1.0, throttle);
+    }
 
-        return throttle;
+    return throttle;
 	}
 
 	double cal_pub_steer() {

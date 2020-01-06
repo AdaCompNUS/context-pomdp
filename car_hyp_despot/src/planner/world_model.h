@@ -220,7 +220,8 @@ public:
 	template<typename T>
 	double GetSteerToPath(const T& state) const {
 		COORD car_goal = path[path.Forward(path.Nearest(state.car.pos), 5.0)];
-		return PControlAngle<CarStruct>(state.car, car_goal);
+//		return PControlAngle<CarStruct>(state.car, car_goal);
+		return PurepursuitAngle(state.car, car_goal);
 	}
 
 	template<typename T>
@@ -411,3 +412,4 @@ enum PED_MODES {
 
 int ClosestInt(double v);
 int FloorIntRobust(double v);
+

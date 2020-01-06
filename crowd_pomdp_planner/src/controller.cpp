@@ -432,6 +432,7 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 
 		static_cast<PedPomdp*>(ped_pomdp_model)->PrintStateIDs(sample);
 		static_cast<PedPomdp*>(ped_pomdp_model)->CheckPreCollision(&sample);
+		logi << "Sampled state in control loop:" << endl;
 //		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
 //		static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(
 //				sample, 10);				// 3 steps
