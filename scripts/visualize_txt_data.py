@@ -254,7 +254,7 @@ if __name__ == "__main__":
     ego_list, ego_path_list, exos_list, coll_bool_list, pred_car_list, pred_exo_list = parse_data(config.file)
 
     anim = animation.FuncAnimation(fig, animate, init_func=init,
-                               frames=len(ego_list.keys()) - config.frame, interval=300, blit=True)
+                               frames=len(ego_list.keys()) - config.frame, interval=30, blit=True)
     fig.canvas.mpl_connect('button_press_event', onClick)
 
     plt.show()

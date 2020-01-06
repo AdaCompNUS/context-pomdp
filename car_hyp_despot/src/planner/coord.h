@@ -74,6 +74,10 @@ struct COORD
 	  return sqrt(x*x + y*y);
   }
 
+  double LengthSq() const{
+	  return x*x + y*y;
+  }
+
   void AdjustLength(double length){
     if(Length()<0.001) return;   //vector length close to 0
     double rate=length/Length();

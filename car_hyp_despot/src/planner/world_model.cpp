@@ -101,6 +101,76 @@ double CalculateGoalDir(const CarStruct& car, const COORD& goal) {
 		return 0; //ahead
 }
 
+
+double WorldModel::PurepursuitAngle(const CarStruct& car,
+		COORD& pursuit_point) const {
+	logd << __FUNCTION__ << " start" << endl;
+	COORD rear_pos;
+	rear_pos.x = car.pos.x - ModelParams::CAR_REAR * cos(car.heading_dir);
+	rear_pos.y = car.pos.y - ModelParams::CAR_REAR * sin(car.heading_dir);
+
+	double offset = (rear_pos - pursuit_point).Length();
+	double target_angle = atan2(pursuit_point.y - rear_pos.y,
+			pursuit_point.x - rear_pos.x);
+	double angular_offset = CapAngle(target_angle - car.heading_dir);
+
+	COORD relative_point(offset * cos(angular_offset),
+			offset * sin(angular_offset));
+	if (abs(relative_point.y) < 0.01)
+		return 0;
+	else {
+		double turning_radius = relative_point.LengthSq()
+				/ (2 * abs(relative_point.y)); // Intersecting chords theorem.
+		if (abs(turning_radius) < 0.1)
+			if (turning_radius > 0)
+				return ModelParams::MAX_STEER_ANGLE;
+			if (turning_radius < 0)
+				return -ModelParams::MAX_STEER_ANGLE;
+
+		double steering_angle = atan2(ModelParams::CAR_WHEEL_DIST,
+				turning_radius);
+		if (relative_point.y < 0)
+			steering_angle *= -1;
+
+		return max(min(steering_angle, ModelParams::MAX_STEER_ANGLE), -ModelParams::MAX_STEER_ANGLE);
+	}
+}
+
+double WorldModel::PurepursuitAngle(const AgentStruct& agent,
+		COORD& pursuit_point) const {
+	COORD rear_pos;
+	rear_pos.x = agent.pos.x
+			- agent.bb_extent_y * 2 * 0.4 * cos(agent.heading_dir);
+	rear_pos.y = agent.pos.y
+			- agent.bb_extent_y * 2 * 0.4 * sin(agent.heading_dir);
+
+	double offset = (rear_pos - pursuit_point).Length();
+	double target_angle = atan2(pursuit_point.y - rear_pos.y,
+			pursuit_point.x - rear_pos.x);
+	double angular_offset = CapAngle(target_angle - agent.heading_dir);
+
+	COORD relative_point(offset * cos(angular_offset),
+			offset * sin(angular_offset));
+	if (abs(relative_point.y) < 0.01)
+		return 0;
+	else {
+		double turning_radius = relative_point.LengthSq()
+				/ (2 * abs(relative_point.y)); // Intersecting chords theorem.
+		if (abs(turning_radius) < 0.1)
+			if (turning_radius > 0)
+				return ModelParams::MAX_STEER_ANGLE;
+			if (turning_radius < 0)
+				return -ModelParams::MAX_STEER_ANGLE;
+
+		double steering_angle = atan2(agent.bb_extent_y * 2 * 0.8,
+				turning_radius);
+		if (relative_point.y < 0)
+			steering_angle *= -1;
+
+		return max(min(steering_angle, ModelParams::MAX_STEER_ANGLE), -ModelParams::MAX_STEER_ANGLE);
+	}
+}
+
 ACT_TYPE WorldModel::DefaultStatePolicy(const State* _state) const {
 	logv << __FUNCTION__ << "] Get state info" << endl;
 	const PomdpState *state = static_cast<const PomdpState*>(_state);
@@ -679,62 +749,6 @@ void WorldModel::AgentStepCurVel(AgentStruct& agent, int step, double noise) {
 	} else {
 		agent.pos.x += agent.vel.x * (float(step) / freq);
 		agent.pos.y += agent.vel.y * (float(step) / freq);
-	}
-}
-
-double WorldModel::PurepursuitAngle(const CarStruct& car,
-		COORD& pursuit_point) const {
-	COORD rear_pos;
-	rear_pos.x = car.pos.x - ModelParams::CAR_REAR * cos(car.heading_dir);
-	rear_pos.y = car.pos.y - ModelParams::CAR_REAR * sin(car.heading_dir);
-
-	double offset = (rear_pos - pursuit_point).Length();
-	double target_angle = atan2(pursuit_point.y - rear_pos.y,
-			pursuit_point.x - rear_pos.x);
-	double angular_offset = CapAngle(target_angle - car.heading_dir);
-
-	COORD relative_point(offset * cos(angular_offset),
-			offset * sin(angular_offset));
-	if (relative_point.x == 0)
-		return 0;
-	else {
-		double turning_radius = relative_point.Length()
-				/ (2 * abs(relative_point.y)); // Intersecting chords theorem.
-		double steering_angle = atan2(ModelParams::CAR_WHEEL_DIST,
-				turning_radius);
-		if (relative_point.y < 0)
-			steering_angle *= -1;
-
-		return steering_angle;
-	}
-}
-
-double WorldModel::PurepursuitAngle(const AgentStruct& agent,
-		COORD& pursuit_point) const {
-	COORD rear_pos;
-	rear_pos.x = agent.pos.x
-			- agent.bb_extent_y * 2 * 0.4 * cos(agent.heading_dir);
-	rear_pos.y = agent.pos.y
-			- agent.bb_extent_y * 2 * 0.4 * sin(agent.heading_dir);
-
-	double offset = (rear_pos - pursuit_point).Length();
-	double target_angle = atan2(pursuit_point.y - rear_pos.y,
-			pursuit_point.x - rear_pos.x);
-	double angular_offset = CapAngle(target_angle - agent.heading_dir);
-
-	COORD relative_point(offset * cos(angular_offset),
-			offset * sin(angular_offset));
-	if (relative_point.x == 0)
-		return 0;
-	else {
-		double turning_radius = relative_point.Length()
-				/ (2 * abs(relative_point.y)); // Intersecting chords theorem.
-		double steering_angle = atan2(agent.bb_extent_y * 2 * 0.8,
-				turning_radius);
-		if (relative_point.y < 0)
-			steering_angle *= -1;
-
-		return steering_angle;
 	}
 }
 
@@ -1599,16 +1613,16 @@ void WorldBeliefTracker::Update() {
 				agent_beliefs[agent.id].reset = false;
 	}
 
-	if (logging::level() >= logging::VERBOSE)
+	if (logging::level() >= logging::DEBUG)
 		Text(agent_beliefs);
 
 	model.PrepareAttentiveAgentMeanDirs(agent_beliefs, car);
-	if (logging::level() >= logging::VERBOSE)
+	if (logging::level() >= logging::DEBUG)
 		model.PrintMeanDirs(agent_beliefs, cur_agent_map);
 
 	UpdateCar();
 
-	if (logging::level() >= logging::VERBOSE)
+	if (logging::level() >= logging::DEBUG)
 		stateTracker.model.PrintPathMap();
 	for (auto& kv : agent_beliefs) {
 		if (cur_agent_map.find(kv.first) == cur_agent_map.end())
@@ -2174,7 +2188,7 @@ void WorldModel::AddGammaAgent(AgentBelief& b, int id_in_sim) {
 void WorldModel::PrepareAttentiveAgentMeanDirs(
 		std::map<int, AgentBelief> agents, CarStruct& car) {
 	int num_agents = agents.size();
-	logi << "num_agents in belief tracker: " << num_agents << endl;
+	logd << "num_agents in belief tracker: " << num_agents << endl;
 
 	if (num_agents == 0)
 		return;
@@ -2247,8 +2261,8 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(
 				dir.y = traffic_agent_sim_[threadID]->getAgentPosition(i).y()
 						- agents[id].pos.y;
 
-				logd << "[PrepareAttentiveAgentMeanDirs] ped_mean_dirs len="
-						<< ped_mean_dirs.size() << " intention_list len="
+				logd << "[PrepareAttentiveAgentMeanDirs] num agents in ped_mean_dirs="
+						<< ped_mean_dirs.size() << " intention_list len for agent " << id << "="
 						<< ped_mean_dirs[id].size() << "\n";
 				ped_mean_dirs[id][intention_id] = dir;
 
@@ -2261,7 +2275,7 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(
 
 void WorldModel::PrintMeanDirs(std::map<int, AgentBelief> old_agents,
 		map<int, const Agent*>& curr_agents) {
-	if (logging::level() >= logging::VERBOSE) {
+	if (logging::level() >= logging::DEBUG) {
 		int num_agents = old_agents.size();
 
 		int count = 0;

@@ -30,6 +30,7 @@ extern double CAR_LENGTH;
 extern double CAR_WHEEL_DIST;
 extern double CAR_FRONT; // car pos may not be measured at rear wheel
 extern double CAR_REAR; // car pos may not be measured at rear wheel
+extern double MAX_STEER_ANGLE;
 
 const double POS_RLN = 0.4; // position resolution
 const double VEL_RLN = 0.3; // velocity resolution
@@ -38,7 +39,6 @@ const double CONTROL_FREQ = 3;
 const double ACC_SPEED = 3.0;
 const double NUM_ACC = 1;
 
-const double MAX_STEER_ANGLE = 35 / 180.0 * M_PI;
 const double NUM_STEER_ANGLE = 7;
 const double ANGLE_RLN = MAX_STEER_ANGLE / NUM_STEER_ANGLE; // velocity resolution
 

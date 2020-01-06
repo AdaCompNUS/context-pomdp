@@ -589,7 +589,7 @@ void agentArrayCallback(msg_builder::TrafficAgentArray data) {
 
 	WorldSimulator::stateTracker->latest_time_stamp = data_time_sec;
 
-	DEBUG(string_sprintf("receive agent num %d at time %f",
+	DEBUG(string_sprintf("receive %d agents at time %f",
 					data.agents.size(), Globals::ElapsedTime()));
 
 	vector<Pedestrian> ped_list;
@@ -657,8 +657,7 @@ void agentPathArrayCallback(msg_builder::AgentPathArray data) {
 
 	WorldSimulator::stateTracker->latest_path_time_stamp = data_time_sec;
 
-	DEBUG(
-			string_sprintf("receive agent num %d at time %f",
+	DEBUG(string_sprintf("receive %d agent paths at time %f",
 					data.agents.size(), Globals::ElapsedTime()));
 
 	vector<Pedestrian> ped_list;
@@ -750,6 +749,8 @@ void WorldSimulator::UpdateEgoCar(const msg_builder::car_info::ConstPtr car) {
 				ego_car.rear_axle_center.y - ego_car.car_pos.y).Length();
 		ModelParams::CAR_WHEEL_DIST = ModelParams::CAR_FRONT
 				+ ModelParams::CAR_REAR;
+
+		ModelParams::MAX_STEER_ANGLE = ego_car.max_steer_angle / 180.0 * M_PI;
 
 		ModelParams::CAR_WIDTH = 0;
 		ModelParams::CAR_LENGTH = 0;

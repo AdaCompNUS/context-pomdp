@@ -22,6 +22,7 @@ double CAR_LENGTH = 2.68;
 double CAR_WHEEL_DIST = 2.68;
 double CAR_FRONT = 1.34;
 double CAR_REAR = 1.34;
+double MAX_STEER_ANGLE = 35 / 180.0 * M_PI;
 
 std::string ROS_NS = "";
 std::string LASER_FRAME = "/laser_frame";
