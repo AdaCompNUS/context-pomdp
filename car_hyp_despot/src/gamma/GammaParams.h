@@ -8,6 +8,7 @@ namespace GammaParams{
 	extern bool use_dynamic_att;
 
 	const float GAMMA_PI = 3.14159f;
+
 };
 
 #endif
