@@ -940,6 +940,8 @@ class GammaCrowdController(Summit):
                     crowd_agent.control_velocity = self.gamma.get_agent_velocity(i)
                 else:
                     crowd_agent.control_velocity = self.get_ttc_vel(i, crowd_agent, agents)
+                    if crowd_agent.control_velocity is None:
+                        crowd_agent.control_velocity = self.gamma.get_agent_velocity(i)
 
         self.network_car_agents_lock.release()
         self.network_bike_agents_lock.release()
@@ -962,6 +964,11 @@ class GammaCrowdController(Summit):
 
     def get_ttc_vel(self, i, crowd_agent, agents):
         if crowd_agent:
+
+            vel_to_exe = crowd_agent.get_preferred_velocity()
+            if not vel_to_exe: # path is not ready.
+                return None
+
             speed_to_exe = crowd_agent.preferred_speed
             for (j, other_crowd_agent) in enumerate(agents):
                 if i != j and other_crowd_agent and self.network_occupancy_map.contains(other_crowd_agent.get_position()):
@@ -972,7 +979,6 @@ class GammaCrowdController(Summit):
                     s = max(0, s_f * s_f + 2 * a_max * (d_f - d_safe))**0.5
                     speed_to_exe = min(speed_to_exe, s)
 
-            vel_to_exe = crowd_agent.get_preferred_velocity()
             cur_vel = crowd_agent.actor.get_velocity()
             cur_vel = carla.Vector2D(cur_vel.x, cur_vel.y)
             angle_diff = get_signed_angle_diff(vel_to_exe, cur_vel)
@@ -982,6 +988,8 @@ class GammaCrowdController(Summit):
             vel_to_exe = vel_to_exe.make_unit_vector() * speed_to_exe
 
             return vel_to_exe
+
+        return None
 
     def publish_agents(self, tick):
         if self.do_publish is False:
