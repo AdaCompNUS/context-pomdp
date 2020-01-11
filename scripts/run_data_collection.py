@@ -21,9 +21,10 @@ root_path = os.path.join(home, 'driving_data')
 if not os.path.isdir(root_path):
     os.makedirs(root_path)
 
-# ws_root = 'catkin_ws/'
-ws_root = 'workspace/Context-POMDP/'
-catkin_ws_path = os.path.join(home, ws_root) 
+ws_root = os.getcwd()
+ws_root = os.path.dirname(ws_root)
+ws_root = os.path.dirname(ws_root)
+print("workspace root: {}".format(ws_root))
 
 config = Namespace()
 
@@ -230,7 +231,7 @@ def update_global_config(cmd_args):
                 "catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release"]
             for shell_cmd in shell_cmds:
                 print(shell_cmd, flush=True)
-                make_proc = subprocess.call(shell_cmd, cwd=catkin_ws_path, shell = True)
+                make_proc = subprocess.call(shell_cmd, cwd=ws_root, shell = True)
 
         except Exception as e:
             print(e)
@@ -416,8 +417,7 @@ def launch_summit_simulator(round, run):
         print('')
         print(shell_cmd)
     summit_connector_proc = subprocess.Popen(shell_cmd, shell=True, 
-        cwd=os.path.join(home, os.path.join(ws_root,
-            "src/summit_connector/launch")))
+        cwd=os.path.join(ws_root, "src/summit_connector/launch"))
     wait_for(config.max_launch_wait, summit_connector_proc, '[launch] summit_connector')
    
     crowd_out = open("Crowd_controller_log.txt", 'w')

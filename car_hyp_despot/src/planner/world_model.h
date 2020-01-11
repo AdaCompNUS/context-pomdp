@@ -217,11 +217,11 @@ public:
 	void EnsureMeanDirExist(int ped_id);
 
 public:
-	template<typename T>
-	double GetSteerToPath(const T& state) const {
-		COORD car_goal = path[path.Forward(path.Nearest(state.car.pos), 5.0)];
-//		return PControlAngle<CarStruct>(state.car, car_goal);
-		return PurepursuitAngle(state.car, car_goal);
+//	template<typename T>
+	double GetSteerToPath(const CarStruct& car) const {
+		COORD car_goal = path[path.Forward(path.Nearest(car.pos), 5.0)];
+//		return PControlAngle<CarStruct>(car, car_goal);
+		return PurepursuitAngle(car, car_goal);
 	}
 
 	template<typename T>

@@ -182,7 +182,7 @@ ACT_TYPE WorldModel::DefaultStatePolicy(const State* _state) const {
 
 	logv << __FUNCTION__ << "] Calculate steering" << endl;
 
-	double steering = GetSteerToPath(static_cast<const PomdpState*>(state)[0]);
+	double steering = GetSteerToPath(static_cast<const PomdpState*>(state)[0].car);
 
 	logv << __FUNCTION__ << "] Calculate acceleration" << endl;
 

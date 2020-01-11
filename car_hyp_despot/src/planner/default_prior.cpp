@@ -119,7 +119,7 @@ std::vector<ACT_TYPE> DefaultPrior::ComputeLegalActions(const State* state, cons
 
   ACT_TYPE act_start, act_end;
 
-  double steer_to_path = pomdp_model->world_model->GetSteerToPath<PomdpState>(*pomdp_state);
+  double steer_to_path = pomdp_model->world_model->GetSteerToPath(pomdp_state->car);
 
   act_start = pomdp_model->GetActionID(pomdp_model->GetSteerIDfromSteering(steer_to_path), 0);
 

@@ -614,8 +614,8 @@ void PedPomdp::PrintState(const State &s, ostream &out) const {
 PomdpState PedPomdp::PredictAgents(const PomdpState &ped_state) const {
 	PomdpState* predicted_state = static_cast<PomdpState*>(Copy(&ped_state));
 
-	double steer_to_path = world_model->GetSteerToPath<PomdpState>(
-			*predicted_state);
+	double steer_to_path = world_model->GetSteerToPath(
+			predicted_state->car);
 	ACT_TYPE action = GetActionID(GetSteerIDfromSteering(steer_to_path), 0);
 
 	OBS_TYPE dummy_obs;
