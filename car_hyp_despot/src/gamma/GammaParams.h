@@ -1,3 +1,7 @@
+/* 
+ * Author: Yuanfu Luo <yuanfu@comp.nus.edu.sg>
+ */
+
 #ifndef GAMMA_PARAMS_H_
 #define GAMMA_PARAMS_H_
 
@@ -8,7 +12,6 @@ namespace GammaParams{
 	extern bool use_dynamic_att;
 
 	const float GAMMA_PI = 3.14159f;
-
 };
 
 #endif

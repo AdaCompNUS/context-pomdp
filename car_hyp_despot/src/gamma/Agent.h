@@ -46,14 +46,11 @@
 #include "Minkowski.h"
 
 namespace RVO {
-
 	/**
 	 * \brief      Defines an agent in the simulation.
 	 */
 	class Agent {
 	private:
-
-
 		/**
 		 * \brief      Constructs an agent instance.
 		 * \param      sim             The simulator instance.

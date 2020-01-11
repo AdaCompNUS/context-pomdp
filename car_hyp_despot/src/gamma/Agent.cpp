@@ -992,8 +992,6 @@ namespace RVO {
 
 	}
 
-
-
 	bool linearProgram1(const std::vector<Line> &lines, size_t lineNo, float radius, const Vector2 &optVelocity, bool directionOpt, Vector2 &result)
 	{
 		const float dotProduct = lines[lineNo].point * lines[lineNo].direction;
