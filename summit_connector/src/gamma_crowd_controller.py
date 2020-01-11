@@ -617,8 +617,8 @@ class GammaCrowdController(Summit):
 
     def rand_agent_behavior_type(self):
         prob_gamma_agent = 0.8
-        prob_simplified_gamma_agent = 0.2
-        prob_ttc_agent = 0.0
+        prob_simplified_gamma_agent = 0.1
+        prob_ttc_agent = 0.1
 
         prob = self.rng.uniform(0.0, 1.0)
 
@@ -963,7 +963,7 @@ class GammaCrowdController(Summit):
     def get_ttc_vel(self, i, crowd_agent, agents):
         if crowd_agent:           
             for (j, other_crowd_agent) in enumerate(agents):
-                if i != j and other_crowd_agent and path_occupancy.contains(other_crowd_agent.get_position()):
+                if i != j and other_crowd_agent and self.network_occupancy_map.contains(other_crowd_agent.get_position()):
                     s_f = other_crowd_agent.get_velocity().length()
                     d_f = (other_crowd_agent.get_position() - crowd_agent.get_position()).length()
                     d_safe = 5.0
