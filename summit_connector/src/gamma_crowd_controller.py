@@ -615,6 +615,20 @@ class GammaCrowdController(Summit):
     def make_lane_decision(self, event):
         self.gamma_lane_change_decision()
 
+    def rand_agent_behavior_type(self):
+        prob_gamma_agent = 0.8
+        prob_simplified_gamma_agent = 0.2
+        prob_ttc_agent = 0.0
+
+        prob = self.rng.uniform(0.0, 1.0)
+
+        if prob <= prob_gamma_agent:
+            return carla.AgentBehaviorType.Gamma
+        elif prob <= prob_gamma_agent + prob_simplified_gamma_agent:
+            return carla.AgentBehaviorType.SimplifiedGamma:
+        else:
+            return -1
+
     def update_spawn(self, event):
         # Determine bounds variables.
         bounds_center = carla.Vector2D(self.ego_actor.get_location().x, self.ego_actor.get_location().y)
@@ -636,8 +650,10 @@ class GammaCrowdController(Summit):
         self.network_car_agents_lock.acquire()
         do_spawn = len(self.network_car_agents) < self.num_network_car_agents
         self.network_car_agents_lock.release()
+
         if do_spawn:
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map, rng=self.rng)
+            agent_behavior_type = self.rand_agent_behavior_type()
             if not aabb_map.intersects(carla.AABB2D(
                     carla.Vector2D(path.get_position(0).x - self.spawn_clearance_vehicle,
                                    path.get_position(0).y - self.spawn_clearance_vehicle),
@@ -662,7 +678,8 @@ class GammaCrowdController(Summit):
                     self.network_car_agents_lock.acquire()
                     self.network_car_agents.append(CrowdNetworkCarAgent(
                         self, actor, path,
-                        5.0 + self.rng.uniform(0.0, 0.5)))
+                        5.0 + self.rng.uniform(0.0, 0.5),
+                        agent_behavior_type))
                     self.network_car_agents_lock.release()
         if len(self.network_car_agents) > self.num_network_car_agents / 4:
             self.do_publish = True     
@@ -671,8 +688,10 @@ class GammaCrowdController(Summit):
         self.network_bike_agents_lock.acquire()
         do_spawn = len(self.network_bike_agents) < self.num_network_bike_agents
         self.network_bike_agents_lock.release()
+
         if do_spawn:
             path = NetworkAgentPath.rand_path(self, self.path_min_points, self.path_interval, spawn_segment_map, rng=self.rng)
+            agent_behavior_type = self.rand_agent_behavior_type()
             if aabb_map.intersects(carla.AABB2D(
                     carla.Vector2D(path.get_position(0).x - self.spawn_clearance_vehicle,
                                    path.get_position(0).y - self.spawn_clearance_vehicle),
@@ -696,15 +715,18 @@ class GammaCrowdController(Summit):
                     self.network_bike_agents_lock.acquire()
                     self.network_bike_agents.append(CrowdNetworkBikeAgent(
                         self, actor, path,
-                        3.0 + self.rng.uniform(0, 0.5)))
+                        3.0 + self.rng.uniform(0, 0.5),
+                        agent_behavior_type))
                     self.network_bike_agents_lock.release()
 
         # Spawn at most one pedestrian.
         self.sidewalk_agents_lock.acquire()
         do_spawn = len(self.sidewalk_agents) < self.num_sidewalk_agents
         self.sidewalk_agents_lock.release()
+
         if do_spawn:
             path = SidewalkAgentPath.rand_path(self, self.path_min_points, self.path_interval, bounds_min, bounds_max, self.rng)
+            agent_behavior_type = self.rand_agent_behavior_type()
             if aabb_map.intersects(carla.AABB2D(
                     carla.Vector2D(path.get_position(0).x - self.spawn_clearance_person,
                                    path.get_position(0).y - self.spawn_clearance_person),
@@ -728,7 +750,8 @@ class GammaCrowdController(Summit):
                     self.sidewalk_agents_lock.acquire()
                     self.sidewalk_agents.append(CrowdSidewalkAgent(
                         self, actor, path,
-                        0.5 + self.rng.uniform(0.0, 1.0)))
+                        0.5 + self.rng.uniform(0.0, 1.0),
+                        agent_behavior_type))
                     self.sidewalk_agents_lock.release()
 
         if not self.initialized and rospy.Time.now() - self.start_time > rospy.Duration.from_sec(5.0):
@@ -872,6 +895,8 @@ class GammaCrowdController(Summit):
                     self.gamma.set_agent_bounding_box_corners(i, crowd_agent.get_bounding_box_corners())
                     self.gamma.set_agent_pref_velocity(i, pref_vel)
                     self.gamma.set_agent_path_forward(i, crowd_agent.get_path_forward())
+                    if crowd_agent.agent_behavior_type is not -1:
+                        self.gamma.set_agent_behavior_type(i, crowd_agent.agent_behavior_type)
                     left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(),
                                                                                               crowd_agent.get_path_forward())
                     self.gamma.set_agent_lane_constraints(i, right_lane_constrained,
