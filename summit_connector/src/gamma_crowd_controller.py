@@ -961,7 +961,8 @@ class GammaCrowdController(Summit):
             self.gamma_cmd_steer_pub.publish(ego_control.steer)
 
     def get_ttc_vel(self, i, crowd_agent, agents):
-        if crowd_agent:           
+        if crowd_agent:
+            speed_to_exe = crowd_agent.preferred_speed
             for (j, other_crowd_agent) in enumerate(agents):
                 if i != j and other_crowd_agent and self.network_occupancy_map.contains(other_crowd_agent.get_position()):
                     s_f = other_crowd_agent.get_velocity().length()
