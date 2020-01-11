@@ -981,6 +981,8 @@ class GammaCrowdController(Summit):
 
             vel_to_exe = vel_to_exe.make_unit_vector() * speed_to_exe
 
+            return vel_to_exe
+
     def publish_agents(self, tick):
         if self.do_publish is False:
             return
