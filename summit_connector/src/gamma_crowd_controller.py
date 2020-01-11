@@ -23,13 +23,14 @@ default_agent_bbox = [default_agent_pos + carla.Vector2D(1, -1), default_agent_p
                       default_agent_pos + carla.Vector2D(-1, 1), default_agent_pos + carla.Vector2D(-1, -1)]
 
 class CrowdAgent(object):
-    def __init__(self, summit, actor, preferred_speed):
+    def __init__(self, summit, actor, preferred_speed, behavior_type = carla.AgentBehaviorType.Gamma):
         self.summit = summit
         self.actor = actor
         self.preferred_speed = preferred_speed
         self.stuck_time = None
         self.path = None
         self.control_velocity = carla.Vector2D(0, 0)
+        self.behavior_type = behavior_type
 
     def get_id(self):
         return self.actor.id
@@ -61,8 +62,8 @@ class CrowdAgent(object):
 
 
 class CrowdNetworkAgent(CrowdAgent):
-    def __init__(self, summit, actor, path, preferred_speed):
-        super(CrowdNetworkAgent, self).__init__(summit, actor, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed, behavior_type = carla.AgentBehaviorType.Gamma):
+        super(CrowdNetworkAgent, self).__init__(summit, actor, preferred_speed, behavior_type)
         self.path = path
 
     def get_agent_params(self):
@@ -160,8 +161,8 @@ class CrowdNetworkAgent(CrowdAgent):
 
 
 class CrowdNetworkCarAgent(CrowdNetworkAgent):
-    def __init__(self, summit, actor, path, preferred_speed):
-        super(CrowdNetworkCarAgent, self).__init__(summit, actor, path, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed, behavior_type = carla.AgentBehaviorType.Gamma):
+        super(CrowdNetworkCarAgent, self).__init__(summit, actor, path, preferred_speed, behavior_type)
 
     def get_agent_params(self):
         return carla.AgentParams.get_default('Car')
@@ -171,8 +172,8 @@ class CrowdNetworkCarAgent(CrowdNetworkAgent):
 
 
 class CrowdNetworkBikeAgent(CrowdNetworkAgent):
-    def __init__(self, summit, actor, path, preferred_speed):
-        super(CrowdNetworkBikeAgent, self).__init__(summit, actor, path, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed, behavior_type = carla.AgentBehaviorType.Gamma):
+        super(CrowdNetworkBikeAgent, self).__init__(summit, actor, path, preferred_speed, behavior_type)
 
     def get_agent_params(self):
         return carla.AgentParams.get_default('Bicycle')
@@ -182,8 +183,8 @@ class CrowdNetworkBikeAgent(CrowdNetworkAgent):
 
 
 class CrowdSidewalkAgent(CrowdAgent):
-    def __init__(self, summit, actor, path, preferred_speed):
-        super(CrowdSidewalkAgent, self).__init__(summit, actor, preferred_speed)
+    def __init__(self, summit, actor, path, preferred_speed, behavior_type = carla.AgentBehaviorType.Gamma):
+        super(CrowdSidewalkAgent, self).__init__(summit, actor, preferred_speed, behavior_type)
         self.path = path
 
     def get_agent_params(self):
@@ -293,8 +294,7 @@ class GammaCrowdController(Summit):
         for i in range(self.num_network_car_agents):
             self.gamma.add_agent(carla.AgentParams.get_default('Car'), i)
 
-        for i in range(self.num_network_bike_agents):        # self.draw_box(right_region_corners)
-
+        for i in range(self.num_network_bike_agents):
             self.gamma.add_agent(carla.AgentParams.get_default('Bicycle'), i + self.num_network_car_agents)
 
         for i in range(self.num_sidewalk_agents):
