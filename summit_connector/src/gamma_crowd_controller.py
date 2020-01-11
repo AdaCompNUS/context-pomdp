@@ -625,7 +625,7 @@ class GammaCrowdController(Summit):
         if prob <= prob_gamma_agent:
             return carla.AgentBehaviorType.Gamma
         elif prob <= prob_gamma_agent + prob_simplified_gamma_agent:
-            return carla.AgentBehaviorType.SimplifiedGamma:
+            return carla.AgentBehaviorType.SimplifiedGamma
         else:
             return -1
 
