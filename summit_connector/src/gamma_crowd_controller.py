@@ -936,7 +936,10 @@ class GammaCrowdController(Summit):
 
         for (i, crowd_agent) in enumerate(agents):
             if crowd_agent:
-                crowd_agent.control_velocity = self.gamma.get_agent_velocity(i)
+                if crowd_agent.behavior_type is not -1:
+                    crowd_agent.control_velocity = self.gamma.get_agent_velocity(i)
+                else:
+                    crowd_agent.control_velocity = self.get_ttc_vel(i, crowd_agent, agents)
 
         self.network_car_agents_lock.release()
         self.network_bike_agents_lock.release()
@@ -956,6 +959,26 @@ class GammaCrowdController(Summit):
             self.gamma_cmd_accel_pub.publish(ego_control.throttle if ego_control.throttle > 0 else -ego_control.brake)
             self.gamma_cmd_speed_pub.publish(ego_gamma_vel.length())
             self.gamma_cmd_steer_pub.publish(ego_control.steer)
+
+    def get_ttc_vel(self, i, crowd_agent, agents):
+        if crowd_agent:           
+            for (j, other_crowd_agent) in enumerate(agents):
+                if i != j and other_crowd_agent and path_occupancy.contains(other_crowd_agent.get_position()):
+                    s_f = other_crowd_agent.get_velocity().length()
+                    d_f = (other_crowd_agent.get_position() - crowd_agent.get_position()).length()
+                    d_safe = 5.0
+                    a_max = 3.0
+                    s = max(0, s_f * s_f + 2 * a_max * (d_f - d_safe))**0.5
+                    speed_to_exe = min(speed_to_exe, s)
+
+            vel_to_exe = crowd_agent.get_preferred_velocity()
+            cur_vel = crowd_agent.actor.get_velocity()
+            cur_vel = carla.Vector2D(cur_vel.x, cur_vel.y)
+            angle_diff = get_signed_angle_diff(vel_to_exe, cur_vel)
+            if angle_diff > 30 or angle_diff < -30:
+                vel_to_exe = 0.5 * (vel_to_exe + cur_vel)
+
+            vel_to_exe = vel_to_exe.make_unit_vector() * speed_to_exe
 
     def publish_agents(self, tick):
         if self.do_publish is False:
