@@ -895,8 +895,8 @@ class GammaCrowdController(Summit):
                     self.gamma.set_agent_bounding_box_corners(i, crowd_agent.get_bounding_box_corners())
                     self.gamma.set_agent_pref_velocity(i, pref_vel)
                     self.gamma.set_agent_path_forward(i, crowd_agent.get_path_forward())
-                    if crowd_agent.agent_behavior_type is not -1:
-                        self.gamma.set_agent_behavior_type(i, crowd_agent.agent_behavior_type)
+                    if crowd_agent.behavior_type is not -1:
+                        self.gamma.set_agent_behavior_type(i, crowd_agent.behavior_type)
                     left_lane_constrained, right_lane_constrained = self.get_lane_constraints(crowd_agent.get_position(),
                                                                                               crowd_agent.get_path_forward())
                     self.gamma.set_agent_lane_constraints(i, right_lane_constrained,
