@@ -75,66 +75,14 @@ struct AgentStruct {
 			<< " (cross) " << cross_dir
 			<< " (heading) " << heading_dir << endl;
     }
-};
 
-
-class Agent
-{
-public:
-	Agent() {
-		set_default();
-    }
-
-	Agent(double _w,double _h,int _id) {
-		set_default();
-        w=_w;h=_h;id=_id;
-    }
-
-	Agent(double _w,double _h) {
-		set_default();
-		w=_w;h=_h;
-    }
-
-	virtual ~Agent() {}
-
-	void set_default() {
-		time_stamp = -1; vel.x = 0; vel.y = 0;
-		reset_intention = false; ros_time_stamp = 0;
-		h = 0; w = 0;
-		id = -1;
-	}
-    virtual AgentType type() const = 0;
-
-	double w,h;
-	COORD vel;
-	int id;   //each pedestrian has a unique identity
-	double time_stamp;
-	double ros_time_stamp;
-	bool reset_intention;
-	std::vector<Path> paths;	
-};
-
-class Pedestrian: public Agent
-{
-public:
-	using Agent::Agent;
-
-	bool cross_dir;
-
-	AgentType type() const{
-		return AgentType::ped;
-	}
-};
-
-class Vehicle: public Agent
-{
-public:
-	using Agent::Agent;
-
-	std::vector<COORD> bb;
-	double heading_dir;
-	AgentType type() const {
-		return AgentType::car;
+    void ShortText(std::ostream& out) const {
+		out << "Agent: id / type / pos / heading / vel: "
+				<< id << " / "
+				<< type << " / "
+				<< pos.x << "," << pos.y << " / "
+				<< heading_dir << " / "
+				<< vel.x << "," << vel.y << endl;
 	}
 };
 

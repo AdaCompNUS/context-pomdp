@@ -6,7 +6,7 @@
 #include <time.h>
 #include "boost/bind.hpp"
 #include "world_simulator.h"
-#include "custom_particle_belief.h"
+#include "crowd_belief.h"
 
 #undef LOG
 #define LOG(lv) \
@@ -25,7 +25,6 @@ float Controller::time_scale = 1.0;
 std::string Controller::map_location = "";
 bool path_missing = true;
 
-static DSPOMDP* ped_pomdp_model;
 static ACT_TYPE action = (ACT_TYPE) (-1);
 static OBS_TYPE obs = (OBS_TYPE) (-1);
 
@@ -81,22 +80,15 @@ void handle_div_0(int sig, siginfo_t* info, void*) {
 }
 
 Controller::Controller(ros::NodeHandle& _nh, bool fixed_path) :
-		nh_(_nh), fixed_path_(fixed_path), last_action_(-1), last_obs_(
-				-1), model_(NULL), prior_(NULL), ped_belief_(NULL), summit_driving_simulator_(
-				NULL) {
+		nh_(_nh), last_action_(-1), last_obs_(-1), model_(NULL), prior_(NULL), ped_belief_(
+				NULL), context_pomdp_(NULL), summit_driving_simulator_(NULL) {
 	my_sig_action sa(handle_div_0);
 	if (0 != sigaction(SIGFPE, sa, NULL)) {
 		std::cerr << "!!!!!!!! fail to setup segfault handler !!!!!!!!"
 				<< std::endl;
 	}
 
-	global_frame_id_ = ModelParams::ROS_NS + "/map";
 	control_freq_ = ModelParams::CONTROL_FREQ;
-
-	cerr << "DEBUG: Initializing publishers..." << endl;
-	pathPub_ = nh_.advertise<nav_msgs::Path>("pomdp_path_repub", 1, true); // for visualization
-	pathSub_ = nh_.subscribe("plan", 1, &Controller::RetrievePathCallBack,
-			this); // receive path from path planner
 
 	logi << " Controller constructed at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
@@ -104,10 +96,9 @@ Controller::Controller(ros::NodeHandle& _nh, bool fixed_path) :
 
 DSPOMDP* Controller::InitializeModel(option::Option* options) {
 	cerr << "DEBUG: Initializing model" << endl;
-	DSPOMDP* model = new PedPomdp();
-	static_cast<PedPomdp*>(model)->world_model = &SimulatorBase::worldModel;
+	DSPOMDP* model = new ContextPomdp();
 	model_ = model;
-	ped_pomdp_model = model;
+	context_pomdp_ = static_cast<ContextPomdp*>(model);
 
 	return model;
 }
@@ -123,7 +114,7 @@ void Controller::CreateDefaultPriors(DSPOMDP* model) {
 	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
 		logv << "DEBUG: Creating prior " << i << endl;
 		SolverPrior::nn_priors[i] =
-				static_cast<PedPomdp*>(model)->CreateSolverPrior(
+				static_cast<ContextPomdp*>(model)->CreateSolverPrior(
 						summit_driving_simulator_, "DEFAULT", false);
 		SolverPrior::nn_priors[i]->prior_id(i);
 	}
@@ -148,7 +139,6 @@ World* Controller::InitializeWorld(std::string& world_type, DSPOMDP* model,
 				<< "th second" << endl;
 	}
 
-	static_cast<PedPomdp*>(model)->world_model = &(WorldSimulator::worldModel);
 	summit_driving_simulator_ = static_cast<WorldSimulator*>(world);
 	summit_driving_simulator_->time_scale = time_scale;
 
@@ -214,265 +204,52 @@ Controller::~Controller() {
 
 }
 
-void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path) {
-
-	logi << "receive path from navfn " << path->poses.size() << " at the "
-			<< Globals::ElapsedTime() << "th second" << endl;
-
-	if (fixed_path_ && path_from_topic_.size() > 0)
-		return;
-
-	if (path->poses.size() == 0) {
-		path_missing = true;
-		DEBUG("Path missing from topic");
-		return;
-	} else
-		path_missing = false;
-
-	Path p;
-	for (int i = 0; i < path->poses.size(); i++) {
-		COORD coord;
-		coord.x = path->poses[i].pose.position.x;
-		coord.y = path->poses[i].pose.position.y;
-		p.push_back(coord);
-	}
-
-	if (p.GetLength() < 3)
-		ERR("Path length shorter than 3 meters.");
-
-	path_from_topic_ = p.Interpolate();
-	WorldSimulator::worldModel.SetPath(path_from_topic_);
-	PublishPath(path->header.frame_id, path_from_topic_);
-}
-
-void Controller::PublishPath(const string& frame_id, const Path& path) {
-	nav_msgs::Path navpath;
-	ros::Time plan_time = ros::Time::now();
-
-	navpath.header.frame_id = frame_id;
-	navpath.header.stamp = plan_time;
-
-	for (const auto& s : path) {
-		geometry_msgs::PoseStamped pose;
-		pose.header.stamp = plan_time;
-		pose.header.frame_id = frame_id;
-		pose.pose.position.x = s.x;
-		pose.pose.position.y = s.y;
-		pose.pose.position.z = 0.0;
-		pose.pose.orientation.x = 0.0;
-		pose.pose.orientation.y = 0.0;
-		pose.pose.orientation.z = 0.0;
-		pose.pose.orientation.w = 1.0;
-		navpath.poses.push_back(pose);
-	}
-
-	pathPub_.publish(navpath);
-}
-
-bool Controller::GetEgoPosFromSummit() {
-	logi << "[GetEgoPosFromSummit] Getting car pos from summit..." << endl;
-
-	tf::Stamped<tf::Pose> in_pose, out_pose;
-	in_pose.setIdentity();
-	in_pose.frame_id_ = ModelParams::ROS_NS + "/base_link";
-	assert(summit_driving_simulator_);
-	logv << "global_frame_id_: " << global_frame_id_ << " " << endl;
-	if (!summit_driving_simulator_->GetObjectPose(global_frame_id_, in_pose,
-			out_pose)) {
-		cerr << "transform error within Controller::RunStep" << endl;
-		logv << "laser frame " << in_pose.frame_id_ << endl;
-		ros::Rate err_retry_rate(10);
-		err_retry_rate.sleep();
-		return false; // skip the current step
-	}
-
-	return true && SimulatorBase::agents_data_ready;
-}
-
-void Controller::PredictPedsForSearch(State* search_state) {
-	if (predict_peds) {
-		// predict state using last action
-		if (last_action_ < 0 || last_action_ > model_->NumActions()) {
-			logi << "Skip state prediction for the initial step, last action=" << last_action_ << endl;
-			return;
-		} else {
-
-			summit_driving_simulator_->beliefTracker->cur_acc =
-					static_cast<const PedPomdp*>(ped_pomdp_model)->GetAcceleration(
-							last_action_);
-			summit_driving_simulator_->beliefTracker->cur_steering =
-					static_cast<const PedPomdp*>(ped_pomdp_model)->GetSteering(
-							last_action_);
-
-			cerr << "DEBUG: Prediction with last action:" << last_action_
-					<< " steer/acc = "
-					<< summit_driving_simulator_->beliefTracker->cur_steering
-					<< "/" << summit_driving_simulator_->beliefTracker->cur_acc
-					<< endl;
-
-			auto predicted =
-					summit_driving_simulator_->beliefTracker->PredictPedsCurVel(
-							static_cast<PomdpState*>(search_state),
-							summit_driving_simulator_->beliefTracker->cur_acc,
-							summit_driving_simulator_->beliefTracker->cur_steering);
-
-			PomdpState* predicted_state =
-					static_cast<PomdpState*>(static_cast<const PedPomdp*>(ped_pomdp_model)->Copy(
-							&predicted));
-
-			static_cast<const PedPomdp*>(ped_pomdp_model)->PrintStateAgents(
-					*predicted_state, string("predicted_agents"));
-
-			for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-				SolverPrior::nn_priors[i]->Add_in_search(-1, predicted_state);
-
-				logv << __FUNCTION__ << " add predicted search state of ts "
-						<< predicted_state->time_stamp
-						<< " predicted from search state of ts "
-						<< static_cast<PomdpState*>(search_state)->time_stamp
-						<< " hist len " << SolverPrior::nn_priors[i]->Size(true)
-						<< endl;
-			}
-		}
-	}
-}
-
-void Controller::UpdatePriors(const State* cur_state, State* search_state) {
-	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-		// make sure the history has not corrupted
-		SolverPrior::nn_priors[i]->CompareHistoryWithRecorded();
-		SolverPrior::nn_priors[i]->Add(last_action_, cur_state);
-		SolverPrior::nn_priors[i]->Add_in_search(-1, search_state);
-
-		logv << __FUNCTION__ << " add history search state of ts "
-				<< static_cast<PomdpState*>(search_state)->time_stamp
-				<< " hist len " << SolverPrior::nn_priors[i]->Size(true)
-				<< endl;
-
-		if (SolverPrior::nn_priors[i]->Size(true) == 10)
-			Record_debug_state(search_state);
-
-		SolverPrior::nn_priors[i]->RecordCurHistory();
-	}
-	logi << "history len = " << SolverPrior::nn_priors[0]->Size(false) << endl;
-	logi << "history_in_search len = " << SolverPrior::nn_priors[0]->Size(true)
-			<< endl;
-}
-
 bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
-
+	double step_start_t = get_time_second();
 	cerr << "DEBUG: Running step" << endl;
-
 	logger->CheckTargetTime();
 
-	double step_start_t = get_time_second();
-
-	bool summit_ready = GetEgoPosFromSummit();
-	if (!summit_ready)
-		return false;
-
-	if (path_from_topic_.size() == 0) {
-		logi << "[RunStep] path topic not ready yet..." << endl;
-		return false;
-	}
-
-	cerr << "DEBUG: Updating belief" << endl;
-
-	double start_t = get_time_second();
+	cerr << "DEBUG: Getting world state" << endl;
+	auto start_t = Time::now();
 	const State* cur_state = world->GetCurrentState();
-	if(cur_state == NULL)
+	if (cur_state == NULL)
 		ERR("cur_state == NULL");
-
 	cout << "current state address" << cur_state << endl;
 
-	State* search_state =
-			static_cast<const PedPomdp*>(ped_pomdp_model)->CopyForSearch(
-					cur_state);
+	cerr << "DEBUG: Updating belief" << endl;
+	ped_belief_->Update(last_action_, cur_state);
+	ped_belief_->Text(cout);
+	if (solver->belief() != NULL)
+		delete solver->belief();
+	auto particles = ped_belief_->Sample(Globals::config.num_scenarios * 2);
+	auto* particle_belief = new ParticleBelief(particles, model_);
+	solver->belief(particle_belief);
+	logi << "[RunStep] Time spent in Update(): "
+			<< Globals::ElapsedTime(start_t) << endl;
 
-	static_cast<PedPomdpBelief*>(solver->belief())->DeepUpdate(
-			SolverPrior::nn_priors[0]->history_states(),
-			SolverPrior::nn_priors[0]->history_states_for_search(), cur_state,
-			search_state, last_action_);
-
-	UpdatePriors(cur_state, search_state);
-
-	double end_t = get_time_second();
-	double update_time = (end_t - start_t);
-	logi << "[RunStep] Time spent in Update(): " << update_time << endl;
-
-	summit_driving_simulator_->PublishROSState();
-	summit_driving_simulator_->beliefTracker->Text();
-
-	int cur_search_hist_len = 0;
-	cur_search_hist_len = SolverPrior::nn_priors[0]->Size(true);
-
-	PredictPedsForSearch(search_state);
-
-	start_t = get_time_second();
-	ACT_TYPE action =
-			static_cast<const PedPomdp*>(ped_pomdp_model)->GetActionID(0.0,
-					0.0);
-	double step_reward;
+	cerr << "DEBUG: Searching for action" << endl;
+	start_t = Time::now();
+	ACT_TYPE action;
 	if (b_drive_mode == NO || b_drive_mode == JOINT_POMDP
 			|| b_drive_mode == ROLL_OUT) {
-		cerr << "DEBUG: Search for action using " << typeid(*solver).name()
-				<< endl;
-		static_cast<PedPomdpBelief*>(solver->belief())->ResampleParticles(
-				static_cast<const PedPomdp*>(ped_pomdp_model), predict_peds);
-
-		const State& sample =
-				*static_cast<PedPomdpBelief*>(solver->belief())->GetParticle(0);
-
-		cout << "Car odom velocity " << summit_driving_simulator_->odom_vel.x
-				<< " " << summit_driving_simulator_->odom_vel.y << endl;
-		cout << "Car odom heading " << summit_driving_simulator_->odom_heading
-				<< endl;
-		cout << "Car base_link heading "
-				<< summit_driving_simulator_->baselink_heading << endl;
-
-		static_cast<PedPomdp*>(ped_pomdp_model)->PrintStateIDs(sample);
-		static_cast<PedPomdp*>(ped_pomdp_model)->CheckPreCollision(&sample);
-		logi << "Sampled state in control loop:" << endl;
-//		static_cast<const PedPomdp*>(ped_pomdp_model)->PrintState(sample);
-//		static_cast<const PedPomdp*>(ped_pomdp_model)->ForwardAndVisualize(
-//				sample, 10);				// 3 steps
-
 		action = solver->Search().action;
 	} else
-		throw("drive mode not supported!");
-
-	end_t = get_time_second();
-	double search_time = (end_t - start_t);
+		ERR("drive mode not supported!");
 	logi << "[RunStep] Time spent in " << typeid(*solver).name()
-			<< "::Search(): " << search_time << endl;
+			<< "::Search(): " << Globals::ElapsedTime(start_t) << endl;
 
-	TruncPriors(cur_search_hist_len);
-
+	cerr << "DEBUG: Executing action" << endl;
 	OBS_TYPE obs;
-	start_t = get_time_second();
+	start_t = Time::now();
 	bool terminal = world->ExecuteAction(action, obs);
-	end_t = get_time_second();
-	double execute_time = (end_t - start_t);
-	logi << "[RunStep] Time spent in ExecuteAction(): " << execute_time << endl;
-
 	last_action_ = action;
 	last_obs_ = obs;
-
-//	SolverPrior::nn_priors[0]->DebugHistory("After execute action");
+	logi << "[RunStep] Time spent in ExecuteAction(): "
+			<< Globals::ElapsedTime(start_t) << endl;
 
 	cerr << "DEBUG: Ending step" << endl;
-
 	return logger->SummarizeStep(step_++, round_, terminal, action, obs,
 			step_start_t);
-}
-
-void Controller::TruncPriors(int cur_search_hist_len) {
-	for (int i = 0; i < SolverPrior::nn_priors.size(); i++) {
-		SolverPrior::nn_priors[i]->Truncate(cur_search_hist_len, true);
-		logv << __FUNCTION__ << " truncating search history length to "
-				<< cur_search_hist_len << endl;
-		SolverPrior::nn_priors[i]->CompareHistoryWithRecorded();
-	}
 }
 
 static int wait_count = 0;
@@ -482,28 +259,6 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world,
 
 	logi << "Planning loop started at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
-
-	summit_driving_simulator_->stateTracker->detect_time = true;
-
-	ros::spinOnce();
-
-	logi << "First ROS spin finished at the " << Globals::ElapsedTime()
-			<< "th second" << endl;
-
-	while (path_from_topic_.size() == 0) {
-		cout << "Waiting for path, ts: " << Globals::ElapsedTime() << endl;
-		ros::spinOnce();
-		Globals::sleep_ms(100.0 / control_freq_ / time_scale);
-		wait_count++;
-		if (wait_count == 50) {
-			ros::shutdown();
-		}
-	}
-
-	logi << "path_from_topic_ received at the " << Globals::ElapsedTime()
-			<< "th second" << endl;
-
-	logi << "Executing first step" << endl;
 
 	RunStep(solver, world, logger);
 	logi << "First step end at the " << Globals::ElapsedTime() << "th second"
@@ -566,10 +321,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	Belief* belief = model->InitialBelief(world->GetCurrentState(),
 			belief_type);
 	assert(belief != NULL);
-	ped_belief_ = static_cast<PedPomdpBelief*>(belief);
-
-	summit_driving_simulator_->beliefTracker = ped_belief_->beliefTracker;
-
+	ped_belief_ = static_cast<CrowdBelief*>(belief);
 	logi << "InitialBelief finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
@@ -577,10 +329,10 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	 * initialize solver
 	 * =========================*/
 	cerr << "DEBUG: Initializing solver" << endl;
-
 	solver_type = ChooseSolver();
-	Solver *solver = InitializeSolver(model, belief, solver_type, options);
-
+	Belief* solver_belief = new ParticleBelief(std::vector<State*>(), model);
+	Solver *solver = InitializeSolver(model, solver_belief, solver_type,
+			options);
 	logi << "InitializeSolver finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 
@@ -604,7 +356,6 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	logger->InitRound(world->GetCurrentState());
 	round_ = 0;
 	step_ = 0;
-	summit_driving_simulator_->beliefTracker->Text();
 	logi << "InitRound finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;
 

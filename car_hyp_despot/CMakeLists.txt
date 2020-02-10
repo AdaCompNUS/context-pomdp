@@ -131,10 +131,10 @@ STATIC
   src/planner/path.cpp
   src/planner/collision.cpp
   src/planner/math_utils.cpp
-  src/planner/ped_pomdp.cpp
+  src/planner/context_pomdp.cpp
   src/planner/default_prior.cpp
   src/planner/world_model.cpp
-  src/planner/custom_particle_belief.cpp  
+  src/planner/crowd_belief.cpp  
   src/planner/param.cpp
 )
 

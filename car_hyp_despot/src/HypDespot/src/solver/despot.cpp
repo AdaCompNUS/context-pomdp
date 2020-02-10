@@ -38,7 +38,7 @@ bool SolverPrior::prior_force_acc = false;
 
 #define COL_VALUE_THREAD -35
 
-#include "ped_pomdp.h"
+#include "context_pomdp.h"
 
 namespace despot {
 bool DESPOT::use_GPU_;
