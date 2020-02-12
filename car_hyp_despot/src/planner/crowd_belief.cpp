@@ -1,25 +1,3 @@
-#include <bits/exception.h>
-#include <bits/stdint-uintn.h>
-#include <config.h>
-#include <coord.h>
-#include <core/globals.h>
-#include <crowd_belief.h>
-#include <geometry_msgs/Point.h>
-#include <geometry_msgs/Point32.h>
-#include <geometry_msgs/Quaternion.h>
-#include <geometry_msgs/Vector3.h>
-#include <msg_builder/ped_belief.h>
-#include <param.h>
-#include <context_pomdp.h>
-#include <ros/duration.h>
-#include <ros/node_handle.h>
-#include <ros/publisher.h>
-#include <ros/time.h>
-#include <simulator_base.h>
-#include <solver/despot.h>
-#include <std_msgs/ColorRGBA.h>
-#include <std_msgs/Header.h>
-#include <world_model.h>
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
@@ -29,13 +7,19 @@
 #include <vector>
 #include <functional>
 #include <numeric>
+
+#include <core/globals.h>
+#include <solver/despot.h>
+#include <despot/util/logging.h>
+
+#include "config.h"
+#include "coord.h"
+#include "param.h"
+#include "crowd_belief.h"
+#include "context_pomdp.h"
+#include "world_model.h"
 #include "simulator_base.h"
 
-//#undef LOG
-//#define LOG(lv) \
-//if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
-//else despot::logging::stream(lv)
-#include <despot/util/logging.h>
 
 int use_att_mode = 2;		// onlu use att mode
 vector<State*> particles_;
@@ -73,8 +57,8 @@ double gaussian_prob(double x, double stddev) {
 double TransitionLikelihood(const COORD& past_pos, const COORD& cur_pos, const COORD& pred_pos) {
 	const double K = 0.001;
 
-	double goal_dist = Norm(pred_pos.x - past_pos.x, pred_pos.y - past_pos.y);
-	double move_dist = Norm(cur_pos.x - past_pos.x, cur_pos.y - past_pos.y);
+	double goal_dist = (pred_pos - past_pos).Length();
+	double move_dist = (cur_pos - past_pos).Length();
 
 	double angle_error = COORD::Angle(past_pos, cur_pos, pred_pos, 0.0);
 	double angle_prob = gaussian_prob(angle_error,

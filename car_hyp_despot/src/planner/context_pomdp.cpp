@@ -1,22 +1,3 @@
-#include <config.h>
-#include <coord.h>
-#include <core/builtin_lower_bounds.h>
-#include <core/builtin_policy.h>
-#include <core/builtin_upper_bounds.h>
-#include <core/prior.h>
-#include <crowd_belief.h>
-#include <debug_util.h>
-#include <default_prior.h>
-#include <disabled_util.h>
-#include <GammaParams.h>
-#include <GPUcore/thread_globals.h>
-#include <interface/default_policy.h>
-#include <interface/world.h>
-#include <math_utils.h>
-#include <context_pomdp.h>
-#include <solver/despot.h>
-#include <util/seeds.h>
-#include <world_model.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -25,15 +6,34 @@
 #include <limits>
 #include <map>
 #include <unordered_map>
+
+#include <core/builtin_lower_bounds.h>
+#include <core/builtin_policy.h>
+#include <core/builtin_upper_bounds.h>
+#include <core/prior.h>
+#include <GPUcore/thread_globals.h>
+#include <interface/default_policy.h>
+#include <interface/world.h>
+#include <solver/despot.h>
+#include <util/seeds.h>
+#include <despot/util/logging.h>
+
+#include <GammaParams.h>
+
+#include "config.h"
+#include "coord.h"
+#include "crowd_belief.h"
+#include "utils.h"
+#include "default_prior.h"
+#include "world_model.h"
+#include "context_pomdp.h"
 #include "simulator_base.h"
+
+using namespace despot;
+
 
 double path_look_ahead = 5.0;
 
-#undef LOG
-#define LOG(lv) \
-if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
-else despot::logging::stream(lv)
-#include <despot/util/logging.h>
 
 static std::map<uint64_t, std::vector<int>> Obs_hash_table;
 static PomdpState hashed_state;

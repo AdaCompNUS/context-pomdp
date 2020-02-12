@@ -11,7 +11,7 @@ if (despot::logging::level() < despot::logging::ERROR || despot::logging::level(
 else despot::logging::stream(lv)
 #include <despot/util/logging.h>
 
-#include "debug_util.h"
+#include "utils.h"
 
 using namespace std;
 static double HitCount = 0;

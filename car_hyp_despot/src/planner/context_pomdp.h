@@ -1,17 +1,17 @@
 #ifndef PED_POMDP_H
 #define PED_POMDP_H
-
-#include <bits/stdint-uintn.h>
-#include <core/globals.h>
-#include <interface/belief.h>
-#include <interface/pomdp.h>
-#include <param.h>
-#include <state.h>
-#include <util/memorypool.h>
-#include <util/random.h>
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include <core/globals.h>
+#include <interface/belief.h>
+#include <interface/pomdp.h>
+#include <util/memorypool.h>
+#include <util/random.h>
+
+#include "param.h"
+#include "state.h"
 #include "world_model.h"
 
 class SolverPrior;

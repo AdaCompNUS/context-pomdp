@@ -1,11 +1,12 @@
-#include <ros/ros.h>
-
 #include <csignal>
 #include <iostream>
-#include "param.h"
-#include "coord.h"
+
 #include <despot/core/globals.h>
 
+#include "param.h"
+#include "coord.h"
+
+#include <ros/ros.h>
 #include <msg_builder/PomdpCmd.h>
 #include <msg_builder/car_info.h>
 #include <std_msgs/Float32.h>

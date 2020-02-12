@@ -6,7 +6,7 @@
 #include "coord.h"
 #include "param.h"
 #include "path.h"
-#include "disabled_util.h"
+#include "utils.h"
 #include "despot/interface/pomdp.h"
 
 using namespace std;
@@ -115,7 +115,6 @@ public:
 
 	float time_stamp;
 
-//	int peds_mode[ModelParams::N_PED_WORLD];
 	PomdpStateWorld() {time_stamp = -1; num = 0;}
 
 	string Text() const {

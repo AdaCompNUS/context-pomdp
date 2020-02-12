@@ -1,18 +1,16 @@
-#include "controller.h"
-#include "core/node.h"
-#include "core/solver.h"
-#include "core/globals.h"
 #include <csignal>
 #include <time.h>
-#include "boost/bind.hpp"
+#include <boost/bind.hpp>
+
+#include <core/node.h>
+#include <core/solver.h>
+#include <core/globals.h>
+#include <despot/util/logging.h>
+
 #include "world_simulator.h"
 #include "crowd_belief.h"
 
-#undef LOG
-#define LOG(lv) \
-if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
-else despot::logging::stream(lv)
-#include <despot/util/logging.h>
+#include "controller.h"
 
 using namespace std;
 using namespace despot;

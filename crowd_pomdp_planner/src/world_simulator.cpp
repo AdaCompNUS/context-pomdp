@@ -1,17 +1,9 @@
-#include "world_simulator.h"
-#include "world_model.h"
-#include "context_pomdp.h"
+#include <despot/util/logging.h>
+#include <world_model.h>
+#include <context_pomdp.h>
 
-#include <std_msgs/Int32.h>
-
-#include <msg_builder/StartGoal.h>
-#include <msg_builder/car_info.h>
-#include <msg_builder/peds_info.h>
-#include <msg_builder/ped_info.h>
-#include <msg_builder/peds_believes.h>
 #include "ros/ros.h"
-
-#include <nav_msgs/OccupancyGrid.h>
+#include <std_msgs/Int32.h>
 #include <std_msgs/Bool.h>
 #include <msg_builder/TrafficAgentArray.h>
 #include <msg_builder/AgentPathArray.h>
@@ -19,11 +11,10 @@
 #include <msg_builder/Obstacles.h>
 #include <msg_builder/PomdpCmd.h>
 
-#undef LOG
-#define LOG(lv) \
-if (despot::logging::level() < despot::logging::ERROR || despot::logging::level() < lv) ; \
-else despot::logging::stream(lv)
-#include <despot/util/logging.h>
+#include "world_simulator.h"
+
+using namespace despot;
+
 
 WorldModel SimulatorBase::world_model;
 bool SimulatorBase::agents_data_ready = false;

@@ -7,8 +7,7 @@
 #include <despot/core/globals.h>
 #include <despot/solver/despot.h>
 
-#include"math_utils.h"
-#include"coord.h"
+#include "coord.h"
 #include "path.h"
 #include "world_model.h"
 #include "context_pomdp.h"
@@ -129,8 +128,8 @@ bool WorldModel::InFront(const COORD ped_pos, const CarStruct car,
 	}
 
 	double d0 = COORD::EuclideanDistance(car.pos, ped_pos);
-	double dot = DotProduct(cos(car.heading_dir), sin(car.heading_dir),
-			ped_pos.x - car.pos.x, ped_pos.y - car.pos.y);
+	COORD dir(cos(car.heading_dir), sin(car.heading_dir));
+	double dot = dir.dot(ped_pos - car.pos);
 	double cosa = (d0 > 0) ? dot / (d0) : 0;
 	assert(cosa <= 1.0 + 1E-8 && cosa >= -1.0 - 1E-8);
 	return cosa > in_front_angle_cos;
@@ -212,9 +211,9 @@ void WorldModel::AgentStepCurVel(AgentStruct& agent, int step, double noise) {
 	if (noise != 0) {
 		double a = agent.vel.GetAngle();
 		a += noise;
-		MyVector move(a, step * agent.vel.Length() / freq, 0);
-		agent.pos.x += move.dw;
-		agent.pos.y += move.dh;
+		COORD move(a, step * agent.vel.Length() / freq, 0);
+		agent.pos.x += move.x;
+		agent.pos.y += move.y;
 	} else {
 		agent.pos.x += agent.vel.x * (float(step) / freq);
 		agent.pos.y += agent.vel.y * (float(step) / freq);
@@ -247,9 +246,9 @@ void WorldModel::PedStepPath(AgentStruct& agent, int step, double noise,
 		if (noise != 0) {
 			COORD goal_vec = new_pos - agent.pos;
 			double a = goal_vec.GetAngle() + noise;
-			MyVector move(a, step * agent.speed / freq, 0);
-			agent.pos.x += move.dw;
-			agent.pos.y += move.dh;
+			COORD move(a, step * agent.speed / freq, 0);
+			agent.pos.x += move.x;
+			agent.pos.y += move.y;
 		} else {
 			agent.pos = new_pos;
 		}
