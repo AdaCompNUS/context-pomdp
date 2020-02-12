@@ -45,7 +45,6 @@
 #include "GammaParams.h"
 #include "Minkowski.h"
 
-
 namespace RVO {
 	/**
 	 * \brief      Defines an agent in the simulation.
@@ -105,6 +104,8 @@ namespace RVO {
 
         void computeLaneConstrains ();
 
+        void updateBehaviorParams();
+
 		std::vector<std::pair<float, const Agent *> > agentNeighbors_;
 		size_t maxNeighbors_;
 		float maxSpeed_;
@@ -136,6 +137,13 @@ namespace RVO {
 		bool left_lane_constrained_;
 		bool right_lane_constrained_;
 		Vector2 path_forward_;
+
+		bool use_polygon_;
+		bool consider_kinematics_;
+		bool use_dynamic_resp_;
+		bool use_dynamic_att_;
+		AgentBehaviorType agent_behavior_type_;
+
 
 		bool frozen; // agent position is frozen
 

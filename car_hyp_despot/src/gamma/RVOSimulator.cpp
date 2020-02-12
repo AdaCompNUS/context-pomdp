@@ -317,7 +317,11 @@ namespace RVO {
 		agents_[static_cast<size_t>(agentNo)]->res_dec_rate_ = res_dec_rate;
 	}
 
-////////////////////////////////
+	void RVOSimulator::setAgentBehaviorType(int agentNo, AgentBehaviorType agent_behavior_type){
+		agents_[static_cast<size_t>(agentNo)]->agent_behavior_type_ = agent_behavior_type;
+		agents_[static_cast<size_t>(agentNo)]->updateBehaviorParams();
+
+	}
 
 	size_t RVOSimulator::addObstacle(const std::vector<Vector2> &vertices)
 	{
