@@ -403,10 +403,14 @@ bool WorldModel::IsStopIntention(int intention, int agent_id) {
 }
 
 bool WorldModel::IsCurVelIntention(int intention, int agent_id) {
-	if (include_curvel_intention)
-		return intention
-				== GetNumIntentions(agent_id) - include_curvel_intention
+	if (include_curvel_intention) {
+		if (NumPaths(agent_id) == 0)
+			return intention == GetNumIntentions(agent_id)
+						- include_curvel_intention
 						- include_stop_intention;
+		else
+			return false;
+	}
 	else
 		return false;
 }
@@ -440,9 +444,13 @@ std::vector<Path>& WorldModel::PathCandidates(int agent_id) {
 }
 
 int WorldModel::GetNumIntentions(int agent_id) {
-	if (goal_mode == "path")
-		return NumPaths(agent_id) + include_stop_intention
-				+ include_curvel_intention;
+	if (goal_mode == "path") {
+		int num_paths = NumPaths(agent_id);
+		if (num_paths > 0)
+			return NumPaths(agent_id) + include_stop_intention;
+		else
+			return include_curvel_intention + include_stop_intention;
+	}
 	else if (goal_mode == "cur_vel")
 		return 2;
 	else
@@ -945,7 +953,7 @@ bool WorldModel::IsGlobalGoal(const CarStruct& car) const {
 
 double WorldModel::PurepursuitAngle(const CarStruct& car,
 		COORD& pursuit_point) const {
-	logd << __FUNCTION__ << " start" << endl;
+	logv << __FUNCTION__ << " start" << endl;
 	COORD rear_pos;
 	rear_pos.x = car.pos.x - ModelParams::CAR_REAR * cos(car.heading_dir);
 	rear_pos.y = car.pos.y - ModelParams::CAR_REAR * sin(car.heading_dir);
@@ -1177,7 +1185,9 @@ void WorldModel::AddGammaAgent(const AgentStruct& agent, int id_in_sim) {
 	RVO::Vector2 sideward_vec = RVO::Vector2(-agt_heading.y(), agt_heading.x());
 	double bb_x = agent.bb_extent_x;
 	double bb_y = agent.bb_extent_y;
-	DEBUG(string_sprintf("bb_x=%f, bb_y=%f", bb_x, bb_y));
+	assert(bb_x > 0);
+	assert(bb_y > 0);
+
 	traffic_agent_sim_[threadID]->setAgentBoundingBoxCorners(id_in_sim,
 			GetBoundingBoxCorners(agt_heading, sideward_vec,
 					RVO::Vector2(car_x, car_y), bb_y, bb_x));
@@ -1215,22 +1225,18 @@ void WorldModel::GammaSimulateAgents(AgentStruct agents[], int num_agents,
 
 		int intention_id = agents[i].intention;
 		ValidateIntention(agents[i].id, intention_id, __FUNCTION__, __LINE__);
-		if (IsStopIntention(intention_id, agents[i].id)) { /// stop intention
+
+		auto goal_pos = GetGoalPos(agents[i], intention_id);
+		RVO::Vector2 goal(goal_pos.x, goal_pos.y);
+		if (RVO::abs(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) < 0.5) {
+			// Agent is within 0.5 meter of its goal, set preferred velocity to zero
 			traffic_agent_sim_[threadID]->setAgentPrefVelocity(i,
 					RVO::Vector2(0.0f, 0.0f));
 		} else {
-			auto goal_pos = GetGoalPos(agents[i], intention_id);
-			RVO::Vector2 goal(goal_pos.x, goal_pos.y);
-			if (RVO::abs(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) < 0.5) {
-				// Agent is within 0.5 meter of its goal, set preferred velocity to zero
-				traffic_agent_sim_[threadID]->setAgentPrefVelocity(i,
-						RVO::Vector2(0.0f, 0.0f));
-			} else {
-				double pref_speed = 0.0;
-				pref_speed = agents[i].speed;
-				traffic_agent_sim_[threadID]->setAgentPrefVelocity(i,
-						normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) * pref_speed);
-			}
+			double pref_speed = 0.0;
+			pref_speed = agents[i].speed;
+			traffic_agent_sim_[threadID]->setAgentPrefVelocity(i,
+					normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(i)) * pref_speed);
 		}
 
 		traffic_agent_sim_[threadID]->setAgentBoundingBoxCorners(i,
@@ -1284,7 +1290,7 @@ void WorldModel::EnsureMeanDirExist(int agent_id, int intention_id) {
 		ped_mean_dirs[agent_id].resize(GetNumIntentions(agent_id));
 	}
 
-	if (intention_id >= ped_mean_dirs[agent_id].size()) {
+	if (intention_id != -1 && intention_id >= ped_mean_dirs[agent_id].size()) {
 		ERR(string_sprintf(
 			"Encountering overflowed intention id %d at agent %d\n ",
 			intention_id, agent_id));
@@ -1301,13 +1307,14 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(const State* state) {
 	if (num_agents == 0)
 		return;
 
-	for (auto& agent: agents)
-		EnsureMeanDirExist(agent.id, -1);
+	for (int i = 0; i < crowd_state->num; i++) {
+		EnsureMeanDirExist(agents[i].id, -1);
+	}
 
 	if (initial_update_step){
 		initial_update_step = false;
-		for (auto& agent: agents) {
-			int id = agent.id;
+		for (int i = 0; i < crowd_state->num; i++) {
+			int id = agents[i].id;
 			for (int intention_id = 0; intention_id < GetNumIntentions(id);	intention_id++)
 				ped_mean_dirs[id][intention_id] = COORD(0.0, 0.0);
 		}
@@ -1319,16 +1326,18 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(const State* state) {
 
 		std::vector<int> agent_ids;
 		int gamma_id = 0;
-		for (auto& agent: agents) {
-			AddGammaAgent(agent, gamma_id);
+		for (int i = 0; i < crowd_state->num; i++) {
+			AddGammaAgent(agents[i], gamma_id);
 			gamma_id++;
 		}
 		AddEgoGammaAgent(num_agents, car);
 
 		traffic_agent_sim_[threadID]->doPreStep();
 
-		for (size_t gamma_id = 0; gamma_id < num_agents; ++gamma_id) {
-			int agent_id = agents[gamma_id].id;
+		gamma_id = 0;
+		for (int i = 0; i < crowd_state->num; i++) {
+			auto& agent = agents[i];
+			int agent_id = agent.id;
 			// For each ego agent
 			for (int intention_id = 0; intention_id < GetNumIntentions(agent_id);
 					intention_id++) {
@@ -1336,7 +1345,7 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(const State* state) {
 						traffic_agent_sim_[threadID]->getAgentPosition(gamma_id);
 				// Leave other pedestrians to have default preferred velocity
 				ValidateIntention(agent_id, intention_id, __FUNCTION__, __LINE__);
-				auto goal_pos = GetGoalPos(agents[agent_id], intention_id);
+				auto goal_pos = GetGoalPos(agent, intention_id);
 				RVO::Vector2 goal(goal_pos.x, goal_pos.y);
 				if (abs(goal - traffic_agent_sim_[threadID]->getAgentPosition(gamma_id)) < 0.5) {
 					// Agent is within 0.5 meters of its goal, set preferred velocity to zero
@@ -1344,7 +1353,7 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(const State* state) {
 							RVO::Vector2(0.0f, 0.0f));
 				} else {
 					// Agent is far away from its goal, set preferred velocity as unit vector towards agent's goal.
-					double spd = agents[agent_id].speed;
+					double spd = agent.speed;
 					traffic_agent_sim_[threadID]->setAgentPrefVelocity(gamma_id,
 							normalize(goal - traffic_agent_sim_[threadID]->getAgentPosition(gamma_id)) * spd);
 				}
@@ -1353,11 +1362,11 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(const State* state) {
 
 				COORD dir;
 				dir.x = traffic_agent_sim_[threadID]->getAgentPosition(gamma_id).x()
-						- agents[agent_id].pos.x;
+						- agent.pos.x;
 				dir.y = traffic_agent_sim_[threadID]->getAgentPosition(gamma_id).y()
-						- agents[agent_id].pos.y;
+						- agent.pos.y;
 
-				logd << "[PrepareAttentiveAgentMeanDirs] num agents in ped_mean_dirs="
+				logv << "[PrepareAttentiveAgentMeanDirs] num agents in ped_mean_dirs="
 						<< ped_mean_dirs.size() << " intention_list len for agent " << agent_id << "="
 						<< ped_mean_dirs[agent_id].size() << "\n";
 				ped_mean_dirs[agent_id][intention_id] = dir;
@@ -1365,6 +1374,7 @@ void WorldModel::PrepareAttentiveAgentMeanDirs(const State* state) {
 				// reset back agent position
 				traffic_agent_sim_[threadID]->setAgentPosition(gamma_id, ori_pos);
 			}
+			gamma_id++;
 		}
 	}
 }

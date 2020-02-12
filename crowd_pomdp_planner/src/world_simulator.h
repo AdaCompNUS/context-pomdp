@@ -75,6 +75,7 @@ public:
 	bool Connect();
 	void Connect_Carla();
 	State* Initialize();
+	std::map<double, AgentStruct&> GetSortedAgents();
 	State* GetCurrentState();
 	bool ExecuteAction(ACT_TYPE action, OBS_TYPE& obs);
 	double StepReward(PomdpStateWorld& state, ACT_TYPE action);

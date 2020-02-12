@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 from matplotlib import patches as mpatches
 from matplotlib import animation
 
-sx=20.0
-sy=20.0
+sx=40.0
+sy=40.0
 fig = plt.figure()
 plt.axis([-sx,sx,-sy,sy])
 ax = plt.gca()

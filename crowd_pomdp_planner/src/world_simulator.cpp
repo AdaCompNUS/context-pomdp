@@ -124,6 +124,9 @@ bool WorldSimulator::Connect() {
 			agent_flag_ok = true;
 		}
 		ros::spinOnce();
+
+		if (agent_data_ok && car_data_ok && agent_flag_ok)
+			break;
 	}
 
 	if (Globals::ElapsedTime(start) >= 30.0)
@@ -153,6 +156,17 @@ State* WorldSimulator::Initialize() {
 	return NULL;
 }
 
+std::map<double, AgentStruct&> WorldSimulator::GetSortedAgents() {
+	std::map<double, AgentStruct&> sorted_agents;
+	for (std::map<int, AgentStruct>::iterator it = exo_agents_.begin();
+			it != exo_agents_.end(); ++it) {
+		AgentStruct& agent = it->second;
+		double dis_to_car = COORD::EuclideanDistance(car_.pos, agent.pos);
+		sorted_agents.insert ( std::pair<double, AgentStruct&>(dis_to_car, agent) );
+	}
+	return sorted_agents;
+}
+
 /**
  * [Optional]
  * To help construct initial belief to print debug informations in Logger
@@ -167,11 +181,13 @@ State* WorldSimulator::GetCurrentState() {
 	PomdpStateWorld state;
 	current_state_.car = car_;
 	int n = 0;
-	for (std::map<int, AgentStruct>::iterator it = exo_agents_.begin();
-			it != exo_agents_.end(); ++it) {
-		if (n < ModelParams::N_PED_WORLD)
-			current_state_.agents[n] = it->second;
+	std::map<double, AgentStruct&> sorted_agents = GetSortedAgents();
+	for (auto it = sorted_agents.begin();
+			it != sorted_agents.end(); ++it) {
+		current_state_.agents[n] = it->second;
 		n++;
+		if (n >= ModelParams::N_PED_WORLD)
+			break;
 	}
 	current_state_.num = n;
 	current_state_.time_stamp = min(car_time_stamp_, agents_time_stamp_);
@@ -447,6 +463,7 @@ void WorldSimulator::AgentArrayCallback(msg_builder::TrafficAgentArray data) {
 		exo_agents_[id].pos = COORD(agent.pose.position.x,
 				agent.pose.position.y);
 		exo_agents_[id].vel = COORD(agent.vel.x, agent.vel.y);
+		exo_agents_[id].speed = exo_agents_[id].vel.Length();
 		exo_agents_[id].heading_dir = navposeToHeadingDir(agent.pose);
 
 		std::vector<COORD> bb;
@@ -454,6 +471,9 @@ void WorldSimulator::AgentArrayCallback(msg_builder::TrafficAgentArray data) {
 			bb.emplace_back(corner.x, corner.y);
 		}
 		CalBBExtents(exo_agents_[id], bb, exo_agents_[id].heading_dir);
+
+		assert(exo_agents_[id].bb_extent_x > 0);
+		assert(exo_agents_[id].bb_extent_y > 0);
 	}
 
 	if (logging::level() >= logging::DEBUG)
@@ -481,7 +501,8 @@ void WorldSimulator::AgentPathArrayCallback(msg_builder::AgentPathArray data) {
 
 		auto it = exo_agents_.find(id);
 		if (it != exo_agents_.end()) {
-			exo_agents_[id].cross_dir = agent.cross_dirs[0];
+			if (agent_type == "ped")
+				exo_agents_[id].cross_dir = agent.cross_dirs[0];
 
 			worldModel.id_map_belief_reset[id] = agent.reset_intention;
 			worldModel.id_map_num_paths[id] = agent.path_candidates.size();
@@ -513,7 +534,7 @@ void WorldSimulator::EgoStateCallBack(
 		const msg_builder::car_info::ConstPtr car) {
 	const msg_builder::car_info& ego_car = *car;
 	car_.pos = COORD(ego_car.car_pos.x, ego_car.car_pos.y);
-	car_.heading_dir = ego_car.car_steer;
+	car_.heading_dir = ego_car.car_yaw;
 	car_.vel = ego_car.car_speed;
 
 	real_speed = COORD(ego_car.car_vel.x, ego_car.car_vel.y).Length();

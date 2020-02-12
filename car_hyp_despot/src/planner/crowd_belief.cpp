@@ -38,6 +38,7 @@
 #include <despot/util/logging.h>
 
 int use_att_mode = 2;		// onlu use att mode
+vector<State*> particles_;
 
 HiddenStateBelief::HiddenStateBelief(int num_intentions, int num_modes) {
 	Resize(num_intentions, num_modes);
@@ -140,9 +141,9 @@ void HiddenStateBelief::Sample(int& intention_id, int& mode_id) {
 	} else {
 		int mode = (use_att_mode <= 1) ? AGENT_DIS : AGENT_ATT;
 		auto& goal_probs = probs_[mode];
-
+		double total_prob = std::accumulate(goal_probs.begin(), goal_probs.end(), 0.0);
 		for (int intention = 0; intention < goal_probs.size(); intention++) {
-			r -= probs_[mode][intention];
+			r -= probs_[mode][intention] / total_prob;
 			if (r <= 0.001) {
 				intention_id = intention;
 				mode_id = mode;
@@ -170,7 +171,7 @@ void AgentBelief::Update(WorldModel& model, const AgentStruct& cur_agent, int nu
 	if (num_intentions != belief_->size(1))
 		belief_->Resize(num_intentions);
 
-	AgentStruct& past_agent = observable_;
+	AgentStruct past_agent = observable_;
 	for (int mode = 0; mode < belief_->size(0); mode++)
 		for (int intention = 0; intention < belief_->size(1); intention++) {
 			belief_->Update(model, past_agent, cur_agent, intention, mode);
@@ -200,27 +201,32 @@ Belief* CrowdBelief::MakeCopy() const {
 	return new CrowdBelief(model_, history_, sorted_belief_);
 }
 
-std::vector<State*> CrowdBelief::Sample(int num) const {
-	vector<State*> particles;
 
+std::vector<State*> CrowdBelief::Sample(int num) const {
 	logi << "Sample particles from belief" << endl;
 	const ContextPomdp* context_pomdp = static_cast<const ContextPomdp*>(model_);
 
 	if (DESPOT::Debug_mode)
 		std::srand(0);
 
-	for (auto* particle: particles) {
-		model_->Free(particle);
+	for (auto* particle: particles_) {
+		if (particle->IsAllocated())
+			model_->Free(particle);
 	}
+	particles_.resize(num);
 
 	for (int i = 0; i < num; i++) {
-		particles[i] = model_->Allocate(i, 1.0/num);
+		particles_[i] = model_->Allocate(i, 1.0/num);
 	}
 
-	for(auto* particle: particles) {
+	for(auto* particle: particles_) {
 		PomdpState* state = static_cast<PomdpState*>(particle);
 		state->car = car_;
 		state->num = min<int>(ModelParams::N_PED_IN, sorted_belief_.size());
+
+		cout << "state->num=" << state->num <<
+				", sorted_belief_.size()=" << sorted_belief_.size() << endl;
+
 		state->time_stamp = Globals::ElapsedTime();
 
 		int agent_id = 0;
@@ -229,21 +235,29 @@ std::vector<State*> CrowdBelief::Sample(int num) const {
 				AgentBelief* b = it->second;
 				state->agents[agent_id] = b->observable_;
 				b->Sample(state->agents[agent_id].intention, state->agents[agent_id].mode);
+
+				logd << "[Sample] agent " << state->agents[agent_id].id <<
+						" num_intentions=" <<
+						world_model_.GetNumIntentions(state->agents[agent_id].id) << endl;
+
+				world_model_.ValidateIntention(state->agents[agent_id].id, state->agents[agent_id].intention,
+						__FUNCTION__, __LINE__);
+
 				agent_id++;
 			} else
 				break;
 		}
 	}
 
-	if (abs(State::Weight(particles) - 1.0) > 1e-6) {
+	if (abs(State::Weight(particles_) - 1.0) > 1e-6) {
 		cerr << "[CrowdBelief::CrowdBelief] Particle weights sum to "
-				<< State::Weight(particles) << " instead of 1" << endl;
+				<< State::Weight(particles_) << " instead of 1" << endl;
 		ERR("particle sampling error");
 	}
 
-	random_shuffle(particles.begin(), particles.end());
+	random_shuffle(particles_.begin(), particles_.end());
 
-	return particles;
+	return particles_;
 }
 
 void CrowdBelief::Update(ACT_TYPE action, OBS_TYPE obs) {
@@ -253,6 +267,7 @@ void CrowdBelief::Update(ACT_TYPE action, OBS_TYPE obs) {
 void CrowdBelief::Update(ACT_TYPE action, const State* state) {
 	const PomdpStateWorld* observed = static_cast<const PomdpStateWorld*>(state);
 
+	logd << "[CrowdBelief::Update] " << "observed->num=" << observed->num << endl;
 	std::map<int, const AgentStruct*> src_agent_map;
 	for (int i=0;i < observed->num; i++) {
 		src_agent_map[observed->agents[i].id] = &(observed->agents[i]);
@@ -264,6 +279,7 @@ void CrowdBelief::Update(ACT_TYPE action, const State* state) {
 		AgentBelief* agent_belief = it->second;
 		indexed_belief[agent_belief->observable_.id] = agent_belief;
 	}
+	logd << "[CrowdBelief::Update] " << "indexed_belief.size()=" << indexed_belief.size() << endl;
 
 	// update belief
 	int n = 0;
@@ -274,6 +290,7 @@ void CrowdBelief::Update(ACT_TYPE action, const State* state) {
 		const AgentStruct& agent = *(it->second);
 		auto it1 = indexed_belief.find(id);
 		int num_intentions = world_model_.GetNumIntentions(agent.id);
+		logd << "[Update] agent " << agent.id << " num_intentions=" << num_intentions << endl;
 		if (it1 != indexed_belief.end()) { // existing agents
 			AgentBelief* agent_belief = it1->second;
 			if (world_model_.NeedBeliefReset(id))
@@ -281,18 +298,35 @@ void CrowdBelief::Update(ACT_TYPE action, const State* state) {
 			agent_belief->Update(world_model_, agent, num_intentions);
 		} else { // new agent
 			indexed_belief[id] = new AgentBelief(num_intentions, PED_MODES::NUM_AGENT_TYPES);
+			indexed_belief[id]->observable_ = agent;
 		}
 	}
+	logd << "[CrowdBelief::Update] " << "indexed_belief.size()=" << indexed_belief.size() << endl;
 
 	// remove out-dated agents
 	double time_stamp = Globals::ElapsedTime();
 	for (std::map<int,AgentBelief*>::iterator it=indexed_belief.begin(); it!=indexed_belief.end(); ++it) {
 		AgentBelief* agent_belief = it->second;
 		if (agent_belief->OutDated(time_stamp)) {
+			logd << "[CrowdBelief::Update] " << "cur time_stamp = " << time_stamp
+					<< ", belief time_stamp="<< agent_belief->time_stamp << endl;
+
 			delete agent_belief;
 			indexed_belief.erase(it);
 		}
 	}
+
+	// agents disappeared less than 2 seconds
+	for (auto it=indexed_belief.begin(); it!=indexed_belief.end(); ++it) {
+		AgentBelief* agent_belief = it->second;
+		if (world_model_.NumPaths(agent_belief->observable_.id) == 0) {
+			logd << "[CrowdBelief::Update] " << "cur time_stamp = " << time_stamp
+					<< ", belief time_stamp="<< agent_belief->time_stamp << endl;
+			agent_belief->Reset(world_model_.GetNumIntentions(agent_belief->observable_.id));
+		}
+	}
+
+	logd << "[CrowdBelief::Update] " << "indexed_belief.size()=" << indexed_belief.size() << endl;
 
 	// regenerate ordered belief
 	sorted_belief_.clear();
@@ -302,4 +336,6 @@ void CrowdBelief::Update(ACT_TYPE action, const State* state) {
 		double dist_to_car = COORD::EuclideanDistance(agent_belief->observable_.pos, car_.pos);
 		sorted_belief_[dist_to_car] = agent_belief;
 	}
+
+	logd << "[CrowdBelief::Update] " << "sorted_belief_.size()=" << sorted_belief_.size() << endl;
 }

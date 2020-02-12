@@ -65,12 +65,12 @@ public:
 struct AgentBelief {
 	AgentStruct observable_;
 	HiddenStateBelief* belief_;
-	std::vector<Path> possible_paths;
 	float time_stamp;
 
 	AgentBelief(int num_intentions, int num_modes) {
 		belief_ = new HiddenStateBelief(num_intentions, num_modes);
-		time_stamp = -1;
+		time_stamp = Globals::ElapsedTime();
+;
 	}
 
 	~AgentBelief() {

@@ -330,7 +330,12 @@ bool ContextPomdp::Step(State &state_, double rNum, int action, double &reward,
 	if (world_model.IsGlobalGoal(state.car)) {
 		reward = ModelParams::GOAL_REWARD;
 
-		logv << "assigning goal reward " << reward << endl;
+		logd << "assigning goal reward " << reward <<
+				" car at (" << state.car.pos.x << ", " << state.car.pos.y << ")" << endl;
+		logd << "Path start " << world_model.path[0] << endl;
+		logd << "Path length " << world_model.path.GetLength() << endl;
+
+		ERR("");
 		return true;
 	}
 
@@ -475,13 +480,16 @@ PomdpState ContextPomdp::PredictAgents(const PomdpState &ped_state) const {
 
 	double steer_to_path = world_model.GetSteerToPath(
 			predicted_state->car);
-	ACT_TYPE action = GetActionID(GetSteerIDfromSteering(steer_to_path), 0);
+	ACT_TYPE action = GetActionID(GetSteerIDfromSteering(steer_to_path), 2);
 
 	OBS_TYPE dummy_obs;
 	double dummy_reward;
 
 	double rNum = Random::RANDOM.NextDouble();
-	Step(*predicted_state, rNum, action, dummy_reward, dummy_obs);
+	bool terminal = Step(*predicted_state, rNum, action, dummy_reward, dummy_obs);
+
+	if (terminal)
+		logi << "[PredictAgents] Reach terminal state" << endl;
 
 	return *predicted_state;
 }
@@ -659,10 +667,9 @@ void ContextPomdp::PrintStateCar(const State &s, std::string msg,
 			<< state.car.heading_dir << endl;
 }
 
+PomdpState last_state;
 void ContextPomdp::PrintStateAgents(const State &s, std::string msg,
 		ostream &out) const {
-	if (DESPOT::Debug_mode)
-		return;
 
 	const PomdpState &state = static_cast<const PomdpState &>(s);
 
@@ -674,6 +681,26 @@ void ContextPomdp::PrintStateAgents(const State &s, std::string msg,
 				<< state.agents[i].bb_extent_y << " ";
 	}
 	out << endl;
+
+//	out << "vel ";
+//	for (int i = 0; i < state.num; i++) {
+//		out << COORD::EuclideanDistance(last_state.agents[i].pos, state.agents[i].pos) * ModelParams::CONTROL_FREQ << " ";
+//	}
+//	out << endl;
+//
+//	out << "cur_vel intention ";
+//	for (int i = 0; i < state.num; i++) {
+//		out << world_model.IsCurVelIntention(state.agents[i].intention, state.agents[i].id) << " ";
+//	}
+//	out << endl;
+//
+//	out << "step intention ";
+//	for (int i = 0; i < state.num; i++) {
+//		out << world_model.IsStopIntention(state.agents[i].intention, state.agents[i].id) << " ";
+//	}
+//	out << endl;
+
+	last_state = state;
 }
 
 void ContextPomdp::PrintWorldState(const PomdpStateWorld &state,

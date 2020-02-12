@@ -201,7 +201,6 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
                             ScenarioLowerBound* lower_bound, ScenarioUpperBound* upper_bound,
                             const DSPOMDP* model, History& history, bool& Expansion_done,
                             Shared_SearchStatistics* statistics, bool despot_thread) {
-	logd << __FUNCTION__ << endl;
 	Shared_VNode* cur = root;
 
 	int hist_size = history.Size();

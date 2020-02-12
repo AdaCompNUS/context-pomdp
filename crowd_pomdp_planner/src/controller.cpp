@@ -219,11 +219,12 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 	cerr << "DEBUG: Updating belief" << endl;
 	ped_belief_->Update(last_action_, cur_state);
 	ped_belief_->Text(cout);
-	if (solver->belief() != NULL)
-		delete solver->belief();
+
 	auto particles = ped_belief_->Sample(Globals::config.num_scenarios * 2);
-	auto* particle_belief = new ParticleBelief(particles, model_);
-	solver->belief(particle_belief);
+	static_cast<const ContextPomdp*>(model_)->ForwardAndVisualize(
+					*(particles[0]), 10);
+	ParticleBelief particle_belief(particles, model_);
+	solver->belief(&particle_belief);
 	logi << "[RunStep] Time spent in Update(): "
 			<< Globals::ElapsedTime(start_t) << endl;
 
@@ -330,8 +331,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 	 * =========================*/
 	cerr << "DEBUG: Initializing solver" << endl;
 	solver_type = ChooseSolver();
-	Belief* solver_belief = new ParticleBelief(std::vector<State*>(), model);
-	Solver *solver = InitializeSolver(model, solver_belief, solver_type,
+	Solver *solver = InitializeSolver(model, NULL, solver_type,
 			options);
 	logi << "InitializeSolver finished at the " << Globals::ElapsedTime()
 			<< "th second" << endl;

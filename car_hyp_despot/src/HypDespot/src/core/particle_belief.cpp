@@ -29,7 +29,7 @@ ParticleBelief::ParticleBelief(vector<State*> particles, const DSPOMDP* model,
 
 	if (fabs(State::Weight(particles) - 1.0) > 1e-6) {
 		loge << "[ParticleBelief::ParticleBelief] Particle weights sum to " << State::Weight(particles) << " instead of 1" << endl;
-		exit(1);
+		raise(SIGABRT);
 	}
 
 	if (split) {
@@ -59,7 +59,7 @@ ParticleBelief::ParticleBelief(vector<State*> particles, const DSPOMDP* model,
 
 	if (fabs(State::Weight(particles) - 1.0) > 1e-6) {
 		loge << "[ParticleBelief::ParticleBelief] Particle weights sum to " << State::Weight(particles) << " instead of 1" << endl;
-		exit(1);
+		raise(SIGABRT);
 	}
 
 	random_shuffle(particles_.begin(), particles_.end());
@@ -328,7 +328,7 @@ vector<State*> ParticleBelief::Resample(int num, const DSPOMDP* model,
 	const StateIndexer* indexer, ACT_TYPE action, OBS_TYPE obs) {
 	if (indexer == NULL) {
 		loge << "[Belief::Resample] indexer cannot be null" << endl;
-		exit(1);
+		raise(SIGABRT);
 	}
 
 	vector<State*> sample;

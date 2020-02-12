@@ -1,27 +1,27 @@
 <launch>
-	<node name="ped_pomdp" pkg="crowd_pomdp_planner" type="ped_pomdp" respawn="false" output="screen" required="true">
-	    <rosparam file="$(find crowd_pomdp_planner)/is_despot_param.yaml" command="load" />
-      <param name = "gpu_id" value="$(arg gpu_id)" />
-	    <param name = "map_location" value="$(arg map_location)" />
-		<remap from="pomdp_path_repub" to="new_global_plan"/>
-		<remap from="navgoal" to="/move_base_simple/goal"/>
+    <node name="ped_pomdp" pkg="crowd_pomdp_planner" type="ped_pomdp" respawn="false" output="screen" required="true">
+        <rosparam file="$(find crowd_pomdp_planner)/is_despot_param.yaml" command="load" />
+        <param name = "gpu_id" value="$(arg gpu_id)" />
+        <param name = "map_location" value="$(arg map_location)" />
+        <remap from="pomdp_path_repub" to="new_global_plan"/>
+        <remap from="navgoal" to="/move_base_simple/goal"/>
         <!-- <remap from="odom" to="odom"/> -->
         <param name="simulation" value="false"/>
         <param name = "drive_mode" value="$(arg mode)" />
         <param name = "time_scale" value="$(arg time_scale)" />
         <param name = "summit_port" value="$(arg summit_port)" />    
-	 </node>
+    </node>
 
-	 <node name="ped_momdp_local_transform" pkg="crowd_pomdp_planner" type="local_frame"  >
-	    <param name="global_frame" value="/map"/>
+    <node name="ped_momdp_local_transform" pkg="crowd_pomdp_planner" type="local_frame"  >
+        <param name="global_frame" value="/map"/>
         <param name="threshold" value="0.0"/>
-	</node>
+    </node>
 
-	 <node name="vel_publisher" pkg="crowd_pomdp_planner" type="vel_publisher" output="screen" >
-	    <!--<remap from="cmd_vel" to="cmd_vel"/>-->
-	    <param name = "drive_mode" value="$(arg mode)" />
-   	    <param name = "cmd_mode" value="action" />
-   	    <param name = "time_scale" value="$(arg time_scale)" />
-	 </node>
+    <node name="vel_publisher" pkg="crowd_pomdp_planner" type="vel_publisher" output="screen" >
+        <!--<remap from="cmd_vel" to="cmd_vel"/>-->
+        <param name = "drive_mode" value="$(arg mode)" />
+        <param name = "cmd_mode" value="action" />
+        <param name = "time_scale" value="$(arg time_scale)" />
+    </node>
 
 </launch>

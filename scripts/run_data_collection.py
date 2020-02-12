@@ -42,9 +42,6 @@ monitor_worker = None
 
 Timeout_inner_monitor_pid, Timeout_monitor_pid = None, None
 
-search_log_name = None 
-open_search_log = False
-
 NO_NET = 0
 JOINT_POMDP = 1 
 ROLL_OUT = 2
@@ -186,7 +183,10 @@ def parse_cmd_args():
                         type=str,
                         default="data_monitor",
                         help='which data monitor to use: data_monitor or summit_dql')
-
+    parser.add_argument('--debug',
+                        type=int,
+                        default=0,                                               
+                        help='debug mode')   
     return parser.parse_args()
 
 
@@ -224,11 +224,16 @@ def update_global_config(cmd_args):
 
     config.max_launch_wait = 10
     config.make = bool(cmd_args.make)
-
+    config.debug= bool(cmd_args.debug)
+    
+    compile_mode = 'Release'
+    if config.debug:
+        compile_mode = 'Debug'
+    
     if config.make:
         try:
-            shell_cmds = ["catkin config --merge-devel", 
-                "catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release"]
+            shell_cmds = ["catkin config --merge-devel",
+                "catkin build --cmake-args -DCMAKE_BUILD_TYPE=" + compile_mode]
             for shell_cmd in shell_cmds:
                 print(shell_cmd, flush=True)
                 make_proc = subprocess.call(shell_cmd, cwd=ws_root, shell = True)
@@ -289,7 +294,7 @@ def timeout_monitor(pid):
 
 def inner_timeout_monitor():
     global shell_cmd
-    shell_cmd = "python timeout_inner.py " + str(int(200/config.time_scale))
+    shell_cmd = "python timeout_inner.py " + str(int((config.eps_length + 10)/config.time_scale))
     toi_proc = subprocess.Popen(shell_cmd.split())
 
     if config.verbosity > 0:
@@ -455,7 +460,12 @@ def launch_pomdp_planner(round, run):
     global monitor_worker
     pomdp_proc, rviz_out = None, None
 
-    shell_cmd = config.ros_pref+'roslaunch --wait crowd_pomdp_planner planner.launch ' \
+    launch_file = 'planner.launch'
+    if config.debug:
+        launch_file = 'planner_debug.launch'
+
+    shell_cmd = config.ros_pref + 'roslaunch --wait crowd_pomdp_planner ' + \
+                launch_file + \
                 ' gpu_id:=' + str(config.gpu_id) + \
                 ' mode:=' + str(config.drive_mode) + \
                 ' summit_port:=' + str(config.port) + \
@@ -464,10 +474,7 @@ def launch_pomdp_planner(round, run):
 
     pomdp_out = open(get_txt_file_name(round, run), 'w')
 
-    global search_log_name, open_search_log
-    search_log_name = copy.copy(pomdp_out.name)
-    open_search_log = False
-    print("Search log %s" % search_log_name)
+    print("Search log %s" % pomdp_out.name)
 
     if config.verbosity > 0:
         print(shell_cmd)
@@ -497,8 +504,6 @@ def launch_pomdp_planner(round, run):
         if not timeout_flag:
             elapsed_time = time.time() - start_t
             print('[INFO] POMDP planner exited in %f s' % elapsed_time)
-            if elapsed_time < 20:
-                open_search_log = True
         check_process(record_proc, '[finally] record')
 
     return pomdp_proc, pomdp_out
@@ -572,10 +577,6 @@ def exit_handler():
     kill_outter_timer(Timeout_monitor_pid)
     
     clear_process(clear_outter=True, port = config.port)
-
-    if open_search_log and search_log_name is not None:
-        print("======== Opening search log")
-        subprocess.call(('vim ' + search_log_name).split())
 
 
 atexit.register(exit_handler)
