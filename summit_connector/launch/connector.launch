@@ -18,11 +18,6 @@
         name="static_transform_publisher" 
         args="0.0 0.0 0.0 0.0 0.0 0.0 /base_link /laser_frame 10" />
 
-  <node name="spawn_meshes" pkg="summit_connector" type="spawn_meshes.py" output="screen">
-    <param name="spawn_imagery" value="true"/>
-    <param name="spawn_landmarks" value="false"/>
-  </node>
- 
   <node name="ego_vehicle" pkg="summit_connector" type="ego_vehicle.py" output="screen">
     <param name="control_mode" value="$(arg ego_control_mode)"/>
     <param name="speed_control" value="$(arg ego_speed_control)"/>
@@ -30,22 +25,6 @@
 
   <node name="purepursuit_controller" pkg="summit_connector" type="purepursuit_controller.py" output="screen"/>
 
-  <node name="gamma_crowd_controller" pkg="summit_connector" type="gamma_crowd_controller.py" output="screen">
-    <param name="num_network_car_agents" value="85"/>
-    <param name="num_network_bike_agents" value="15"/>
-    <param name="num_sidewalk_agents" value="15"/>
-    <param name="spawn_clearance_ego" value="20.0"/>
-    <param name="spawn_clearance_vehicle" value="5.0"/>
-    <param name="spawn_clearance_person" value="0.25"/>
-    <param name="crowd_range" value="150"/>
-    <param name="path_min_points" value="20"/>
-    <param name="path_interval" value="1.0"/>
-    <param name="lane_change_probability" value="0.10"/>
-  </node>
-  
   <node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen"/>
-  <!--
   <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
-  <node name="visualize_live" pkg="summit_connector" type="visualize_live.py" output="screen"/>
-  -->
 </launch>
