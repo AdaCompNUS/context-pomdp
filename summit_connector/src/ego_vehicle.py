@@ -10,14 +10,13 @@ import sys
 
 import rospy
 import tf
+from util import *
+
 from geometry_msgs.msg import Twist, Pose, Point, Quaternion, Vector3, Polygon, Point32, PoseStamped
 from nav_msgs.msg import Odometry
 from nav_msgs.msg import Path as NavPath
 from std_msgs.msg import Float32, Bool, Int32
-
 from msg_builder.msg import car_info as CarInfo  # panpan
-from util import *
-
 import tf2_geometry_msgs
 import tf2_ros
 import geometry_msgs
@@ -32,57 +31,6 @@ change_right = 1
 VEHICLE_STEER_KP = 2.5
 
 ''' ========== UTILITY FUNCTIONS AND CLASSES ========== '''
-def get_signed_angle_diff(vector1, vector2):
-    theta = math.atan2(vector1.y, vector1.x) - math.atan2(vector2.y, vector2.x)
-    theta = np.rad2deg(theta)
-    if theta > 180:
-        theta -= 360
-    elif theta < -180:
-        theta += 360
-    return theta
-
-def get_position(actor):
-    pos3d = actor.get_location()
-    return carla.Vector2D(pos3d.x, pos3d.y)
-
-def get_forward_direction(actor):
-    forward = actor.get_transform().get_forward_vector()
-    return carla.Vector2D(forward.x, forward.y)
-
-def get_bounding_box(actor):
-    return actor.bounding_box
-
-def get_velocity(actor):
-    v = actor.get_velocity()
-    return carla.Vector2D(v.x, v.y)
-    
-def get_vehicle_bounding_box_corners(actor):
-    bbox = actor.bounding_box
-    loc = carla.Vector2D(bbox.location.x, bbox.location.y) + get_position(actor)
-    forward_vec = get_forward_direction(actor).make_unit_vector()
-    sideward_vec = forward_vec.rotate(np.deg2rad(90))
-    half_y_len = bbox.extent.y + 0.3
-    half_x_len_forward = bbox.extent.x + 1.0
-    half_x_len_backward = bbox.extent.x + 0.1
-    corners = [loc - half_x_len_backward * forward_vec + half_y_len * sideward_vec,
-               loc + half_x_len_forward * forward_vec + half_y_len * sideward_vec,
-               loc + half_x_len_forward * forward_vec - half_y_len * sideward_vec,
-               loc - half_x_len_backward * forward_vec - half_y_len * sideward_vec]
-    return corners
-
-def get_pedestrian_bounding_box_corners(actor):
-    bbox = actor.bounding_box
-    loc = carla.Vector2D(bbox.location.x, bbox.location.y) + get_position(actor)
-    forward_vec = get_forward_direction(actor).make_unit_vector()
-    sideward_vec = forward_vec.rotate(np.deg2rad(90))
-    # Hardcoded values for pedestrians.
-    half_y_len = 0.25
-    half_x_len = 0.25
-    corners = [loc - half_x_len * forward_vec + half_y_len * sideward_vec,
-               loc + half_x_len * forward_vec + half_y_len * sideward_vec,
-               loc + half_x_len * forward_vec - half_y_len * sideward_vec,
-               loc - half_x_len * forward_vec - half_y_len * sideward_vec]
-    return corners
 
 class NetworkAgentPath:
     def __init__(self, sumo_network, min_points, interval):
