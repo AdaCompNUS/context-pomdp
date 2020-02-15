@@ -278,7 +278,7 @@ class EgoVehicle(Summit):
     def update_gamma_control(self):
         gamma = carla.RVOSimulator()
 
-        current_id = 0
+        gamma_id = 0
         for (i, actor) in enumerate(self.world.get_actors()):
             if isinstance(actor, carla.Vehicle):
                 if actor.attributes['number_of_wheels'] == 2:
@@ -292,15 +292,15 @@ class EgoVehicle(Summit):
             else:
                 continue
 
-            gamma.add_agent(carla.AgentParams.get_default(type_tag), current_id)
-            gamma.set_agent_position(current_id, get_position(actor))
-            gamma.set_agent_velocity(current_id, get_velocity(actor))
-            gamma.set_agent_heading(current_id, get_forward_direction(actor))
-            gamma.set_agent_bounding_box_corners(current_id, bounding_box_corners)
-            gamma.set_agent_pref_velocity(current_id, get_velocity(actor))
-            current_id += 1
+            gamma.add_agent(carla.AgentParams.get_default(type_tag), gamma_id)
+            gamma.set_agent_position(gamma_id, get_position(actor))
+            gamma.set_agent_velocity(gamma_id, get_velocity(actor))
+            gamma.set_agent_heading(gamma_id, get_forward_direction(actor))
+            gamma.set_agent_bounding_box_corners(gamma_id, bounding_box_corners)
+            gamma.set_agent_pref_velocity(gamma_id, get_velocity(actor))
+            gamma_id += 1
            
-        ego_id = current_id
+        ego_id = gamma_id
         gamma.add_agent(carla.AgentParams.get_default('Car'), ego_id)
         gamma.set_agent_position(ego_id, get_position(self.actor))
         gamma.set_agent_velocity(ego_id, get_velocity(self.actor))
