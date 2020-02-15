@@ -425,8 +425,9 @@ def launch_summit_simulator(round, run, cmd_args):
         # Spawn meshes.
         wait_for(config.max_launch_wait, 
                 subprocess.Popen(
-                    'python3 {} --dataset {}'.format(
+                    'python {} --port {} --dataset {}'.format(
                         os.path.join(summit_scripts, 'spawn_meshes.py'),
+                        cmd_args.port,
                         config.summit_maploc),
                     shell=True),
                 '[launch] spawn_meshes.py')
@@ -434,8 +435,9 @@ def launch_summit_simulator(round, run, cmd_args):
         # Spawn imagery.
         wait_for(config.max_launch_wait, 
                 subprocess.Popen(
-                    'python3 {} --dataset {}'.format(
+                    'python {} --port {} --dataset {}'.format(
                         os.path.join(summit_scripts, 'spawn_imagery.py'),
+                        cmd_args.port,
                         config.summit_maploc),
                     shell=True),
                 '[launch] spawn_imagery.py')
@@ -443,15 +445,15 @@ def launch_summit_simulator(round, run, cmd_args):
         # Spawn crowd.
         wait_for(config.max_launch_wait, 
                 subprocess.Popen(
-                    'python3 {} --dataset {} --num-car {} --num-bike {} --num-pedestrian {}'.format(
+                    'python {} --port {} --dataset {} --num-car {} --num-bike {} --num-pedestrian {}'.format(
                         os.path.join(summit_scripts, 'gamma_crowd.py'),
+                        cmd_args.port,
                         config.summit_maploc,
                         cmd_args.num_car,
                         cmd_args.num_bike,
                         cmd_args.num_pedestrian),
                     shell=True),
                 '[launch] gamma_crowd.py')
-
         
 
     shell_cmd = config.ros_pref+'roslaunch summit_connector connector.launch port:=' + \

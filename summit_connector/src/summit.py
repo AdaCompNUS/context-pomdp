@@ -33,13 +33,11 @@ class Summit(object):
         self.random_seed = rospy.get_param('random_seed', 1)
         self.rng = random.Random(rospy.get_param('random_seed', 0))
     
-        print('Loading sim bounds...')
         sys.stdout.flush()
         with (DATA_PATH/'{}.sim_bounds'.format(self.map_location)).open('r') as f:
             bounds_min = carla.Vector2D(*[float(v) for v in f.readline().split(',')])
             bounds_max = carla.Vector2D(*[float(v) for v in f.readline().split(',')])
 
-        print('Loading SUMO network...')
         sys.stdout.flush()
         self.sumo_network = carla.SumoNetwork.load(str(DATA_PATH/'{}.net.xml'.format(self.map_location)))
         self.sumo_network_segments = self.sumo_network.create_segment_map()
@@ -47,7 +45,6 @@ class Summit(object):
         self.sumo_network_spawn_segments.seed_rand(self.rng.getrandbits(32))
         self.sumo_network_occupancy = carla.OccupancyMap.load(str(DATA_PATH/'{}.network.wkt'.format(self.map_location)))
 
-        print('Loading sidewalk...')
         sys.stdout.flush()
         self.sidewalk = self.sumo_network_occupancy.create_sidewalk(1.5)
         self.sidewalk_segments = self.sidewalk.create_segment_map()
@@ -55,13 +52,11 @@ class Summit(object):
         self.sidewalk_spawn_segments.seed_rand(self.rng.getrandbits(32))
         self.sidewalk_occupancy = carla.OccupancyMap.load(str(DATA_PATH/'{}.sidewalk.wkt'.format(self.map_location)))
 
-        print('Connecting to world...')
         sys.stdout.flush()
         self.client = carla.Client(address, port)
         self.client.set_timeout(10.0)
         self.world = self.client.get_world()
 
-        print('Done.')
         sys.stdout.flush()
 
 
