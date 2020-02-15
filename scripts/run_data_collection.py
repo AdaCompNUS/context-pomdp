@@ -16,6 +16,8 @@ import math, numpy
 import rosgraph
 
 
+summit_scripts = expanduser("~/summit/PythonAPI/examples")
+
 home = expanduser("~")
 root_path = os.path.join(home, 'driving_data')
 if not os.path.isdir(root_path):
@@ -187,6 +189,18 @@ def parse_cmd_args():
                         type=int,
                         default=0,                                               
                         help='debug mode')   
+    parser.add_argument('--num-car',
+                        default='20',
+                        help='Number of cars to spawn (default: 20)',
+                        type=int)
+    parser.add_argument('--num-bike',
+                        default='20',
+                        help='Number of bikes to spawn (default: 20)',
+                        type=int)
+    parser.add_argument('--num-pedestrian',
+                        default='20',
+                        help='Number of pedestrians to spawn (default: 20)',
+                        type=int)
     return parser.parse_args()
 
 
@@ -393,7 +407,7 @@ def wait_for(seconds, proc, msg):
     return check_process(proc, msg)
 
 
-def launch_summit_simulator(round, run):
+def launch_summit_simulator(round, run, cmd_args):
     global shell_cmd 
     
     if config.launch_summit:
@@ -406,9 +420,41 @@ def launch_summit_simulator(round, run):
         summit_proc = subprocess.Popen(shell_cmd, cwd=os.path.join(home, "summit/LinuxNoEditor"), shell = True)
 
         wait_for(config.max_launch_wait, summit_proc, '[launch] summit_engine')
-        time.sleep(3)   
+        time.sleep(4)
+   
+        # Spawn meshes.
+        wait_for(config.max_launch_wait, 
+                subprocess.Popen(
+                    'python3 {} --dataset {}'.format(
+                        os.path.join(summit_scripts, 'spawn_meshes.py'),
+                        config.summit_maploc),
+                    shell=True),
+                '[launch] spawn_meshes.py')
+        
+        # Spawn imagery.
+        wait_for(config.max_launch_wait, 
+                subprocess.Popen(
+                    'python3 {} --dataset {}'.format(
+                        os.path.join(summit_scripts, 'spawn_imagery.py'),
+                        config.summit_maploc),
+                    shell=True),
+                '[launch] spawn_imagery.py')
+        
+        # Spawn crowd.
+        wait_for(config.max_launch_wait, 
+                subprocess.Popen(
+                    'python3 {} --dataset {} --num-car {} --num-bike {} --num-pedestrian {}'.format(
+                        os.path.join(summit_scripts, 'gamma_crowd.py'),
+                        config.summit_maploc,
+                        cmd_args.num_car,
+                        cmd_args.num_bike,
+                        cmd_args.num_pedestrian),
+                    shell=True),
+                '[launch] gamma_crowd.py')
 
-    shell_cmd = config.ros_pref+'roslaunch connector.launch port:=' + \
+        
+
+    shell_cmd = config.ros_pref+'roslaunch summit_connector connector.launch port:=' + \
     	str(config.port) + ' map_location:=' + str(config.summit_maploc) + \
         ' random_seed:=' + str(config.random_seed)
 
@@ -609,7 +655,7 @@ if __name__ == '__main__':
 
             init_case_dirs()
 
-            launch_summit_simulator(round, run)
+            launch_summit_simulator(round, run, cmd_args)
             
             record_proc = launch_record_bag(round, run)
 

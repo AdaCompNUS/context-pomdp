@@ -11,13 +11,16 @@ maploc=random
 maploc=meskel_square
 # maploc=shi_men_er_lu
 # maploc=highway
-mode=joint_pomdp
+# mode=joint_pomdp
 # mode=rollout
-# mode=gamma
+mode=gamma
 rands=9475
 # rands=-1
-eps_len=120.0
+eps_len=1200.0
 debug=0
+num_car=50
+num_bike=50
+num_pedestrian=20
 
 echo "User: $USER"
 echo "PATH: $PATH"
@@ -39,6 +42,7 @@ do
     python3 run_data_collection.py --record $record_bags \
     --sround $start_batch --eround $end_batch \
     --make 1 --verb 1 --gpu_id $gpu --debug $debug \
+    --num-car $num_car --num-bike $num_bike --num-pedestrian $num_pedestrian\
     --port $port --maploc $maploc --rands $rands --launch_sim $launch_sim --eps_len $eps_len --drive_mode $mode 2>&1 | tee -a exp_log_$BASHPID
     echo "[repeat_run] clearing process"
     python ./clear_process.py $port

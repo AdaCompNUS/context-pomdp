@@ -15,7 +15,6 @@ from nav_msgs.msg import Odometry
 from nav_msgs.msg import Path as NavPath
 from std_msgs.msg import Float32, Bool, Int32
 
-from network_agent_path import NetworkAgentPath
 from msg_builder.msg import car_info as CarInfo  # panpan
 from util import *
 
@@ -30,6 +29,130 @@ import tf.transformations as tftrans
 change_left = -1
 remain = 0
 change_right = 1
+VEHICLE_STEER_KP = 2.5
+
+''' ========== UTILITY FUNCTIONS AND CLASSES ========== '''
+def get_signed_angle_diff(vector1, vector2):
+    theta = math.atan2(vector1.y, vector1.x) - math.atan2(vector2.y, vector2.x)
+    theta = np.rad2deg(theta)
+    if theta > 180:
+        theta -= 360
+    elif theta < -180:
+        theta += 360
+    return theta
+
+def get_position(actor):
+    pos3d = actor.get_location()
+    return carla.Vector2D(pos3d.x, pos3d.y)
+
+def get_forward_direction(actor):
+    forward = actor.get_transform().get_forward_vector()
+    return carla.Vector2D(forward.x, forward.y)
+
+def get_bounding_box(actor):
+    return actor.bounding_box
+
+def get_velocity(actor):
+    v = actor.get_velocity()
+    return carla.Vector2D(v.x, v.y)
+    
+def get_vehicle_bounding_box_corners(actor):
+    bbox = actor.bounding_box
+    loc = carla.Vector2D(bbox.location.x, bbox.location.y) + get_position(actor)
+    forward_vec = get_forward_direction(actor).make_unit_vector()
+    sideward_vec = forward_vec.rotate(np.deg2rad(90))
+    half_y_len = bbox.extent.y + 0.3
+    half_x_len_forward = bbox.extent.x + 1.0
+    half_x_len_backward = bbox.extent.x + 0.1
+    corners = [loc - half_x_len_backward * forward_vec + half_y_len * sideward_vec,
+               loc + half_x_len_forward * forward_vec + half_y_len * sideward_vec,
+               loc + half_x_len_forward * forward_vec - half_y_len * sideward_vec,
+               loc - half_x_len_backward * forward_vec - half_y_len * sideward_vec]
+    return corners
+
+def get_pedestrian_bounding_box_corners(actor):
+    bbox = actor.bounding_box
+    loc = carla.Vector2D(bbox.location.x, bbox.location.y) + get_position(actor)
+    forward_vec = get_forward_direction(actor).make_unit_vector()
+    sideward_vec = forward_vec.rotate(np.deg2rad(90))
+    # Hardcoded values for pedestrians.
+    half_y_len = 0.25
+    half_x_len = 0.25
+    corners = [loc - half_x_len * forward_vec + half_y_len * sideward_vec,
+               loc + half_x_len * forward_vec + half_y_len * sideward_vec,
+               loc + half_x_len * forward_vec - half_y_len * sideward_vec,
+               loc - half_x_len * forward_vec - half_y_len * sideward_vec]
+    return corners
+
+class NetworkAgentPath:
+    def __init__(self, sumo_network, min_points, interval):
+        self.sumo_network = sumo_network
+        self.min_points = min_points
+        self.interval = interval
+        self.route_points = []
+
+    @staticmethod
+    def rand_path(sumo_network, min_points, interval, segment_map, min_safe_points=None, rng=random):
+        if min_safe_points is None:
+            min_safe_points = min_points
+
+        spawn_point = None
+        route_paths = None
+        while not spawn_point or len(route_paths) < 1:
+            spawn_point = segment_map.rand_point()
+            spawn_point = sumo_network.get_nearest_route_point(spawn_point)
+            route_paths = sumo_network.get_next_route_paths(spawn_point, min_safe_points - 1, interval)
+
+        path = NetworkAgentPath(sumo_network, min_points, interval)
+        path.route_points = rng.choice(route_paths)[0:min_points]
+        return path
+
+    def resize(self, rng=random):
+        while len(self.route_points) < self.min_points:
+            next_points = self.sumo_network.get_next_route_points(self.route_points[-1], self.interval)
+            if len(next_points) == 0:
+                return False
+            self.route_points.append(rng.choice(next_points))
+        return True
+
+    def get_min_offset(self, position):
+        min_offset = None
+        for i in range(len(self.route_points) / 2):
+            route_point = self.route_points[i]
+            offset = position - self.sumo_network.get_route_point_position(route_point)
+            offset = offset.length() 
+            if min_offset == None or offset < min_offset:
+                min_offset = offset
+        return min_offset
+
+    def cut(self, position):
+        cut_index = 0
+        min_offset = None
+        min_offset_index = None
+        for i in range(len(self.route_points) / 2):
+            route_point = self.route_points[i]
+            offset = position - self.sumo_network.get_route_point_position(route_point)
+            offset = offset.length() 
+            if min_offset == None or offset < min_offset:
+                min_offset = offset
+                min_offset_index = i
+            if offset <= 1.0:
+                cut_index = i + 1
+
+        # Invalid path because too far away.
+        if min_offset > 1.0:
+            self.route_points = self.route_points[min_offset_index:]
+        else:
+            self.route_points = self.route_points[cut_index:]
+
+    def get_position(self, index=0):
+        return self.sumo_network.get_route_point_position(self.route_points[index])
+
+    def get_yaw(self, index=0):
+        pos = self.sumo_network.get_route_point_position(self.route_points[index])
+        next_pos = self.sumo_network.get_route_point_position(self.route_points[index + 1])
+        return np.rad2deg(math.atan2(next_pos.y - pos.y, next_pos.x - pos.x))
+
 
 
 class EgoVehicle(Summit):
@@ -45,6 +168,9 @@ class EgoVehicle(Summit):
         self.pomdp_cmd_steer = 0
         self.pomdp_cmd_speed = 0
         self.lane_decision = 0
+        self.speed_control_last_update = None
+        self.speed_control_integral = 0.0
+        self.speed_control_last_error = 0.0
 
         self.start_time = None
         self.last_decision = remain
@@ -52,6 +178,7 @@ class EgoVehicle(Summit):
         # ROS stuff.
         self.control_mode = rospy.get_param('~control_mode', 'gamma')
         self.speed_control_mode = rospy.get_param('~speed_control', 'vel')
+        self.gamma_max_speed = rospy.get_param('~gamma_max_speed', 6.0)
 
         print('Ego_vehicle control mode: {}'.format(self.control_mode))
         print('Ego_vehicle speed mode: {}'.format(self.speed_control_mode))
@@ -60,15 +187,9 @@ class EgoVehicle(Summit):
         rospy.Subscriber('/pomdp_cmd_accel', Float32, self.pomdp_cmd_accel_callback, queue_size=1)
         rospy.Subscriber('/pomdp_cmd_steer', Float32, self.pomdp_cmd_steer_callback, queue_size=1)
         rospy.Subscriber('/pomdp_cmd_speed', Float32, self.pomdp_cmd_speed_callback, queue_size=1)
-        rospy.Subscriber('/gamma_cmd_accel', Float32, self.gamma_cmd_accel_callback, queue_size=1)
-        rospy.Subscriber('/gamma_cmd_steer', Float32, self.gamma_cmd_steer_callback, queue_size=1)
-        rospy.Subscriber('/gamma_cmd_speed', Float32, self.gamma_cmd_speed_callback, queue_size=1)
 
         self.pp_cmd_accel_sub = rospy.Subscriber('/purepursuit_cmd_steer',
                                                  Float32, self.pp_cmd_steer_callback, queue_size=1)
-
-        self.gamma_lane_decision_sub = rospy.Subscriber('/gamma_lane_decision', Int32,
-                                                self.gamma_lane_change_decision_callback, queue_size=1)
 
         self.odom_broadcaster = tf.TransformBroadcaster()
         self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=1)
@@ -80,13 +201,9 @@ class EgoVehicle(Summit):
         self.actor = None
         self.speed = 0.0
         while self.actor is None:
-            scenario_segment_map = self.network_segment_map.intersection(
-                carla.OccupancyMap(self.scenario_min, self.scenario_max))
-            # scenario_segment_map = self.network_segment_map.intersection(
-            #     carla.OccupancyMap(carla.Vector2D(400, 454), carla.Vector2D(402, 456)))
-            scenario_segment_map.seed_rand(self.rng.getrandbits(32))
-            self.path = NetworkAgentPath.rand_path(self, 50, 1.0, scenario_segment_map, min_safe_points=100,
-                                                   rng=self.rng)
+            self.path = NetworkAgentPath.rand_path(
+                    self.sumo_network, 50, 1.0, self.sumo_network_spawn_segments,
+                    min_safe_points=100, rng=self.rng)
 
             vehicle_bp = self.rng.choice(self.world.get_blueprint_library().filter('vehicle.mini.cooperst'))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')
@@ -98,6 +215,7 @@ class EgoVehicle(Summit):
             spawn_trans.rotation.yaw = self.path.get_yaw()
 
             print("Ego-vehicle at {} {}".format(spawn_position.x, spawn_position.y))
+            sys.stdout.flush()
 
             self.actor = self.world.try_spawn_actor(vehicle_bp, spawn_trans)
 
@@ -108,12 +226,11 @@ class EgoVehicle(Summit):
         actor_physics_control = self.actor.get_physics_control()
         self.steer_angle_range = \
             (actor_physics_control.wheels[0].max_steer_angle + actor_physics_control.wheels[1].max_steer_angle) / 2
-
+        
         time.sleep(1)  # wait for the vehicle to drop
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()
-        rospy.wait_for_message("/agents_ready", Bool)  # wait for agents to initialize
 
         self.broadcaster = None
         self.publish_odom_transform()
@@ -171,11 +288,6 @@ class EgoVehicle(Summit):
 
         return transformStamped
 
-    def publish_odom_transform(self):
-        self.broadcaster = tf2_ros.StaticTransformBroadcaster()
-        static_transformStamped = self.get_cur_ros_transform()
-        self.broadcaster.sendTransform(static_transformStamped)
-
     def get_transform_wrt_odom_frame(self):
         try:
             (trans, rot) = self.transformer.lookupTransform("map", "odom", rospy.Time(0.2))
@@ -215,6 +327,57 @@ class EgoVehicle(Summit):
 
         return translation, yaw
 
+    def update_gamma_control(self):
+        gamma = carla.RVOSimulator()
+
+        current_id = 0
+        for (i, actor) in enumerate(self.world.get_actors()):
+            if isinstance(actor, carla.Vehicle):
+                if actor.attributes['number_of_wheels'] == 2:
+                    type_tag = 'Bicycle'
+                else:
+                    type_tag = 'Car'
+                bounding_box_corners = get_vehicle_bounding_box_corners(actor)
+            elif isinstance(actor, carla.Walker):
+                type_tag = 'People'
+                bounding_box_corners = get_pedestrian_bounding_box_corners(actor)
+            else:
+                continue
+
+            gamma.add_agent(carla.AgentParams.get_default(type_tag), current_id)
+            gamma.set_agent_position(current_id, get_position(actor))
+            gamma.set_agent_velocity(current_id, get_velocity(actor))
+            gamma.set_agent_heading(current_id, get_forward_direction(actor))
+            gamma.set_agent_bounding_box_corners(current_id, bounding_box_corners)
+            gamma.set_agent_pref_velocity(current_id, get_velocity(actor))
+            current_id += 1
+           
+        ego_id = current_id
+        gamma.add_agent(carla.AgentParams.get_default('Car'), ego_id)
+        gamma.set_agent_position(ego_id, get_position(self.actor))
+        gamma.set_agent_velocity(ego_id, get_velocity(self.actor))
+        gamma.set_agent_heading(ego_id, get_forward_direction(self.actor))
+        gamma.set_agent_bounding_box_corners(ego_id, get_vehicle_bounding_box_corners(self.actor))
+        target_position = self.path.get_position(5)
+        pref_vel = self.gamma_max_speed * (target_position - get_position(self.actor)).make_unit_vector()
+        gamma.set_agent_pref_velocity(ego_id, pref_vel)
+
+        gamma.do_step()
+        target_vel = gamma.get_agent_velocity(ego_id)
+                    
+        self.gamma_cmd_speed = target_vel.length()
+        self.gamma_cmd_steer = np.clip(
+                np.clip(
+                    VEHICLE_STEER_KP * get_signed_angle_diff(target_vel, get_forward_direction(self.actor)), 
+                    -45.0, 45.0) / self.steer_angle_range,
+                -1.0, 1.0)
+
+
+    def publish_odom_transform(self):
+        self.broadcaster = tf2_ros.StaticTransformBroadcaster()
+        static_transformStamped = self.get_cur_ros_transform()
+        self.broadcaster.sendTransform(static_transformStamped)
+
     def publish_odom(self):
         # Check if result available.
         result = self.get_transform_wrt_odom_frame()
@@ -234,14 +397,6 @@ class EgoVehicle(Summit):
         speed = np.vdot(forward, v_2d)
         odom_quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
         w_yaw = self.actor.get_angular_velocity().z
-
-        pi_2 = 2 * 3.1415926
-        print_yaw = yaw
-        if yaw < 0:
-            print_yaw = yaw + pi_2
-        if yaw >= pi_2:
-            print_yaw = yaw - pi_2
-        # print("yaw of base_link = {}".format(print_yaw))
 
         self.odom_broadcaster.sendTransform(
             (pos.x, pos.y, pos.z),
@@ -285,16 +440,6 @@ class EgoVehicle(Summit):
         car_info_msg.car_vel.x = vel.x
         car_info_msg.car_vel.y = vel.y
         car_info_msg.car_vel.z = vel.z
-
-        # WARNING: this section is hardcoded against the internals of gamma controller.
-        # GAMMA assumes these calculations, and is required for controlling ego vehicle
-        # using GAMMA. When not controlling using GAMMA, pref_vel is practically not used,
-        # since the other crowd agents calculate their velocities without knowledge of the
-        # ego vehicle's pref_vel anyway.
-        target_position = self.path.get_position(5)
-        pref_vel = 6.0 * (target_position - pos2D).make_unit_vector()
-        car_info_msg.car_pref_vel.x = pref_vel.x
-        car_info_msg.car_pref_vel.y = pref_vel.y
 
         car_info_msg.car_bbox = Polygon()
         corners = get_bounding_box_corners(self.actor)
@@ -352,17 +497,8 @@ class EgoVehicle(Summit):
     def pomdp_cmd_steer_callback(self, steer):
         self.pomdp_cmd_steer = steer.data
 
-    def gamma_cmd_accel_callback(self, accel):
-        self.gamma_cmd_accel = accel.data
-
-    def gamma_cmd_steer_callback(self, steer):
-        self.gamma_cmd_steer = steer.data
-
     def pomdp_cmd_speed_callback(self, speed):
         self.pomdp_cmd_speed = speed.data
-
-    def gamma_cmd_speed_callback(self, speed):
-        self.gamma_cmd_speed = speed.data
 
     def pp_cmd_steer_callback(self, steer):
         self.pp_cmd_steer = steer.data
@@ -502,21 +638,21 @@ class EgoVehicle(Summit):
         else:
             ego_veh_pos_in_new_lane = ego_veh_pos + 4.0 * sidewalk_vec
 
-        cur_route_point = self.network.get_nearest_route_point(
-            self.path.get_position(0))  # self.network.get_nearest_route_point(ego_veh_pos)
-        new_route_point = self.network.get_nearest_route_point(ego_veh_pos_in_new_lane)
+        cur_route_point = self.sumo_network.get_nearest_route_point(
+            self.path.get_position(0))
+        new_route_point = self.sumo_network.get_nearest_route_point(ego_veh_pos_in_new_lane)
 
         lane_change_probability = 1.0
         if new_route_point.edge == cur_route_point.edge and new_route_point.lane != cur_route_point.lane:
             if self.rng.uniform(0.0, 1.0) <= lane_change_probability:
-                new_path_candidates = self.network.get_next_route_paths(new_route_point, self.path.min_points - 1,
+                new_path_candidates = self.sumo_network.get_next_route_paths(new_route_point, self.path.min_points - 1,
                                                                         self.path.interval)
                 new_path = NetworkAgentPath(self, self.path.min_points, self.path.interval)
                 new_path.route_points = self.rng.choice(new_path_candidates)[0:self.path.min_points]
                 self.path = new_path
 
     def update(self, event):
-
+        
         # Publish info.
         if not self.path.resize():
             self.ego_dead_pub.publish(True)
@@ -526,6 +662,9 @@ class EgoVehicle(Summit):
             if not self.path.resize():
                 self.ego_dead_pub.publish(True)
                 return
+
+        if self.control_mode == 'gamma':
+            self.update_gamma_control()
 
         if self.speed_control_mode == 'acc':
             self.send_control_from_acc()
@@ -543,7 +682,6 @@ if __name__ == '__main__':
     rospy.init_node('ego_vehicle')
     init_time = rospy.Time.now()
 
-    rospy.wait_for_message("/meshes_spawned", Bool)
     ego_vehicle = EgoVehicle()
     rospy.on_shutdown(ego_vehicle.dispose)
     rospy.spin()

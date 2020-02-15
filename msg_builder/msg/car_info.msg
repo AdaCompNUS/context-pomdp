@@ -7,7 +7,6 @@ float32 car_speed
 float32 car_steer
 
 geometry_msgs/Vector3 car_vel
-geometry_msgs/Vector3 car_pref_vel
 geometry_msgs/Polygon car_bbox
 
 geometry_msgs/Point32 rear_axle_center
