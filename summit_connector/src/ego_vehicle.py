@@ -28,7 +28,7 @@ import tf.transformations as tftrans
 change_left = -1
 remain = 0
 change_right = 1
-VEHICLE_STEER_KP = 2.5
+VEHICLE_STEER_KP = 2.0
 
 ''' ========== UTILITY FUNCTIONS AND CLASSES ========== '''
 
@@ -274,6 +274,117 @@ class EgoVehicle(Summit):
         _, _, yaw = tf.transformations.euler_from_quaternion(quaternion)
 
         return translation, yaw
+   
+    def det(self, vector1, vector2):
+        return vector1.y * vector2.x - vector1.x * vector2.y
+
+    def left_of(self, a, b, c):  # if c is at the left side of vector ab, then return Ture, False otherwise
+        return self.det(a - c, b - a) > 0
+
+    def in_polygon(self, position, rect):
+        if len(rect) < 3:
+            return False
+        for i in range(0, len(rect) - 1):
+            if not self.left_of(rect[i], rect[i + 1], position):
+                return False
+        if not self.left_of(rect[len(rect) - 1], rect[0], position):
+            return False
+        return True
+    
+    def dist_to_nearest_agt_in_region(self, position, forward_vec, sidewalk_vec, lookahead_x=30, lookahead_y=4,
+                                      ref_point=None, consider_ped=False):
+
+        if ref_point is None:
+            ref_point = position
+
+        region_corners = [ref_point - (lookahead_y / 2.0) * sidewalk_vec,
+                          ref_point + (lookahead_y / 2.0) * sidewalk_vec,
+                          ref_point + (lookahead_y / 2.0) * sidewalk_vec + lookahead_x * forward_vec,
+                          ref_point - (lookahead_y / 2.0) * sidewalk_vec + lookahead_x * forward_vec]
+
+        min_dist = lookahead_x
+        for crowd_actor in self.world.get_actors():
+            if crowd_actor.id == self.actor.id:
+                continue
+            if isinstance(crowd_actor, carla.Vehicle) or (isinstance(crowd_actor, carla.Walker) and consider_ped):
+                pos_agt = get_position(crowd_actor)
+                if self.in_polygon(pos_agt, region_corners):
+                    min_dist = min(min_dist, (pos_agt - position).length())
+
+        return min_dist
+
+    def update_gamma_lane_decision(self):
+        if not self.actor:
+            return
+        
+        pos = self.actor.get_location()
+        pos2D = carla.Vector2D(pos.x, pos.y)
+        vel = self.actor.get_velocity()
+        yaw = np.deg2rad(self.actor.get_transform().rotation.yaw)
+
+        forward_vec = carla.Vector2D(math.cos(yaw), math.sin(yaw))
+        sidewalk_vec = forward_vec.rotate(np.deg2rad(90))  # rotate clockwise by 90 degree
+
+        ego_veh_pos = pos2D
+
+        left_ego_veh_pos = ego_veh_pos - 4.0 * sidewalk_vec
+        right_ego_veh_pos = ego_veh_pos + 4.0 * sidewalk_vec
+
+        cur_route_point = self.sumo_network.get_nearest_route_point(ego_veh_pos)
+        left_route_point = self.sumo_network.get_nearest_route_point(left_ego_veh_pos)
+        right_route_point = self.sumo_network.get_nearest_route_point(right_ego_veh_pos)
+
+        left_lane_exist = False
+        right_lane_exist = False
+
+        if left_route_point.edge == cur_route_point.edge and left_route_point.lane != cur_route_point.lane:
+            left_lane_exist = True
+        else:
+            left_lane_exist = False
+        if right_route_point.edge == cur_route_point.edge and right_route_point.lane != cur_route_point.lane:
+            right_lane_exist = True
+        else:
+            right_lane_exist = False
+
+        min_dist_to_front_veh = self.dist_to_nearest_agt_in_region(ego_veh_pos, forward_vec, sidewalk_vec,
+                                                                   lookahead_x=30, lookahead_y=4, ref_point=None)
+        min_dist_to_left_front_veh = -1.0
+        min_dist_to_right_front_veh = -1.0
+
+        if left_lane_exist:
+            # if want to change lane, also need to consider vehicles behind
+            min_dist_to_left_front_veh = self.dist_to_nearest_agt_in_region(left_ego_veh_pos, forward_vec, sidewalk_vec,
+                                                                            lookahead_x=35, lookahead_y=4,
+                                                                            ref_point=left_ego_veh_pos - 12.0 * forward_vec,
+                                                                            consider_ped=True)
+        if right_lane_exist:
+            # if want to change lane, also need to consider vehicles behind
+            min_dist_to_right_front_veh = self.dist_to_nearest_agt_in_region(right_ego_veh_pos, forward_vec,
+                                                                             sidewalk_vec, lookahead_x=35,
+                                                                             lookahead_y=4,
+                                                                             ref_point=right_ego_veh_pos - 12.0 * forward_vec,
+                                                                             consider_ped=True)
+
+        lane_decision = None
+    
+        if min_dist_to_front_veh >= 15:
+            lane_decision = remain
+        else:
+            if min_dist_to_left_front_veh > min_dist_to_right_front_veh:
+                if min_dist_to_left_front_veh > min_dist_to_front_veh + 3.0:
+                    lane_decision = change_left
+                else:
+                    lane_decision = remain
+            else:  # min_dist_to_left_front_veh <= min_dist_to_right_front_veh:
+                if min_dist_to_right_front_veh > min_dist_to_front_veh + 3.0:
+                    lane_decision = change_right
+                else:
+                    lane_decision = remain
+
+        if lane_decision != self.last_decision and lane_decision * self.last_decision != -1:
+            self.update_path(lane_decision)
+
+        self.last_decision = lane_decision
 
     def update_gamma_control(self):
         gamma = carla.RVOSimulator()
@@ -451,20 +562,6 @@ class EgoVehicle(Summit):
     def pp_cmd_steer_callback(self, steer):
         self.pp_cmd_steer = steer.data
 
-    def gamma_lane_change_decision_callback(self, decision):
-        sys.stdout.flush()
-
-        self.lane_decision = int(decision.data)
-        if self.lane_decision == self.last_decision:
-            return
-        if self.lane_decision * self.last_decision == -1:
-            self.last_decision = self.lane_decision
-            return
-        # print('change lane decision {}'.format(self.lane_decision))
-        # sys.stdout.flush()
-        self.last_decision = self.lane_decision
-        # self.update_path(self.lane_decision)
-
     def draw_path(self, path):
         color_i = 255
         last_loc = None
@@ -597,6 +694,8 @@ class EgoVehicle(Summit):
                                                                         self.path.interval)
                 new_path = NetworkAgentPath(self, self.path.min_points, self.path.interval)
                 new_path.route_points = self.rng.choice(new_path_candidates)[0:self.path.min_points]
+                print('NEW PATH!')
+                sys.stdout.flush()
                 self.path = new_path
 
     def update(self, event):
@@ -612,6 +711,7 @@ class EgoVehicle(Summit):
                 return
 
         if self.control_mode == 'gamma':
+            self.update_gamma_lane_decision()
             self.update_gamma_control()
 
         if self.speed_control_mode == 'acc':
