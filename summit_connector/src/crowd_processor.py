@@ -73,6 +73,11 @@ class CrowdProcessor(Summit):
             CarInfo,
             self.il_car_info_callback,
             queue_size=1)
+        self.agents_ready_pub = rospy.Publisher(
+            '/agents_ready',
+            Bool,
+            latch=True,
+            queue_size=1)
         self.agents_pub = rospy.Publisher(
             '/agent_array',
             msg_builder.msg.TrafficAgentArray,
@@ -81,6 +86,8 @@ class CrowdProcessor(Summit):
             '/agent_path_array',
             msg_builder.msg.AgentPathArray,
             queue_size=1)
+
+        self.agents_ready_pub.publish(True)
 
     def il_car_info_callback(self, car_info):
         self.ego_car_info = car_info
