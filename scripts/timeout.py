@@ -1,18 +1,18 @@
-from clear_process import clear_process
-import sys
 import time
 import subprocess
+from multiprocessing import Process
 
-if __name__ == '__main__':
-	arg_len = len(sys.argv)
-	assert(arg_len > 2)
-	sleep_time = int(sys.argv[1])
-	kill_id = int(sys.argv[2])
-	
-	time.sleep(sleep_time)
 
-	print("timeout: terminate ego script")
+class TimeoutMonitor(Process):
+    def __init__(self, pid, timeout, name, verbosity=1):
+        Process.__init__(self)
+        self.monitor_pid = pid
+        self.verbosity = verbosity
+        self.timeout = timeout
+        self.proc_name = name
 
-	subprocess.call('kill ' + str(kill_id), shell=True)
-
-	
+    def run(self):
+        time.sleep(self.timeout)
+        subprocess.call('kill ' + str(self.monitor_pid), shell=True)
+        print("timeout: terminate {} script".format(self.proc_name))
+        self.terminate()

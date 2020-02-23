@@ -1,20 +1,11 @@
 import argparse
-import subprocess
 from argparse import Namespace
-import os
 from os import path
 import random
-import sys
-import time
-import signal
 from os.path import expanduser
-from clear_process import clear_process, clear_nodes
-import copy
-from timeit import default_timer as timer
 import glob
-import math, numpy
-import rosgraph
-
+from clear_process import *
+from timeout import TimeoutMonitor
 
 summit_scripts = expanduser("~/summit/PythonAPI/examples")
 
@@ -26,100 +17,20 @@ if not os.path.isdir(root_path):
 ws_root = os.getcwd()
 ws_root = os.path.dirname(ws_root)
 ws_root = os.path.dirname(ws_root)
-print("workspace root: {}".format(ws_root))
+print_flush("workspace root: {}".format(ws_root))
 
 config = Namespace()
 
 subfolder = ''
 result_subfolder = ""
-shell_cmd = ''
-
-from multiprocessing import Process, Queue
 
 global_proc_queue = []
-
 pomdp_proc = None
 
-monitor_worker = None
-
-Timeout_inner_monitor_pid, Timeout_monitor_pid = None, None
 
 NO_NET = 0
 JOINT_POMDP = 1 
 ROLL_OUT = 2
-
-
-class SubprocessMonitor(Process):
-    def __init__(self, queue, id):
-        Process.__init__(self)
-        self.queue = queue
-        self.id = id
-        self.pomdp_proc = None
-
-        for (p_handle, p_name, p_out) in self.queue:
-            if "pomdp_proc" in p_name:
-                self.pomdp_proc = p_handle
-
-        print("SubprocessMonitor initialized")
-
-    def run(self):
-        queue_iter = 0
-        time.sleep(1)
-
-        if config.verbosity > 0:
-            print("[DEBUG] SubprocessMonitor activated")
-        while True:
-
-            if queue_iter >= len(self.queue):
-                queue_iter = 0
-            p_handle, p_name, p_out = self.queue[queue_iter]
-            queue_iter += 1
-
-            # Get the work from the queue and expand the tuple
-            process_alive = check_process(p_handle, p_name)
-
-            if process_alive is False:
-                break
-
-            ros_alive = check_ros()
-            if not ros_alive:
-                print("roscore has died!!")
-                break
-
-            time.sleep(1)
-
-        if self.pomdp_proc is not None:
-            process_alive = check_process(self.pomdp_proc, "pomdp_proc")
-
-            if process_alive is True:
-               print("Killing POMDP planning...")
-               os.kill(self.pomdp_proc.pid, signal.SIGKILL)
-               if config.verbosity > 0:
-                  print("[DEBUG] pomdp_proc killed")
-        else:
-            if config.verbosity > 0:
-                print("[DEBUG] pomdp_proc is None")
-
-
-def check_process(p_handle, p_name):
-    return_code = ''
-    try:
-        return_code = subprocess.check_output("ps -a " + "| grep " + str(p_handle.pid), shell=True)
-        return_code = return_code.decode()
-    except Exception:
-        print('Subprocess', p_name, "has died")
-        return False
-
-    feature = 'defunct'
-    if feature in return_code:
-        print('Subprocess', p_name, "has been defuncted")
-        if config.verbosity > 0:
-            print("pgrep returned", return_code)
-        return False
-
-    if config.verbosity > 1:
-        print('Subprocess', p_name, "is alive")
-    return True
 
 
 def parse_cmd_args():
@@ -206,7 +117,7 @@ def parse_cmd_args():
 
 def update_global_config(cmd_args):
     # Update the global configurations according to command line
-    print("Parsing config", flush=True)
+    print_flush("Parsing config")
 
     config.start_round = cmd_args.sround
     config.end_round = cmd_args.eround
@@ -225,7 +136,7 @@ def update_global_config(cmd_args):
         config.summit_maploc = cmd_args.maploc
     config.random_seed = cmd_args.rands
     if cmd_args.rands == -1:
-    	config.random_seed = random.randint(0, 10000000)
+        config.random_seed = random.randint(0, 10000000)
 
     config.launch_summit = bool(cmd_args.launch_sim)
     config.eps_length = cmd_args.eps_len
@@ -249,14 +160,14 @@ def update_global_config(cmd_args):
             shell_cmds = ["catkin config --merge-devel",
                 "catkin build --cmake-args -DCMAKE_BUILD_TYPE=" + compile_mode]
             for shell_cmd in shell_cmds:
-                print(shell_cmd, flush=True)
+                print_flush(shell_cmd)
                 make_proc = subprocess.call(shell_cmd, cwd=ws_root, shell = True)
 
         except Exception as e:
-            print(e)
+            print_flush(e)
             exit(12)
 
-        print("make done")
+        print_flush("make done")
 
     if "joint_pomdp" in cmd_args.drive_mode:
         config.drive_mode = JOINT_POMDP
@@ -272,73 +183,27 @@ def update_global_config(cmd_args):
         config.record_bag = 1
 
     if cmd_args.drive_mode is not "":
-        print("=> Running {} drive_mode".format(cmd_args.drive_mode))
+        print_flush("=> Running {} drive_mode".format(cmd_args.drive_mode))
         cmd_args.record = config.record_bag
 
-    print('============== cmd_args ==============')
-    print("port={}".format(config.port))
-    print("ros_port={}".format(config.ros_port))
-    print("ros command prefix: {}".format(config.ros_pref))
+    print_flush('============== cmd_args ==============')
+    print_flush("port={}".format(config.port))
+    print_flush("ros_port={}".format(config.ros_port))
+    print_flush("ros command prefix: {}".format(config.ros_pref))
 
-    print("summit map location: {}".format(config.summit_maploc))
-    print("summit random seed: {}".format(config.random_seed))
-    print("launch summit: {}".format(config.launch_summit))
+    print_flush("summit map location: {}".format(config.summit_maploc))
+    print_flush("summit random seed: {}".format(config.random_seed))
+    print_flush("launch summit: {}".format(config.launch_summit))
 
-    print("start_round: " + str(cmd_args.sround))
-    print("end_round: " + str(cmd_args.eround))
-    print("timeout: " + str(config.timeout))
-    print("verbosity: " + str(cmd_args.verb))
-    print("window: " + str(cmd_args.window))
-    print("record: " + str(cmd_args.record))
-    print("gpu id: " + str(cmd_args.gpu_id))
-    print("time scale: " + str(cmd_args.t_scale))
-    print('============== cmd_args ==============')
-
-
-def timeout_monitor(pid):
-    global shell_cmd
-    shell_cmd = "python timeout.py " + str(int(config.timeout/config.time_scale)) + ' ' + str(pid)
-    to_proc = subprocess.Popen(shell_cmd.split())
-
-    if config.verbosity > 0:
-        print(shell_cmd)
-
-    return to_proc
-
-
-def inner_timeout_monitor():
-    global shell_cmd
-    shell_cmd = "python timeout_inner.py " + str(int((config.eps_length + 10)/config.time_scale))
-    toi_proc = subprocess.Popen(shell_cmd.split())
-
-    if config.verbosity > 0:
-        print(shell_cmd)
-
-    return toi_proc
-
-
-def check_ros():
-    if rosgraph.is_master_online(master_uri=config.ros_master_url):
-        return True
-    else:
-        if config.verbosity > 0:
-            print('[DEBUG] ROS MASTER is OFFLINE')
-        return False
-
-
-def launch_ros():
-    print("Launching ros", flush=True)
-    cmd_args = config.ros_pref+"roscore -p {}".format(config.ros_port)
-    if config.verbosity > 0:
-        print(cmd_args, flush=True)
-    ros_proc = subprocess.Popen(cmd_args, shell=True)
-
-    while check_ros() is False:
-        time.sleep(1)
-        continue
-
-    if config.verbosity > 0:
-        print("[DEBUG] roscore restarted")
+    print_flush("start_round: " + str(cmd_args.sround))
+    print_flush("end_round: " + str(cmd_args.eround))
+    print_flush("timeout: " + str(config.timeout))
+    print_flush("verbosity: " + str(cmd_args.verb))
+    print_flush("window: " + str(cmd_args.window))
+    print_flush("record: " + str(cmd_args.record))
+    print_flush("gpu id: " + str(cmd_args.gpu_id))
+    print_flush("time scale: " + str(cmd_args.t_scale))
+    print_flush('============== cmd_args ==============')
 
 
 def mak_dir(path):
@@ -365,7 +230,7 @@ def get_bag_file_name(round, run):
     # remove existing bags for the same run
     for bag_name in existing_bags:
         if file_name in bag_name:
-            print("removing", bag_name)
+            print_flush("removing {}".format(bag_name))
             os.remove(bag_name)
 
     existing_active_bags = glob.glob(dir + "*.bag.active")
@@ -373,10 +238,11 @@ def get_bag_file_name(round, run):
     # remove existing bags for the same run
     for active_bag_name in existing_active_bags:
         if file_name in active_bag_name:
-            print("removing", active_bag_name)
+            print_flush("removing {}".format(active_bag_name))
             os.remove(active_bag_name)
 
     return os.path.join(dir, file_name)
+
 
 def get_txt_file_name(round, run):
     return get_bag_file_name(round, run) + '.txt'
@@ -395,108 +261,111 @@ def init_case_dirs():
     mak_dir(result_subfolder + '_debug')
 
 
-def wait_for(seconds, proc, msg):
-    wait_count = 0
-    while check_process(proc, msg) is False:
+def launch_ros():
+    print_flush("Launching ros")
+    sys.stdout.flush()
+    cmd_args = config.ros_pref + "roscore -p {}".format(config.ros_port)
+    if config.verbosity > 0:
+        print_flush(cmd_args)
+    ros_proc = subprocess.Popen(cmd_args, preexec_fn=os.setsid, shell=True)
+
+    while check_ros(config.ros_master_url, config.verbosity) is False:
         time.sleep(1)
-        wait_count += 1
 
-        if wait_count == seconds:
-            break
-
-    return check_process(proc, msg)
+    if config.verbosity > 0:
+        print_flush("[DEBUG] roscore restarted")
+    return ros_proc
 
 
 def launch_summit_simulator(round, run, cmd_args):
-    global shell_cmd 
-    
     if config.launch_summit:
         shell_cmd = 'DISPLAY= ./CarlaUE4.sh -opengl'
-        # shell_cmd = './CarlaUE4.sh -opengl'
         if config.verbosity > 0:
-            print('')
-            print(shell_cmd)
+            print_flush('')
+            print_flush(shell_cmd)
 
-        summit_proc = subprocess.Popen(shell_cmd, cwd=os.path.join(home, "summit/LinuxNoEditor"), shell = True)
+        summit_proc = subprocess.Popen(shell_cmd, 
+            cwd=os.path.join(home, "summit/LinuxNoEditor"),
+            preexec_fn=os.setsid,
+            shell=True)
 
-        wait_for(config.max_launch_wait, summit_proc, '[launch] summit_engine')
+        wait_for(config.max_launch_wait, summit_proc, 'summit')
+        global_proc_queue.append((summit_proc, "summit", None))
+
         time.sleep(4)
    
         # Spawn meshes.
-        wait_for(config.max_launch_wait, 
-                subprocess.Popen(
-                    'python {} --port {} --dataset {}'.format(
-                        os.path.join(summit_scripts, 'spawn_meshes.py'),
-                        cmd_args.port,
-                        config.summit_maploc),
-                    shell=True),
-                '[launch] spawn_meshes.py')
-        
+        shell_cmd = 'python {} --port {} --dataset {}'.format(
+            os.path.join(summit_scripts, 'spawn_meshes.py'),
+            cmd_args.port,
+            config.summit_maploc)
+        if config.verbosity > 0:
+            print_flush(shell_cmd)
+        mesh_proc = subprocess.Popen(shell_cmd.split())
+        wait_for(config.max_launch_wait, mesh_proc, '[launch] spawn_meshes.py')
+        global_proc_queue.append((mesh_proc, "mesh_proc", None))
+
         # Spawn imagery.
-        wait_for(config.max_launch_wait, 
-                subprocess.Popen(
-                    'python {} --port {} --dataset {}'.format(
-                        os.path.join(summit_scripts, 'spawn_imagery.py'),
-                        cmd_args.port,
-                        config.summit_maploc),
-                    shell=True),
-                '[launch] spawn_imagery.py')
-        
+        shell_cmd = 'python {} --port {} --dataset {}'.format(
+            os.path.join(summit_scripts, 'spawn_imagery.py'),
+            cmd_args.port,
+            config.summit_maploc)
+        if config.verbosity > 0:
+            print_flush(shell_cmd)
+        imagery_proc = subprocess.Popen(shell_cmd.split())
+        wait_for(config.max_launch_wait, imagery_proc, '[launch] spawn_imagery.py')
+        global_proc_queue.append((imagery_proc, "imagery_proc", None))
+
         # Spawn crowd.
-        wait_for(config.max_launch_wait, 
-                subprocess.Popen(
-                    'python {} --port {} --dataset {} --num-car {} --num-bike {} --num-pedestrian {}'.format(
-                        os.path.join(summit_scripts, 'gamma_crowd.py'),
-                        cmd_args.port,
-                        config.summit_maploc,
-                        cmd_args.num_car,
-                        cmd_args.num_bike,
-                        cmd_args.num_pedestrian),
-                    shell=True),
-                '[launch] gamma_crowd.py')
-        
+        shell_cmd = 'python {} --port {} --dataset {} --num-car {} --num-bike {} --num-pedestrian {}'.format(
+                    os.path.join(summit_scripts, 'gamma_crowd.py'),
+                    cmd_args.port,
+                    config.summit_maploc,
+                    cmd_args.num_car,
+                    cmd_args.num_bike,
+                    cmd_args.num_pedestrian)
+        if config.verbosity > 0:
+            print_flush(shell_cmd)
+        gamma_proc = subprocess.Popen(shell_cmd.split())
+        wait_for(config.max_launch_wait, gamma_proc, '[launch] gamma_crowd.py')
+        global_proc_queue.append((gamma_proc, "gamma_proc", None))
 
+    # ros connector for summit
     shell_cmd = config.ros_pref+'roslaunch summit_connector connector.launch port:=' + \
-    	str(config.port) + ' map_location:=' + str(config.summit_maploc) + \
+        str(config.port) + ' map_location:=' + str(config.summit_maploc) + \
         ' random_seed:=' + str(config.random_seed)
-
     if "gamma" in cmd_args.drive_mode:
-        print("launching connector with GAMMA controller...")
+        print_flush("launching connector with GAMMA controller...")
         shell_cmd = shell_cmd + ' ego_control_mode:=gamma ego_speed_mode:=vel'
     else:
         shell_cmd = shell_cmd + ' ego_control_mode:=other ego_speed_mode:=vel'
-
     if config.verbosity > 0:
-        print('')
-        print(shell_cmd)
-    summit_connector_proc = subprocess.Popen(shell_cmd, shell=True, 
+        print_flush(shell_cmd)
+    summit_connector_proc = subprocess.Popen(shell_cmd, shell=True, preexec_fn=os.setsid,
         cwd=os.path.join(ws_root, "src/summit_connector/launch"))
     wait_for(config.max_launch_wait, summit_connector_proc, '[launch] summit_connector')
-   
-    crowd_out = open("Crowd_controller_log.txt", 'w')
-    global_proc_queue.append((summit_connector_proc, "summit_connector_proc", crowd_out))
+    # global_proc_queue.append((summit_connector_proc, "summit_connector_proc", None))
 
     return
 
 
 def launch_record_bag(round, run):
     if config.record_bag:
-        global shell_cmd
         shell_cmd = config.ros_pref+'rosbag record /il_data ' \
                     + '/local_obstacles /local_lanes -o ' \
                     + get_bag_file_name(round, run) + \
                     ' __name:=bag_record'
 
         if config.verbosity > 0:
-            print('')
-            print(shell_cmd)
+            print_flush('')
+            print_flush(shell_cmd)
 
         record_proc = subprocess.Popen(shell_cmd, shell=True)
-        print("Record setup")
+        print_flush("Record setup")
 
         wait_for(config.max_launch_wait, record_proc, '[launch] record')
-        if config.record_bag:
-            global_proc_queue.append((record_proc, "record_proc", None))
+        # if config.record_bag:
+        #     global_proc_queue.append((record_proc, "record_proc", None))
 
         return record_proc
     else:
@@ -504,7 +373,6 @@ def launch_record_bag(round, run):
 
 
 def launch_pomdp_planner(round, run):
-    global shell_cmd
     global monitor_worker
     pomdp_proc, rviz_out = None, None
 
@@ -522,112 +390,45 @@ def launch_pomdp_planner(round, run):
 
     pomdp_out = open(get_txt_file_name(round, run), 'w')
 
-    print("Search log %s" % pomdp_out.name)
+    print_flush("Search log {}".format(pomdp_out.name))
 
     if config.verbosity > 0:
-        print(shell_cmd)
+        print_flush(shell_cmd)
 
     timeout_flag = False
     start_t = time.time()
     try:
-        pomdp_proc = subprocess.Popen(shell_cmd, shell=True,stdout=pomdp_out, stderr=pomdp_out)
-        print('[INFO] POMDP planning...')
+        pomdp_proc = subprocess.Popen(shell_cmd, shell=True, stdout=pomdp_out, stderr=pomdp_out)
+        print_flush('[INFO] POMDP planning...')
 
-        global_proc_queue.append((pomdp_proc, "pomdp_proc", pomdp_out))
+        # global_proc_queue.append((pomdp_proc, "main_proc", pomdp_out))
         monitor_subprocess(global_proc_queue)
+
         pomdp_proc.wait(timeout=int(config.eps_length/config.time_scale))
 
-        print("[INFO] waiting successfully ended", flush=True)
-        monitor_worker.terminate()
-
+        print_flush("[INFO] episode successfully ended")
     except subprocess.TimeoutExpired:
-        print("[INFO] episode reaches full length {} s".format(config.eps_length/config.time_scale))
-        if check_process(pomdp_proc, "pomdp_proc") is True:
-            monitor_worker.terminate()
-            os.kill(pomdp_proc.pid, signal.SIGTERM)
-            elapsed_time = time.time() - start_t
-            print('[INFO] POMDP planner exited in %f s' % elapsed_time, flush=True)
-            timeout_flag = True
+        print_flush("[INFO] episode reaches full length {} s".format(config.eps_length/config.time_scale))
     finally:
-        if not timeout_flag:
-            elapsed_time = time.time() - start_t
-            print('[INFO] POMDP planner exited in %f s' % elapsed_time)
-        check_process(record_proc, '[finally] record')
+        elapsed_time = time.time() - start_t
+        print_flush('[INFO] POMDP planner exited in {} s'.format(elapsed_time))
 
     return pomdp_proc, pomdp_out
-
-
-def kill_ros():
-    if config.verbosity > 0:
-        print('[DEBUG] Kill ros')
-    subprocess.call('pkill rosmaster', shell=True)
-    subprocess.call('pkill roscore', shell=True)
-    subprocess.call('pkill rosout', shell=True)
-
-
-def close_output_files(queue):
-    for proc, p_name, p_out in queue:
-        if p_out is not None:
-            if not p_out.closed:
-                p_out.close()
 
 
 def monitor_subprocess(queue):
     global monitor_worker
 
-    monitor_worker = SubprocessMonitor(queue, 0)
+    monitor_worker.feed_queue(queue)
     # Setting daemon to True will let the main thread exit even though the workers are blocking
     monitor_worker.daemon = True
     monitor_worker.start()
 
-    if config.verbosity >0:
-        print("SubprocessMonitor started")
-
-    for (p_handle, p_name, p_out) in queue:
-        check_process(p_handle, '[after monitor launch] ' + p_name)
-
-
-def kill_inner_timer(Timeout_inner_monitor_pid):
     if config.verbosity > 0:
-        print("[DEBUG] Killing inner timer")
-
-    if check_process(Timeout_inner_monitor_pid, 'inner_timer'):
-        os.kill(Timeout_inner_monitor_pid.pid, signal.SIGKILL)
-        time.sleep(1)
-    while check_process(Timeout_inner_monitor_pid, "inner_timer") is True:
-        print("INNER TIMER ALIVE")
-
-
-def kill_outter_timer(Timeout_monitor_pid):
-    if config.verbosity > 0:
-        print("[DEBUG] Killing outer timer")
-
-    if check_process(Timeout_monitor_pid, 'outter_timer'):
-        os.kill(Timeout_monitor_pid.pid, signal.SIGKILL)
-        time.sleep(1)
-
-    while check_process(Timeout_monitor_pid, "outter_timer") is True:
-        print("OUTTER TIMER ALIVE")
+        print_flush("SubprocessMonitor started")
 
 
 import atexit
-
-
-def pass_timers(inner_timer, outter_timer):
-    global Timeout_monitor_pid, Timeout_inner_monitor_pid
-    Timeout_monitor_pid = outter_timer
-    Timeout_inner_monitor_pid = inner_timer
-
-
-def exit_handler():
-    print('My application is ending! Clearing process...')
-    kill_inner_timer(Timeout_inner_monitor_pid)
-    kill_outter_timer(Timeout_monitor_pid)
-    
-    clear_process(clear_outter=True, port = config.port)
-
-
-atexit.register(exit_handler)
 
 
 if __name__ == '__main__':
@@ -639,21 +440,34 @@ if __name__ == '__main__':
     # background and pass the PID:
     pid = os.getpid()
     if config.verbosity > 0:
-        print('[DEBUG] pid = ' + str(pid))
-    Timeout_monitor_pid = timeout_monitor(pid)
+        print_flush('[DEBUG] pid = ' + str(pid))
 
-    launch_ros()
+    monitor_worker = SubprocessMonitor(config.ros_port, config.verbosity)
+    outter_timer = TimeoutMonitor(pid, int(config.timeout / config.time_scale),
+                                  "ego_script_timer", config.verbosity)
+    outter_timer.start()
+    ros_proc = launch_ros()
+
+    def exit_handler():
+        # print_flush('run_data_collection.py is ending! Clearing ros nodes...')
+        # kill_ros_nodes(config.ros_pref)
+        print_flush('run_data_collection.py is ending! Clearing subprocesses...')
+        monitor_worker.terminate()
+        clear_queue(global_proc_queue)
+        print_flush('run_data_collection.py is ending! Clearing timer...')
+        outter_timer.terminate()
+        os.killpg(ros_proc.pid, signal.SIGKILL)
+        # ros_proc.terminate()
+        # ros_proc.communicate()
+
+    atexit.register(exit_handler)
 
     start_run = 0 
     batch = 1
     end_run = 1 * batch
     for round in range(config.start_round, config.end_round):
         for run in range(start_run, end_run):
-            global_proc_queue.clear() # process monitor queue
-
-            if config.verbosity > 0:
-                print("[DEBUG] Launch inner timer")
-            Timeout_inner_monitor_pid = inner_timeout_monitor()
+            global_proc_queue.clear()  # process monitor queue
 
             init_case_dirs()
 
@@ -664,14 +478,12 @@ if __name__ == '__main__':
             if "pomdp" in cmd_args.drive_mode or "gamma" in cmd_args.drive_mode or "rollout" in cmd_args.drive_mode:
                 pomdp_proc, pomdp_out = launch_pomdp_planner(round, run)
 
-            kill_inner_timer(Timeout_inner_monitor_pid)
+            print_flush("[INFO] Finish data: sample_{}_{}".format(round, run))
+            kill_ros_nodes(config.ros_pref)
+            monitor_worker.terminate()
+            clear_queue(global_proc_queue, other_than='roscore')
 
-            close_output_files(global_proc_queue)
-            print("[INFO] Finish data: sample_{}_{}".format(round, run)) 
-    
-    kill_ros()
-
-    kill_outter_timer(Timeout_monitor_pid)
-
-    clear_process(port=config.port)
-
+    # print_flush("End of run_data_collection script")
+    #
+    # monitor_worker.terminate()
+    # outter_timer.terminate()
