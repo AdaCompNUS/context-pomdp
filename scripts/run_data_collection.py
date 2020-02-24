@@ -307,7 +307,7 @@ def launch_summit_simulator(round, run, cmd_args):
         shell_cmd = shell_cmd + ' ego_control_mode:=other ego_speed_mode:=vel'
     if config.verbosity > 0:
         print_flush('[run_data_collection.py] ' + shell_cmd)
-    summit_connector_proc = subprocess.Popen(shell_cmd, shell=True, preexec_fn=os.setsid,
+    summit_connector_proc = subprocess.Popen(shell_cmd, shell=True, # preexec_fn=os.setsid,
                                              cwd=os.path.join(ws_root, "src/summit_connector/launch"))
     wait_for(config.max_launch_wait, summit_connector_proc, '[launch] summit_connector')
     # global_proc_queue.append((summit_connector_proc, "summit_connector_proc", None))
