@@ -7,6 +7,7 @@ import rosgraph
 from multiprocessing import Process
 summit_launched = False
 
+
 def print_flush(msg):
     print(msg)
     sys.stdout.flush()
@@ -20,77 +21,60 @@ def check_process(p_handle, p_name, verbosity=1):
             os.killpg(p_handle.pid, 0)
         except Exception as e:
             if summit_launched:
-                print_flush('Subprocess {} has died'.format(p_name))
-            print_flush(e)
+                print_flush('[clear_process.py] Subprocess {} has died'.format(p_name))
+            # print_flush(e)
             return False
     else:
         # if not p_handle.is_alive():
-        #     print_flush('Subprocess {} has died'.format(p_name))
+        #     print_flush('[clear_process.py] Subprocess {} has died'.format(p_name))
         #     return False
         # if not psutil.pid_exists(p_handle.pid):
-        #     print_flush('Subprocess {} has died'.format(p_name))
+        #     print_flush('[clear_process.py] Subprocess {} has died'.format(p_name))
         #     return False
         try:
             os.kill(p_handle.pid, 0)
         except Exception as e:
-            print_flush('Subprocess {} has died'.format(p_name))
-            print_flush(e)
+            print_flush('[clear_process.py] Subprocess {} has died'.format(p_name))
+            # print_flush(e)
             return False
 
     if p_name == 'summit':
         summit_launched = True
 
     if verbosity > 1:
-        # print_flush('Subprocess {} pid={} pgid={} is alive'.format(p_name, p_handle.pid, os.getpgid(p_handle.pid)))
-        print_flush('Subprocess {} pid={} is alive'.format(p_name, p_handle.pid))
+        # print_flush('[clear_process.py] Subprocess {} pid={} pgid={} is alive'.format(p_name, p_handle.pid, os.getpgid(p_handle.pid)))
+        print_flush('[clear_process.py] Subprocess {} pid={} is alive'.format(p_name, p_handle.pid))
 
     return True
 
 
 def clear_queue(queue, other_than='nothing'):
 
-    print_flush("clearing queue {}".format(queue))
+    print_flush("[clear_process.py] clearing queue {}".format(queue))
     for proc, p_name, p_out in reversed(queue):
         if other_than in p_name:
             continue
 
-        print_flush("killing {}".format(p_name))
+        if check_process(proc, p_name, verbosity=2) is False:
+            continue
+
+        print_flush("[clear_process.py] killing {}".format(p_name))
         proc.kill()
         proc.communicate()
 
-        # if check_process(proc, p_name, verbosity=2) is False:
-        #     continue
-
-        # subprocess.call("kill -9 {}".format(proc.pid))
-        # os.kill(proc.pid, signal.SIGKILL)
         if p_name == 'summit' or p_name == 'roscore':
             if check_process(proc, p_name, verbosity=2):
                 os.killpg(proc.pid, signal.SIGKILL)
-        # os.killpg(proc.pid, signal.SIGINT)
-        # os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
 
-        # patience = 0
         while check_process(proc, p_name, verbosity=2) is True:
             proc.kill()
             proc.communicate()
-
-            # print_flush("Warning: {} pid={} pgid={} cpid={} still alive after killing".format(
-            #     p_name, proc.pid, os.getpgid(proc.pid), os.getgid()))
-            # if patience == 0:
-            #     # proc.kill()
-            #     # os.kill(proc.pid, signal.SIGKILL)
-            #     # os.killpg(proc.pid, signal.SIGKILL)
-            #     os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-            #     break
-            # patience += 1
             time.sleep(1)
 
         # release output streams
         if p_out is not None:
             if not p_out.closed:
                 p_out.close()
-
-        # print_flush("{} killed".format(p_name))
 
 
 def wait_for(seconds, proc, msg):
@@ -110,19 +94,25 @@ def check_ros(url, verbosity):
         return True
     else:
         if verbosity > 0:
-            print_flush('[DEBUG] ROS MASTER is OFFLINE')
+            print_flush('[clear_process.py] ROS MASTER is OFFLINE')
         return False
 
 
 def kill_ros_nodes(ros_pref):
-    subprocess.call(ros_pref + ' rosnode kill -a', shell=True)
-    time.sleep(2)
     clear_ros_log(ros_pref)
+    # subprocess.call(ros_pref + ' rosnode kill -a', shell=True)
+    cmd_arg = ros_pref + ' rosnode list | grep -v rosout | '
+    cmd_arg += ros_pref + ' xargs rosnode kill'
+
+    print_flush('[clear_process.py] ' + cmd_arg)
+    subprocess.call(cmd_arg, shell=True)
+    # time.sleep(4)
+    # clear_ros_log(ros_pref)
 
 
 def clear_ros_log(ros_pref):
     shell_cmds = [ros_pref + 'yes | rosclean purge']
-    print_flush("[INFO] Cleaning ros: {}".format(shell_cmds))
+    print_flush("[clear_process.py]  Cleaning ros: {}".format(shell_cmds))
     for shell_cmd in shell_cmds:
         subprocess.call(shell_cmd, shell=True)
 
@@ -139,7 +129,7 @@ class SubprocessMonitor(Process):
 
         self.main_proc = None
         self.verbosity = verbosity
-        print_flush("SubprocessMonitor initialized")
+        print_flush("[clear_process.py] SubprocessMonitor initialized")
 
     def feed_queue(self, queue):
         self.queue = self.queue + queue
@@ -158,7 +148,7 @@ class SubprocessMonitor(Process):
         time.sleep(1)
 
         if self.verbosity > 0:
-            print_flush("[DEBUG] SubprocessMonitor activated")
+            print_flush("[clear_process.py] SubprocessMonitor activated")
         while True:
             p_handle, p_name, p_out = self.next()
 
@@ -166,7 +156,7 @@ class SubprocessMonitor(Process):
                 break
 
             if not check_ros(self.ros_master_url, self.verbosity):
-                print_flush("roscore has died!!")
+                print_flush("[clear_process.py] roscore has died!!")
                 break
 
             time.sleep(1)
@@ -174,16 +164,16 @@ class SubprocessMonitor(Process):
         # after termination of loop
         if self.main_proc is not None:
             if check_process(self.main_proc, "main_proc"):
-                print_flush("Killing main waiting process...")
+                print_flush("[clear_process.py] Killing main waiting process...")
                 os.killpg(self.main_proc.pid, signal.SIGKILL)
         else:
             if self.verbosity > 0:
-                print_flush("[DEBUG] main_proc is None")
+                print_flush("[clear_process.py] main_proc is None")
 
-    def terminate(self):
-        print_flush("Terminating subprocess monitor")
-        # self.clear()
-        super(SubprocessMonitor, self).terminate()
+    # def terminate(self):
+    #     print_flush("[clear_process.py] Terminating subprocess monitor")
+    #     # self.clear()
+    #     super(SubprocessMonitor, self).terminate()
 
 
 if __name__ == '__main__':
@@ -194,8 +184,7 @@ if __name__ == '__main__':
     def clear_all(ros_port):
         ros_pref = "ROS_MASTER_URI=http://localhost:{} ".format(ros_port)
         kill_ros_nodes(ros_pref)
-        clear_ros_log(ros_pref)
-        print_flush("[INFO] clear_process.py")
+        print_flush("[clear_process.py]  clear_process.py")
 
         subprocess.call('pkill -9 CarlaUE4-Linux-', shell=True)
         time.sleep(1)
