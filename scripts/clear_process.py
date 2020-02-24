@@ -46,13 +46,13 @@ def clear_queue(queue, other_than='nothing'):
         if other_than in p_name:
             continue
 
-        if check_process(proc, p_name, verbosity=1) is False:
+        if check_process(proc, p_name) is False:
             continue
 
         print_flush("[clear_process.py] killing {}".format(p_name))
         try:
             patience = 0
-            while check_process(proc, p_name, verbosity=1):
+            while check_process(proc, p_name):
                 if patience < 2:
                     if p_name == 'summit':
                         os.killpg(proc.pid, signal.SIGKILL)
