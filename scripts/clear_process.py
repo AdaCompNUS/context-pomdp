@@ -22,27 +22,18 @@ def check_process(p_handle, p_name, verbosity=1):
         except Exception as e:
             if summit_launched:
                 print_flush('[clear_process.py] Subprocess {} has died'.format(p_name))
-            # print_flush(e)
             return False
     else:
-        # if not p_handle.is_alive():
-        #     print_flush('[clear_process.py] Subprocess {} has died'.format(p_name))
-        #     return False
-        # if not psutil.pid_exists(p_handle.pid):
-        #     print_flush('[clear_process.py] Subprocess {} has died'.format(p_name))
-        #     return False
         try:
             os.kill(p_handle.pid, 0)
         except Exception as e:
             print_flush('[clear_process.py] Subprocess {} has died'.format(p_name))
-            # print_flush(e)
             return False
 
     if p_name == 'summit':
         summit_launched = True
 
     if verbosity > 1:
-        # print_flush('[clear_process.py] Subprocess {} pid={} pgid={} is alive'.format(p_name, p_handle.pid, os.getpgid(p_handle.pid)))
         print_flush('[clear_process.py] Subprocess {} pid={} is alive'.format(p_name, p_handle.pid))
 
     return True
@@ -55,21 +46,30 @@ def clear_queue(queue, other_than='nothing'):
         if other_than in p_name:
             continue
 
-        if check_process(proc, p_name, verbosity=2) is False:
+        if check_process(proc, p_name, verbosity=1) is False:
             continue
 
         print_flush("[clear_process.py] killing {}".format(p_name))
-        proc.kill()
-        proc.communicate()
+        try:
+            patience = 0
+            while check_process(proc, p_name, verbosity=1):
+                if patience < 2:
+                    if p_name == 'summit':
+                        os.killpg(proc.pid, signal.SIGKILL)
+                    else:
+                        parent = psutil.Process(proc.pid)
+                        for child in parent.children(recursive=True):  # or parent.children() for recursive=False
+                            child.kill()
+                        parent.kill()
+                        proc.communicate()
+                else:
+                    proc.kill()
+                    proc.communicate()
 
-        if p_name == 'summit' or p_name == 'roscore':
-            if check_process(proc, p_name, verbosity=2):
-                os.killpg(proc.pid, signal.SIGKILL)
-
-        while check_process(proc, p_name, verbosity=2) is True:
-            proc.kill()
-            proc.communicate()
-            time.sleep(1)
+                time.sleep(1)
+                patience += 1
+        except Exception as e:
+            print_flush(e)
 
         # release output streams
         if p_out is not None:
@@ -100,14 +100,11 @@ def check_ros(url, verbosity):
 
 def kill_ros_nodes(ros_pref):
     clear_ros_log(ros_pref)
-    # subprocess.call(ros_pref + ' rosnode kill -a', shell=True)
+
     cmd_arg = ros_pref + ' rosnode list | grep -v rosout | '
     cmd_arg += ros_pref + ' xargs rosnode kill'
-
     print_flush('[clear_process.py] ' + cmd_arg)
     subprocess.call(cmd_arg, shell=True)
-    # time.sleep(4)
-    # clear_ros_log(ros_pref)
 
 
 def clear_ros_log(ros_pref):

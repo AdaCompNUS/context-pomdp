@@ -130,6 +130,9 @@ def update_global_config(cmd_args):
     config.ros_port = config.port + 111
     config.ros_master_url = "http://localhost:{}".format(config.ros_port)
     config.ros_pref = "ROS_MASTER_URI=http://localhost:{} ".format(config.ros_port)
+    config.ros_env = os.environ.copy()
+    config.ros_env['ROS_MASTER_URI'] = 'http://localhost:{}'.format(config.ros_port)
+
     if 'random' in cmd_args.maploc:
         config.summit_maploc = random.choice(['meskel_square', 'magic', 'highway', 'chandni_chowk', 'shi_men_er_lu'])
     else:
@@ -264,10 +267,10 @@ def init_case_dirs():
 def launch_ros():
     print_flush("[run_data_collection.py] Launching ros")
     sys.stdout.flush()
-    cmd_args = config.ros_pref + "roscore -p {}".format(config.ros_port)
+    cmd_args = "roscore -p {}".format(config.ros_port)
     if config.verbosity > 0:
         print_flush(cmd_args)
-    ros_proc = subprocess.Popen(cmd_args, shell=True) # preexec_fn=os.setsid,
+    ros_proc = subprocess.Popen(cmd_args.split(), env=config.ros_env)
 
     while check_ros(config.ros_master_url, config.verbosity) is False:
         time.sleep(1)
@@ -279,15 +282,16 @@ def launch_ros():
 
 def launch_summit_simulator(round, run, cmd_args):
     if config.launch_summit:
-        shell_cmd = 'DISPLAY= ./CarlaUE4.sh -opengl'
+        shell_cmd = './CarlaUE4.sh -opengl'
         if config.verbosity > 0:
             print_flush('')
             print_flush('[run_data_collection.py] ' + shell_cmd)
 
         summit_proc = subprocess.Popen(shell_cmd,
                                        cwd=os.path.join(home, "summit/LinuxNoEditor"),
-                                       preexec_fn=os.setsid,
-                                       shell=True)
+                                       env=dict(config.ros_env, DISPLAY=''),
+                                       shell=True,
+                                       preexec_fn=os.setsid)
 
         wait_for(config.max_launch_wait, summit_proc, 'summit')
         global_proc_queue.append((summit_proc, "summit", None))
@@ -297,7 +301,7 @@ def launch_summit_simulator(round, run, cmd_args):
     sim_accesories.start()
 
     # ros connector for summit
-    shell_cmd = config.ros_pref + 'roslaunch summit_connector connector.launch port:=' + \
+    shell_cmd = 'roslaunch summit_connector connector.launch port:=' + \
                 str(config.port) + ' map_location:=' + str(config.summit_maploc) + \
                 ' random_seed:=' + str(config.random_seed)
     if "gamma" in cmd_args.drive_mode:
@@ -307,17 +311,17 @@ def launch_summit_simulator(round, run, cmd_args):
         shell_cmd = shell_cmd + ' ego_control_mode:=other ego_speed_mode:=vel'
     if config.verbosity > 0:
         print_flush('[run_data_collection.py] ' + shell_cmd)
-    summit_connector_proc = subprocess.Popen(shell_cmd, shell=True, # preexec_fn=os.setsid,
+    summit_connector_proc = subprocess.Popen(shell_cmd.split(), env=config.ros_env,
                                              cwd=os.path.join(ws_root, "src/summit_connector/launch"))
     wait_for(config.max_launch_wait, summit_connector_proc, '[launch] summit_connector')
-    # global_proc_queue.append((summit_connector_proc, "summit_connector_proc", None))
+    global_proc_queue.append((summit_connector_proc, "summit_connector_proc", None))
 
     return sim_accesories
 
 
 def launch_record_bag(round, run):
     if config.record_bag:
-        shell_cmd = config.ros_pref + 'rosbag record /il_data ' \
+        shell_cmd = 'rosbag record /il_data ' \
                     + '/local_obstacles /local_lanes -o ' \
                     + get_bag_file_name(round, run) + \
                     ' __name:=bag_record'
@@ -326,7 +330,7 @@ def launch_record_bag(round, run):
             print_flush('')
             print_flush('[run_data_collection.py] ' + shell_cmd)
 
-        record_proc = subprocess.Popen(shell_cmd, shell=True)
+        record_proc = subprocess.Popen(shell_cmd.split(), env=config.ros_env)
         print_flush("[run_data_collection.py] Record setup")
 
         wait_for(config.max_launch_wait, record_proc, '[launch] record')
@@ -346,7 +350,7 @@ def launch_pomdp_planner(round, run):
     if config.debug:
         launch_file = 'planner_debug.launch'
 
-    shell_cmd = config.ros_pref + 'roslaunch --wait crowd_pomdp_planner ' + \
+    shell_cmd = 'roslaunch --wait crowd_pomdp_planner ' + \
                 launch_file + \
                 ' gpu_id:=' + str(config.gpu_id) + \
                 ' mode:=' + str(config.drive_mode) + \
@@ -363,7 +367,7 @@ def launch_pomdp_planner(round, run):
 
     start_t = time.time()
     try:
-        pomdp_proc = subprocess.Popen(shell_cmd, shell=True, stdout=pomdp_out, stderr=pomdp_out)
+        pomdp_proc = subprocess.Popen(shell_cmd.split(), env=config.ros_env, stdout=pomdp_out, stderr=pomdp_out)
         print_flush('[run_data_collection.py] POMDP planning...')
 
         # global_proc_queue.append((pomdp_proc, "main_proc", pomdp_out))
@@ -416,18 +420,13 @@ if __name__ == '__main__':
     def exit_handler():
         print_flush('[run_data_collection.py] is ending! Clearing ros nodes...')
         kill_ros_nodes(config.ros_pref)
-        print_flush('[run_data_collection.py] is ending! Clearing subprocesses...')
+        print_flush('[run_data_collection.py] is ending! Clearing Processes...')
         monitor_worker.terminate()
         sim_accesories.terminate()
-        clear_queue(global_proc_queue)
         print_flush('[run_data_collection.py] is ending! Clearing timer...')
         outter_timer.terminate()
-        # print_flush('[run_data_collection.py] is ending! Exiting ros at pid {} pgid {}...'.format(
-        #     ros_proc.pid, os.getpgid(ros_proc.pid)))
-        # ros_proc.terminate()
-        # ros_proc.communicate()
-        # os.kill(ros_proc.pid, signal.SIGKILL)
-        # os.killpg(os.getpgid(ros_proc.pid), signal.SIGKILL)
+        print_flush('[run_data_collection.py] is ending! Clearing subprocesses...')
+        clear_queue(global_proc_queue)
         print_flush('exit [run_data_collection.py]')
 
     atexit.register(exit_handler)
