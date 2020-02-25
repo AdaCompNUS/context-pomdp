@@ -28,7 +28,7 @@ import tf.transformations as tftrans
 change_left = -1
 remain = 0
 change_right = 1
-VEHICLE_STEER_KP = 2.0
+VEHICLE_STEER_KP = 2.5 # 2.0
 
 ''' ========== UTILITY FUNCTIONS AND CLASSES ========== '''
 
@@ -423,7 +423,16 @@ class EgoVehicle(Summit):
 
         gamma.do_step()
         target_vel = gamma.get_agent_velocity(ego_id)
-                    
+
+        if True:
+            cur_pos = self.actor.get_location() 
+            next_pos = carla.Location(cur_pos.x + target_vel.x, cur_pos.y + target_vel.y, 0.0)
+            pref_next_pos = carla.Location(cur_pos.x + pref_vel.x, cur_pos.y + pref_vel.y, 0.0)
+            self.world.debug.draw_line(cur_pos, next_pos, life_time=0.05,
+                                           color=carla.Color(255, 0, 0, 0))
+            self.world.debug.draw_line(cur_pos, pref_next_pos, life_time=0.05,
+                                           color=carla.Color(0, 255, 0, 0))
+            
         self.gamma_cmd_speed = target_vel.length()
         self.gamma_cmd_steer = np.clip(
                 np.clip(
