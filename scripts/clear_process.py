@@ -99,19 +99,25 @@ def check_ros(url, verbosity):
 
 
 def kill_ros_nodes(ros_pref):
-    clear_ros_log(ros_pref)
+    try:
+        clear_ros_log(ros_pref)
 
-    cmd_arg = ros_pref + ' rosnode list | grep -v rosout | '
-    cmd_arg += ros_pref + ' xargs rosnode kill'
-    print_flush('[clear_process.py] ' + cmd_arg)
-    subprocess.call(cmd_arg, shell=True)
+        cmd_arg = ros_pref + ' rosnode list | grep -v rosout | '
+        cmd_arg += ros_pref + ' xargs rosnode kill'
+        print_flush('[clear_process.py] ' + cmd_arg)
+        subprocess.call(cmd_arg, shell=True)
+    except Exception as e:
+        print_flush(e)
 
 
 def clear_ros_log(ros_pref):
-    shell_cmds = [ros_pref + 'yes | rosclean purge']
-    print_flush("[clear_process.py]  Cleaning ros: {}".format(shell_cmds))
-    for shell_cmd in shell_cmds:
-        subprocess.call(shell_cmd, shell=True)
+    try:
+        shell_cmds = [ros_pref + 'yes | rosclean purge']
+        print_flush("[clear_process.py]  Cleaning ros: {}".format(shell_cmds))
+        for shell_cmd in shell_cmds:
+            subprocess.call(shell_cmd, shell=True)
+    except Exception as e:
+        print_flush(e)
 
 
 class SubprocessMonitor(Process):

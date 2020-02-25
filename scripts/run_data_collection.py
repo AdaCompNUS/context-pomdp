@@ -418,13 +418,23 @@ if __name__ == '__main__':
 
 
     def exit_handler():
+
         print_flush('[run_data_collection.py] is ending! Clearing ros nodes...')
         kill_ros_nodes(config.ros_pref)
         print_flush('[run_data_collection.py] is ending! Clearing Processes...')
-        monitor_worker.terminate()
-        sim_accesories.terminate()
+        try:
+            monitor_worker.terminate()
+        except Exception as e:
+            print_flush(e)
+        try:
+            sim_accesories.terminate()
+        except Exception as e:
+            print_flush(e)
         print_flush('[run_data_collection.py] is ending! Clearing timer...')
-        outter_timer.terminate()
+        try:
+            outter_timer.terminate()
+        except Exception as e:
+            print_flush(e)
         print_flush('[run_data_collection.py] is ending! Clearing subprocesses...')
         clear_queue(global_proc_queue)
         print_flush('exit [run_data_collection.py]')

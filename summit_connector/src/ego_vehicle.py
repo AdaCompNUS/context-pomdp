@@ -576,9 +576,11 @@ class EgoVehicle(Summit):
     def send_control_from_vel(self):
         control = self.actor.get_control()
         if self.control_mode == 'gamma':
-            cmd_speed = self.gamma_cmd_speed
+            cmd_speed = min(self.gamma_cmd_speed, self.gamma_max_speed)
             cmd_steer = self.gamma_cmd_steer
-            kp, ki, kd, k, discount = 0.3, 0.1, 0.005, 1.0, 1.0
+            # kp, ki, kd, k, discount = 0.3, 0.1, 0.005, 1.0, 1.0
+            # kp, ki, kd, k, discount = 1.5, 0.5, 0.005, 2.5, 1.0
+            kp, ki, kd, k, discount = 1.2, 0.5, 0.2, 0.8, 0.99
         else:
             cmd_speed = self.pomdp_cmd_speed
             cmd_steer = self.pp_cmd_steer
@@ -719,7 +721,7 @@ class EgoVehicle(Summit):
         elif self.speed_control_mode == 'vel':
             self.send_control_from_vel()
 
-        # self.draw_path(self.path)
+        self.draw_path(self.path)
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()

@@ -45,9 +45,9 @@ class Spectator(Summit):
                 camera_blueprint,
                 # carla.Transform(carla.Location(x=-32.0, z=24.0), carla.Rotation(pitch=-30.0)),
                 # carla.Transform(carla.Location(x=-16.0, z=12.0), carla.Rotation(pitch=-30.0)),
-                carla.Transform(carla.Location(x=0.0, y=-0.4, z=1.2), carla.Rotation(pitch=0.0)),
-                # carla.Transform(carla.Location(x=-14.0, y=-0.0, z=20.0),
-                    # carla.Rotation(pitch=-45.0)),
+                # carla.Transform(carla.Location(x=0.0, y=-0.4, z=1.2), carla.Rotation(pitch=0.0)),
+                carla.Transform(carla.Location(x=-14.0, y=-0.0, z=20.0),
+                    carla.Rotation(pitch=-45.0)),
                 # carla.Transform(carla.Location(x=-320.0, z=480.0), carla.Rotation(pitch=-60.0)),
                 attach_to=self.actor)
             self.camera_sensor_actor.listen(self.camera_image_callback)
