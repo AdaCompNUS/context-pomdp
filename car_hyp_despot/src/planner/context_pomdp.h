@@ -1,20 +1,20 @@
 #ifndef PED_POMDP_H
 #define PED_POMDP_H
-
-#include <bits/stdint-uintn.h>
-#include <core/globals.h>
-#include <interface/belief.h>
-#include <interface/pomdp.h>
-#include <param.h>
-#include <state.h>
-#include <util/memorypool.h>
-#include <util/random.h>
 #include <iostream>
 #include <string>
 #include <vector>
 
+#include <core/globals.h>
+#include <interface/belief.h>
+#include <interface/pomdp.h>
+#include <util/memorypool.h>
+#include <util/random.h>
+
+#include "param.h"
+#include "state.h"
+#include "world_model.h"
+
 class SolverPrior;
-class WorldModel;
 namespace despot {
 class World;
 }
@@ -22,7 +22,7 @@ class World;
 using namespace std;
 using namespace despot;
 
-class PedPomdp : public DSPOMDP {
+class ContextPomdp : public DSPOMDP {
 private:
 	mutable MemoryPool<PomdpState> memory_pool_;
 	mutable Random random_;
@@ -34,7 +34,7 @@ public:
 		ACT_DEC
 	};
 
-	WorldModel *world_model;
+	WorldModel& world_model;
 
 	bool use_gamma_in_search;
 	bool use_gamma_in_simulation;
@@ -42,8 +42,7 @@ public:
 
 public:
 
-	PedPomdp();
-	PedPomdp(WorldModel &);
+	ContextPomdp();
 
 	State* CreateStartState(string type = "DEFAULT") const {
 		return 0;
@@ -90,7 +89,6 @@ public:
 
  	uint64_t Observe(const State& ) const;
 	const std::vector<int>& ObserveVector(const State& )   const;
-	std::vector<std::vector<double>> GetBeliefVector(const std::vector<State*> particles) const;
 
 	void Statistics(const std::vector<PomdpState*> particles) const;
 	void PrintState(const State& s, ostream& out = cout) const;
@@ -113,7 +111,7 @@ public:
 	bool ValidateState(const PomdpState& state, const char*) const;
 	State* CopyForSearch(const State* particle) const;
 
-	void InitGAMMASetting();
+	void InitGammaSetting();
 
 	double GetAccelerationID(ACT_TYPE action, bool debug=false) const;
 	double GetAcceleration(ACT_TYPE action, bool debug=false) const;
@@ -126,10 +124,6 @@ public:
 	PomdpState PredictAgents(const PomdpState& ped_state) const;
 
 	void CheckPreCollision(const State*);
-
-public:
-    std::vector<double> ImportanceWeight(std::vector<State*> particles, ACT_TYPE last_action) const;
-    double ImportanceScore(PomdpState* state, ACT_TYPE last_action) const;
 
 public:
 	/* GPU model to be used by HyP-DESPOT, not available for Context-POMDP*/

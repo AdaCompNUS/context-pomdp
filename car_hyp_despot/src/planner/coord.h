@@ -6,14 +6,18 @@
 #include <ostream>
 #include <math.h>
 
-#include "math_utils.h"
-
 struct COORD
 {
   double x, y;
   
   COORD() {}
   COORD(double _x, double _y) : x(_x), y(_y) {}
+
+  COORD(double angle,double length,int dummy)
+  {
+  	x=length*cos(angle);
+  	y=length*sin(angle);
+  }
 
   bool Valid() const {
     return x >= 0 && y >= 0;
@@ -122,7 +126,7 @@ inline double COORD::Angle(COORD A, COORD B, COORD C, double noise_level) {
 	double norm_AB = (B-A).Length();
 	double norm_AC = (C-A).Length();
 	if (norm_AB > noise_level && norm_AC > noise_level){
-		double cosa = DotProduct(B.x-A.x, B.y-A.y, C.x-A.x, C.y-A.y) / (norm_AB * norm_AC);
+		double cosa = (B-A).dot(C-A) / (norm_AB * norm_AC);
 		cosa = std::max(-1.0, std::min(1.0, cosa));
 		angle = acos(cosa);
 	}

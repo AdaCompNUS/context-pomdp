@@ -1,5 +1,5 @@
 /*
- * PedPomdpNode.h
+ * ContextPomdpNode.h
  *
  */
 
@@ -8,11 +8,11 @@
 
 #include "controller.h"
 
-class PedPomdpNode
+class ContextPomdpNode
 {
 public:
-  PedPomdpNode(int argc, char** argv);
-  ~PedPomdpNode() {};
+  ContextPomdpNode(int argc, char** argv);
+  ~ContextPomdpNode() {};
 
   Controller* controller;
 

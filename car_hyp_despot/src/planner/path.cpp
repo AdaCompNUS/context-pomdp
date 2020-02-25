@@ -1,7 +1,6 @@
 
 #include "path.h"
 #include<iostream>
-#include "math_utils.h"
 #include <fstream>
 using namespace std;
 
@@ -49,7 +48,7 @@ double Path::GetYaw(int i) const {
 
 	const COORD& pos = path[i];
 	const COORD& forward_pos = path[j];
-	MyVector vec(forward_pos.x - pos.x, forward_pos.y - pos.y);
+	COORD vec(forward_pos.x - pos.x, forward_pos.y - pos.y);
     double a = vec.GetAngle();
 	return a;
 }

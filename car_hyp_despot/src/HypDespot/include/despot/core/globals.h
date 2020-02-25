@@ -27,6 +27,7 @@
 namespace despot {
 
 typedef uint64_t OBS_TYPE;
+//typedef State* OBS_TYPE;
 typedef int ACT_TYPE;
 
 namespace Globals {

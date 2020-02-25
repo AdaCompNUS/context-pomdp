@@ -251,7 +251,7 @@ Ext_VNode* POMDPLite::ConstructTree(Belief* belief, const State* state, RandomSt
 	return root;
 }
 /*void Debug(const Belief* b, const char* function_name){
-	const PedPomdpBelief* belief=static_cast<const PedPomdpBelief*>(b);
+	const CrowdBelief* belief=static_cast<const CrowdBelief*>(b);
 	for (const element &e: belief->DiscreteBel)
 	{
 		int size=e.distribution.size();

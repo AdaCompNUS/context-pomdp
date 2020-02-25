@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-#include "ped_pomdp.h"
+#include "context_pomdp.h"
 #include "default_prior.h"
 
 #undef LOG
@@ -71,7 +71,7 @@ void Debug_state(State* state, string msg, const DSPOMDP* model){
 		DESPOT::Debug_mode = false;
 
 		PomdpState* hist_state = static_cast<PomdpState*>(state);
-		static_cast<const PedPomdp*>(model)->PrintState(*hist_state);
+		static_cast<const ContextPomdp*>(model)->PrintState(*hist_state);
 
 		DESPOT::Debug_mode = mode;
 
@@ -105,8 +105,8 @@ void DefaultPrior::CompareHistoryWithRecorded(){
 
 		if( different){
 			cerr << "ERROR: history "<< i << " changed after search!!!" << endl;
-			static_cast<const PedPomdp*>(model_)->PrintState(*recorded_hist_state, "Recorded hist state");
-			static_cast<const PedPomdp*>(model_)->PrintState(*hist_state, "Hist state");
+			static_cast<const ContextPomdp*>(model_)->PrintState(*recorded_hist_state, "Recorded hist state");
+			static_cast<const ContextPomdp*>(model_)->PrintState(*hist_state, "Hist state");
 
 			ERR("");
 		}
@@ -115,11 +115,11 @@ void DefaultPrior::CompareHistoryWithRecorded(){
 
 std::vector<ACT_TYPE> DefaultPrior::ComputeLegalActions(const State* state, const DSPOMDP* model){
   const PomdpState* pomdp_state = static_cast<const PomdpState*>(state);
-  const PedPomdp* pomdp_model = static_cast<const PedPomdp*>(model_);
+  const ContextPomdp* pomdp_model = static_cast<const ContextPomdp*>(model_);
 
   ACT_TYPE act_start, act_end;
 
-  double steer_to_path = pomdp_model->world_model->GetSteerToPath<PomdpState>(*pomdp_state);
+  double steer_to_path = pomdp_model->world_model.GetSteerToPath(pomdp_state->car);
 
   act_start = pomdp_model->GetActionID(pomdp_model->GetSteerIDfromSteering(steer_to_path), 0);
 

@@ -8,7 +8,6 @@
 #ifndef DEFAULT_PRIOR_H_
 #define DEFAULT_PRIOR_H_
 
-#include "disabled_util.h"
 #include "despot/interface/pomdp.h"
 #include "despot/core/globals.h"
 #include "despot/util/coord.h"

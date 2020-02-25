@@ -1,7 +1,7 @@
 #include <interface/world.h>
 #include <string>
 #include <ros/ros.h>
-#include "ped_pomdp.h"
+#include "context_pomdp.h"
 #include "param.h"
 
 #include <nav_msgs/Odometry.h>
@@ -25,11 +25,10 @@
 #include <tf/transform_listener.h>
 #include <nav_msgs/GetPlan.h>
 
-#include <msg_builder/ped_local_frame.h>
-#include <msg_builder/ped_local_frame_vector.h>
-#include <msg_builder/imitation_data.h>
 #include <msg_builder/car_info.h>
 #include <msg_builder/peds_info.h>
+#include <msg_builder/TrafficAgentArray.h>
+#include <msg_builder/AgentPathArray.h>
 
 #include "std_msgs/Float32.h"
 #include <std_msgs/Bool.h>
@@ -38,31 +37,33 @@
 
 
 using namespace despot;
-class WorldBeliefTracker;
 
 class WorldSimulator: public SimulatorBase, public World {
 private:
 	DSPOMDP* model_;
+    WorldModel& worldModel;
+
+	double car_time_stamp_;
+	double agents_time_stamp_;
+	double paths_time_stamp_;
+	CarStruct car_;
+	std::map<int, AgentStruct> exo_agents_;
 
 	PomdpStateWorld current_state_;
+	Path path_from_topic_;
 
 	int safe_action_;
 	bool goal_reached_;
 	double last_acc_;
 
-	ros::Publisher cmdPub_, actionPub_, actionPubPlot_;
-	ros::Publisher goal_pub, car_pub, pa_pub;
-	ros::Subscriber map_sub_, odom_sub, ego_sub_, ego_dead_sub_, agent_sub_, agent_path_sub_;
-  tf::TransformListener tf_;
+	ros::Publisher cmdPub_;
+	ros::Subscriber ego_sub_, ego_dead_sub_, pathSub_, agent_sub_, agent_path_sub_;
 
 	std::string map_location_;
 	int summit_port_;
 
 public:
 	double time_scale;
-	COORD odom_vel;
-	double odom_heading;
-	double baselink_heading;
 
 public:
 	WorldSimulator(ros::NodeHandle& _nh, DSPOMDP* model, unsigned seed,
@@ -74,29 +75,22 @@ public:
 	bool Connect();
 	void Connect_Carla();
 	State* Initialize();
+	std::map<double, AgentStruct&> GetSortedAgents();
 	State* GetCurrentState();
 	bool ExecuteAction(ACT_TYPE action, OBS_TYPE& obs);
 	double StepReward(PomdpStateWorld& state, ACT_TYPE action);
+	bool Emergency();
 
-	void PublishPedsPrediciton();
-	void PublishAction(int action, double reward);
+	void UpdateCmds(ACT_TYPE action, bool buffered = false);
 	void PublishCmdAction(const ros::TimerEvent &e);
 	void PublishCmdAction(ACT_TYPE);
-	void PublishROSState();
-  void PublishPath();
 
-  void RobotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
-  void SpeedCallback(nav_msgs::Odometry odo);
-  void MoveSpeedCallback(geometry_msgs::Twist speed);
-  void CmdSteerCallback(const std_msgs::Float32::ConstPtr steer);
-  void LaneChangeCallback(const std_msgs::Int32::ConstPtr data);
-  void EgoDeadCallBack(const std_msgs::Bool ego_dead);
+	void EgoDeadCallBack(const std_msgs::Bool ego_dead);
+	void EgoStateCallBack(const msg_builder::car_info::ConstPtr car);
+	void RetrievePathCallBack(const nav_msgs::Path::ConstPtr path);
 
-	bool GetObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
-	tf::Stamped<tf::Pose>GetBaseLinkPose();
+	void AgentArrayCallback(msg_builder::TrafficAgentArray data);
+	void AgentPathArrayCallback(msg_builder::AgentPathArray data);
 
-  void UpdateEgoCar(const msg_builder::car_info::ConstPtr car);
-	void UpdateCmdsNaive(ACT_TYPE action, bool buffered = false);
-	void UpdateCmdsBuffered(const ros::TimerEvent &e);
 };
 

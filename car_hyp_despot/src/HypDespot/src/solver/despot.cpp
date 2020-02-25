@@ -11,7 +11,7 @@ if (despot::logging::level() < despot::logging::ERROR || despot::logging::level(
 else despot::logging::stream(lv)
 #include <despot/util/logging.h>
 
-#include "debug_util.h"
+#include "utils.h"
 
 using namespace std;
 static double HitCount = 0;
@@ -38,7 +38,7 @@ bool SolverPrior::prior_force_acc = false;
 
 #define COL_VALUE_THREAD -35
 
-#include "ped_pomdp.h"
+#include "context_pomdp.h"
 
 namespace despot {
 bool DESPOT::use_GPU_;
@@ -201,7 +201,6 @@ Shared_VNode* DESPOT::Trial(Shared_VNode* root, RandomStreams& streams,
                             ScenarioLowerBound* lower_bound, ScenarioUpperBound* upper_bound,
                             const DSPOMDP* model, History& history, bool& Expansion_done,
                             Shared_SearchStatistics* statistics, bool despot_thread) {
-	logd << __FUNCTION__ << endl;
 	Shared_VNode* cur = root;
 
 	int hist_size = history.Size();

@@ -29,7 +29,7 @@
 #include <tf/transform_listener.h>
 #include <nav_msgs/GetPlan.h>
 #include "world_model.h"
-#include "ped_pomdp.h"
+#include "context_pomdp.h"
 #include "core/particle_belief.h"
 #include "solver/despot.h"
 #include <msg_builder/StartGoal.h>
@@ -38,56 +38,40 @@
 class WorldSimulator;
 class POMDPSimulator;
 
-class PedPomdpBelief;
+class CrowdBelief;
 
 using namespace std;
 
 class Controller: public Planner
 {
 private:
-  ros::NodeHandle& nh_;
 
-  ros::Subscriber pathSub_;
-  ros::Subscriber navGoalSub_;
+	WorldSimulator* summit_driving_simulator_;
+	CrowdBelief* ped_belief_;
+	DSPOMDP* model_;
+	ContextPomdp* context_pomdp_;
+	SolverPrior* prior_;
 
-  ros::Publisher pedStatePub_;
-  ros::Publisher plannerPedsPub_;
-  ros::Publisher start_goal_pub_;
-  ros::Publisher pathPub_;
+	ACT_TYPE last_action_;
+	OBS_TYPE last_obs_;
 
-  ros::Timer timer_;
+	double control_freq_;
 
-  string global_frame_id_;
-  ACT_TYPE last_action_;
-  OBS_TYPE last_obs_;
-  bool fixed_path_;
-  double control_freq_;
-
-  WorldSimulator* summit_driving_simulator_;
-  PedPomdpBelief* ped_belief_;
-  DSPOMDP* model_;
-  SolverPrior* prior_;
-  Path path_from_topic_;
+	ros::NodeHandle& nh_;
+	ros::Subscriber pathSub_;
+	ros::Timer timer_;
 
 public:
 
-  Controller(ros::NodeHandle& nh, bool fixed_path);
-  ~Controller();
+	Controller(ros::NodeHandle& nh, bool fixed_path);
+	~Controller();
 
 private:
 
-  void ControlLoop(const ros::TimerEvent &e);
-  double StepReward(PomdpStateWorld& state, int action);
+	void ControlLoop(const ros::TimerEvent &e);
+	double StepReward(PomdpStateWorld& state, int action);
 
-	void PublishPath(const string& frame_id, const Path& path);
-	bool GetEgoPosFromSummit();
-	void RetrievePathCallBack(const nav_msgs::Path::ConstPtr path);
-
-	void PredictPedsForSearch(State* search_state);
-	void UpdatePriors(const State* cur_state, State* search_state);
-	void TruncPriors(int cur_search_hist_len);
 	void CreateDefaultPriors(DSPOMDP* model);
-
 	DSPOMDP* InitializeModel(option::Option* options);
 	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options);
 	void InitializeDefaultParameters();
@@ -102,8 +86,8 @@ public:
 public:
 	static int b_drive_mode;
 	static int gpu_id;
-  static int summit_port;
-  static float time_scale; // scale down the speed of time, value < 1.0
-  static std::string map_location;
+	static int summit_port;
+	static float time_scale; // scale down the speed of time, value < 1.0
+	static std::string map_location;
 };
 #endif /* CONTROLLER_H_ */

@@ -1,5 +1,11 @@
 <launch>
-    <node name="ped_pomdp" pkg="crowd_pomdp_planner" type="ped_pomdp" respawn="false" output="screen" required="true">
+    <node name="ped_pomdp" 
+        pkg="crowd_pomdp_planner" 
+        type="ped_pomdp" 
+        respawn="false" 
+        output="screen" 
+        required="true"
+        launch-prefix="xterm -e gdb -ex 'break context_pomdp.cpp:468' -ex 'break context_pomdp.cpp:377' -ex 'break world_model.cpp:1274' -ex 'break context_pomdp.cpp:476' --args">
         <rosparam file="$(find crowd_pomdp_planner)/is_despot_param.yaml" command="load" />
         <param name = "gpu_id" value="$(arg gpu_id)" />
         <param name = "map_location" value="$(arg map_location)" />
