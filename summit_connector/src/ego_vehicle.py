@@ -433,7 +433,7 @@ class EgoVehicle(Summit):
         gamma.do_step()
         target_vel = gamma.get_agent_velocity(ego_id)
 
-        if True:
+        if False:
             cur_pos = self.actor.get_location() 
             next_pos = carla.Location(cur_pos.x + target_vel.x, cur_pos.y + target_vel.y, 0.0)
             pref_next_pos = carla.Location(cur_pos.x + pref_vel.x, cur_pos.y + pref_vel.y, 0.0)
@@ -712,7 +712,7 @@ class EgoVehicle(Summit):
             if self.rng.uniform(0.0, 1.0) <= lane_change_probability:
                 new_path_candidates = self.sumo_network.get_next_route_paths(new_route_point, self.path.min_points - 1,
                                                                         self.path.interval)
-                new_path = NetworkAgentPath(self, self.path.min_points, self.path.interval)
+                new_path = NetworkAgentPath(self.sumo_network, self.path.min_points, self.path.interval)
                 new_path.route_points = self.rng.choice(new_path_candidates)[0:self.path.min_points]
                 print('NEW PATH!')
                 sys.stdout.flush()
@@ -734,8 +734,9 @@ class EgoVehicle(Summit):
                 self.ego_dead_pub.publish(True)
                 return
 
+        self.update_gamma_lane_decision()
+
         if self.control_mode == 'gamma':
-            self.update_gamma_lane_decision()
             self.update_gamma_control()
 
         if self.speed_control_mode == 'acc':
@@ -743,7 +744,7 @@ class EgoVehicle(Summit):
         elif self.speed_control_mode == 'vel':
             self.send_control_from_vel()
 
-        self.draw_path(self.path)
+        # self.draw_path(self.path)
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()
