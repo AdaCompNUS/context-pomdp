@@ -128,6 +128,7 @@ def update_global_config(cmd_args):
     config.gpu_id = int(cmd_args.gpu_id)
     config.port = int(cmd_args.port)
     config.ros_port = config.port + 111
+    config.pyro_port = config.port + 6100
     config.ros_master_url = "http://localhost:{}".format(config.ros_port)
     config.ros_pref = "ROS_MASTER_URI=http://localhost:{} ".format(config.ros_port)
     config.ros_env = os.environ.copy()
@@ -302,7 +303,8 @@ def launch_summit_simulator(round, run, cmd_args):
 
     # ros connector for summit
     shell_cmd = 'roslaunch summit_connector connector.launch port:=' + \
-                str(config.port) + ' map_location:=' + str(config.summit_maploc) + \
+                str(config.port) + ' pyro_port:=' + str(config.pyro_port) + \
+                ' map_location:=' + str(config.summit_maploc) + \
                 ' random_seed:=' + str(config.random_seed)
     if "gamma" in cmd_args.drive_mode:
         print_flush("launching connector with GAMMA controller...")

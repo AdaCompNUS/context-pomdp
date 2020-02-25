@@ -16,8 +16,6 @@ def print_flush(msg):
 class SimulatorAccessories(Process):
     def __init__(self, cmd_args, config):
         Process.__init__(self)
-        self.cmd_args = cmd_args
-        self.config = config
 
         Args = collections.namedtuple('args', 'host port pyroport dataset num_car num_bike num_pedestrian seed collision'
                                               ' clearance_car clearance_bike clearance_pedestrian'
@@ -26,12 +24,12 @@ class SimulatorAccessories(Process):
         # Spawn meshes.
         self.args = Args(
             host='127.0.0.1',
-            port=self.cmd_args.port,
-            pyroport = self.cmd_args.port + 6100,
-            dataset=self.config.summit_maploc,
-            num_car=self.cmd_args.num_car,
-            num_bike=self.cmd_args.num_bike,
-            num_pedestrian=self.cmd_args.num_pedestrian,
+            port=cmd_args.port,
+            pyroport = config.pyro_port,
+            dataset=config.summit_maploc,
+            num_car=cmd_args.num_car,
+            num_bike=cmd_args.num_bike,
+            num_pedestrian=cmd_args.num_pedestrian,
             seed=-1,
             collision=True,
             clearance_car=7.0,
