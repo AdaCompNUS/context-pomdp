@@ -27,6 +27,7 @@ class SimulatorAccessories(Process):
         self.args = Args(
             host='127.0.0.1',
             port=self.cmd_args.port,
+            pyroport = self.cmd_args.port + 6100,
             dataset=self.config.summit_maploc,
             num_car=self.cmd_args.num_car,
             num_bike=self.cmd_args.num_bike,
