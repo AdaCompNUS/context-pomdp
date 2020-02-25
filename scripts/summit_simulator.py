@@ -16,6 +16,7 @@ def print_flush(msg):
 class SimulatorAccessories(Process):
     def __init__(self, cmd_args, config):
         Process.__init__(self)
+        self.verbosity = config.verbosity
 
         Args = collections.namedtuple('args', 'host port pyroport dataset num_car num_bike num_pedestrian seed collision'
                                               ' clearance_car clearance_bike clearance_pedestrian'
@@ -41,16 +42,16 @@ class SimulatorAccessories(Process):
             stuck_duration=5.0)
 
     def run(self):
-        if self.config.verbosity > 0:
+        if self.verbosity > 0:
             print_flush("[summit_simulator.py] spawning meshes")
         spawn_meshes.main(self.args)
 
         # Spawn imagery.
-        if self.config.verbosity > 0:
+        if self.verbosity > 0:
             print_flush("[summit_simulator.py] spawning imagery")
         spawn_imagery.main(self.args)
 
         # Spawn crowd.
-        if self.config.verbosity > 0:
+        if self.verbosity > 0:
             print_flush("[summit_simulator.py] Spawning crowd")
         gamma_crowd.main(self.args)
