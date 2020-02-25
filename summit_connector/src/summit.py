@@ -37,6 +37,7 @@ class Summit(object):
         with (DATA_PATH/'{}.sim_bounds'.format(self.map_location)).open('r') as f:
             bounds_min = carla.Vector2D(*[float(v) for v in f.readline().split(',')])
             bounds_max = carla.Vector2D(*[float(v) for v in f.readline().split(',')])
+            self.bounds_occupancy = carla.OccupancyMap(bounds_min, bounds_max)
 
         sys.stdout.flush()
         self.sumo_network = carla.SumoNetwork.load(str(DATA_PATH/'{}.net.xml'.format(self.map_location)))

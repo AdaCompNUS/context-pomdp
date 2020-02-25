@@ -699,7 +699,11 @@ class EgoVehicle(Summit):
                 self.path = new_path
 
     def update(self, event):
-        
+
+        if not self.bounds_occupancy.contains(self.get_position()):
+            self.ego_dead_pub.publish(True)
+            return
+
         # Publish info.
         if not self.path.resize():
             self.ego_dead_pub.publish(True)
