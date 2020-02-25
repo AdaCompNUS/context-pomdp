@@ -19,7 +19,7 @@ class SimulatorAccessories(Process):
         self.cmd_args = cmd_args
         self.config = config
 
-        Args = collections.namedtuple('args', 'host port dataset num_car num_bike num_pedestrian seed collision'
+        Args = collections.namedtuple('args', 'host port pyroport dataset num_car num_bike num_pedestrian seed collision'
                                               ' clearance_car clearance_bike clearance_pedestrian'
                                               ' lane_change_probability cross_probability stuck_speed stuck_duration')
 
