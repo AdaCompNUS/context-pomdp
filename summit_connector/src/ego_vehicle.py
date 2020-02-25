@@ -184,7 +184,12 @@ class EgoVehicle(Summit):
         self.publish_odom_transform()
         self.transformer = TransformListener()
 
+        rospy.wait_for_message("/agents_ready", Bool)
+        print("[ego_vehicle.py] /agents_ready received")
+        
         self.update_timer = rospy.Timer(rospy.Duration(1.0 / 20), self.update)
+
+
 
     def dispose(self):
         self.update_timer.shutdown()

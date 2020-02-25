@@ -6,6 +6,9 @@
   <arg name="ego_control_mode" default="gamma" />
   <arg name="ego_speed_control" default="vel" />
   <arg name="random_seed" default="0" />
+  <arg name="num_car" default="0" />
+  <arg name="num_bike" default="0" />
+  <arg name="num_ped" default="0" />
 
   <param name="address" type="string" value="$(arg address)" />
   <param name="port" type="int" value="$(arg port)" />
@@ -28,6 +31,9 @@
 
   <node name="crowd_processor" pkg="summit_connector" type="crowd_processor.py" output="screen">
     <param name="pyro_port" value="$(arg pyro_port)"/>
+    <param name="num_car" value="$(arg num_car)"/>
+    <param name="num_bike" value="$(arg num_bike)"/>
+    <param name="num_ped" value="$(arg num_ped)"/>
   </node>
 
   <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
