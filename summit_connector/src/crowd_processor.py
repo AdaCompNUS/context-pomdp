@@ -61,8 +61,8 @@ Pyro4.util.SerializerBase.register_dict_to_class(
 class CrowdProcessor(Summit):
     def __init__(self):
         super(CrowdProcessor, self).__init__()
-
-        self.crowd_service = Pyro4.Proxy('PYRO:crowdservice.warehouse@localhost:8100')
+        pyro_port = rospy.get_param('~pyro_port', '8100')
+        self.crowd_service = Pyro4.Proxy('PYRO:crowdservice.warehouse@localhost:{}'.format(pyro_port))
         self.network_agents = []
         self.sidewalk_agents = []
         self.ego_car_info = None
