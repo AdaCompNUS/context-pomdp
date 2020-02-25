@@ -391,6 +391,12 @@ class EgoVehicle(Summit):
 
         gamma_id = 0
         for (i, actor) in enumerate(self.world.get_actors()):
+            if actor.id == self.actor.id:
+                continue
+
+            if (get_position(self.actor) - get_position(actor)).length() > 20:
+                continue
+
             if isinstance(actor, carla.Vehicle):
                 if actor.attributes['number_of_wheels'] == 2:
                     type_tag = 'Bicycle'
@@ -419,7 +425,10 @@ class EgoVehicle(Summit):
         gamma.set_agent_bounding_box_corners(ego_id, get_vehicle_bounding_box_corners(self.actor))
         target_position = self.path.get_position(5)
         pref_vel = self.gamma_max_speed * (target_position - get_position(self.actor)).make_unit_vector()
+        path_forward = (self.path.get_position(1) - 
+                            self.path.get_position(0)).make_unit_vector()
         gamma.set_agent_pref_velocity(ego_id, pref_vel)
+        gamma.set_agent_path_forward(ego_id, path_forward)
 
         gamma.do_step()
         target_vel = gamma.get_agent_velocity(ego_id)
