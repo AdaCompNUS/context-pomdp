@@ -23,12 +23,26 @@ import geometry_msgs
 import time
 from tf import TransformListener
 import tf.transformations as tftrans
+import Pyro4
 
-
-change_left = -1
-remain = 0
-change_right = 1
+CHANGE_LEFT = -1
+REMAIN = 0
+CHANGE_RIGHT = 1
 VEHICLE_STEER_KP = 2.5 # 2.0
+
+Pyro4.config.COMMTIMEOUT = 2.0
+Pyro4.config.SERIALIZERS_ACCEPTED.add('serpent')
+Pyro4.config.SERIALIZER = 'serpent'
+Pyro4.util.SerializerBase.register_class_to_dict(
+        carla.Vector2D, 
+        lambda o: { 
+            '__class__': 'carla.Vector2D',
+            'x': o.x,
+            'y': o.y
+        })
+Pyro4.util.SerializerBase.register_dict_to_class(
+        'carla.Vector2D',
+        lambda c, o: carla.Vector2D(o['x'], o['y']))
 
 ''' ========== UTILITY FUNCTIONS AND CLASSES ========== '''
 
@@ -121,16 +135,20 @@ class EgoVehicle(Summit):
         self.speed_control_last_error = 0.0
 
         self.start_time = None
-        self.last_decision = remain
+        self.last_decision = REMAIN
 
         # ROS stuff.
+        pyro_port = rospy.get_param('~pyro_port', '8100')
         self.control_mode = rospy.get_param('~control_mode', 'gamma')
         self.speed_control_mode = rospy.get_param('~speed_control', 'vel')
         self.gamma_max_speed = rospy.get_param('~gamma_max_speed', 6.0)
+        self.crowd_range = rospy.get_param('~crowd_range', 50.0)
 
         print('Ego_vehicle control mode: {}'.format(self.control_mode))
         print('Ego_vehicle speed mode: {}'.format(self.speed_control_mode))
         sys.stdout.flush()
+
+        self.crowd_service = Pyro4.Proxy('PYRO:crowdservice.warehouse@localhost:{}'.format(pyro_port))
 
         rospy.Subscriber('/pomdp_cmd_accel', Float32, self.pomdp_cmd_accel_callback, queue_size=1)
         rospy.Subscriber('/pomdp_cmd_steer', Float32, self.pomdp_cmd_steer_callback, queue_size=1)
@@ -176,6 +194,7 @@ class EgoVehicle(Summit):
             (actor_physics_control.wheels[0].max_steer_angle + actor_physics_control.wheels[1].max_steer_angle) / 2
         
         time.sleep(1)  # wait for the vehicle to drop
+        self.update_crowd_range()
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()
@@ -373,18 +392,18 @@ class EgoVehicle(Summit):
         lane_decision = None
     
         if min_dist_to_front_veh >= 15:
-            lane_decision = remain
+            lane_decision = REMAIN
         else:
             if min_dist_to_left_front_veh > min_dist_to_right_front_veh:
                 if min_dist_to_left_front_veh > min_dist_to_front_veh + 3.0:
-                    lane_decision = change_left
+                    lane_decision = CHANGE_LEFT
                 else:
-                    lane_decision = remain
+                    lane_decision = REMAIN
             else:  # min_dist_to_left_front_veh <= min_dist_to_right_front_veh:
                 if min_dist_to_right_front_veh > min_dist_to_front_veh + 3.0:
-                    lane_decision = change_right
+                    lane_decision = CHANGE_RIGHT
                 else:
-                    lane_decision = remain
+                    lane_decision = REMAIN
 
         if lane_decision != self.last_decision and lane_decision * self.last_decision != -1:
             self.update_path(lane_decision)
@@ -454,6 +473,11 @@ class EgoVehicle(Summit):
                     -45.0, 45.0) / self.steer_angle_range,
                 -1.0, 1.0)
 
+    def update_crowd_range(self):
+        pos = self.actor.get_location()
+        bounds_min = carla.Vector2D(pos.x - self.crowd_range, pos.y - self.crowd_range)
+        bounds_max = carla.Vector2D(pos.x + self.crowd_range, pos.y + self.crowd_range)
+        self.crowd_service.simulation_bounds = (bounds_min, bounds_max)
 
     def publish_odom_transform(self):
         self.broadcaster = tf2_ros.StaticTransformBroadcaster()
@@ -692,7 +716,7 @@ class EgoVehicle(Summit):
         self.actor.apply_control(control)
 
     def update_path(self, lane_decision):
-        if lane_decision == remain:
+        if lane_decision == REMAIN:
             return
 
         pos = self.actor.get_location()
@@ -703,7 +727,7 @@ class EgoVehicle(Summit):
         sidewalk_vec = forward_vec.rotate(np.deg2rad(90))  # rotate clockwise by 90 degree
 
         ego_veh_pos_in_new_lane = None
-        if lane_decision == change_left:
+        if lane_decision == CHANGE_LEFT:
             ego_veh_pos_in_new_lane = ego_veh_pos - 4.0 * sidewalk_vec
         else:
             ego_veh_pos_in_new_lane = ego_veh_pos + 4.0 * sidewalk_vec
@@ -750,6 +774,7 @@ class EgoVehicle(Summit):
             self.send_control_from_vel()
 
         # self.draw_path(self.path)
+        self.update_crowd_range()
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()
