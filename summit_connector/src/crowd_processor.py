@@ -115,13 +115,14 @@ class CrowdProcessor(Summit):
         if not self.ego_car_info:
             return
 
-        if len(self.world.get_actors()) > self.total_num_agents / 1.5:
+        if len(self.world.get_actors()) > self.total_num_agents / 2.0:
             # print("[crowd_processor.py] {} crowd agents ready".format(
                 # len(self.world.get_actors())))
             self.agents_ready_pub.publish(True)
         else:
-            print("[crowd_processor.py] {} percent of agents ready".format(
-                len(self.world.get_actors()) / float(self.total_num_agents)))
+        	pass
+            # print("[crowd_processor.py] {} percent of agents ready".format(
+                # len(self.world.get_actors()) / float(self.total_num_agents)))
 
         ego_car_position = self.ego_car_info.car_pos
         ego_car_position = carla.Vector2D(

@@ -348,7 +348,6 @@ def launch_record_bag(round, run):
 
 
 def launch_pomdp_planner(round, run):
-    global monitor_worker
     pomdp_proc, rviz_out = None, None
 
     launch_file = 'planner.launch'
