@@ -133,6 +133,8 @@ class EgoVehicle(Summit):
         self.speed_control_last_update = None
         self.speed_control_integral = 0.0
         self.speed_control_last_error = 0.0
+        self.agents_ready = False
+        self.last_crowd_range_update = None
 
         self.start_time = None
         self.last_decision = REMAIN
@@ -153,6 +155,7 @@ class EgoVehicle(Summit):
         rospy.Subscriber('/pomdp_cmd_accel', Float32, self.pomdp_cmd_accel_callback, queue_size=1)
         rospy.Subscriber('/pomdp_cmd_steer', Float32, self.pomdp_cmd_steer_callback, queue_size=1)
         rospy.Subscriber('/pomdp_cmd_speed', Float32, self.pomdp_cmd_speed_callback, queue_size=1)
+        rospy.Subscriber('/agents_ready', Bool, self.agents_ready_callback, queue_size=1)
 
         self.pp_cmd_accel_sub = rospy.Subscriber('/purepursuit_cmd_steer',
                                                  Float32, self.pp_cmd_steer_callback, queue_size=1)
@@ -203,15 +206,8 @@ class EgoVehicle(Summit):
         self.publish_odom_transform()
         self.transformer = TransformListener()
 
-        rospy.wait_for_message("/agents_ready", Bool)
-        print("[ego_vehicle.py] /agents_ready received")
-        
-        self.update_timer = rospy.Timer(rospy.Duration(1.0 / 20), self.update)
-
-
 
     def dispose(self):
-        self.update_timer.shutdown()
         self.actor.destroy()
 
     def get_position(self):
@@ -474,10 +470,13 @@ class EgoVehicle(Summit):
                 -1.0, 1.0)
 
     def update_crowd_range(self):
-        pos = self.actor.get_location()
-        bounds_min = carla.Vector2D(pos.x - self.crowd_range, pos.y - self.crowd_range)
-        bounds_max = carla.Vector2D(pos.x + self.crowd_range, pos.y + self.crowd_range)
-        self.crowd_service.simulation_bounds = (bounds_min, bounds_max)
+        # Cap frequency so that GAMMA loop doesn't die.
+        if self.last_crowd_range_update is None or time.time() - self.last_crowd_range_update > 1.0:
+            pos = self.actor.get_location()
+            bounds_min = carla.Vector2D(pos.x - self.crowd_range, pos.y - self.crowd_range)
+            bounds_max = carla.Vector2D(pos.x + self.crowd_range, pos.y + self.crowd_range)
+            self.crowd_service.simulation_bounds = (bounds_min, bounds_max)
+            self.last_crowd_range_update = time.time()
 
     def publish_odom_transform(self):
         self.broadcaster = tf2_ros.StaticTransformBroadcaster()
@@ -608,6 +607,9 @@ class EgoVehicle(Summit):
 
     def pp_cmd_steer_callback(self, steer):
         self.pp_cmd_steer = steer.data
+    
+    def agents_ready_callback(self, ready):
+        self.agents_ready = ready.data
 
     def draw_path(self, path):
         color_i = 255
@@ -747,7 +749,9 @@ class EgoVehicle(Summit):
                 sys.stdout.flush()
                 self.path = new_path
 
-    def update(self, event):
+    def update(self):
+        if not self.agents_ready:
+            return
 
         if not self.bounds_occupancy.contains(self.get_position()):
             self.ego_dead_pub.publish(True)
@@ -786,5 +790,9 @@ if __name__ == '__main__':
     init_time = rospy.Time.now()
 
     ego_vehicle = EgoVehicle()
-    rospy.on_shutdown(ego_vehicle.dispose)
-    rospy.spin()
+
+    rate = rospy.Rate(20)
+    while not rospy.is_shutdown():
+        ego_vehicle.update()
+        rate.sleep()
+    ego_vehicle.dispose()
