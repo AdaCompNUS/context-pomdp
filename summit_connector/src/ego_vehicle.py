@@ -23,6 +23,11 @@ import geometry_msgs
 import time
 from tf import TransformListener
 import tf.transformations as tftrans
+
+import os
+os.environ["PYRO_LOGFILE"] = "pyro.log"
+os.environ["PYRO_LOGLEVEL"] = "DEBUG"
+
 import Pyro4
 
 CHANGE_LEFT = -1
