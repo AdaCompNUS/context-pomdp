@@ -117,7 +117,7 @@ class CrowdProcessor(Summit):
         if not self.ego_car_info:
             return
 
-        if len(self.world.get_actors()) > self.total_num_agents / 2.0 or time.time() -start_time > 15.0:
+        if len(self.world.get_actors()) > self.total_num_agents / 1.2 or time.time() -start_time > 15.0:
             # print("[crowd_processor.py] {} crowd agents ready".format(
                 # len(self.world.get_actors())))
             self.agents_ready_pub.publish(True)
