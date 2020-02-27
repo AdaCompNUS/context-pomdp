@@ -172,7 +172,7 @@ class CrowdProcessor(Summit):
             agent_tmp.pose.orientation = Quaternion(quat_tf[0], quat_tf[1], quat_tf[2], quat_tf[3])
 
             agent_tmp.bbox = Polygon()
-            corners = get_bounding_box_corners(actor, expand=0.3)
+            corners = get_bounding_box_corners(actor, expand=0.5)
             for corner in corners:
                 agent_tmp.bbox.points.append(Point32(
                     x=corner.x, y=corner.y, z=0.0))

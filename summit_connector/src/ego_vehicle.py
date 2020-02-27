@@ -665,6 +665,10 @@ class EgoVehicle(Summit):
                 dt = (cur_time - self.speed_control_last_update).to_sec()
 
             speed_error = cmd_speed - cur_speed
+            speed_error = np.clip(speed_error, -2.0, 2.0)
+            # print('speed_error={}'.format(speed_error))
+            # sys.stdout.flush()
+
             self.speed_control_integral = speed_error * dt + discount * self.speed_control_integral
 
             speed_control = kp * speed_error + ki * self.speed_control_integral
