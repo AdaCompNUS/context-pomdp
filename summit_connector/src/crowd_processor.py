@@ -18,6 +18,9 @@ import msg_builder.msg
 from msg_builder.msg import car_info as CarInfo  # panpan
 
 import Pyro4
+import time
+
+start_time = time.time()
 
 Pyro4.config.SERIALIZERS_ACCEPTED.add('serpent')
 Pyro4.config.SERIALIZER = 'serpent'
@@ -114,7 +117,7 @@ class CrowdProcessor(Summit):
         if not self.ego_car_info:
             return
 
-        if len(self.world.get_actors()) > self.total_num_agents / 2.0:
+        if len(self.world.get_actors()) > self.total_num_agents / 2.0 or time.time() -start_time > 15.0:
             # print("[crowd_processor.py] {} crowd agents ready".format(
                 # len(self.world.get_actors())))
             self.agents_ready_pub.publish(True)
@@ -169,7 +172,7 @@ class CrowdProcessor(Summit):
             agent_tmp.pose.orientation = Quaternion(quat_tf[0], quat_tf[1], quat_tf[2], quat_tf[3])
 
             agent_tmp.bbox = Polygon()
-            corners = get_bounding_box_corners(actor)
+            corners = get_bounding_box_corners(actor, expand=0.3)
             for corner in corners:
                 agent_tmp.bbox.points.append(Point32(
                     x=corner.x, y=corner.y, z=0.0))

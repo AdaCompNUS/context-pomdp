@@ -26,7 +26,7 @@
     <param name="pyro_port" value="$(arg pyro_port)"/>
     <param name="control_mode" value="$(arg ego_control_mode)"/>
     <param name="speed_control" value="$(arg ego_speed_control)"/>
-    <param name="crowd_range" value="50.0"/>
+    <param name="crowd_range" value="100.0"/>
   </node>
 
   <node name="purepursuit_controller" pkg="summit_connector" type="purepursuit_controller.py" output="screen"/>

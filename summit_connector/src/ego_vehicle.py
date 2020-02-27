@@ -33,7 +33,7 @@ import Pyro4
 CHANGE_LEFT = -1
 REMAIN = 0
 CHANGE_RIGHT = 1
-VEHICLE_STEER_KP = 2.5 # 2.0
+VEHICLE_STEER_KP = 1.5 # 2.0
 
 Pyro4.config.SERIALIZERS_ACCEPTED.add('serpent')
 Pyro4.config.SERIALIZER = 'serpent'
