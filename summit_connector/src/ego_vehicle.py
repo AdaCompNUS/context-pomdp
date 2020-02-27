@@ -35,7 +35,6 @@ REMAIN = 0
 CHANGE_RIGHT = 1
 VEHICLE_STEER_KP = 2.5 # 2.0
 
-Pyro4.config.COMMTIMEOUT = 2.0
 Pyro4.config.SERIALIZERS_ACCEPTED.add('serpent')
 Pyro4.config.SERIALIZER = 'serpent'
 Pyro4.util.SerializerBase.register_class_to_dict(
