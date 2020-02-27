@@ -208,17 +208,17 @@ def animate(time_step):
         patches.append(ax.add_patch(
             vel_arrow(agent_dict, ego_pos, 'grey')))
 
-    if time_step in pred_car_list.keys():
-        for car_dict in pred_car_list[time_step]:
-            car_dict['bb'] = ego_list[time_step]['bb'] 
-            patches.append(ax.add_patch(
-                agent_rect(car_dict, ego_pos, 'lightgreen', False)))
+    # if time_step in pred_car_list.keys():
+    #     for car_dict in pred_car_list[time_step]:
+    #         car_dict['bb'] = ego_list[time_step]['bb'] 
+    #         patches.append(ax.add_patch(
+    #             agent_rect(car_dict, ego_pos, 'lightgreen', False)))
 
-    if time_step in pred_exo_list.keys():
-        for agent_list in pred_exo_list[time_step]:
-            for agent_dict in agent_list:
-                patches.append(ax.add_patch(
-                    agent_rect(agent_dict, ego_pos, 'grey', False)))
+    # if time_step in pred_exo_list.keys():
+    #     for agent_list in pred_exo_list[time_step]:
+    #         for agent_dict in agent_list:
+    #             patches.append(ax.add_patch(
+    #                 agent_rect(agent_dict, ego_pos, 'grey', False)))
     # draw path
     path = ego_path_list[time_step]
     for i in range(0, len(path), 2):

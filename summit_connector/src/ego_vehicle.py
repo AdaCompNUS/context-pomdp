@@ -24,11 +24,29 @@ import time
 from tf import TransformListener
 import tf.transformations as tftrans
 
+import os
+os.environ["PYRO_LOGFILE"] = "pyro.log"
+os.environ["PYRO_LOGLEVEL"] = "DEBUG"
 
-change_left = -1
-remain = 0
-change_right = 1
-VEHICLE_STEER_KP = 2.5 # 2.0
+import Pyro4
+
+CHANGE_LEFT = -1
+REMAIN = 0
+CHANGE_RIGHT = 1
+VEHICLE_STEER_KP = 1.5 # 2.0
+
+Pyro4.config.SERIALIZERS_ACCEPTED.add('serpent')
+Pyro4.config.SERIALIZER = 'serpent'
+Pyro4.util.SerializerBase.register_class_to_dict(
+        carla.Vector2D, 
+        lambda o: { 
+            '__class__': 'carla.Vector2D',
+            'x': o.x,
+            'y': o.y
+        })
+Pyro4.util.SerializerBase.register_dict_to_class(
+        'carla.Vector2D',
+        lambda c, o: carla.Vector2D(o['x'], o['y']))
 
 ''' ========== UTILITY FUNCTIONS AND CLASSES ========== '''
 
@@ -119,22 +137,29 @@ class EgoVehicle(Summit):
         self.speed_control_last_update = None
         self.speed_control_integral = 0.0
         self.speed_control_last_error = 0.0
+        self.agents_ready = False
+        self.last_crowd_range_update = None
 
         self.start_time = None
-        self.last_decision = remain
+        self.last_decision = REMAIN
 
         # ROS stuff.
+        pyro_port = rospy.get_param('~pyro_port', '8100')
         self.control_mode = rospy.get_param('~control_mode', 'gamma')
         self.speed_control_mode = rospy.get_param('~speed_control', 'vel')
         self.gamma_max_speed = rospy.get_param('~gamma_max_speed', 6.0)
+        self.crowd_range = rospy.get_param('~crowd_range', 50.0)
 
         print('Ego_vehicle control mode: {}'.format(self.control_mode))
         print('Ego_vehicle speed mode: {}'.format(self.speed_control_mode))
         sys.stdout.flush()
 
+        self.crowd_service = Pyro4.Proxy('PYRO:crowdservice.warehouse@localhost:{}'.format(pyro_port))
+
         rospy.Subscriber('/pomdp_cmd_accel', Float32, self.pomdp_cmd_accel_callback, queue_size=1)
         rospy.Subscriber('/pomdp_cmd_steer', Float32, self.pomdp_cmd_steer_callback, queue_size=1)
         rospy.Subscriber('/pomdp_cmd_speed', Float32, self.pomdp_cmd_speed_callback, queue_size=1)
+        rospy.Subscriber('/agents_ready', Bool, self.agents_ready_callback, queue_size=1)
 
         self.pp_cmd_accel_sub = rospy.Subscriber('/purepursuit_cmd_steer',
                                                  Float32, self.pp_cmd_steer_callback, queue_size=1)
@@ -176,6 +201,7 @@ class EgoVehicle(Summit):
             (actor_physics_control.wheels[0].max_steer_angle + actor_physics_control.wheels[1].max_steer_angle) / 2
         
         time.sleep(1)  # wait for the vehicle to drop
+        self.update_crowd_range()
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()
@@ -184,10 +210,8 @@ class EgoVehicle(Summit):
         self.publish_odom_transform()
         self.transformer = TransformListener()
 
-        self.update_timer = rospy.Timer(rospy.Duration(1.0 / 20), self.update)
 
     def dispose(self):
-        self.update_timer.shutdown()
         self.actor.destroy()
 
     def get_position(self):
@@ -368,18 +392,18 @@ class EgoVehicle(Summit):
         lane_decision = None
     
         if min_dist_to_front_veh >= 15:
-            lane_decision = remain
+            lane_decision = REMAIN
         else:
             if min_dist_to_left_front_veh > min_dist_to_right_front_veh:
                 if min_dist_to_left_front_veh > min_dist_to_front_veh + 3.0:
-                    lane_decision = change_left
+                    lane_decision = CHANGE_LEFT
                 else:
-                    lane_decision = remain
+                    lane_decision = REMAIN
             else:  # min_dist_to_left_front_veh <= min_dist_to_right_front_veh:
                 if min_dist_to_right_front_veh > min_dist_to_front_veh + 3.0:
-                    lane_decision = change_right
+                    lane_decision = CHANGE_RIGHT
                 else:
-                    lane_decision = remain
+                    lane_decision = REMAIN
 
         if lane_decision != self.last_decision and lane_decision * self.last_decision != -1:
             self.update_path(lane_decision)
@@ -430,6 +454,14 @@ class EgoVehicle(Summit):
         gamma.set_agent_pref_velocity(ego_id, pref_vel)
         gamma.set_agent_path_forward(ego_id, path_forward)
 
+        left_line_end = get_position(self.actor) + (1.5 + 2.0 + 0.8) * ((get_forward_direction(self.actor).rotate(np.deg2rad(-90))).make_unit_vector())
+        right_line_end = get_position(self.actor) + (1.5 + 2.0 + 0.8) * ((get_forward_direction(self.actor).rotate(np.deg2rad(90))).make_unit_vector())
+        left_lane_constrained_by_sidewalk = self.sidewalk.intersects(carla.Segment2D(get_position(self.actor), left_line_end))
+        right_lane_constrained_by_sidewalk = self.sidewalk.intersects(carla.Segment2D(get_position(self.actor), right_line_end))
+
+        # Flip left-right -> right-left since GAMMA uses a different handed coordinate system.
+        gamma.set_agent_lane_constraints(ego_id, right_lane_constrained_by_sidewalk, left_lane_constrained_by_sidewalk)  
+
         gamma.do_step()
         target_vel = gamma.get_agent_velocity(ego_id)
 
@@ -449,6 +481,14 @@ class EgoVehicle(Summit):
                     -45.0, 45.0) / self.steer_angle_range,
                 -1.0, 1.0)
 
+    def update_crowd_range(self):
+        # Cap frequency so that GAMMA loop doesn't die.
+        if self.last_crowd_range_update is None or time.time() - self.last_crowd_range_update > 1.0:
+            pos = self.actor.get_location()
+            bounds_min = carla.Vector2D(pos.x - self.crowd_range, pos.y - self.crowd_range)
+            bounds_max = carla.Vector2D(pos.x + self.crowd_range, pos.y + self.crowd_range)
+            self.crowd_service.simulation_bounds = (bounds_min, bounds_max)
+            self.last_crowd_range_update = time.time()
 
     def publish_odom_transform(self):
         self.broadcaster = tf2_ros.StaticTransformBroadcaster()
@@ -579,6 +619,9 @@ class EgoVehicle(Summit):
 
     def pp_cmd_steer_callback(self, steer):
         self.pp_cmd_steer = steer.data
+    
+    def agents_ready_callback(self, ready):
+        self.agents_ready = ready.data
 
     def draw_path(self, path):
         color_i = 255
@@ -630,6 +673,10 @@ class EgoVehicle(Summit):
                 dt = (cur_time - self.speed_control_last_update).to_sec()
 
             speed_error = cmd_speed - cur_speed
+            speed_error = np.clip(speed_error, -2.0, 2.0)
+            # print('speed_error={}'.format(speed_error))
+            # sys.stdout.flush()
+
             self.speed_control_integral = speed_error * dt + discount * self.speed_control_integral
 
             speed_control = kp * speed_error + ki * self.speed_control_integral
@@ -687,7 +734,7 @@ class EgoVehicle(Summit):
         self.actor.apply_control(control)
 
     def update_path(self, lane_decision):
-        if lane_decision == remain:
+        if lane_decision == REMAIN:
             return
 
         pos = self.actor.get_location()
@@ -698,7 +745,7 @@ class EgoVehicle(Summit):
         sidewalk_vec = forward_vec.rotate(np.deg2rad(90))  # rotate clockwise by 90 degree
 
         ego_veh_pos_in_new_lane = None
-        if lane_decision == change_left:
+        if lane_decision == CHANGE_LEFT:
             ego_veh_pos_in_new_lane = ego_veh_pos - 4.0 * sidewalk_vec
         else:
             ego_veh_pos_in_new_lane = ego_veh_pos + 4.0 * sidewalk_vec
@@ -718,7 +765,9 @@ class EgoVehicle(Summit):
                 sys.stdout.flush()
                 self.path = new_path
 
-    def update(self, event):
+    def update(self):
+        if not self.agents_ready:
+            return
 
         if not self.bounds_occupancy.contains(self.get_position()):
             self.ego_dead_pub.publish(True)
@@ -745,6 +794,7 @@ class EgoVehicle(Summit):
             self.send_control_from_vel()
 
         # self.draw_path(self.path)
+        self.update_crowd_range()
         self.publish_odom()
         self.publish_il_car_info()
         self.publish_plan()
@@ -756,5 +806,9 @@ if __name__ == '__main__':
     init_time = rospy.Time.now()
 
     ego_vehicle = EgoVehicle()
-    rospy.on_shutdown(ego_vehicle.dispose)
-    rospy.spin()
+
+    rate = rospy.Rate(20)
+    while not rospy.is_shutdown():
+        ego_vehicle.update()
+        rate.sleep()
+    ego_vehicle.dispose()

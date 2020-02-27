@@ -18,8 +18,10 @@ import msg_builder.msg
 from msg_builder.msg import car_info as CarInfo  # panpan
 
 import Pyro4
+import time
 
-Pyro4.config.COMMTIMEOUT = 2.0
+start_time = time.time()
+
 Pyro4.config.SERIALIZERS_ACCEPTED.add('serpent')
 Pyro4.config.SERIALIZER = 'serpent'
 Pyro4.util.SerializerBase.register_class_to_dict(
@@ -87,7 +89,12 @@ class CrowdProcessor(Summit):
             msg_builder.msg.AgentPathArray,
             queue_size=1)
 
-        self.agents_ready_pub.publish(True)
+        self.num_car = rospy.get_param('~num_car', 0)
+        self.num_bike = rospy.get_param('~num_bike', 0)
+        self.num_ped = rospy.get_param('~num_ped', 0)
+        self.total_num_agents = self.num_car + self.num_bike + self.num_ped
+
+        # self.agents_ready_pub.publish(True)
 
     def il_car_info_callback(self, car_info):
         self.ego_car_info = car_info
@@ -109,6 +116,15 @@ class CrowdProcessor(Summit):
 
         if not self.ego_car_info:
             return
+
+        if len(self.world.get_actors()) > self.total_num_agents / 2.0 or time.time() -start_time > 15.0:
+            # print("[crowd_processor.py] {} crowd agents ready".format(
+                # len(self.world.get_actors())))
+            self.agents_ready_pub.publish(True)
+        else:
+        	pass
+            # print("[crowd_processor.py] {} percent of agents ready".format(
+                # len(self.world.get_actors()) / float(self.total_num_agents)))
 
         ego_car_position = self.ego_car_info.car_pos
         ego_car_position = carla.Vector2D(
@@ -156,7 +172,7 @@ class CrowdProcessor(Summit):
             agent_tmp.pose.orientation = Quaternion(quat_tf[0], quat_tf[1], quat_tf[2], quat_tf[3])
 
             agent_tmp.bbox = Polygon()
-            corners = get_bounding_box_corners(actor)
+            corners = get_bounding_box_corners(actor, expand=0.5)
             for corner in corners:
                 agent_tmp.bbox.points.append(Point32(
                     x=corner.x, y=corner.y, z=0.0))

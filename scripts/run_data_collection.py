@@ -306,7 +306,10 @@ def launch_summit_simulator(round, run, cmd_args):
     shell_cmd = 'roslaunch summit_connector connector.launch port:=' + \
                 str(config.port) + ' pyro_port:=' + str(config.pyro_port) + \
                 ' map_location:=' + str(config.summit_maploc) + \
-                ' random_seed:=' + str(config.random_seed)
+                ' random_seed:=' + str(config.random_seed) + \
+                ' num_car:=' + str(cmd_args.num_car) + \
+                ' num_bike:=' + str(cmd_args.num_bike) + \
+                ' num_ped:=' + str(cmd_args.num_pedestrian)
     if "gamma" in cmd_args.drive_mode:
         print_flush("launching connector with GAMMA controller...")
         shell_cmd = shell_cmd + ' ego_control_mode:=gamma ego_speed_mode:=vel'
@@ -346,7 +349,6 @@ def launch_record_bag(round, run):
 
 
 def launch_pomdp_planner(round, run):
-    global monitor_worker
     pomdp_proc, rviz_out = None, None
 
     launch_file = 'planner.launch'
