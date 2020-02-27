@@ -456,8 +456,8 @@ class EgoVehicle(Summit):
 
         left_line_end = get_position(self.actor) + (1.5 + 2.0 + 0.8) * ((get_forward_direction(self.actor).rotate(np.deg2rad(-90))).make_unit_vector())
         right_line_end = get_position(self.actor) + (1.5 + 2.0 + 0.8) * ((get_forward_direction(self.actor).rotate(np.deg2rad(90))).make_unit_vector())
-        left_lane_constrained_by_sidewalk = self.sidewalk.intersects(carla.Segment2D(position, left_line_end))
-        right_lane_constrained_by_sidewalk = self.sidewalk.intersects(carla.Segment2D(position, right_line_end))
+        left_lane_constrained_by_sidewalk = self.sidewalk.intersects(carla.Segment2D(get_position(self.actor), left_line_end))
+        right_lane_constrained_by_sidewalk = self.sidewalk.intersects(carla.Segment2D(get_position(self.actor), right_line_end))
 
         # Flip left-right -> right-left since GAMMA uses a different handed coordinate system.
         gamma.set_agent_lane_constraints(ego_id, right_lane_constrained_by_sidewalk, left_lane_constrained_by_sidewalk)  
