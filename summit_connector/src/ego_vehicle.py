@@ -579,7 +579,10 @@ class EgoVehicle(Summit):
         car_info_msg.rear_axle_center.z = rear_axle_center.z
         car_info_msg.max_steer_angle = wheels[0].max_steer_angle
 
-        self.car_info_pub.publish(car_info_msg)
+        try:
+            self.car_info_pub.publish(car_info_msg)
+        except Exception as e:
+            print(e)
 
     def publish_plan(self):
         current_time = rospy.Time.now()

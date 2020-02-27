@@ -259,13 +259,16 @@ class CrowdProcessor(Summit):
 
             agents_path_msg.agents.append(agent_paths_tmp)
 
-        agents_msg.header.frame_id = 'map'
-        agents_msg.header.stamp = current_time
-        self.agents_pub.publish(agents_msg)
+        try:
+        	agents_msg.header.frame_id = 'map'
+        	agents_msg.header.stamp = current_time
+        	self.agents_pub.publish(agents_msg)
 
-        agents_path_msg.header.frame_id = 'map'
-        agents_path_msg.header.stamp = current_time
-        self.agents_path_pub.publish(agents_path_msg)
+        	agents_path_msg.header.frame_id = 'map'
+        	agents_path_msg.header.stamp = current_time
+        	self.agents_path_pub.publish(agents_path_msg)
+        except Exception as e:
+        	print(e)
 
         # self.do_update = False
         end_time = rospy.Time.now()
