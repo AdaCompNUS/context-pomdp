@@ -773,16 +773,19 @@ class EgoVehicle(Summit):
             return
 
         if not self.bounds_occupancy.contains(self.get_position()):
+            print("Vehile exits map boundary")
             self.ego_dead_pub.publish(True)
             return
 
         # Publish info.
         if not self.path.resize():
+            print("No path available !!!")
             self.ego_dead_pub.publish(True)
             return
         else:
             self.path.cut(self.get_position())
             if not self.path.resize():
+                print("Path extention failed !!!")
                 self.ego_dead_pub.publish(True)
                 return
 

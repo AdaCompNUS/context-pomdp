@@ -170,7 +170,7 @@ class SubprocessMonitor(Process):
                 print_flush("[clear_process.py] Killing main waiting process...")
                 os.killpg(self.main_proc.pid, signal.SIGKILL)
         else:
-            if self.verbosity > 0:
+            if self.verbosity > 1:
                 print_flush("[clear_process.py] main_proc is None")
 
     # def terminate(self):
