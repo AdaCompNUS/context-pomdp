@@ -579,7 +579,10 @@ class EgoVehicle(Summit):
         car_info_msg.rear_axle_center.z = rear_axle_center.z
         car_info_msg.max_steer_angle = wheels[0].max_steer_angle
 
-        self.car_info_pub.publish(car_info_msg)
+        try:
+            self.car_info_pub.publish(car_info_msg)
+        except Exception as e:
+            print(e)
 
     def publish_plan(self):
         current_time = rospy.Time.now()
@@ -783,7 +786,7 @@ class EgoVehicle(Summit):
                 self.ego_dead_pub.publish(True)
                 return
 
-        self.update_gamma_lane_decision()
+        # self.update_gamma_lane_decision()
 
         if self.control_mode == 'gamma':
             self.update_gamma_control()

@@ -102,8 +102,8 @@ def kill_ros_nodes(ros_pref):
     try:
         clear_ros_log(ros_pref)
 
-        cmd_arg = ros_pref + ' rosnode list | grep -v rosout | '
-        cmd_arg += ros_pref + ' xargs rosnode kill'
+        cmd_arg = ros_pref + 'rosnode list | grep -v rosout | '
+        cmd_arg += ros_pref + 'xargs rosnode kill'
         print_flush('[clear_process.py] ' + cmd_arg)
         subprocess.call(cmd_arg, shell=True)
     except Exception as e:
