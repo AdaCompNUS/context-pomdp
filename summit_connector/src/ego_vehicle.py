@@ -216,7 +216,8 @@ class EgoVehicle(Summit):
 
     def get_position(self):
         location = self.actor.get_location()
-        if location.z < 0:
+        if location.z < -0.3:
+            print("Car dropped under ground")
             self.ego_dead_pub.publish(True)
         return carla.Vector2D(location.x, location.y)
 
@@ -789,7 +790,7 @@ class EgoVehicle(Summit):
                 self.ego_dead_pub.publish(True)
                 return
 
-        # self.update_gamma_lane_decision()
+        self.update_gamma_lane_decision()
 
         if self.control_mode == 'gamma':
             self.update_gamma_control()
