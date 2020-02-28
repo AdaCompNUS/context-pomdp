@@ -101,23 +101,34 @@ class Pursuit(object):
     '''
 
     def __init__(self):
+        super(Pursuit, self).__init__()
+
         self.car_steer = 0.0
         self.path = Path()
         self.car_info = None
         self.tm = rospy.Timer(rospy.Duration(0.1), self.cb_pose_timer)  ##0.2 for golfcart; 0.05
         rospy.Subscriber("ego_state", CarInfo, self.cb_car_info, queue_size=1)
         self.cmd_steer_pub = rospy.Publisher("/purepursuit_cmd_steer", Float32, queue_size=1)
+        self.length = 2.8
+        self.rear_length = 1.4
+        self.max_steer_angle = 30
 
     def cb_car_info(self, car_info):
         self.car_info = car_info
-        self.length = (carla.Vector2D(car_info.front_axle_center.x, car_info.front_axle_center.y) -
-                       carla.Vector2D(car_info.rear_axle_center.x, car_info.rear_axle_center.y)).length()
+        if car_info.initial:
+            self.length = (carla.Vector2D(car_info.front_axle_center.x, car_info.front_axle_center.y) -
+                           carla.Vector2D(car_info.rear_axle_center.x, car_info.rear_axle_center.y)).length()
+            self.rear_length = (carla.Vector2D(car_info.car_pos.x, car_info.car_pos.y) -
+                           carla.Vector2D(car_info.rear_axle_center.x, car_info.rear_axle_center.y)).length()
+            self.max_steer_angle = self.car_info.max_steer_angle
+            print('car length {}, rear length {}'.format(self.length, self.rear_length))
 
     def cb_pose_timer(self, event):
         if self.car_info is None:
             return
 
-        position = (self.car_info.rear_axle_center.x, self.car_info.rear_axle_center.y)
+        position = (self.car_info.car_pos.x - math.cos(self.car_info.car_yaw) * self.rear_length,
+                    self.car_info.car_pos.y - math.sin(self.car_info.car_yaw) * self.rear_length)
         pursuit_angle = self.path.pursuit_tan(position)
         pursuit_point = self.path.pursuit(position)
 
@@ -138,7 +149,7 @@ class Pursuit(object):
             steering_angle = math.atan2(self.length, turning_radius)
             if relative_point[1] < 0:
                 steering_angle *= -1
-            self.car_steer = steering_angle / np.deg2rad(self.car_info.max_steer_angle)
+            self.car_steer = steering_angle / np.deg2rad(self.max_steer_angle)
             self.car_steer = max(-1.0, min(1.0, self.car_steer))
 
         self.publish_steer()

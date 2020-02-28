@@ -53,7 +53,7 @@ public:
 		auto &carpos = state->car.pos;
 		double carvel = state->car.vel;
 
-		// Find mininum num of steps for car-pedestrian collision
+		// Find minimum number of steps for car-pedestrian collision
 		for (int i = 0; i < state->num; i++) {
 			auto &p = state->agents[i];
 
@@ -75,18 +75,18 @@ public:
 		double value = 0;
 		ACT_TYPE default_act;
 		int dec_step = round(carvel / ModelParams::ACC_SPEED * ModelParams::CONTROL_FREQ);
+		float stay_cost = ModelParams::REWARD_FACTOR_VEL
+							* (0.0 - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
 
 		if (dec_step > min_step) {
 			value = ped_pomdp_->CrashPenalty(*state);
+		} else {
+			// 2. stay forever
+			value += stay_cost / (1 - Globals::Discount());
 		}
 
-		// 2. stay forever
-		float stay_cost = ModelParams::REWARD_FACTOR_VEL
-				* (0.0 - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
-		value += stay_cost / (1 - Globals::Discount());
-
-		// 1. Decelerate until full stop
-		for (int step = 0; step < dec_step; step++) { // -1.0 is action penalty
+		// 1. Decelerate until collision or full stop
+		for (int step = 0; step < min(dec_step, min_step); step++) { // -1.0 is action penalty
 			value = -1.0 + stay_cost + value * Globals::Discount();
 		}
 
@@ -461,26 +461,25 @@ bool ContextPomdp::Step(PomdpStateWorld &state, double rNum, int action,
 	return false;
 }
 
-void ContextPomdp::ForwardAndVisualize(const State &sample, int step) const {
-	const PomdpState &state = static_cast<const PomdpState &>(sample);
+void ContextPomdp::ForwardAndVisualize(const State *sample, int step) const {
+	PomdpState *next_state = static_cast<PomdpState *>(Copy(sample));
 
-	PomdpState next_state = state;
 	for (int i = 0; i < step; i++) {
 		// forward
 		next_state = PredictAgents(next_state);
 
 		// print
-		PrintStateCar(next_state, string_sprintf("predicted_car_%d", i));
-		PrintStateAgents(next_state, string_sprintf("predicted_agents_%d", i));
+		PrintStateCar(*next_state, string_sprintf("predicted_car_%d", i));
+		PrintStateAgents(*next_state, string_sprintf("predicted_agents_%d", i));
 	}
 }
 
-PomdpState ContextPomdp::PredictAgents(const PomdpState &ped_state) const {
-	PomdpState* predicted_state = static_cast<PomdpState*>(Copy(&ped_state));
+PomdpState* ContextPomdp::PredictAgents(const PomdpState *ped_state, int acc) const {
+	PomdpState* predicted_state = static_cast<PomdpState*>(Copy(ped_state));
 
 	double steer_to_path = world_model.GetSteerToPath(
 			predicted_state->car);
-	ACT_TYPE action = GetActionID(GetSteerIDfromSteering(steer_to_path), 2);
+	ACT_TYPE action = GetActionID(GetSteerIDfromSteering(steer_to_path), acc);
 
 	OBS_TYPE dummy_obs;
 	double dummy_reward;
@@ -491,7 +490,7 @@ PomdpState ContextPomdp::PredictAgents(const PomdpState &ped_state) const {
 	if (terminal)
 		logi << "[PredictAgents] Reach terminal state" << endl;
 
-	return *predicted_state;
+	return predicted_state;
 }
 
 double ContextPomdp::ObsProb(uint64_t obs, const State &s, int action) const {
@@ -722,16 +721,30 @@ void ContextPomdp::PrintWorldState(const PomdpStateWorld &state,
 			mindist_id = i;
 		}
 
+		string intention_str = "";
+		if (world_model.IsCurVelIntention(state.agents[i].intention, state.agents[i].id))
+			intention_str = "cur_vel";
+		else if (world_model.IsStopIntention(state.agents[i].intention, state.agents[i].id))
+			intention_str = "stop";
+		else
+			intention_str = "path_" + to_string(state.agents[i].intention);
+
+		string mode_str = "";
+		if (state.agents[i].mode == AGENT_DIS)
+			mode_str = "dis";
+		else
+			mode_str = "att";
+
 		out << "agent " << i
 				<< ": id / pos / speed / vel / intention / dist2car / infront =  "
 				<< state.agents[i].id << " / " << "(" << state.agents[i].pos.x
 				<< ", " << state.agents[i].pos.y << ") / "
 				<< state.agents[i].speed << " / " << "("
 				<< state.agents[i].vel.x << ", " << state.agents[i].vel.y
-				<< ") / " << state.agents[i].intention << " / "
+				<< ") / " << intention_str << " / "
 				<< COORD::EuclideanDistance(state.agents[i].pos, carpos)
 				<< " / " << world_model.InFront(state.agents[i].pos, state.car)
-				<< " (mode) " << state.agents[i].mode << " (type) "
+				<< " (mode) " << mode_str << " (type) "
 				<< state.agents[i].type << " (bb) "
 				<< state.agents[i].bb_extent_x << " "
 				<< state.agents[i].bb_extent_y << " (cross) "

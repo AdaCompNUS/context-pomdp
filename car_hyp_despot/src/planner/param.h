@@ -64,6 +64,9 @@ const bool CPUDoPrint = false;
 void PrintParams();
 };
 
+//#define CAR_SIDE_MARGIN 0.0f
+//#define CAR_FRONT_MARGIN 0.0f
+
 #define CAR_SIDE_MARGIN 0.8f
 #define CAR_FRONT_MARGIN 3.0f
 #define PED_SIZE 0.25f

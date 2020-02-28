@@ -120,8 +120,8 @@ public:
 	double GetSteering(ACT_TYPE action, bool debug=false) const;
 	double GetSteeringNoramlized(ACT_TYPE action, bool debug=false) const;
 
-	void ForwardAndVisualize(const State& sample, int step) const;
-	PomdpState PredictAgents(const PomdpState& ped_state) const;
+	void ForwardAndVisualize(const State* sample, int step) const;
+	PomdpState* PredictAgents(const PomdpState* ped_state, int acc=2) const;
 
 	void CheckPreCollision(const State*);
 

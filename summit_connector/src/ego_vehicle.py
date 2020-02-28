@@ -181,6 +181,7 @@ class EgoVehicle(Summit):
             vehicle_bp = self.rng.choice(self.world.get_blueprint_library().filter('vehicle.mini.cooperst'))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')
             spawn_position = self.path.get_position()
+            spawn_position = self.path.get_position()
             spawn_trans = carla.Transform()
             spawn_trans.location.x = spawn_position.x
             spawn_trans.location.y = spawn_position.y
@@ -210,6 +211,7 @@ class EgoVehicle(Summit):
         self.publish_odom_transform()
         self.transformer = TransformListener()
 
+        rospy.Timer(rospy.Duration(0.02), self.publish_il_car_info)
 
     def dispose(self):
         self.actor.destroy()
@@ -536,7 +538,7 @@ class EgoVehicle(Summit):
         odom.twist.twist = Twist(Vector3(vel.x, vel.y, vel.z), Vector3(0, 0, w_yaw))
         self.odom_pub.publish(odom)
 
-    def publish_il_car_info(self):
+    def publish_il_car_info(self, step=None):
         car_info_msg = CarInfo()
 
         pos = self.actor.get_location()
@@ -565,21 +567,24 @@ class EgoVehicle(Summit):
             car_info_msg.car_bbox.points.append(Point32(
                 x=corner.x, y=corner.y, z=0.0))
 
-        wheels = self.actor.get_physics_control().wheels
-        # TODO I think that CARLA might have forgotten to divide by 100 here.
-        wheel_positions = [w.position / 100 for w in wheels]
+        car_info_msg.initial = False
+        if step is None:
+            wheels = self.actor.get_physics_control().wheels
+            # TODO I think that CARLA might have forgotten to divide by 100 here.
+            wheel_positions = [w.position / 100 for w in wheels]
 
-        front_axle_center = (wheel_positions[0] + wheel_positions[1]) / 2
-        rear_axle_center = (wheel_positions[2] + wheel_positions[3]) / 2
+            front_axle_center = (wheel_positions[0] + wheel_positions[1]) / 2
+            rear_axle_center = (wheel_positions[2] + wheel_positions[3]) / 2
 
-        car_info_msg.front_axle_center.x = front_axle_center.x
-        car_info_msg.front_axle_center.y = front_axle_center.y
-        car_info_msg.front_axle_center.z = front_axle_center.z
-        car_info_msg.rear_axle_center.x = rear_axle_center.x
-        car_info_msg.rear_axle_center.y = rear_axle_center.y
-        car_info_msg.rear_axle_center.z = rear_axle_center.z
-        car_info_msg.max_steer_angle = wheels[0].max_steer_angle
+            car_info_msg.front_axle_center.x = front_axle_center.x
+            car_info_msg.front_axle_center.y = front_axle_center.y
+            car_info_msg.front_axle_center.z = front_axle_center.z
+            car_info_msg.rear_axle_center.x = rear_axle_center.x
+            car_info_msg.rear_axle_center.y = rear_axle_center.y
+            car_info_msg.rear_axle_center.z = rear_axle_center.z
+            car_info_msg.max_steer_angle = wheels[0].max_steer_angle
 
+            car_info_msg.initial = True
         try:
             self.car_info_pub.publish(car_info_msg)
         except Exception as e:
@@ -677,9 +682,10 @@ class EgoVehicle(Summit):
                 dt = (cur_time - self.speed_control_last_update).to_sec()
 
             speed_error = cmd_speed - cur_speed
-            speed_error = np.clip(speed_error, -2.0, 2.0)
-            # print('speed_error={}'.format(speed_error))
-            # sys.stdout.flush()
+            speed_error = np.clip(speed_error, -6.0, 2.0)
+            # if speed_error < 0:
+            #     print('speed_error={}'.format(speed_error))
+            sys.stdout.flush()
 
             self.speed_control_integral = speed_error * dt + discount * self.speed_control_integral
 
@@ -790,7 +796,7 @@ class EgoVehicle(Summit):
                 self.ego_dead_pub.publish(True)
                 return
 
-        self.update_gamma_lane_decision()
+        # self.update_gamma_lane_decision()
 
         if self.control_mode == 'gamma':
             self.update_gamma_control()
@@ -803,7 +809,7 @@ class EgoVehicle(Summit):
         # self.draw_path(self.path)
         self.update_crowd_range()
         self.publish_odom()
-        self.publish_il_car_info()
+        # self.publish_il_car_info()
         self.publish_plan()
 
 

@@ -17,18 +17,26 @@ ax.set_aspect(sy/sx)
 anim_running = True
 
 
+trial_text = plt.text(-sx + 5.0, -sy + 2.0, '', fontsize=10)
+depth_text = plt.text(-sx + 5.0, -sy + 6.0, '', fontsize=10)
+
+
 def error_handler(e):
     print(
         'Error on file {} line {}'.format(sys.exc_info()[-1].tb_frame.f_code.co_filename, sys.exc_info()[-1].tb_lineno),
         type(e).__name__, e)
 
 def parse_data(txt_file):
+    action_list = {}
     ego_list = {}
     exos_list = {}
     coll_bool_list = {}
     ego_path_list = {}
     pred_car_list = {}
     pred_exo_list = {}
+    trial_list = {}
+    depth_list = {}
+
     exo_count = 0
     start_recording = False
 
@@ -58,6 +66,7 @@ def parse_data(txt_file):
                     agent_dict = {'pos': [pos_x, pos_y],
                                     'heading': heading,
                                     'speed': speed,
+                                    'vel': (speed * math.cos(heading), speed * math.sin(heading)),
                                     'bb': (bb_x, bb_y)
                                     }
                     ego_list[cur_step] = agent_dict
@@ -139,6 +148,19 @@ def parse_data(txt_file):
                                     }
                         agent_list.append(agent_dict)
                     pred_exo_list[cur_step].append(agent_list)
+                elif 'INFO: Executing action' in line:
+                    line_split = line.split(' ')
+                    steer = float(line_split[5].split('/')[0])
+                    acc = float(line_split[5].split('/')[1])
+                    speed = float(line_split[5].split('/')[2])
+                    action_list[cur_step] = (steer, acc, speed)
+                    # INFO: Executing action:22 steer/acc = 0/3
+                elif "Trials: no. / max length" in line:
+                    line_split = line.split(' ')
+                    trial = int(line_split[6])
+                    depth = int(line_split[8])
+                    trial_list[cur_step] = trial
+                    depth_list[cur_step] = depth
                 if 'collision = 1' in line or 'INININ' in line or 'in real collision' in line:
                     coll_bool_list[cur_step] = 1
 
@@ -146,7 +168,7 @@ def parse_data(txt_file):
                 error_handler(e)
                 pdb.set_trace()
 
-    return ego_list, ego_path_list, exos_list, coll_bool_list, pred_car_list, pred_exo_list
+    return action_list, ego_list, ego_path_list, exos_list, coll_bool_list, pred_car_list, pred_exo_list, trial_list, depth_list
 
 
 def agent_rect(agent_dict, origin, color, fill=True):
@@ -167,23 +189,46 @@ def agent_rect(agent_dict, origin, color, fill=True):
         error_handler(e)
         pdb.set_trace()
 
+
 def vel_arrow(agent_dict, origin, color):
     try:
         vel = agent_dict['vel']
+        pos = agent_dict['pos']
         arrow = mpatches.Arrow(
-            x=origin[0], y=origin[1], dx=vel[0], dy=vel[1], color=color)
+            x=pos[0] - origin[0], y=pos[1] - origin[1], dx=vel[0], dy=vel[1], color=color)
         return arrow
 
     except Exception as e:
         error_handler(e)
         pdb.set_trace()
 
+
+def acc_arrow(action, ego_dict, mode):
+    try:
+        heading = ego_dict['heading']
+        steer = action[0]
+        acc = action[1]
+        speed = action[2]
+        # print('heading {}, steer {}, acc {}'.format(heading, steer, acc))
+        if mode == 'acc':
+            arrow = mpatches.Arrow(
+                x=0.0, y=0.0, dx=math.cos(heading) * acc, dy=math.sin(heading) * acc, color='red', width=4)
+        else:
+            arrow = mpatches.Arrow(
+                x=0.0, y=0.0, dx=math.cos(heading) * speed, dy=math.sin(heading) * speed, color='lightgreen', width=2)
+        return arrow
+
+    except Exception as e:
+        error_handler(e)
+        pdb.set_trace()
+
+
 def init():
     # initialize an empty list of cirlces
-    return []
+    return [trial_text, depth_text]
 
 def animate(time_step):
-    patches = []
+    patches = [trial_text, depth_text]
 
     time_step =  time_step + config.frame
 
@@ -196,36 +241,49 @@ def animate(time_step):
     else:
         ego_color = 'green'
 
+    if time_step in trial_list.keys():
+        trial_text.set_text("trial #: " + str(trial_list[time_step]))
+        depth_text.set_text("depth: " + str(depth_list[time_step]))
     # print('ego_heading: {}'.format(ego_list[time_step]['heading']))
-
-    patches.append(ax.add_patch(
-        agent_rect(ego_list[time_step], ego_pos, ego_color)))
 
     # draw exo agents
     for agent_dict in exos_list[time_step]:
         patches.append(ax.add_patch(
-            agent_rect(agent_dict, ego_pos, 'black')))
+            agent_rect(agent_dict, ego_pos, 'black')))   
         patches.append(ax.add_patch(
             vel_arrow(agent_dict, ego_pos, 'grey')))
 
-    # if time_step in pred_car_list.keys():
-    #     for car_dict in pred_car_list[time_step]:
-    #         car_dict['bb'] = ego_list[time_step]['bb'] 
-    #         patches.append(ax.add_patch(
-    #             agent_rect(car_dict, ego_pos, 'lightgreen', False)))
+    if time_step in pred_car_list.keys():
+        for car_dict in pred_car_list[time_step]:
+            car_dict['bb'] = ego_list[time_step]['bb'] 
+            patches.append(ax.add_patch(
+                agent_rect(car_dict, ego_pos, 'lightgreen', False)))
 
-    # if time_step in pred_exo_list.keys():
-    #     for agent_list in pred_exo_list[time_step]:
-    #         for agent_dict in agent_list:
-    #             patches.append(ax.add_patch(
-    #                 agent_rect(agent_dict, ego_pos, 'grey', False)))
+    if time_step in pred_exo_list.keys():
+        for agent_list in pred_exo_list[time_step]:
+            for agent_dict in agent_list:
+                patches.append(ax.add_patch(
+                    agent_rect(agent_dict, ego_pos, 'grey', False)))
+
     # draw path
-    path = ego_path_list[time_step]
-    for i in range(0, len(path), 2):
-        point = path[i]
+    # path = ego_path_list[time_step]
+    # for i in range(0, len(path), 2):
+    #     point = path[i]
+    #     patches.append(ax.add_patch(
+    #         mpatches.Circle([point[0]-ego_pos[0], point[1]-ego_pos[1]],
+    #                              0.1, color='orange')))
+
+    if time_step in ego_list.keys():
         patches.append(ax.add_patch(
-            mpatches.Circle([point[0]-ego_pos[0], point[1]-ego_pos[1]],
-                                 0.1, color='orange')))
+            agent_rect(ego_list[time_step], ego_pos, ego_color)))
+    if time_step in action_list.keys():
+        patches.append(ax.add_patch(
+            acc_arrow(action_list[time_step], ego_list[time_step], mode='acc')))
+        patches.append(ax.add_patch(
+            acc_arrow(action_list[time_step], ego_list[time_step], mode='speed')))    
+    if time_step in ego_list.keys():
+        patches.append(ax.add_patch(
+            vel_arrow(ego_list[time_step], ego_pos, 'brown')))    
 
     return patches
 
@@ -251,10 +309,11 @@ if __name__ == "__main__":
         default=0,
         help='start frame')
     config = parser.parse_args()
-    ego_list, ego_path_list, exos_list, coll_bool_list, pred_car_list, pred_exo_list = parse_data(config.file)
+    action_list, ego_list, ego_path_list, exos_list, coll_bool_list, pred_car_list, pred_exo_list, trial_list, depth_list = \
+        parse_data(config.file)
 
     anim = animation.FuncAnimation(fig, animate, init_func=init,
-                               frames=len(ego_list.keys()) - config.frame, interval=30, blit=True)
+                               frames=len(ego_list.keys()) - config.frame, interval=300, blit=True)
     fig.canvas.mpl_connect('button_press_event', onClick)
 
     plt.show()
