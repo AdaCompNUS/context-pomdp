@@ -4,6 +4,8 @@ import argparse
 import numpy as np
 import math
 
+cap = 5
+
 def collect_txt_files(rootpath, flag):
     txt_files = list([])
     for root, dirnames, filenames in os.walk(rootpath):
@@ -28,7 +30,7 @@ def filter_txt_files(root_path, txt_files):
         no_aa = False
         with open(txtfile, 'r') as f:
             for line in reversed(list(f)):
-                if 'Step 10' in line or 'step 10' in line:
+                if 'Step {}'.format(cap + 1) in line or 'step {}'.format(cap + 1) in line:
                     ok_flag = True
                 if 'No agent array messages received after' in line:
                     no_aa_count += 1 
@@ -40,7 +42,7 @@ def filter_txt_files(root_path, txt_files):
             if no_aa:
                 pass # print("no aa file: ", txtfile)
             else:
-                pass # print("unused file: ", txtfile)
+                print("unused file: ", txtfile)
     print("NO agent array in {} files".format(no_aa_count))
 
     filtered_files.sort()
@@ -103,7 +105,7 @@ def get_statistics(root_path, filtered_files):
                     speed = float(line.split(' ')[12])
                     pos_x = float(line.split(' ')[7].replace('(', '').replace(',', ''))
                     pos_y = float(line.split(' ')[8].replace(')', '').replace(',', ''))
-                    if cur_step >= 10:
+                    if cur_step >= cap:
                         ave_speed += speed
                     pos = [pos_x, pos_y]
 
@@ -134,8 +136,8 @@ def get_statistics(root_path, filtered_files):
                     col_count += 1
                     break
 
-        if cur_step > 10:
-            ave_speed = ave_speed / (cur_step-10)
+        if cur_step > cap:
+            ave_speed = ave_speed / (cur_step - cap)
             ave_speeds.append(ave_speed)
             dec_count  = dec_count / float(cur_step)
             acc_count  = acc_count / float(cur_step)
