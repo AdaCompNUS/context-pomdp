@@ -207,7 +207,7 @@ double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action) {
 
 	ContextPomdp* ContextPomdp_model = static_cast<ContextPomdp*>(model_);
 
-	if (state.car.vel > 0.5 && worldModel.InRealCollision(state, 120.0)) { /// collision occurs only when car is moving
+	if (state.car.vel > 1.0 && worldModel.InRealCollision(state, 120.0)) { /// collision occurs only when car is moving
 		reward = ContextPomdp_model->CrashPenalty(state);
 		return reward;
 	}
@@ -271,7 +271,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	}
 
 	int collision_peds_id;
-	if (curr_state->car.vel > 0.5 * time_scale
+	if (curr_state->car.vel > 1.0 * time_scale
 			&& worldModel.InRealCollision(*curr_state, collision_peds_id,
 					120.0)) {
 		cout
