@@ -220,17 +220,19 @@ double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action) {
 	return reward;
 }
 
-bool WorldSimulator::Emergency() {
-	double mindist = numeric_limits<double>::infinity();
-	for (std::map<int, AgentStruct>::iterator it = exo_agents_.begin();
-			it != exo_agents_.end(); ++it) {
-		AgentStruct& agent = it->second;
-		double d = COORD::EuclideanDistance(car_.pos, agent.pos);
-		if (d < mindist)
-			mindist = d;
-	}
-	cout << "Emergency mindist = " << mindist << endl;
-	return (mindist < 1.5);
+bool WorldSimulator::Emergency(PomdpStateWorld* curr_state) {
+//	double mindist = numeric_limits<double>::infinity();
+//	for (std::map<int, AgentStruct>::iterator it = exo_agents_.begin();
+//			it != exo_agents_.end(); ++it) {
+//		AgentStruct& agent = it->second;
+//		double d = COORD::EuclideanDistance(car_.pos, agent.pos);
+//		if (d < mindist)
+//			mindist = d;
+//	}
+//	cout << "Emergency mindist = " << mindist << endl;
+//	return (mindist < 1.5);
+
+	return curr_state->car.vel > 2.0 && worldModel.InCollision(*curr_state);
 }
 
 /**
@@ -290,6 +292,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	logv << "[WorldSimulator::" << __FUNCTION__
 			<< "] Update steering and target speed" << endl;
 
+	bool emergency = false;
 	if (goal_reached_ == true) {
 		cmd_steer_ = 0;
 		cmd_speed_ = real_speed;
@@ -305,9 +308,10 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 			cout << "After reaching goal: real_spead is already zero" << endl;
 			ros::shutdown();
 		}
-	} else if (Emergency()) {
+	} else if (Emergency(curr_state)) {
 		cmd_steer_ = 0;
 		cmd_speed_ = -1;
+		emergency = true;
 
 		buffered_action_ = static_cast<ContextPomdp*>(model_)->GetActionID(0.0,
 				-ModelParams::ACC_SPEED);
@@ -325,7 +329,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	}
 
 	// Updating cmd steering and speed. They will be send to vel_pulisher by timer
-	UpdateCmds(buffered_action_, false);
+	UpdateCmds(buffered_action_, emergency);
 
 	PublishCmdAction(buffered_action_);
 
@@ -344,7 +348,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	return goal_reached_;
 }
 
-void WorldSimulator::UpdateCmds(ACT_TYPE action, bool buffered) {
+void WorldSimulator::UpdateCmds(ACT_TYPE action, bool emergency) {
 	if (logging::level() >= logging::INFO)
 		worldModel.path.Text();
 
@@ -356,8 +360,12 @@ void WorldSimulator::UpdateCmds(ACT_TYPE action, bool buffered) {
 	cmd_speed_ = real_speed;
 	if (acc > 0.0)
 		cmd_speed_ = real_speed + speed_step;
-	else if (acc < 0.0)
-		cmd_speed_ = real_speed - 1.5 * speed_step;
+	else if (acc < 0.0) {
+		float scale = 1.0;
+		if (emergency)
+			scale = 2.0;
+		cmd_speed_ = real_speed - scale * speed_step;
+	}
 	cmd_speed_ = max(min(cmd_speed_, ModelParams::VEL_MAX), 0.0);
 
 	cmd_steer_ = static_cast<ContextPomdp*>(model_)->GetSteering(action);

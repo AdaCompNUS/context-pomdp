@@ -796,7 +796,7 @@ class EgoVehicle(Summit):
                 self.ego_dead_pub.publish(True)
                 return
 
-        # self.update_gamma_lane_decision()
+        self.update_gamma_lane_decision()
 
         if self.control_mode == 'gamma':
             self.update_gamma_control()
