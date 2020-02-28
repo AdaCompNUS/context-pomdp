@@ -123,6 +123,8 @@ bool WorldSimulator::Connect() {
 	if (Globals::ElapsedTime(start) >= 30.0)
 		ERR("No agent array messages received after 30 seconds.");
 
+//	ros::spin();
+
 	return true;
 }
 
@@ -164,6 +166,9 @@ std::map<double, AgentStruct&> WorldSimulator::GetSortedAgents() {
  */
 State* WorldSimulator::GetCurrentState() {
 
+	logi << "Spinning once for GetCurrentState" << endl;
+	ros::spinOnce(); // get the lasted states of the world
+
 	if (path_from_topic_.size() == 0) {
 		logi << "[GetCurrentState] path topic not ready yet..." << endl;
 		return NULL;
@@ -202,7 +207,7 @@ double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action) {
 
 	ContextPomdp* ContextPomdp_model = static_cast<ContextPomdp*>(model_);
 
-	if (state.car.vel > 0.001 && worldModel.InRealCollision(state, 120.0)) { /// collision occurs only when car is moving
+	if (state.car.vel > 1.0 && worldModel.InRealCollision(state, 120.0)) { /// collision occurs only when car is moving
 		reward = ContextPomdp_model->CrashPenalty(state);
 		return reward;
 	}
@@ -215,17 +220,19 @@ double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action) {
 	return reward;
 }
 
-bool WorldSimulator::Emergency() {
-	double mindist = numeric_limits<double>::infinity();
-	for (std::map<int, AgentStruct>::iterator it = exo_agents_.begin();
-			it != exo_agents_.end(); ++it) {
-		AgentStruct& agent = it->second;
-		double d = COORD::EuclideanDistance(car_.pos, agent.pos);
-		if (d < mindist)
-			mindist = d;
-	}
-	cout << "Emergency mindist = " << mindist << endl;
-	return (mindist < 1.5);
+bool WorldSimulator::Emergency(PomdpStateWorld* curr_state) {
+//	double mindist = numeric_limits<double>::infinity();
+//	for (std::map<int, AgentStruct>::iterator it = exo_agents_.begin();
+//			it != exo_agents_.end(); ++it) {
+//		AgentStruct& agent = it->second;
+//		double d = COORD::EuclideanDistance(car_.pos, agent.pos);
+//		if (d < mindist)
+//			mindist = d;
+//	}
+//	cout << "Emergency mindist = " << mindist << endl;
+//	return (mindist < 1.5);
+
+	return curr_state->car.vel > 2.0 && worldModel.InCollision(*curr_state);
 }
 
 /**
@@ -240,16 +247,15 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 		return false;
 	logi << "ExecuteAction at the " << Globals::ElapsedTime() << "th second"
 			<< endl;
-	ros::spinOnce();
 
 	/* Update state */
 	PomdpStateWorld* curr_state =
 			static_cast<PomdpStateWorld*>(GetCurrentState());
 
-	if (logging::level() >= logging::INFO) {
-		logi << "Executing action for state:" << endl;
-		static_cast<ContextPomdp*>(model_)->PrintWorldState(*curr_state);
-	}
+//	if (logging::level() >= logging::INFO) {
+//		logi << "Executing action for state:" << endl;
+//		static_cast<ContextPomdp*>(model_)->PrintWorldState(*curr_state);
+//	}
 
 	double acc, steer;
 
@@ -267,7 +273,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	}
 
 	int collision_peds_id;
-	if (curr_state->car.vel > 0.5 * time_scale
+	if (curr_state->car.vel > 1.0 * time_scale
 			&& worldModel.InRealCollision(*curr_state, collision_peds_id,
 					120.0)) {
 		cout
@@ -286,6 +292,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	logv << "[WorldSimulator::" << __FUNCTION__
 			<< "] Update steering and target speed" << endl;
 
+	bool emergency = false;
 	if (goal_reached_ == true) {
 		cmd_steer_ = 0;
 		cmd_speed_ = real_speed;
@@ -301,9 +308,10 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 			cout << "After reaching goal: real_spead is already zero" << endl;
 			ros::shutdown();
 		}
-	} else if (Emergency()) {
+	} else if (Emergency(curr_state)) {
 		cmd_steer_ = 0;
 		cmd_speed_ = -1;
+		emergency = true;
 
 		buffered_action_ = static_cast<ContextPomdp*>(model_)->GetActionID(0.0,
 				-ModelParams::ACC_SPEED);
@@ -321,7 +329,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	}
 
 	// Updating cmd steering and speed. They will be send to vel_pulisher by timer
-	UpdateCmds(buffered_action_, false);
+	UpdateCmds(buffered_action_, emergency);
 
 	PublishCmdAction(buffered_action_);
 
@@ -340,7 +348,7 @@ bool WorldSimulator::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 	return goal_reached_;
 }
 
-void WorldSimulator::UpdateCmds(ACT_TYPE action, bool buffered) {
+void WorldSimulator::UpdateCmds(ACT_TYPE action, bool emergency) {
 	if (logging::level() >= logging::INFO)
 		worldModel.path.Text();
 
@@ -352,14 +360,18 @@ void WorldSimulator::UpdateCmds(ACT_TYPE action, bool buffered) {
 	cmd_speed_ = real_speed;
 	if (acc > 0.0)
 		cmd_speed_ = real_speed + speed_step;
-	else if (acc < 0.0)
-		cmd_speed_ = real_speed - speed_step;
+	else if (acc < 0.0) {
+		float scale = 1.0;
+		if (emergency)
+			scale = 2.0;
+		cmd_speed_ = real_speed - scale * speed_step;
+	}
 	cmd_speed_ = max(min(cmd_speed_, ModelParams::VEL_MAX), 0.0);
 
 	cmd_steer_ = static_cast<ContextPomdp*>(model_)->GetSteering(action);
 
-	logi << "Executing action:" << action << " steer/acc = " << cmd_steer_
-			<< "/" << acc << endl;
+	logi << "Executing action:" << action << " steer/acc/speed = " << cmd_steer_
+			<< "/" << acc << "/" << cmd_speed_ << endl;
 }
 
 void WorldSimulator::PublishCmdAction(const ros::TimerEvent &e) {
@@ -523,6 +535,8 @@ void WorldSimulator::EgoDeadCallBack(const std_msgs::Bool ego_dead) {
 
 void WorldSimulator::EgoStateCallBack(
 		const msg_builder::car_info::ConstPtr car) {
+
+	logi << "get car state at t=" << Globals::ElapsedTime() << endl;
 	const msg_builder::car_info& ego_car = *car;
 	car_.pos = COORD(ego_car.car_pos.x, ego_car.car_pos.y);
 	car_.heading_dir = ego_car.car_yaw;
@@ -536,33 +550,35 @@ void WorldSimulator::EgoStateCallBack(
 						real_speed));
 	}
 
-	ModelParams::CAR_FRONT = COORD(
-			ego_car.front_axle_center.x - ego_car.car_pos.x,
-			ego_car.front_axle_center.y - ego_car.car_pos.y).Length();
-	ModelParams::CAR_REAR = COORD(
-			ego_car.rear_axle_center.y - ego_car.car_pos.y,
-			ego_car.rear_axle_center.y - ego_car.car_pos.y).Length();
-	ModelParams::CAR_WHEEL_DIST = ModelParams::CAR_FRONT
-			+ ModelParams::CAR_REAR;
+	if (ego_car.initial) {
+		ModelParams::CAR_FRONT = COORD(
+				ego_car.front_axle_center.x - ego_car.car_pos.x,
+				ego_car.front_axle_center.y - ego_car.car_pos.y).Length();
+		ModelParams::CAR_REAR = COORD(
+				ego_car.rear_axle_center.y - ego_car.car_pos.y,
+				ego_car.rear_axle_center.y - ego_car.car_pos.y).Length();
+		ModelParams::CAR_WHEEL_DIST = ModelParams::CAR_FRONT
+				+ ModelParams::CAR_REAR;
 
-	ModelParams::MAX_STEER_ANGLE = ego_car.max_steer_angle / 180.0 * M_PI;
+		ModelParams::MAX_STEER_ANGLE = ego_car.max_steer_angle / 180.0 * M_PI;
 
-	ModelParams::CAR_WIDTH = 0;
-	ModelParams::CAR_LENGTH = 0;
+		ModelParams::CAR_WIDTH = 0;
+		ModelParams::CAR_LENGTH = 0;
 
-	double car_yaw = car_.heading_dir;
-	COORD tan_dir(-sin(car_yaw), cos(car_yaw));
-	COORD along_dir(cos(car_yaw), sin(car_yaw));
-	for (auto& point : ego_car.car_bbox.points) {
-		COORD p(point.x - ego_car.car_pos.x, point.y - ego_car.car_pos.y);
-		double proj = p.dot(tan_dir);
-		ModelParams::CAR_WIDTH = max(ModelParams::CAR_WIDTH, fabs(proj));
-		proj = p.dot(along_dir);
-		ModelParams::CAR_LENGTH = max(ModelParams::CAR_LENGTH, fabs(proj));
+		double car_yaw = car_.heading_dir;
+		COORD tan_dir(-sin(car_yaw), cos(car_yaw));
+		COORD along_dir(cos(car_yaw), sin(car_yaw));
+		for (auto& point : ego_car.car_bbox.points) {
+			COORD p(point.x - ego_car.car_pos.x, point.y - ego_car.car_pos.y);
+			double proj = p.dot(tan_dir);
+			ModelParams::CAR_WIDTH = max(ModelParams::CAR_WIDTH, fabs(proj));
+			proj = p.dot(along_dir);
+			ModelParams::CAR_LENGTH = max(ModelParams::CAR_LENGTH, fabs(proj));
+		}
+		ModelParams::CAR_WIDTH = ModelParams::CAR_WIDTH * 2;
+		ModelParams::CAR_LENGTH = ModelParams::CAR_LENGTH * 2;
+		ModelParams::CAR_FRONT = ModelParams::CAR_LENGTH / 2.0;
 	}
-	ModelParams::CAR_WIDTH = ModelParams::CAR_WIDTH * 2;
-	ModelParams::CAR_LENGTH = ModelParams::CAR_LENGTH * 2;
-	ModelParams::CAR_FRONT = ModelParams::CAR_LENGTH / 2.0;
 
 	car_data_ready = true;
 }

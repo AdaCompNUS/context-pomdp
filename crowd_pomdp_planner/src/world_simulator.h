@@ -79,9 +79,9 @@ public:
 	State* GetCurrentState();
 	bool ExecuteAction(ACT_TYPE action, OBS_TYPE& obs);
 	double StepReward(PomdpStateWorld& state, ACT_TYPE action);
-	bool Emergency();
+	bool Emergency(PomdpStateWorld* curr_state);
 
-	void UpdateCmds(ACT_TYPE action, bool buffered = false);
+	void UpdateCmds(ACT_TYPE action, bool emergency = false);
 	void PublishCmdAction(const ros::TimerEvent &e);
 	void PublishCmdAction(ACT_TYPE);
 

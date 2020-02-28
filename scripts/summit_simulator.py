@@ -32,7 +32,7 @@ class SimulatorAccessories(Process):
             num_bike=cmd_args.num_bike,
             num_pedestrian=cmd_args.num_pedestrian,
             seed=-1,
-            collision=True,
+            collision=False,
             clearance_car=7.0,
             clearance_bike=7.0,
             clearance_pedestrian=1.0,

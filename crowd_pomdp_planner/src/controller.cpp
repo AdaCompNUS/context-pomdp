@@ -177,7 +177,7 @@ void Controller::InitializeDefaultParameters() {
 		Globals::config.num_scenarios = 5;
 		Globals::config.NUM_THREADS = 10;
 		Globals::config.discount = 0.95;
-		Globals::config.search_depth = 20;
+		Globals::config.search_depth = 12;
 		Globals::config.max_policy_sim_len = 20;
 		if (b_drive_mode == JOINT_POMDP)
 			Globals::config.pruning_constant = 0.001;
@@ -211,16 +211,28 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 	auto start_t = Time::now();
 	const State* cur_state = world->GetCurrentState();
 	if (cur_state == NULL)
-		ERR("cur_state == NULL");
-	cout << "current state address" << cur_state << endl;
+		ERR("cur_state is NULL");
 
 	cerr << "DEBUG: Updating belief" << endl;
 	ped_belief_->Update(last_action_, cur_state);
 	ped_belief_->Text(cout);
 
-	auto particles = ped_belief_->Sample(Globals::config.num_scenarios * 2);
+	std::vector<State*> particles = ped_belief_->Sample(Globals::config.num_scenarios * 2);
+	if (logging::level() >= logging::INFO) {
+		logi << "Planning for POMDP state:" << endl;
+		static_cast<ContextPomdp*>(model_)->PrintWorldState(
+				*static_cast<const PomdpStateWorld*>(particles[0]));
+	}
+	// print future predictions for visualization purpose
 	static_cast<const ContextPomdp*>(model_)->ForwardAndVisualize(
-					*(particles[0]), 10);
+					particles[0], 10);
+	// predict states for search
+	for (int i=0; i<particles.size(); i++){
+		particles[i]=
+		static_cast<const ContextPomdp*>(model_)->PredictAgents(
+				static_cast<const PomdpState*>(particles[i]),0);
+	}
+
 	ParticleBelief particle_belief(particles, model_);
 	solver->belief(&particle_belief);
 	logi << "[RunStep] Time spent in Update(): "
@@ -264,9 +276,12 @@ void Controller::PlanningLoop(despot::Solver*& solver, World* world,
 			<< endl;
 
 	cerr << "DEBUG: before entering controlloop" << endl;
-	timer_ = nh_.createTimer(ros::Duration(1.0 / control_freq_ / time_scale),
-			(boost::bind(&Controller::RunStep, this, solver, world, logger)));
 
+	while (true) {
+		RunStep(solver, world, logger);
+	}
+//	timer_ = nh_.createTimer(ros::Duration(1.0 / control_freq_ / time_scale),
+//			(boost::bind(&Controller::RunStep, this, solver, world, logger)));
 }
 
 int Controller::RunPlanning(int argc, char *argv[]) {
@@ -358,7 +373,7 @@ int Controller::RunPlanning(int argc, char *argv[]) {
 			<< "th second" << endl;
 
 	PlanningLoop(solver, world, logger);
-	ros::spin();
+//	ros::spin();
 
 	logger->EndRound();
 
