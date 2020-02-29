@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 import math
 
-cap = 5
+cap = 10 
 
 def collect_txt_files(rootpath, flag):
     txt_files = list([])
@@ -42,7 +42,7 @@ def filter_txt_files(root_path, txt_files):
             if no_aa:
                 pass # print("no aa file: ", txtfile)
             else:
-                print("unused file: ", txtfile)
+                pass # print("unused file: ", txtfile)
     print("NO agent array in {} files".format(no_aa_count))
 
     filtered_files.sort()
@@ -57,6 +57,7 @@ def get_statistics(root_path, filtered_files):
     col_count = 0
     goal_count = 0
     # Filter trajectories that don't reach goal or collide before reaching goal
+    eps_step = []
     goal_step = []
     ave_speeds = [] 
     dec_counts = []
@@ -94,9 +95,9 @@ def get_statistics(root_path, filtered_files):
                     last_speed = speed
                 elif ("pomdp" in folder or "rollout" in folder) and 'action **=' in line:
                     acc = int(line.split(' ')[2]) % 3
-                    if acc == 2:
-                        dec_count += 1
-                    elif acc == 1:
+                    # if acc == 2:
+                        # dec_count += 1
+                    if acc == 1:
                         acc_count += 1
                     elif acc == 0:
                         mat_count += 1
@@ -112,7 +113,7 @@ def get_statistics(root_path, filtered_files):
                     if last_pos:
                         dist += math.sqrt((pos[0]-last_pos[0])**2 + (pos[1]-last_pos[1])**2)
                     last_pos = pos
-                    if "gamma" in folder:
+                    if "gamma" in folder or 'pomdp' in folder or "rollout" in folder:
                         if speed< last_speed - 0.2:
                             dec_count += 1
                         last_speed = speed
@@ -136,6 +137,7 @@ def get_statistics(root_path, filtered_files):
                     col_count += 1
                     break
 
+        eps_step.append(cur_step)
         if cur_step > cap:
             ave_speed = ave_speed / (cur_step - cap)
             ave_speeds.append(ave_speed)
@@ -176,6 +178,7 @@ def get_statistics(root_path, filtered_files):
     print('travelled dist:', np.average(trav_np))
     print('travelled dist total:', np.sum(trav_np))
     print("col rate per meter:", float(col_count)/np.sum(trav_np))
+    print("col rate per step:", float(col_count)/np.sum(eps_step))
     # print (filtered_files, start_file, end_file)
     #
 
