@@ -221,18 +221,18 @@ double WorldSimulator::StepReward(PomdpStateWorld& state, ACT_TYPE action) {
 }
 
 bool WorldSimulator::Emergency(PomdpStateWorld* curr_state) {
-	double mindist = numeric_limits<double>::infinity();
-	for (std::map<int, AgentStruct>::iterator it = exo_agents_.begin();
-			it != exo_agents_.end(); ++it) {
-		AgentStruct& agent = it->second;
-		double d = COORD::EuclideanDistance(car_.pos, agent.pos);
-		if (d < mindist)
-			mindist = d;
-	}
-	cout << "Emergency mindist = " << mindist << endl;
-	return (mindist < 1.5);
+//	double mindist = numeric_limits<double>::infinity();
+//	for (std::map<int, AgentStruct>::iterator it = exo_agents_.begin();
+//			it != exo_agents_.end(); ++it) {
+//		AgentStruct& agent = it->second;
+//		double d = COORD::EuclideanDistance(car_.pos, agent.pos);
+//		if (d < mindist)
+//			mindist = d;
+//	}
+//	cout << "Emergency mindist = " << mindist << endl;
+//	return (mindist < 1.5);
 
-//	return curr_state->car.vel > 2.0 && worldModel.InCollision(*curr_state);
+	return curr_state->car.vel > 0.0 && worldModel.InCollision(*curr_state);
 }
 
 /**
