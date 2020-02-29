@@ -149,6 +149,7 @@ class EgoVehicle(Summit):
         self.speed_control_mode = rospy.get_param('~speed_control', 'vel')
         self.gamma_max_speed = rospy.get_param('~gamma_max_speed', 6.0)
         self.crowd_range = rospy.get_param('~crowd_range', 50.0)
+        self.exclude_crowd_range = rospy.get_param('~exclude_crowd_range', 20.0)
 
         print('Ego_vehicle control mode: {}'.format(self.control_mode))
         print('Ego_vehicle speed mode: {}'.format(self.speed_control_mode))
@@ -490,7 +491,11 @@ class EgoVehicle(Summit):
             pos = self.actor.get_location()
             bounds_min = carla.Vector2D(pos.x - self.crowd_range, pos.y - self.crowd_range)
             bounds_max = carla.Vector2D(pos.x + self.crowd_range, pos.y + self.crowd_range)
+            exclude_bounds_min = carla.Vector2D(pos.x - self.exclude_crowd_range, pos.y - self.exclude_crowd_range)
+            exclude_bounds_max = carla.Vector2D(pos.x + self.exclude_crowd_range, pos.y + self.exclude_crowd_range)
+
             self.crowd_service.simulation_bounds = (bounds_min, bounds_max)
+            self.crowd_service.forbidden_bounds = (exclude_bounds_min, exclude_bounds_max)
             self.last_crowd_range_update = time.time()
 
     def publish_odom_transform(self):

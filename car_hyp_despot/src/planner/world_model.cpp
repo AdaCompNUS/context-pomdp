@@ -1267,10 +1267,11 @@ void WorldModel::AgentApplyGammaVel(AgentStruct& agent, COORD& rvo_vel) {
 		COORD pursuit_point = agent.pos + rvo_vel;
 		double steering = PControlAngle<AgentStruct>(agent, pursuit_point);
 
-		float speed_step = ModelParams::ACC_SPEED / ModelParams::CONTROL_FREQ;
-		float actual_speed = min(max(rvo_speed, agent.speed - speed_step),
-				agent.speed + speed_step);
-		BicycleModel(agent, steering, actual_speed);
+//		float speed_step = ModelParams::ACC_SPEED / ModelParams::CONTROL_FREQ;
+//		float actual_speed = min(max(rvo_speed, agent.speed - speed_step),
+//				agent.speed + speed_step);
+//		BicycleModel(agent, steering, actual_speed);
+		BicycleModel(agent, steering, rvo_speed);
 	} else if (agent.type == AgentType::ped) {
 		agent.pos = agent.pos + rvo_vel * (1.0 / freq);
 	}
