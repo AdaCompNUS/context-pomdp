@@ -6,7 +6,11 @@ Simulation and driving with Context-POMDP in SUMMIT (click to see video):
 [![Watch the driving video](http://img.youtube.com/vi/wrR1VQUTUEE/maxresdefault.jpg)](https://youtu.be/wrR1VQUTUEE "Watch the driving video")
 
 ## Overview
-This repository contains the code for the Context-POMDP planner for driving among dense urban traffic simulated by the **SUMMIT simulator** [(paper)](https://arxiv.org/abs/1911.04074).
+This repository contains the code for the Context-POMDP planner for driving among dense urban traffic simulated by the [**SUMMIT simulator**](https://github.com/AdaCompNUS/summit).
+
+The algorithm was initially published in our ICRA [(paper)](https://arxiv.org/abs/1911.04074):
+
+Cai, P., Lee, Y., Luo, Y. and Hsu, D., 2020. SUMMIT: A Simulator for Urban Driving in Massive Mixed Traffic. International Conference on Robotics and Automation (ICRA).
 
 ### The SUMMIT Simulator
 Existing driving simulators do not capture the full complexity of real-world, unregulated, densely-crowded urban environments, such as complex road structures and traffic behaviors, and are thus insufficient for testing or training robust driving algorithms. SUMMIT aim to fill this gap. It is a high-fidelity simulator that facilitates the development and testing of crowd-driving algorithm extending CARLA to support the following additional features:
