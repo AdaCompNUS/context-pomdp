@@ -4,8 +4,16 @@ gpu=$1
 s=$2
 e=$3
 port=$4
-launch_sim=$5
-record_bags=$6
+
+launch_sim=1
+record_bags=0
+if (( $# > 4 )); then
+    launch_sim=$5
+fi
+if (( $# > 5 )); then
+    record_bags=$6
+fi
+
 maploc=random
 # maploc=magic
 # maploc=meskel_square
@@ -21,8 +29,6 @@ debug=0
 num_car=75
 num_bike=25
 num_pedestrian=10
-
-record_bags=0
 
 echo "User: $USER"
 echo "PATH: $PATH"

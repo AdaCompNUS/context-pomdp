@@ -284,7 +284,7 @@ def launch_ros():
 
 def launch_summit_simulator(round, run, cmd_args):
     if config.launch_summit:
-        shell_cmd = './CarlaUE4.sh -opengl'
+        shell_cmd = './CarlaUE4.sh -opengl -carla-rpc-port={} -carla-streaming-port={}'.format(config.port, config.port+1)
         if config.verbosity > 0:
             print_flush('')
             print_flush('[run_data_collection.py] ' + shell_cmd)
