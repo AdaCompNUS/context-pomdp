@@ -26,7 +26,7 @@ Context-POMDP is an expert planner in SUMMIT that explicitly reasons about inter
 
 The repository structure has the following conceptual architecture:
 
-<a href="https://docs.google.com/drawings/d/e/2PACX-1vT_cr2QI6jZfuuwVb2UEAgqSMjvl2T1eHsO6zEiG5mp8P5byTr7OEs4BbMGw4EnIOhS-juI72XR4ZHI/pub?w=1442&amp;h=641"><img src="https://docs.google.com/drawings/d/e/2PACX-1vT_cr2QI6jZfuuwVb2UEAgqSMjvl2T1eHsO6zEiG5mp8P5byTr7OEs4BbMGw4EnIOhS-juI72XR4ZHI/pub?w=1442&amp;h=641" style="width: 500px; max-width: 100%; height: auto" title="SUMMIT Architecture" /></a>
+<a href="https://docs.google.com/drawings/d/e/2PACX-1vT_cr2QI6jZfuuwVb2UEAgqSMjvl2T1eHsO6zEiG5mp8P5byTr7OEs4BbMGw4EnIOhS-juI72XR4ZHI/pub?w=1441&amp;h=450"><img src="https://docs.google.com/drawings/d/e/2PACX-1vT_cr2QI6jZfuuwVb2UEAgqSMjvl2T1eHsO6zEiG5mp8P5byTr7OEs4BbMGw4EnIOhS-juI72XR4ZHI/pub?w=1441&amp;h=450" style="width: 500px; max-width: 100%; height: auto" title="SUMMIT Architecture" /></a>
 
 To briefly explain the core sub-systems: 
 
