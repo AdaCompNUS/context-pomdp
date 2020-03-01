@@ -159,7 +159,7 @@ def get_statistics(root_path, filtered_files):
                 # print("col file: ", txtfile)
     print("%d filtered files found in %s" % (len(filtered_files), root_path))
 
-    print("goal rate :", float(goal_count)/total_count)
+    # print("goal rate :", float(goal_count)/total_count)
     print("col rate :", float(col_count)/total_count)
     ave_speeds_np = np.asarray(ave_speeds)
     print("ave speed :", np.average(ave_speeds_np))
