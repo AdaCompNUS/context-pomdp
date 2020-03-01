@@ -613,8 +613,12 @@ bool WorldModel::InRealCollision(const PomdpStateWorld& state,
 	return false;
 }
 
-bool WorldModel::InCollision(const PomdpStateWorld& state) const {
+bool WorldModel::InCollision(const PomdpStateWorld& state, double in_front_angle_deg) const {
 	const COORD& car_pos = state.car.pos;
+
+	if (in_front_angle_deg == -1) {
+		in_front_angle_deg = ModelParams::IN_FRONT_ANGLE_DEG;
+	}
 
 	int i = 0;
 	for (auto& agent : state.agents) {
@@ -622,7 +626,7 @@ bool WorldModel::InCollision(const PomdpStateWorld& state) const {
 			break;
 		i++;
 
-		if (!InFront(agent.pos, state.car))
+		if (!InFront(agent.pos, state.car, in_front_angle_deg))
 			continue;
 
 		if (agent.type == AgentType::ped) {

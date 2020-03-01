@@ -232,7 +232,7 @@ bool WorldSimulator::Emergency(PomdpStateWorld* curr_state) {
 //	cout << "Emergency mindist = " << mindist << endl;
 //	return (mindist < 1.5);
 
-	return curr_state->car.vel > 0.0 && worldModel.InCollision(*curr_state);
+	return curr_state->car.vel > 0.0 && worldModel.InCollision(*curr_state, 60.0);
 }
 
 /**

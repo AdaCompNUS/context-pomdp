@@ -93,7 +93,9 @@ public:
 
 	bool InCollision(const PomdpState& state) const;
 	bool InCollision(const PomdpState& state, int &id) const;
-	bool InCollision(const PomdpStateWorld& state) const;
+//	bool InCollision(const PomdpStateWorld& state) const;
+	bool InCollision(const PomdpStateWorld& state, double in_front_angle_deg = -1) const;
+
 	bool InCollision(const PomdpStateWorld& state, int &id) const;
 	bool InRealCollision(const PomdpStateWorld& state,
 			double in_front_angle_deg = -1) const;
