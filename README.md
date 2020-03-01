@@ -1,15 +1,15 @@
 #
-# Crowd driving with collision-avoidance controllers, POMDP planners, and LeTS-Drive in the SUMMIT simulator
+# Context-POMDP: a planner for autonomous driving in the SUMMIT simulator
 
-Simulation and driving in SUMMIT (click to see video): 
+Simulation and driving with Context-POMDP in SUMMIT (click to see video): 
 
-[![Watch the driving video](https://img.youtube.com/vi/bQjcd-NBdIg/0.jpg)](https://youtu.be/wrR1VQUTUEE "Watch the driving video")
+[![Watch the driving video](http://img.youtube.com/vi/wrR1VQUTUEE/maxresdefault.jpg)](https://youtu.be/wrR1VQUTUEE "Watch the driving video")
 
 ## Overview
-This repository contains all algorithmic elements for reproducing **LeTS-Drive** [(paper)](https://arxiv.org/abs/1905.12197) in heterogenous traffic simulated by the **SUMMIT simulator** [(paper)](https://www.dropbox.com/s/fs0e9j4o0r80e82/SUMMIT.pdf?dl=0).
+This repository contains the code for the Context-POMDP planner for driving among dense urban traffic simulated by the **SUMMIT simulator** [(paper)](https://arxiv.org/abs/1911.04074).
 
 ### The SUMMIT Simulator
-Existing driving simulators do not capture the full complexity of real-world, unregulated, densely-crowded urban environments, such as complex road structures and traffic behaviors, and are thus insufficient for testing or training robust driving algorithms. SUMMIT aim to fill this gap.  It is a high-fidelity simulator that facilitates the development and testing of crowd-driving algorithm extending CARLA to support the following additional features:
+Existing driving simulators do not capture the full complexity of real-world, unregulated, densely-crowded urban environments, such as complex road structures and traffic behaviors, and are thus insufficient for testing or training robust driving algorithms. SUMMIT aim to fill this gap. It is a high-fidelity simulator that facilitates the development and testing of crowd-driving algorithm extending CARLA to support the following additional features:
 
 1. _Real-World Maps:_ generates real-world maps from online open sources (e.g. OpenStreetMap) to provide a virtually unlimited source of complex environments. 
 
@@ -19,21 +19,24 @@ Existing driving simulators do not capture the full complexity of real-world, un
 
 4. _Realistic Visuals and Sensors:_ extending off CARLA there is support for a rich set of sensors such as cameras, Lidar, depth cameras, semantic segmentation etc. 
 
+### Context-POMDP
+Context-POMDP is an expert planner in SUMMIT that explicitly reasons about interactions among traffic agents and the uncertainty on human driver intentions and types. The core is a POMDP model conditioned on humman didden states and urban road contexts. The model is solved using an efficient parallel planner, [HyP-DESPOT](https://github.com/AdaCompNUS/HyP-DESPOT). A detailed description of the model can be found in our [paper](https://arxiv.org/abs/1911.04074).
+
 ### Architecture and Components
 
 The repository structure has the following conceptual architecture:
 
-<a href="https://docs.google.com/drawings/d/e/2PACX-1vR__3TWU8FzVXUJf2J8QxnrqaTkhlEjEd9OMxWbRAwE37swNKLNegU3CaTXAZFK7Uar2qOdDDdnYqv_/pub?w=900&h=360"><img src="https://docs.google.com/drawings/d/e/2PACX-1vR__3TWU8FzVXUJf2J8QxnrqaTkhlEjEd9OMxWbRAwE37swNKLNegU3CaTXAZFK7Uar2qOdDDdnYqv_/pub?w=900&h=360" style="width: 500px; max-width: 100%; height: auto" title="SUMMIT Architecture" /></a>
+<a href="https://docs.google.com/drawings/d/e/2PACX-1vT_cr2QI6jZfuuwVb2UEAgqSMjvl2T1eHsO6zEiG5mp8P5byTr7OEs4BbMGw4EnIOhS-juI72XR4ZHI/pub?w=1441&amp;h=450"><img src="https://docs.google.com/drawings/d/e/2PACX-1vT_cr2QI6jZfuuwVb2UEAgqSMjvl2T1eHsO6zEiG5mp8P5byTr7OEs4BbMGw4EnIOhS-juI72XR4ZHI/pub?w=1441&amp;h=450" style="width: 500px; max-width: 100%; height: auto" title="SUMMIT Architecture" /></a>
 
 To briefly explain the core sub-systems: 
 
-* **Summit Server** SUMMIT server for rendering environment.
+* **Summit** the SUMMIT simulator.
 
-* [**Summit Connector**](summit_connector/) A python package for communicating with SUMMIT, constructing the scene, controlling the traffic, and processing state and context information.
+* [**Summit Connector**](summit_connector/) A python package for communicating with SUMMIT. It publishes ROS topics on state and context information.
 
-* [**Crowd Pomdp Controller**](crowd_pomdp_planner) A wrapping over the POMDP planner. It receives information from the simulator and run belief tracking and POMDP planning.
+* [**Crowd Pomdp Planner**](crowd_pomdp_planner) The POMDP planner package. It receives ROS topics from the Summit_connector package and executes the belief tracking and POMDP planning loop.
 
-* [**IL Controller**](il_controller) The neural network learner for imitation learning (dashed lines denote that once trained these networks can be used to control the driver).
+* [**Car Hyp Despot**](car_hyp_despot) A static library package that implements the context-based POMDP model and the HyP-DESPOT solver. It exposes planning and belief tracking functions to be called in crowd_pomdp_planner.
 
 ## Getting Started
-**Information on the Installation Steps or Technical User Guide of SUMMIT can be located on our [wiki](https://github.com/AdaCompNUS/LeTS-Drive-SUMMIT/wiki).**
+**Information on the Installation Steps and Technical User Guides of Context-PODMP can be located on our [wiki](https://github.com/AdaCompNUS/Context-POMDP/wiki).**
