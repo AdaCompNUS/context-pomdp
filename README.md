@@ -3,7 +3,7 @@
 
 Simulation and driving with Context-POMDP in SUMMIT (click to see video): 
 
-[![Watch the driving video](http://img.youtube.com/vi/wrR1VQUTUEE/maxresdefault.jpg)](https://youtu.be/wrR1VQUTUEE "Watch the driving video")
+[![Watch the driving video](http://img.youtube.com/vi/wrR1VQUTUEE/maxresdefault.jpg)](https://youtu.be/dNiR0z2dROg "Watch the driving video")
 
 ## Overview
 This repository contains the code for the Context-POMDP planner for driving among dense urban traffic simulated by the [**SUMMIT simulator**](https://github.com/AdaCompNUS/summit).
