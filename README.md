@@ -34,9 +34,9 @@ To briefly explain the core sub-systems:
 
 * [**Summit Connector**](summit_connector/) A python package for communicating with SUMMIT. It publishes ROS topics on state and context information.
 
-* [**Crowd Pomdp planner**](crowd_pomdp_planner) The POMDP planner package. It receives ROS topics from the Summit_connector package and executes the belief tracking and POMDP planning loop.
+* [**Crowd Pomdp Planner**](crowd_pomdp_planner) The POMDP planner package. It receives ROS topics from the Summit_connector package and executes the belief tracking and POMDP planning loop.
 
-* [**Car_hyp_despot**](car_hyp_despot) A static library package that implements the context-based POMDP model and the HyP-DESPOT solver. It exposes planning and belief tracking functions to be called in crowd_pomdp_planner.
+* [**Car Hyp Despot**](car_hyp_despot) A static library package that implements the context-based POMDP model and the HyP-DESPOT solver. It exposes planning and belief tracking functions to be called in crowd_pomdp_planner.
 
 ## Getting Started
 **Information on the Installation Steps and Technical User Guides of Context-PODMP can be located on our [wiki](https://github.com/AdaCompNUS/Context-POMDP/wiki).**
