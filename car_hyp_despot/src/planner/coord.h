@@ -73,6 +73,7 @@ struct COORD
       angle += 2*M_PI;
     if (angle >= 2*M_PI)
       angle -= 2*M_PI;
+    return angle;
   }
   double Length() const{
 	  return sqrt(x*x + y*y);

@@ -40,10 +40,10 @@ static PomdpState hashed_state;
 
 class ContextPomdpParticleLowerBound: public ParticleLowerBound {
 private:
-	const ContextPomdp *ped_pomdp_;
+	const ContextPomdp *context_pomdp_;
 public:
 	ContextPomdpParticleLowerBound(const DSPOMDP *model) :
-			ParticleLowerBound(model), ped_pomdp_(
+			ParticleLowerBound(model), context_pomdp_(
 					static_cast<const ContextPomdp *>(model)) {
 	}
 
@@ -57,7 +57,7 @@ public:
 		for (int i = 0; i < state->num; i++) {
 			auto &p = state->agents[i];
 
-			if (!ped_pomdp_->world_model.InFront(p.pos, state->car))
+			if (!context_pomdp_->world_model.InFront(p.pos, state->car))
 				continue;
 			int step = min_step;
 			if (p.speed + carvel > 1e-5)
@@ -79,7 +79,7 @@ public:
 							* (0.0 - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
 
 		if (dec_step > min_step) {
-			value = ped_pomdp_->CrashPenalty(*state);
+			value = context_pomdp_->CrashPenalty(*state);
 		} else {
 			// 2. stay forever
 			value += stay_cost / (1 - Globals::Discount());
@@ -91,8 +91,8 @@ public:
 		}
 
 		// default action, go straight and decelerate
-		int steerID = ped_pomdp_->GetSteerIDfromSteering(0);
-		default_act = ped_pomdp_->GetActionID(steerID, 2);
+		int steerID = context_pomdp_->GetSteerIDfromSteering(0);
+		default_act = context_pomdp_->GetActionID(steerID, 2);
 
 		return ValuedAction(default_act, State::Weight(particles) * value);
 	}
@@ -100,32 +100,32 @@ public:
 
 class ContextPomdpSmartScenarioLowerBound: public DefaultPolicy {
 protected:
-	const ContextPomdp *ped_pomdp_;
+	const ContextPomdp *context_pomdp_;
 
 public:
 	ContextPomdpSmartScenarioLowerBound(const DSPOMDP *model,
 			ParticleLowerBound *bound) :
-			DefaultPolicy(model, bound), ped_pomdp_(
+			DefaultPolicy(model, bound), context_pomdp_(
 					static_cast<const ContextPomdp *>(model)) {
 	}
 
 	int Action(const std::vector<State *> &particles, RandomStreams &streams,
 			History &history) const {
-		return ped_pomdp_->world_model.DefaultPolicy(particles);
+		return context_pomdp_->world_model.DefaultPolicy(particles);
 	}
 };
 
 class ContextPomdpSmartParticleUpperBound: public ParticleUpperBound {
 protected:
-	const ContextPomdp *ped_pomdp_;
+	const ContextPomdp *context_pomdp_;
 public:
 	ContextPomdpSmartParticleUpperBound(const DSPOMDP *model) :
-			ped_pomdp_(static_cast<const ContextPomdp *>(model)) {
+			context_pomdp_(static_cast<const ContextPomdp *>(model)) {
 	}
 
 	double Value(const State &s) const {
 		const PomdpState &state = static_cast<const PomdpState &>(s);
-		int min_step = ped_pomdp_->world_model.MinStepToGoal(state);
+		int min_step = context_pomdp_->world_model.MinStepToGoal(state);
 		return -ModelParams::TIME_REWARD * min_step
 				+ ModelParams::GOAL_REWARD * Globals::Discount(min_step);
 	}
@@ -313,16 +313,16 @@ bool ContextPomdp::Step(State &state_, double rNum, int action, double &reward,
 		if (CPUDoPrint && state_.scenario_id == CPUPrintPID) {
 			printf("(CPU) Before step: scenario%d \n", state_.scenario_id);
 			printf("action= %d \n", action);
-			PomdpState *ContextPomdp_state = static_cast<PomdpState *>(&state_);
+			PomdpState *context_pomdp_state = static_cast<PomdpState *>(&state_);
 			printf("Before step:\n");
-			printf("car_pos= %f,%f", ContextPomdp_state->car.pos.x,
-					ContextPomdp_state->car.pos.y);
-			printf("car_heading=%f\n", ContextPomdp_state->car.heading_dir);
-			printf("car_vel= %f\n", ContextPomdp_state->car.vel);
-			for (int i = 0; i < ContextPomdp_state->num; i++) {
+			printf("car_pos= %f,%f", context_pomdp_state->car.pos.x,
+					context_pomdp_state->car.pos.y);
+			printf("car_heading=%f\n", context_pomdp_state->car.heading_dir);
+			printf("car_vel= %f\n", context_pomdp_state->car.vel);
+			for (int i = 0; i < context_pomdp_state->num; i++) {
 				printf("agent %d pox_x= %f pos_y=%f\n", i,
-						ContextPomdp_state->agents[i].pos.x,
-						ContextPomdp_state->agents[i].pos.y);
+						context_pomdp_state->agents[i].pos.x,
+						context_pomdp_state->agents[i].pos.y);
 			}
 		}
 	}
@@ -390,21 +390,21 @@ bool ContextPomdp::Step(State &state_, double rNum, int action, double &reward,
 
 	if (CPUDoPrint && state.scenario_id == CPUPrintPID) {
 		if (true) {
-			PomdpState *ContextPomdp_state = static_cast<PomdpState *>(&state_);
+			PomdpState *context_pomdp_state = static_cast<PomdpState *>(&state_);
 			printf("(CPU) After step: scenario=%d \n",
-					ContextPomdp_state->scenario_id);
+					context_pomdp_state->scenario_id);
 			printf("rand=%f, action=%d \n", rNum, action);
 			printf("After step:\n");
 			printf("Reward=%f\n", reward);
 
-			printf("car_pos= %f,%f", ContextPomdp_state->car.pos.x,
-					ContextPomdp_state->car.pos.y);
-			printf("car_heading=%f\n", ContextPomdp_state->car.heading_dir);
-			printf("car vel= %f\n", ContextPomdp_state->car.vel);
-			for (int i = 0; i < ContextPomdp_state->num; i++) {
+			printf("car_pos= %f,%f", context_pomdp_state->car.pos.x,
+					context_pomdp_state->car.pos.y);
+			printf("car_heading=%f\n", context_pomdp_state->car.heading_dir);
+			printf("car vel= %f\n", context_pomdp_state->car.vel);
+			for (int i = 0; i < context_pomdp_state->num; i++) {
 				printf("agent %d pox_x= %f pos_y=%f\n", i,
-						ContextPomdp_state->agents[i].pos.x,
-						ContextPomdp_state->agents[i].pos.y);
+						context_pomdp_state->agents[i].pos.x,
+						context_pomdp_state->agents[i].pos.y);
 			}
 		}
 	}
