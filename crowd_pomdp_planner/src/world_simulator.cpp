@@ -516,6 +516,7 @@ void WorldSimulator::AgentPathArrayCallback(msg_builder::AgentPathArray data) {
 					new_path.emplace_back(pose.pose.position.x,
 							pose.pose.position.y);
 				}
+				new_path = new_path.Interpolate();
 				worldModel.id_map_paths[id].emplace_back(new_path);
 			}
 		}
