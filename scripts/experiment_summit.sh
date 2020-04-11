@@ -18,6 +18,7 @@ maploc=random
 # maploc=magic
 # maploc=meskel_square
 # maploc=shi_men_er_lu
+# maploc=chandni_chowk
 # maploc=highway
 mode=joint_pomdp
 # mode=rollout
@@ -63,6 +64,7 @@ do
 
     child=$!
     wait "$child"
+    kill -9 "$child"
 #    echo "[repeat_run] clearing process"
 #    python ./clear_process.py $port
 #    sleep 3

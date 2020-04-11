@@ -290,7 +290,7 @@ def launch_summit_simulator(round, run, cmd_args):
             print_flush('[run_data_collection.py] ' + shell_cmd)
 
         summit_proc = subprocess.Popen(shell_cmd,
-                                       cwd=os.path.join(home, "summit/LinuxNoEditor"),
+                                       cwd=os.path.join(home, "summit"),
                                        env=dict(config.ros_env, DISPLAY=''),
                                        shell=True,
                                        preexec_fn=os.setsid)
