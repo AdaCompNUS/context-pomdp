@@ -36,4 +36,5 @@ if __name__ == "__main__":
         best_max_error_file = best_max_error_file[-15:-4].replace('_',' ').split()
 
         # print('{} best_max_error: {} value {}'.format(vehicle, best_max_error_file, best_max_error))
-        print("model = '{}'\nself.KP = {}\nself.KI = {}\nself.KD = {}\nmean error {}".format(vehicle, best_mean_error_file[0], best_mean_error_file[1], best_mean_error_file[2], best_mean_error))
+        # print("model = '{}'\nself.KP = {}\nself.KI = {}\nself.KD = {}\nmean error {}".format(vehicle, best_mean_error_file[0], best_mean_error_file[1], best_mean_error_file[2], best_mean_error))
+        print("model = '{}'\nKP = {}\nKI = {}\nKD = {}".format(vehicle, best_mean_error_file[0], best_mean_error_file[1], best_mean_error_file[2]))
