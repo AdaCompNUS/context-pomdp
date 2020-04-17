@@ -38,6 +38,15 @@ if __name__ == '__main__':
                         type=int,
                         default=0,
                         help='GPU to use')
+    parser.add_argument('--recordbag',
+                        type=int,
+                        default=0,
+                        help='record ros bags')
+    parser.add_argument('--mode',
+                        type=str,
+                        default='joint_pomdp',
+                        help='driving mode') 
+
 
     config = parser.parse_args()
 
@@ -47,7 +56,8 @@ if __name__ == '__main__':
                 "-v " + result_path + ":/root/driving_data " + \
                                 additional_mounts + \
                 "-e DISPLAY=${DISPLAY} -v /tmp/.X11-unix:/tmp/.X11-unix " + \
-                config.image + " " + str(config.gpu) + " " + str(config.port) 
+                config.image + " " + str(config.gpu) + " " + str(config.port) \
+                + " " + str(config.recordbag) + " " + str(config.mode)
 
     print(cmd_args)
     subprocess.call(cmd_args.split())

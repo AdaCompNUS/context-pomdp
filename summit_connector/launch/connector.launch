@@ -38,7 +38,7 @@
     <param name="num_ped" value="$(arg num_ped)"/>
   </node>
 
-  <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
   <!--
+  <node name="spectator" pkg="summit_connector" type="spectator.py" output="screen"/>
   -->
 </launch>

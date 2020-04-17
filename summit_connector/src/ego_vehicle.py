@@ -35,6 +35,8 @@ REMAIN = 0
 CHANGE_RIGHT = 1
 VEHICLE_STEER_KP = 1.5 # 2.0
 
+PID_TUNING_ON = False
+
 Pyro4.config.SERIALIZERS_ACCEPTED.add('serpent')
 Pyro4.config.SERIALIZER = 'serpent'
 Pyro4.util.SerializerBase.register_class_to_dict(
@@ -157,6 +159,12 @@ class EgoVehicle(Summit):
 
         self.crowd_service = Pyro4.Proxy('PYRO:crowdservice.warehouse@localhost:{}'.format(pyro_port))
 
+        if PID_TUNING_ON:
+            self.hyperparam_service = Pyro4.Proxy('PYRO:hyperparamservice.warehouse@{}:{}'.format("127.0.0.1", 7104))
+            self.KP, self.KI, self.KD = self.hyperparam_service.get_pid_params()
+            print('get pid params {} {} {}'.format(self.KP, self.KI, self.KD))
+            sys.stdout.flush()
+
         rospy.Subscriber('/pomdp_cmd_accel', Float32, self.pomdp_cmd_accel_callback, queue_size=1)
         rospy.Subscriber('/pomdp_cmd_steer', Float32, self.pomdp_cmd_steer_callback, queue_size=1)
         rospy.Subscriber('/pomdp_cmd_speed', Float32, self.pomdp_cmd_speed_callback, queue_size=1)
@@ -179,7 +187,16 @@ class EgoVehicle(Summit):
                     self.sumo_network, 50, 1.0, self.sumo_network_spawn_segments,
                     min_safe_points=100, rng=self.rng)
 
-            vehicle_bp = self.rng.choice(self.world.get_blueprint_library().filter('vehicle.mini.cooperst'))
+            if PID_TUNING_ON:
+                model = self.hyperparam_service.get_vehicle_model()
+                print('Vehicle model: {}'.format(str(model)))
+            else:
+                model = 'vehicle.mini.cooperst'
+                self.KP = 1.2
+                self.KI = 0.5
+                self.KD = 0.2
+
+            vehicle_bp = self.rng.choice(self.world.get_blueprint_library().filter(str(model)))
             vehicle_bp.set_attribute('role_name', 'ego_vehicle')
             spawn_position = self.path.get_position()
             spawn_position = self.path.get_position()
@@ -653,22 +670,26 @@ class EgoVehicle(Summit):
         if self.control_mode == 'gamma':
             cmd_speed = min(self.gamma_cmd_speed, self.gamma_max_speed)
             cmd_steer = self.gamma_cmd_steer
-            # kp, ki, kd, k, discount = 0.3, 0.1, 0.005, 1.0, 1.0
-            # kp, ki, kd, k, discount = 1.5, 0.5, 0.005, 2.5, 1.0
             kp, ki, kd, k, discount = 1.2, 0.5, 0.2, 0.8, 0.99
         else:
             cmd_speed = self.pomdp_cmd_speed
             cmd_steer = self.pp_cmd_steer
-            # kp, ki, kd, k = 1.8, 1.0, 0.3, 0.3
             kp, ki, kd, k, discount = 1.2, 0.5, 0.2, 0.8, 0.99
+
+        kp = self.KP
+        ki = self.KI
+        kd = self.KD
 
         cur_speed = self.actor.get_velocity()
         cur_speed = (cur_speed.x ** 2 + cur_speed.y ** 2) ** 0.5
 
-        if False:
-            print('cur_speed {} {}'.format(cur_speed, time.time() - script_start))
-            print('cmd_speed {} {}'.format(cmd_speed, time.time() - script_start))
-            sys.stdout.flush()
+        if PID_TUNING_ON:
+            self.hyperparam_service.record_vels(cmd_speed, cur_speed)
+        # if True:
+        #     print('cur_speed {} {}'.format(cur_speed, time.time() - script_start))
+        #     print('cmd_speed {} {}'.format(cmd_speed, time.time() - script_start))
+        #     sys.stdout.flush()
+
 
         if cmd_speed < 1e-5 and cur_speed < 0.5:
             control.throttle = 0
@@ -781,6 +802,8 @@ class EgoVehicle(Summit):
                 self.path = new_path
 
     def update(self):
+        # start =time.time()
+
         if not self.agents_ready:
             return
 
@@ -816,6 +839,9 @@ class EgoVehicle(Summit):
         self.publish_odom()
         # self.publish_il_car_info()
         self.publish_plan()
+
+        # print('({}) update rate: {} Hz'.format(os.getpid(), 1 / max(time.time() - start, 0.001)))
+
 
 
 if __name__ == '__main__':

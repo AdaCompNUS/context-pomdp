@@ -56,6 +56,15 @@ if __name__ == "__main__":
     config = parser.parse_args()
     cmd_vel, cur_vel, cmd_vel_ts, cur_vel_ts = parse_data(config.file)
 
+    cmd_vel = np.asarray(cmd_vel)
+    cur_vel = np.asarray(cur_vel)
+    diff_vel = np.absolute(cmd_vel - cur_vel)
+
+    print(np.mean(diff_vel))
+
+    # print('max_diff: {}'.format(np.max(diff_vel)))
+    # print('ave_diff: {}'.format(np.mean(diff_vel)))
+
     fig, ax = plt.subplots(figsize=(30,5))
     ts_len = len(cur_vel_ts)
     start = int(config.start * ts_len)

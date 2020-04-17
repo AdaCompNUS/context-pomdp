@@ -185,8 +185,9 @@ void Controller::InitializeDefaultParameters() {
 			Globals::config.pruning_constant = 100000000.0;
 		Globals::config.exploration_constant = 0.1;
 		Globals::config.silence = true;
-	} else
+	} else {
 		ERR("Unsupported drive mode");
+	}
 
 	logging::level(3);
 
@@ -241,9 +242,11 @@ bool Controller::RunStep(despot::Solver* solver, World* world, Logger* logger) {
 	cerr << "DEBUG: Searching for action" << endl;
 	start_t = Time::now();
 	ACT_TYPE action;
-	if (b_drive_mode == NO || b_drive_mode == JOINT_POMDP
+	if (b_drive_mode == JOINT_POMDP
 			|| b_drive_mode == ROLL_OUT) {
 		action = solver->Search().action;
+	} else if (b_drive_mode == NO) {
+		; // do not search
 	} else
 		ERR("drive mode not supported!");
 	logi << "[RunStep] Time spent in " << typeid(*solver).name()

@@ -28,7 +28,7 @@ result_subfolder = ""
 global_proc_queue = []
 pomdp_proc = None
 
-NO_NET = 0
+NO_POMDP = 0
 JOINT_POMDP = 1
 ROLL_OUT = 2
 
@@ -177,11 +177,9 @@ def update_global_config(cmd_args):
     if "joint_pomdp" in cmd_args.drive_mode:
         config.drive_mode = JOINT_POMDP
     elif "gamma" in cmd_args.drive_mode:
-        config.drive_mode = JOINT_POMDP
+        config.drive_mode = ROLL_OUT
     elif "rollout" in cmd_args.drive_mode:
         config.drive_mode = ROLL_OUT
-    elif "pomdp" in cmd_args.drive_mode:
-        config.drive_mode = NO_NET
     if cmd_args.drive_mode is "":
         # not drive_mode
         config.drive_mode = JOINT_POMDP

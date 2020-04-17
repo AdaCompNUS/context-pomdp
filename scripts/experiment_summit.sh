@@ -1,30 +1,55 @@
 #!/bin/sh
 SECONDS=0
-gpu=$1
-s=$2
-e=$3
-port=$4
+gpu=0
+s=0
+e=0
+port=2000
 
 launch_sim=1
 record_bags=0
-if (( $# > 4 )); then
-    launch_sim=$5
-fi
-if (( $# > 5 )); then
-    record_bags=$6
-fi
+
+mode=joint_pomdp
 
 maploc=random
+rands=-1
+
+if [ "$#" -gt 0 ]; then                                                                                                      
+    mode=$1                                                                                                                  
+fi                                                                                                                           
+                                                                                                                             
+if [ "$#" -gt 1 ]; then                                                                                                      
+    gpu=$2                                                                                                                   
+fi                                                                                                                           
+                                                                                                                             
+if [ "$#" -gt 2 ]; then                                                                                                      
+    launch_sim=$3                                                                                                            
+fi                                                                                                                           
+                                                                                                                             
+if [ "$#" -gt 3 ]; then                                                                                                      
+    record_bags=$4                                                                                                           
+fi                                                                                                                           
+                                                                                                                             
+if [ "$#" -gt 4 ]; then                                                                                                      
+    s=$5                                                                                                                     
+fi                                                                                                                           
+                                                                                                                             
+if [ "$#" -gt 5 ]; then                                                                                                      
+    e=$6                                                                                                                     
+fi                                                                                                                           
+                                                                                                                             
+if [ "$#" -gt 6 ]; then                                                                                                      
+    port=$7                                                                                                                  
+fi   
+
 # maploc=magic
 # maploc=meskel_square
-# maploc=shi_men_er_lu
 # maploc=chandni_chowk
 # maploc=highway
-mode=joint_pomdp
 # mode=rollout
 # mode=gamma
-rands=-1
 # rands=9475
+# maploc=shi_men_er_lu
+# rands=5271552
 eps_len=120.0
 debug=0
 num_car=75
@@ -66,7 +91,7 @@ do
     wait "$child"
     kill -9 "$child"
 #    echo "[repeat_run] clearing process"
-#    python ./clear_process.py $port
-#    sleep 3
+    # python ./clear_process.py $port
+    # sleep 3
 done
 echo "Exp finished in "$SECONDS" seconds"
