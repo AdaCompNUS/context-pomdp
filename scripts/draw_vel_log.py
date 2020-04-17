@@ -75,5 +75,8 @@ if __name__ == "__main__":
     ax.set(xlabel='time (s)', ylabel='speed',
            title='Speed control profile')
     ax.grid()
+    plt.savefig('vel_profile.png', format='png')
 
     plt.show()
+
+
