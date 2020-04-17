@@ -5,6 +5,9 @@ Simulation and driving with Context-POMDP in SUMMIT (click to see video):
 
 [![Watch the driving video](http://img.youtube.com/vi/wrR1VQUTUEE/maxresdefault.jpg)](https://youtu.be/dNiR0z2dROg "Watch the driving video")
 
+## Getting Started
+**Information on the Installation Steps and Technical User Guides of Context-PODMP can be located on our [wiki](https://github.com/AdaCompNUS/Context-POMDP/wiki).**
+
 ## Overview
 This repository contains the code for the Context-POMDP planner for driving among dense urban traffic simulated by the [**SUMMIT simulator**](https://github.com/AdaCompNUS/summit).
 
@@ -42,5 +45,3 @@ To briefly explain the core sub-systems:
 
 * [**Car Hyp Despot**](car_hyp_despot) A static library package that implements the context-based POMDP model and the HyP-DESPOT solver. It exposes planning and belief tracking functions to be called in crowd_pomdp_planner.
 
-## Getting Started
-**Information on the Installation Steps and Technical User Guides of Context-PODMP can be located on our [wiki](https://github.com/AdaCompNUS/Context-POMDP/wiki).**
