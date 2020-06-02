@@ -20,6 +20,7 @@ class SimulatorAccessories(Process):
 
         Args = collections.namedtuple('args', 'host port pyroport dataset num_car num_bike num_pedestrian seed collision'
                                               ' clearance_car clearance_bike clearance_pedestrian'
+                                              ' speed_car speed_bike speed_pedestrian'
                                               ' lane_change_probability cross_probability stuck_speed stuck_duration')
 
         # Spawn meshes.
