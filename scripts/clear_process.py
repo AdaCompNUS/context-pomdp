@@ -190,6 +190,7 @@ if __name__ == '__main__':
         print_flush("[clear_process.py]  clear_process.py")
 
         subprocess.call('pkill -9 CarlaUE4-Linux-', shell=True)
+        subprocess.call('pkill -9 ped_pomdp', shell=True)
         time.sleep(1)
         subprocess.call('pkill -9 record', shell=True)
         subprocess.call('pkill -9 python', shell=True)
