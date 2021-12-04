@@ -808,7 +808,7 @@ class EgoVehicle(Summit):
             return
 
         if not self.bounds_occupancy.contains(self.get_position()):
-            print("Termination: Vehile exits map boundary")
+            print("Termination: Vehicle exits map boundary")
             self.ego_dead_pub.publish(True)
             return
 
