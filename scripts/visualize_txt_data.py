@@ -130,6 +130,8 @@ def parse_data(txt_file):
                     # predicted_agents_0 380.443 474.335 5.5686 0.383117 1.1751
                     # [(x, y, heading, bb_x, bb_y)]
                     line_split = line.split(' ')
+                    if line_split[-1] == "" or line_split[-1] == "\n":
+                        line_split = line_split[:-1]
                     pred_step = int(line_split[0][17:])
                     if pred_step == 0:
                         pred_exo_list[cur_step] = []
