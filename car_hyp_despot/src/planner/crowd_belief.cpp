@@ -99,7 +99,7 @@ void HiddenStateBelief::Normalize() {
 
 	for (auto& intention_probs: probs_) {
 		std::transform(intention_probs.begin(), intention_probs.end(), intention_probs.begin(),
-		               std::bind(std::multiplies<double>(), std::placeholders::_1, 1.0/total_prob));
+					   std::bind(std::multiplies<double>(), std::placeholders::_1, 1.0/total_prob));
 	}
 }
 
@@ -289,7 +289,7 @@ void CrowdBelief::Update(ACT_TYPE action, const State* state) {
 
 	// remove out-dated agents
 	double time_stamp = Globals::ElapsedTime();
-    std::map<int,AgentBelief*>::iterator it = indexed_belief.begin();
+	std::map<int,AgentBelief*>::iterator it = indexed_belief.begin();
 	while (it != indexed_belief.end()){
 		AgentBelief* agent_belief = it->second;
 		if (agent_belief->OutDated(time_stamp)) {
