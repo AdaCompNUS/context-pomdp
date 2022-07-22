@@ -289,15 +289,15 @@ void CrowdBelief::Update(ACT_TYPE action, const State* state) {
 
 	// remove out-dated agents
 	double time_stamp = Globals::ElapsedTime();
-	for (std::map<int,AgentBelief*>::iterator it=indexed_belief.begin(); it!=indexed_belief.end(); ++it) {
+    std::map<int,AgentBelief*>::iterator it = indexed_belief.begin();
+	while (it != indexed_belief.end()){
 		AgentBelief* agent_belief = it->second;
 		if (agent_belief->OutDated(time_stamp)) {
-			logd << "[CrowdBelief::Update] " << "cur time_stamp = " << time_stamp
-					<< ", belief time_stamp="<< agent_belief->time_stamp << endl;
-
+			logd << "[CrowdBelief::Update] " << "agent disappear" << endl; 
 			delete agent_belief;
-			indexed_belief.erase(it);
-		}
+			it = indexed_belief.erase(it);
+		} else 
+			++it;
 	}
 
 	// agents disappeared less than 2 seconds
