@@ -1,4 +1,4 @@
-gdb                                                                                               
+pdb                                                                                               
 matplotlib
 psutil
 Pyro4                                            
